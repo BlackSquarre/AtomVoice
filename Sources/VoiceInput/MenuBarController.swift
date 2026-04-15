@@ -60,6 +60,26 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
+        // 动画效果
+        let animItem = NSMenuItem(title: "动画效果", action: nil, keyEquivalent: "")
+        let animMenu = NSMenu()
+        let currentAnim = UserDefaults.standard.string(forKey: "animationStyle") ?? "dynamicIsland"
+
+        let diItem = NSMenuItem(title: "灵动岛", action: #selector(selectAnimation(_:)), keyEquivalent: "")
+        diItem.target = self
+        diItem.representedObject = "dynamicIsland"
+        diItem.state = currentAnim == "dynamicIsland" ? .on : .off
+        animMenu.addItem(diItem)
+
+        let minimalItem = NSMenuItem(title: "简约模式", action: #selector(selectAnimation(_:)), keyEquivalent: "")
+        minimalItem.target = self
+        minimalItem.representedObject = "minimal"
+        minimalItem.state = currentAnim == "minimal" ? .on : .off
+        animMenu.addItem(minimalItem)
+
+        animItem.submenu = animMenu
+        menu.addItem(animItem)
+
         // 自动标点
         let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
         let punctItem = NSMenuItem(
@@ -107,6 +127,12 @@ final class MenuBarController {
         guard let code = sender.representedObject as? String else { return }
         UserDefaults.standard.set(code, forKey: "selectedLanguage")
         onLanguageChanged()
+        rebuildMenu()
+    }
+
+    @objc private func selectAnimation(_ sender: NSMenuItem) {
+        guard let style = sender.representedObject as? String else { return }
+        UserDefaults.standard.set(style, forKey: "animationStyle")
         rebuildMenu()
     }
 

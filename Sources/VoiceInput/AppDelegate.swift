@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "llmModel": "gpt-4o-mini",
             "autoPunctuationEnabled": true,
             "llmResultDelay": 0.3,
+            "animationStyle": "dynamicIsland",
         ])
 
         requestPermissions()
