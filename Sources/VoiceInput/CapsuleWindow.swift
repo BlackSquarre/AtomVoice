@@ -5,13 +5,16 @@ final class CapsuleWindowController {
     private var waveformView: WaveformView?
     private var textLabel: NSTextField?
     private var refiningLabel: NSTextField?
+    private var contentView: NSView?
+    private var textWidthConstraint: NSLayoutConstraint?
     private var panelWidthConstraint: NSLayoutConstraint?
 
+    // 缩小 10%: 56 * 0.9 ≈ 50, 28 * 0.9 = 25, 44 * 0.9 ≈ 40, etc.
     private let capsuleHeight: CGFloat = 50
     private let cornerRadius: CGFloat = 25
     private let waveformWidth: CGFloat = 40
-    private let minTextWidth: CGFloat = 144
-    private let maxTextWidth: CGFloat = 504
+    private let minTextWidth: CGFloat = 144  // 160 * 0.9
+    private let maxTextWidth: CGFloat = 504  // 560 * 0.9
     private let horizontalPadding: CGFloat = 18
 
     func show() {
@@ -38,127 +41,95 @@ final class CapsuleWindowController {
         panel.titlebarAppearsTransparent = true
         panel.styleMask.remove(.titled)
 
-        // 内容容器（直接铺满 panel）
+        // 毛玻璃背景 — 自动适配深色/浅色模式
+        let effectView = NSVisualEffectView(frame: panel.contentView!.bounds)
+        effectView.autoresizingMask = [.width, .height]
+        effectView.material = .hudWindow
+        effectView.state = .active
+        effectView.blendingMode = .behindWindow
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = cornerRadius
+        effectView.layer?.masksToBounds = true
+        effectView.layer?.cornerCurve = .continuous
+        panel.contentView?.addSubview(effectView)
+
+        // 内容容器
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
+        panel.contentView?.addSubview(container)
 
         // 波形视图
         let waveform = WaveformView(frame: .zero)
         waveform.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(waveform)
 
-        // 转录文字
+        // 转录文字标签 — 使用 labelColor 自动适配深浅色
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 13.5, weight: .medium)
+        label.textColor = .labelColor
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
         label.cell?.truncatesLastVisibleLine = true
         container.addSubview(label)
 
-        // 优化中指示
+        // "优化中..." 指示器
         let refLabel = NSTextField(labelWithString: "优化中...")
         refLabel.translatesAutoresizingMaskIntoConstraints = false
         refLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        refLabel.textColor = .secondaryLabelColor
         refLabel.isHidden = true
         container.addSubview(refLabel)
 
-        // 文字颜色根据模式（GlassEffectView 背景下始终用 labelColor）
-        label.textColor = .labelColor
-        refLabel.textColor = .secondaryLabelColor
-
+        let textWidth = label.widthAnchor.constraint(greaterThanOrEqualToConstant: minTextWidth)
         let maxWidth = label.widthAnchor.constraint(lessThanOrEqualToConstant: maxTextWidth)
-        let minWidth = label.widthAnchor.constraint(greaterThanOrEqualToConstant: minTextWidth)
+        let panelWidth = panel.contentView!.widthAnchor.constraint(equalToConstant: initialWidth)
 
         NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor, constant: horizontalPadding),
+            container.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor, constant: -horizontalPadding),
+            container.topAnchor.constraint(equalTo: panel.contentView!.topAnchor),
+            container.bottomAnchor.constraint(equalTo: panel.contentView!.bottomAnchor),
+
             waveform.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             waveform.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             waveform.widthAnchor.constraint(equalToConstant: waveformWidth),
-            waveform.heightAnchor.constraint(equalToConstant: 29),
+            waveform.heightAnchor.constraint(equalToConstant: 29),  // 32 * 0.9
 
             label.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: 10),
             label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            minWidth, maxWidth,
+            textWidth,
+            maxWidth,
 
             refLabel.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: 10),
             refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+
+            panelWidth,
         ])
-
-        // 根据系统版本选择背景
-        let panelWidth: NSLayoutConstraint
-
-        if #available(macOS 26.0, *) {
-            // ── 液态玻璃效果 ──────────────────────────────────
-            let glassView = NSGlassEffectView()
-            glassView.cornerRadius = cornerRadius
-            glassView.style = .regular
-            glassView.contentView = container
-            glassView.translatesAutoresizingMaskIntoConstraints = false
-
-            panel.contentView?.addSubview(glassView)
-            NSLayoutConstraint.activate([
-                glassView.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor),
-                glassView.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor),
-                glassView.topAnchor.constraint(equalTo: panel.contentView!.topAnchor),
-                glassView.bottomAnchor.constraint(equalTo: panel.contentView!.bottomAnchor),
-            ])
-
-            // container 在 glassView.contentView 内布局
-            container.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                container.leadingAnchor.constraint(equalTo: glassView.leadingAnchor, constant: horizontalPadding),
-                container.trailingAnchor.constraint(equalTo: glassView.trailingAnchor, constant: -horizontalPadding),
-                container.topAnchor.constraint(equalTo: glassView.topAnchor),
-                container.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
-            ])
-
-            _ = glassView
-            panelWidth = panel.contentView!.widthAnchor.constraint(equalToConstant: initialWidth)
-        } else {
-            // ── 毛玻璃降级方案 ───────────────────────────────
-            let effectView = NSVisualEffectView(frame: panel.contentView!.bounds)
-            effectView.autoresizingMask = [.width, .height]
-            effectView.material = .hudWindow
-            effectView.state = .active
-            effectView.blendingMode = .behindWindow
-            effectView.wantsLayer = true
-            effectView.layer?.cornerRadius = cornerRadius
-            effectView.layer?.masksToBounds = true
-            effectView.layer?.cornerCurve = .continuous
-            panel.contentView?.addSubview(effectView)
-            panel.contentView?.addSubview(container)
-
-            container.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                container.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor, constant: horizontalPadding),
-                container.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor, constant: -horizontalPadding),
-                container.topAnchor.constraint(equalTo: panel.contentView!.topAnchor),
-                container.bottomAnchor.constraint(equalTo: panel.contentView!.bottomAnchor),
-            ])
-
-            _ = effectView
-            panelWidth = panel.contentView!.widthAnchor.constraint(equalToConstant: initialWidth)
-        }
-
-        panelWidth.isActive = true
 
         self.panel = panel
         self.waveformView = waveform
         self.textLabel = label
         self.refiningLabel = refLabel
+        self.contentView = container
+        self.textWidthConstraint = textWidth
         self.panelWidthConstraint = panelWidth
 
-        // 入场动画
+        // 入场动画: 从底部滑入 + 缩放 + 淡入, 0.2s
         panel.contentView?.wantsLayer = true
         panel.alphaValue = 0
 
+        // 起始位置向下偏移 8pt
         var startFrame = panel.frame
         startFrame.origin.y -= 8
         panel.setFrame(startFrame, display: false)
+
         let targetFrame = NSRect(x: x, y: y, width: initialWidth, height: capsuleHeight)
 
+        // 起始缩放
         panel.contentView?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
+
         panel.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -208,6 +179,7 @@ final class CapsuleWindowController {
             return
         }
 
+        // 退场动画: 向下滑出 + 缩放 + 淡出, 0.2s
         var targetFrame = panel.frame
         targetFrame.origin.y -= 8
 
@@ -230,6 +202,8 @@ final class CapsuleWindowController {
         waveformView = nil
         textLabel = nil
         refiningLabel = nil
+        contentView = nil
+        textWidthConstraint = nil
         panelWidthConstraint = nil
         panel = nil
     }
