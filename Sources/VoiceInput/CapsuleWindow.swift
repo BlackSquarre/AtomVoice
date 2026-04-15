@@ -11,16 +11,17 @@ final class CapsuleWindowController {
 
     private let capsuleHeight: CGFloat = 50
     private let cornerRadius: CGFloat = 25
-    private let waveformWidth: CGFloat = 28   // 紧贴实际竖条宽度（5×3 + 4×2 = 23pt）
-    private let waveformTextGap: CGFloat = 14  // 波形→文字间距，更宽松
+    private let waveformWidth: CGFloat = 24    // 紧贴竖条实际宽度（5×3 + 4×2 = 23pt）
+    private let waveformLeadingOffset: CGFloat = 8  // 落在圆角直线区（>25pt）且符合8pt网格
+    private let waveformTextGap: CGFloat = 12  // 8pt 网格
     private let minTextWidth: CGFloat = 144
     private let maxTextWidth: CGFloat = 504
-    private let horizontalPadding: CGFloat = 22  // 左右 padding 加大，视觉居中
+    private let horizontalPadding: CGFloat = 24  // 8pt 网格（3×8）
 
     func show() {
         if panel != nil { return }
 
-        let initialWidth: CGFloat = waveformWidth + minTextWidth + horizontalPadding * 2 + waveformTextGap
+        let initialWidth: CGFloat = waveformWidth + waveformLeadingOffset + minTextWidth + horizontalPadding * 2 + waveformTextGap
         let screenFrame = NSScreen.main?.visibleFrame ?? .zero
         let x = screenFrame.midX - initialWidth / 2
         let y = screenFrame.minY + 54
@@ -116,8 +117,7 @@ final class CapsuleWindowController {
         }
 
         NSLayoutConstraint.activate([
-            // cornerRadius=25pt，直线区从距边缘25pt开始；+4pt让竖条落在直线区内
-            waveform.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
+            waveform.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: waveformLeadingOffset),
             waveform.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             waveform.widthAnchor.constraint(equalToConstant: waveformWidth),
             waveform.heightAnchor.constraint(equalToConstant: 29),
@@ -171,7 +171,7 @@ final class CapsuleWindowController {
 
         let textSize = (text as NSString).size(withAttributes: [.font: label.font!])
         let desiredTextWidth = min(max(textSize.width + 18, minTextWidth), maxTextWidth)
-        let totalWidth = desiredTextWidth + waveformWidth + horizontalPadding * 2 + waveformTextGap
+        let totalWidth = desiredTextWidth + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2
