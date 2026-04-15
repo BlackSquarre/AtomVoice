@@ -3,8 +3,8 @@ import Cocoa
 final class WaveformView: NSView {
     // MARK: - Layout
     private let barCount = 5
-    private let barWidth: CGFloat  = 3.5
-    private let barSpacing: CGFloat = 2.8
+    private let barWidth: CGFloat  = 3.0   // 5根 × 3 + 4间距 × 2 = 23pt，居中在28pt容器内
+    private let barSpacing: CGFloat = 2.0
     private let minBarHeight: CGFloat = 3.0
     private let maxBarHeight: CGFloat = 26.0
 
