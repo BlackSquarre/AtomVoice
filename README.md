@@ -28,7 +28,7 @@
 ## 安装
 
 ```bash
-git clone https://github.com/miaolingru/VoiceInputAlpha.git
+git clone https://github.com/BlackSquarre/VoiceInputAlpha.git
 cd VoiceInputAlpha
 make build      # 构建 .app
 make install    # 安装到 /Applications
@@ -114,7 +114,7 @@ An elegant macOS menu bar voice input app. Hold the Fn key to transcribe speech 
 ## Installation
 
 ```bash
-git clone https://github.com/miaolingru/VoiceInputAlpha.git
+git clone https://github.com/BlackSquarre/VoiceInputAlpha.git
 cd VoiceInputAlpha
 make build      # Build .app bundle
 make install    # Install to /Applications
