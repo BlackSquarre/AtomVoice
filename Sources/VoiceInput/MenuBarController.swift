@@ -60,6 +60,17 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
+        // 自动标点
+        let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
+        let punctItem = NSMenuItem(
+            title: "自动补全标点",
+            action: #selector(togglePunctuation(_:)),
+            keyEquivalent: ""
+        )
+        punctItem.target = self
+        punctItem.state = punctEnabled ? .on : .off
+        menu.addItem(punctItem)
+
         // LLM 优化
         let llmItem = NSMenuItem(title: "LLM 文本优化", action: nil, keyEquivalent: "")
         let llmMenu = NSMenu()
@@ -96,6 +107,12 @@ final class MenuBarController {
         guard let code = sender.representedObject as? String else { return }
         UserDefaults.standard.set(code, forKey: "selectedLanguage")
         onLanguageChanged()
+        rebuildMenu()
+    }
+
+    @objc private func togglePunctuation(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
+        UserDefaults.standard.set(!current, forKey: "autoPunctuationEnabled")
         rebuildMenu()
     }
 

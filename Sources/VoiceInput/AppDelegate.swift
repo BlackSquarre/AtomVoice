@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "llmEnabled": false,
             "llmAPIBaseURL": "https://api.openai.com/v1",
             "llmModel": "gpt-4o-mini",
+            "autoPunctuationEnabled": true,
         ])
 
         requestPermissions()
@@ -102,14 +103,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
+            // 本地自动标点
+            var processedText = rawText
+            if UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") {
+                let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+                processedText = PunctuationProcessor.process(rawText, language: lang)
+                capsuleWindow.updateText(processedText)
+            }
+
             let llmEnabled = UserDefaults.standard.bool(forKey: "llmEnabled")
             let apiKey = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
 
             if llmEnabled && !apiKey.isEmpty {
                 capsuleWindow.showRefining()
-                llmRefiner.refine(text: rawText) { [weak self] refined in
+                llmRefiner.refine(text: processedText) { [weak self] refined in
                     DispatchQueue.main.async {
-                        let finalText = refined ?? rawText
+                        let finalText = refined ?? processedText
                         self?.capsuleWindow.updateText(finalText)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             self?.capsuleWindow.dismiss {
@@ -120,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } else {
                 capsuleWindow.dismiss { [self] in
-                    textInjector.inject(text: rawText)
+                    textInjector.inject(text: processedText)
                 }
             }
         }
