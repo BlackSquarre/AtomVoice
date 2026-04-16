@@ -5,7 +5,7 @@
     <key>CFBundleName</key>
     <string>VoiceInput</string>
     <key>CFBundleIdentifier</key>
-    <string>com.lingru.VoiceInput</string>
+    <string>com.blacksquarre.VoiceInput</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
