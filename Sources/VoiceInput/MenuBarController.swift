@@ -5,6 +5,7 @@ final class MenuBarController {
     private let onLanguageChanged: () -> Void
     private let llmRefiner: LLMRefiner
     private var settingsWindow: SettingsWindowController?
+    private var aboutWindow: AboutWindowController?
 
     private let languages: [(code: String, name: String)] = [
         ("en-US", "English"),
@@ -39,6 +40,13 @@ final class MenuBarController {
         let instructionItem = NSMenuItem(title: "按住 Fn 键开始录音", action: nil, keyEquivalent: "")
         instructionItem.isEnabled = false
         menu.addItem(instructionItem)
+
+        menu.addItem(.separator())
+
+        let aboutItem = NSMenuItem(title: "关于 VoiceInput", action: #selector(openAbout(_:)), keyEquivalent: "")
+        aboutItem.image = icon("info.circle")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
 
         menu.addItem(.separator())
 
@@ -191,6 +199,11 @@ final class MenuBarController {
             settingsWindow = SettingsWindowController(llmRefiner: llmRefiner)
         }
         settingsWindow?.showWindow()
+    }
+
+    @objc private func openAbout(_ sender: NSMenuItem) {
+        if aboutWindow == nil { aboutWindow = AboutWindowController() }
+        aboutWindow?.showWindow()
     }
 
     @objc private func quit(_ sender: NSMenuItem) {
