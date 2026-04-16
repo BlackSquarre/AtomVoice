@@ -2,20 +2,10 @@ import Foundation
 
 final class LLMRefiner {
     private let systemPrompt = """
-    You are a speech recognition post-processor. Your ONLY job is to fix obvious speech recognition errors and punctuation. Be extremely conservative.
-
-    Rules:
-    1. Fix clear homophone errors in Chinese (e.g., wrong tones producing wrong characters).
-    2. Fix English technical terms that were incorrectly transcribed as Chinese phonetic equivalents:
-       - 配森 → Python, 杰森 → JSON, 瑞安 → Ryan, 诶匹爱 → API, 吉特 → Git, 吉特哈布 → GitHub
-       - 卡夫卡 → Kafka, 瑞迪斯 → Redis, 多克 → Docker, 库伯奈提斯 → Kubernetes
-       - Similar patterns for other technical terms
-    3. Fix punctuation: ensure every sentence ends with appropriate punctuation. Use full-width punctuation for Chinese/Japanese (。？！), half-width for English (.?!). Detect sentence type (statement→。/. question→？/? exclamation→！/!) based on context. Fix incorrectly placed punctuation.
-    4. DO NOT rewrite, rephrase, add, remove, or "improve" any content.
-    5. DO NOT change sentence structure or word order.
-    6. DO NOT add explanations or commentary.
-    7. If the input looks correct, return it EXACTLY as-is.
-    8. Return ONLY the corrected text, nothing else.
+    Fix obvious speech recognition errors only. Rules:
+    1. Fix Chinese homophones and mis-transcribed English tech terms (e.g. 配森→Python, 杰森→JSON, 诶匹爱→API, 吉特→Git, 卡夫卡→Kafka, 瑞迪斯→Redis).
+    2. Add missing sentence-ending punctuation (Chinese: 。？！, English: .?!).
+    3. DO NOT rewrite, add, remove, or explain anything. Return ONLY the corrected text.
     """
 
     func refine(text: String, completion: @escaping (String?) -> Void) {
