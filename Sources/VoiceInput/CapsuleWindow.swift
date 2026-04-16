@@ -99,7 +99,16 @@ final class CapsuleWindowController {
             glass.style = .regular
             glass.translatesAutoresizingMaskIntoConstraints = false
             glass.contentView = container
+            // none 模式下禁用 glass view 自带的隐式入场动画
+            if animationStyle == "none" {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                CATransaction.setAnimationDuration(0)
+            }
             panel.contentView?.addSubview(glass)
+            if animationStyle == "none" {
+                CATransaction.commit()
+            }
             NSLayoutConstraint.activate([
                 glass.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor),
                 glass.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor),
@@ -241,14 +250,23 @@ final class CapsuleWindowController {
     // MARK: - 无动画入场
 
     private func animateInNone(panel: NSPanel, targetFrame: NSRect) {
+        // 清空任何残留 filter
+        contentView?.layer?.filters = nil
+        contentView?.layer?.removeAllAnimations()
+
         panel.setFrame(targetFrame, display: false)
         panel.alphaValue = 1
-        // 禁用系统自动淡入：duration=0 + disableActions
+
+        // 三重禁用：CATransaction + NSAnimationContext + animator duration
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        CATransaction.setAnimationDuration(0)
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = 0
+        NSAnimationContext.current.allowsImplicitAnimation = false
         panel.orderFrontRegardless()
+        // 强制立即渲染，不等下一 runloop
+        panel.display()
         NSAnimationContext.endGrouping()
         CATransaction.commit()
     }
@@ -258,8 +276,10 @@ final class CapsuleWindowController {
     private func dismissNone(panel: NSPanel, completion: (() -> Void)?) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        CATransaction.setAnimationDuration(0)
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = 0
+        NSAnimationContext.current.allowsImplicitAnimation = false
         panel.orderOut(nil)
         NSAnimationContext.endGrouping()
         CATransaction.commit()
@@ -306,11 +326,15 @@ final class CapsuleWindowController {
         frame.size.width = totalWidth
         frame.origin.x = screen.midX - totalWidth / 2
 
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.2
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            panel.animator().setFrame(frame, display: true)
-        })
+        if animationStyle == "none" {
+            panel.setFrame(frame, display: false)
+        } else {
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.2
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(frame, display: true)
+            })
+        }
     }
 
     func showRefining() {
