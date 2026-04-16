@@ -93,22 +93,16 @@ final class CapsuleWindowController {
         textMinW.priority = .defaultLow
         let textMaxW = label.widthAnchor.constraint(lessThanOrEqualToConstant: maxTextWidth)
 
-        if #available(macOS 26.0, *) {
+        // "无"模式强制用 NSVisualEffectView，绕开 NSGlassEffectView 的系统级动画
+        let useGlass = animationStyle != "none"
+
+        if #available(macOS 26.0, *), useGlass {
             let glass = NSGlassEffectView()
             glass.cornerRadius = cornerRadius
             glass.style = .regular
             glass.translatesAutoresizingMaskIntoConstraints = false
             glass.contentView = container
-            // none 模式下禁用 glass view 自带的隐式入场动画
-            if animationStyle == "none" {
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                CATransaction.setAnimationDuration(0)
-            }
             panel.contentView?.addSubview(glass)
-            if animationStyle == "none" {
-                CATransaction.commit()
-            }
             NSLayoutConstraint.activate([
                 glass.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor),
                 glass.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor),
