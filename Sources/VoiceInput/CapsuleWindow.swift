@@ -18,9 +18,14 @@ final class CapsuleWindowController {
     private let horizontalPadding: CGFloat = 24
     private let pillWidth: CGFloat = 50  // 入场/退场起止小胶囊宽度
 
-    // 弹簧参数（近似 response=0.4s, dampingRatio=0.72）
-    private let springK: CGFloat = 260   // 刚度
-    private let springC: CGFloat = 24    // 阻尼（临界 = 2√k·m，此处略低→有回弹）
+    // 弹簧参数根据速度设置动态读取
+    private var springParams: (k: CGFloat, c: CGFloat) {
+        switch UserDefaults.standard.string(forKey: "animationSpeed") ?? "medium" {
+        case "slow":   return (260, 24)   // ~0.7s
+        case "fast":   return (600, 42)   // ~0.3s
+        default:       return (400, 32)   // ~0.45s（中）
+        }
+    }
 
     private var animationStyle: String {
         UserDefaults.standard.string(forKey: "animationStyle") ?? "dynamicIsland"
@@ -181,7 +186,7 @@ final class CapsuleWindowController {
         let ty = targetFrame.origin.y
         let tw = targetFrame.width
 
-        let k = springK, c = springC
+        let (k, c) = springParams
         let dt: CGFloat = 1.0 / 120.0   // 120Hz 物理更新
         var elapsed: CGFloat = 0
         let maxTime: CGFloat = 1.2       // 超过此时间强制结束

@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "autoPunctuationEnabled": true,
             "llmResultDelay": 0.3,
             "animationStyle": "dynamicIsland",
+            "animationSpeed": "medium",
         ])
 
         requestPermissions()

@@ -83,6 +83,24 @@ final class MenuBarController {
         noneItem.state = currentAnim == "none" ? .on : .off
         animMenu.addItem(noneItem)
 
+        // 动画速度（仅灵动岛模式有效）
+        let currentSpeed = UserDefaults.standard.string(forKey: "animationSpeed") ?? "medium"
+        if currentAnim == "dynamicIsland" {
+            animMenu.addItem(.separator())
+            let speedLabel = NSMenuItem(title: "动画速度", action: nil, keyEquivalent: "")
+            speedLabel.isEnabled = false
+            animMenu.addItem(speedLabel)
+
+            for (title, key) in [("慢", "slow"), ("中", "medium"), ("快", "fast")] {
+                let item = NSMenuItem(title: title, action: #selector(selectAnimSpeed(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = key
+                item.state = currentSpeed == key ? .on : .off
+                item.indentationLevel = 1
+                animMenu.addItem(item)
+            }
+        }
+
         animItem.submenu = animMenu
         menu.addItem(animItem)
 
@@ -147,6 +165,12 @@ final class MenuBarController {
     @objc private func selectAnimation(_ sender: NSMenuItem) {
         guard let style = sender.representedObject as? String else { return }
         UserDefaults.standard.set(style, forKey: "animationStyle")
+        rebuildMenu()
+    }
+
+    @objc private func selectAnimSpeed(_ sender: NSMenuItem) {
+        guard let speed = sender.representedObject as? String else { return }
+        UserDefaults.standard.set(speed, forKey: "animationSpeed")
         rebuildMenu()
     }
 
