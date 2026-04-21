@@ -190,6 +190,11 @@ final class CapsuleWindowController {
         panel.alphaValue = 0
         panel.orderFrontRegardless()
 
+        // 延迟一帧，让 NSVisualEffectView / NSGlassEffectView 先采样背景色，
+        // 避免首帧出现白色 fallback 再切换为深色的闪烁
+        DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+
         // 弹簧状态：[x, y, width] 各自独立物理积分
         var sx = startFrame.origin.x, vx: CGFloat = 0
         var sy = startFrame.origin.y, vy: CGFloat = 0
@@ -248,6 +253,7 @@ final class CapsuleWindowController {
             }
         }
         RunLoop.main.add(springTimer!, forMode: .common)
+        } // end DispatchQueue.main.async (background sample delay)
     }
 
     // MARK: - 无动画入场
@@ -300,6 +306,8 @@ final class CapsuleWindowController {
         panel.contentView?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
         panel.orderFrontRegardless()
 
+        // 延迟一帧，让 visual effect view 先采样背景
+        DispatchQueue.main.async {
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -308,6 +316,7 @@ final class CapsuleWindowController {
             panel.animator().setFrame(targetFrame, display: true)
             panel.contentView?.layer?.transform = CATransform3DIdentity
         })
+        } // end DispatchQueue.main.async
     }
 
     // MARK: - Update

@@ -1,11 +1,17 @@
 APP_NAME    = VoiceInput
-VERSION     = 0.9.0
+VERSION     = 0.9.2
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
 
-.PHONY: build run install clean release
+.PHONY: build dev run install clean release
+
+# ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
+dev:
+	swift build -c release
+	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(DIST_DIR)/Test/$(APP_NAME).app)
+	@echo "Dev build: $(DIST_DIR)/Test/$(APP_NAME).app"
 
 # ── 默认构建（当前机器原生架构）──────────────────────────────────────
 build:

@@ -102,6 +102,40 @@ final class MenuBarController {
         animItem.submenu = animMenu
         menu.addItem(animItem)
 
+        // 静音自动停止
+        let silenceItem = NSMenuItem(title: loc("menu.silence"), action: nil, keyEquivalent: "")
+        silenceItem.image = icon("waveform.badge.minus")
+        let silenceMenu = NSMenu()
+        let silenceEnabled = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+
+        let silenceToggle = NSMenuItem(
+            title: silenceEnabled ? loc("menu.silence.enabled") : loc("menu.silence.disabled"),
+            action: #selector(toggleSilenceAutoStop(_:)),
+            keyEquivalent: ""
+        )
+        silenceToggle.target = self
+        silenceToggle.state = silenceEnabled ? .on : .off
+        silenceMenu.addItem(silenceToggle)
+
+        silenceMenu.addItem(.separator())
+        let durationLabel = NSMenuItem(title: loc("menu.silence.duration"), action: nil, keyEquivalent: "")
+        durationLabel.isEnabled = false
+        silenceMenu.addItem(durationLabel)
+
+        let currentDuration = UserDefaults.standard.double(forKey: "silenceDuration")
+        for (title, value) in [("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
+            let item = NSMenuItem(title: title, action: #selector(selectSilenceDuration(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = value
+            item.state = abs(currentDuration - value) < 0.01 ? .on : .off
+            item.indentationLevel = 1
+            item.isEnabled = silenceEnabled
+            silenceMenu.addItem(item)
+        }
+
+        silenceItem.submenu = silenceMenu
+        menu.addItem(silenceItem)
+
         // 自动标点
         let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
         let punctItem = NSMenuItem(title: loc("menu.punctuation"), action: #selector(togglePunctuation(_:)), keyEquivalent: "")
@@ -204,6 +238,18 @@ final class MenuBarController {
     @objc private func selectAnimSpeed(_ sender: NSMenuItem) {
         guard let speed = sender.representedObject as? String else { return }
         UserDefaults.standard.set(speed, forKey: "animationSpeed")
+        rebuildMenu()
+    }
+
+    @objc private func toggleSilenceAutoStop(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        UserDefaults.standard.set(!current, forKey: "silenceAutoStopEnabled")
+        rebuildMenu()
+    }
+
+    @objc private func selectSilenceDuration(_ sender: NSMenuItem) {
+        guard let duration = sender.representedObject as? Double else { return }
+        UserDefaults.standard.set(duration, forKey: "silenceDuration")
         rebuildMenu()
     }
 

@@ -7,6 +7,12 @@ final class AudioEngineController {
     private var bandsHandler: (([Float]) -> Void)?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
 
+    // 静音自动停止
+    var onSilenceTimeout: (() -> Void)?
+    private var silenceDuration: Double = 0
+    private var recordingDuration: Double = 0
+    private let silenceGuardPeriod: Double = 0.5  // 录音前 0.5 秒不检测静音
+
     // FFT
     private let fftSize = 2048
     private var fftSetup: FFTSetup?
@@ -39,6 +45,8 @@ final class AudioEngineController {
         self.bandsHandler = bandsHandler
         self.recognitionRequest = recognitionRequest
         sampleBuffer = []
+        silenceDuration = 0
+        recordingDuration = 0
 
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
@@ -53,6 +61,11 @@ final class AudioEngineController {
                 self.sampleBuffer.append(
                     contentsOf: UnsafeBufferPointer(start: channelData[0], count: count)
                 )
+
+                // 静音检测：用 RMS 判断音量
+                let bufferDuration = Double(count) / Double(sampleRate)
+                self.recordingDuration += bufferDuration
+                self.detectSilence(channelData: channelData[0], frameCount: count, bufferDuration: bufferDuration)
             }
 
             // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率
@@ -74,6 +87,39 @@ final class AudioEngineController {
         bandsHandler = nil
         recognitionRequest = nil
         sampleBuffer = []
+        silenceDuration = 0
+        recordingDuration = 0
+    }
+
+    // MARK: - 静音检测
+
+    private func detectSilence(channelData: UnsafeMutablePointer<Float>, frameCount: Int, bufferDuration: Double) {
+        // 保护期内不检测
+        guard recordingDuration > silenceGuardPeriod else { return }
+
+        // 读取用户设置
+        let enabled = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        guard enabled else { return }
+
+        let threshold = UserDefaults.standard.double(forKey: "silenceThreshold")
+        let requiredDuration = UserDefaults.standard.double(forKey: "silenceDuration")
+
+        // 计算 RMS（用 Accelerate，几乎零开销）
+        var rms: Float = 0
+        vDSP_rmsqv(channelData, 1, &rms, vDSP_Length(frameCount))
+        let dB = 20 * log10(max(rms, 1e-7))
+
+        if Double(dB) < threshold {
+            silenceDuration += bufferDuration
+            if silenceDuration >= requiredDuration {
+                silenceDuration = 0  // 防止重复触发
+                DispatchQueue.main.async { [weak self] in
+                    self?.onSilenceTimeout?()
+                }
+            }
+        } else {
+            silenceDuration = 0
+        }
     }
 
     // MARK: - FFT

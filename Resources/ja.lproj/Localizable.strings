@@ -104,3 +104,9 @@
 
 "menu.launchAtLogin" = "ログイン時に起動";
 "menu.help" = "権限とヘルプ";
+
+/* Silence Auto-Stop */
+"menu.silence" = "無音で自動停止";
+"menu.silence.enabled" = "有効";
+"menu.silence.disabled" = "無効";
+"menu.silence.duration" = "無音判定時間";

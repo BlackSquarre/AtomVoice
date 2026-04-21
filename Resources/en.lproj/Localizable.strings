@@ -104,3 +104,9 @@
 
 "menu.launchAtLogin" = "Launch at Login";
 "menu.help" = "Permissions & Help";
+
+/* Silence Auto-Stop */
+"menu.silence" = "Silence Auto-Stop";
+"menu.silence.enabled" = "Enabled";
+"menu.silence.disabled" = "Disabled";
+"menu.silence.duration" = "Silence Duration";

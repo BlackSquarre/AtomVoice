@@ -104,3 +104,9 @@
 
 "menu.launchAtLogin" = "登入時啟動";
 "menu.help" = "權限與說明";
+
+/* Silence Auto-Stop */
+"menu.silence" = "靜音自動停止";
+"menu.silence.enabled" = "已啟用";
+"menu.silence.disabled" = "已停用";
+"menu.silence.duration" = "靜音時長";

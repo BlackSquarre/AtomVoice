@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "llmResultDelay": 0.3,
             "animationStyle": "dynamicIsland",
             "animationSpeed": "medium",
+            "silenceAutoStopEnabled": false,
+            "silenceDuration": 2.0,
+            "silenceThreshold": -40.0,
         ])
 
         requestPermissions()
@@ -39,14 +42,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             llmRefiner: llmRefiner
         )
 
+        audioEngine.onSilenceTimeout = { [weak self] in self?.stopRecording() }
+
         fnKeyMonitor = FnKeyMonitor(
-            onFnDown: { [weak self] in self?.startRecording() },
-            onFnUp: { [weak self] in self?.stopRecording() }
+            onFnDown: { [weak self] in
+                guard let self else { return }
+                let silenceMode = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+                if silenceMode {
+                    // 切换模式：按一次开始，再按一次手动停止
+                    if self.isRecording {
+                        self.stopRecording()
+                    } else {
+                        self.startRecording()
+                    }
+                } else {
+                    self.startRecording()
+                }
+            },
+            onFnUp: { [weak self] in
+                guard let self else { return }
+                let silenceMode = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+                // 静音模式下松开 Fn 不停止录音
+                if !silenceMode {
+                    self.stopRecording()
+                }
+            }
         )
         fnKeyMonitor.onTapDisabled = { [weak self] in
             self?.menuBarController.showAccessibilityWarning()
         }
+        // ESC 取消录音（不上屏）
+        fnKeyMonitor.onEscPressed = { [weak self] in self?.cancelRecording() }
+        // Space/Backspace 立即上屏（跳过 LLM）
+        fnKeyMonitor.onImmediateStop = { [weak self] in self?.stopRecordingImmediate() }
         fnKeyMonitor.start()
+
+        // 监听前台应用切换：录音期间切换程序则取消录音
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeAppDidChange(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+    }
+
+    @objc private func activeAppDidChange(_ notification: Notification) {
+        guard isRecording else { return }
+        // 录音期间切换了前台应用，取消本次录音
+        cancelRecording()
     }
 
     // MARK: - Window activation helpers
@@ -96,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording() {
         guard !isRecording else { return }
         isRecording = true
+        fnKeyMonitor.isRecording = true
 
         DispatchQueue.main.async { [self] in
             capsuleWindow.show()
@@ -120,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopRecording() {
         guard isRecording else { return }
         isRecording = false
+        fnKeyMonitor.isRecording = false
 
         DispatchQueue.main.async { [self] in
             let rawText = speechRecognizer.stop()
@@ -166,6 +211,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 capsuleWindow.dismiss { [self] in
                     textInjector.inject(text: processedText)
                 }
+            }
+        }
+    }
+
+    /// ESC 取消录音：停止一切，不注入文字
+    private func cancelRecording() {
+        guard isRecording else { return }
+        isRecording = false
+        fnKeyMonitor.isRecording = false
+
+        DispatchQueue.main.async { [self] in
+            _ = speechRecognizer.stop()
+            audioEngine.stop()
+            capsuleWindow.dismiss()
+        }
+    }
+
+    /// Space/Backspace 立即上屏：停止录音，跳过 LLM，直接注入
+    private func stopRecordingImmediate() {
+        guard isRecording else { return }
+        isRecording = false
+        fnKeyMonitor.isRecording = false
+
+        DispatchQueue.main.async { [self] in
+            let rawText = speechRecognizer.stop()
+            audioEngine.stop()
+
+            if rawText.isEmpty {
+                capsuleWindow.dismiss()
+                return
+            }
+
+            // 本地自动标点（保留），但跳过 LLM
+            var processedText = rawText
+            if UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") {
+                let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+                processedText = PunctuationProcessor.process(rawText, language: lang)
+            }
+
+            capsuleWindow.dismiss { [self] in
+                textInjector.inject(text: processedText)
             }
         }
     }

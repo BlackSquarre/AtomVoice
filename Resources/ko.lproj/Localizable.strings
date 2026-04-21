@@ -104,3 +104,9 @@
 
 "menu.launchAtLogin" = "로그인 시 시작";
 "menu.help" = "권한 및 도움말";
+
+/* Silence Auto-Stop */
+"menu.silence" = "무음 자동 중지";
+"menu.silence.enabled" = "활성화됨";
+"menu.silence.disabled" = "비활성화됨";
+"menu.silence.duration" = "무음 판정 시간";

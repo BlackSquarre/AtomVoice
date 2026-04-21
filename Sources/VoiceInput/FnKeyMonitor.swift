@@ -4,11 +4,20 @@ final class FnKeyMonitor {
     private let onFnDown: () -> Void
     private let onFnUp: () -> Void
     var onTapDisabled: (() -> Void)?  // 权限丢失时通知外部
+
+    // 录音期间的按键回调
+    var onEscPressed: (() -> Void)?         // ESC 取消录音
+    var onImmediateStop: (() -> Void)?      // Space/Backspace 立即上屏
+    var isRecording = false                  // 由 AppDelegate 设置
+
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var fnIsDown = false
 
     private static let fnKeyCode: UInt16 = 0x3F  // 63
+    private static let escKeyCode: UInt16 = 0x35  // 53
+    private static let spaceKeyCode: UInt16 = 0x31  // 49
+    private static let backspaceKeyCode: UInt16 = 0x33  // 51
 
     init(onFnDown: @escaping () -> Void, onFnUp: @escaping () -> Void) {
         self.onFnDown = onFnDown
@@ -16,9 +25,11 @@ final class FnKeyMonitor {
     }
 
     func start() {
+        // 监听按键 + 修饰键 + 系统定义事件（NX_SYSDEFINED = 14，Globe 键行为通过此事件触发）
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
+            | (1 << 14)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -59,7 +70,6 @@ final class FnKeyMonitor {
             print("[FnKeyMonitor] 事件 tap 被系统禁用，正在重启...")
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
-                // 如果是因为权限被撤销，tapEnable 后仍无法工作，通知外部
                 if !CGEvent.tapIsEnabled(tap: tap) {
                     DispatchQueue.main.async { [weak self] in
                         self?.onTapDisabled?()
@@ -69,10 +79,19 @@ final class FnKeyMonitor {
             return Unmanaged.passRetained(event)
         }
 
+        // 拦截 NX_SYSDEFINED（type 14）：Globe 键触发字符检视器的系统事件
+        if type.rawValue == 14 {
+            let flags = event.flags
+            if flags.contains(.maskSecondaryFn) {
+                print("[FnKeyMonitor] 拦截 NX_SYSDEFINED (Fn/Globe)")
+                return nil
+            }
+            return Unmanaged.passRetained(event)
+        }
+
         let flags = event.flags
         let hasFn = flags.contains(.maskSecondaryFn)
 
-        // 调试：记录所有 Fn 相关事件
         if type == .keyDown || type == .keyUp {
             let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
             if keyCode == FnKeyMonitor.fnKeyCode || hasFn {
@@ -92,6 +111,29 @@ final class FnKeyMonitor {
                 }
                 return nil
             }
+
+            // 录音期间拦截特殊按键（仅 keyDown）
+            if type == .keyDown && isRecording {
+                switch keyCode {
+                case FnKeyMonitor.escKeyCode:
+                    print("[FnKeyMonitor] >>> ESC 取消录音")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onEscPressed?()
+                    }
+                    return nil  // 吞掉 ESC
+
+                case FnKeyMonitor.spaceKeyCode, FnKeyMonitor.backspaceKeyCode:
+                    print("[FnKeyMonitor] >>> Space/Backspace 立即上屏")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onImmediateStop?()
+                    }
+                    return nil  // 吞掉按键
+
+                default:
+                    break
+                }
+            }
+
             return Unmanaged.passRetained(event)
         }
 
@@ -108,14 +150,12 @@ final class FnKeyMonitor {
                     fnIsDown = true
                     print("[FnKeyMonitor] >>> Fn 按下 (via flagsChanged keyCode)")
                     onFnDown()
-                    return nil
                 } else if !hasFn && fnIsDown {
                     fnIsDown = false
                     print("[FnKeyMonitor] >>> Fn 松开 (via flagsChanged keyCode)")
                     onFnUp()
-                    return nil
                 }
-                return nil  // 吞掉 Fn 的 flagsChanged
+                return nil
             }
 
             // 方式 2: 纯 flag 判断（备用，某些机型 keyCode 不是 63）
