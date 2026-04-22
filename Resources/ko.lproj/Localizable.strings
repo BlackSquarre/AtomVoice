@@ -105,8 +105,18 @@
 "menu.launchAtLogin" = "로그인 시 시작";
 "menu.help" = "권한 및 도움말";
 
-/* Silence Auto-Stop */
-"menu.silence" = "무음 자동 중지";
-"menu.silence.enabled" = "활성화됨";
-"menu.silence.disabled" = "비활성화됨";
+/* Input Mode */
+"menu.inputMode" = "입력 방식";
+"menu.inputMode.tap" = "클릭하여 말하기";
+"menu.inputMode.hold" = "길게 눌러 말하기";
 "menu.silence.duration" = "무음 판정 시간";
+
+/* Custom Prompt */
+"settings.prompt.label" = "시스템 프롬프트:";
+"settings.prompt.title" = "사용자 지정 시스템 프롬프트";
+"settings.prompt.desc" = "LLM이 인식된 텍스트를 수정하는 방법을 지시하는 시스템 프롬프트를 입력합니다. 비워두면 선택한 언어의 기본 프롬프트가 사용됩니다.";
+"settings.prompt.edit" = "편집...";
+"settings.prompt.done" = "완료";
+"settings.prompt.cancel" = "취소";
+"settings.prompt.reset" = "기본값 복원";
+"settings.delay.immediate" = "즉시 입력";

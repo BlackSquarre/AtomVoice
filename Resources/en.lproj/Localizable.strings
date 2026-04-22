@@ -105,8 +105,18 @@
 "menu.launchAtLogin" = "Launch at Login";
 "menu.help" = "Permissions & Help";
 
-/* Silence Auto-Stop */
-"menu.silence" = "Silence Auto-Stop";
-"menu.silence.enabled" = "Enabled";
-"menu.silence.disabled" = "Disabled";
+/* Input Mode */
+"menu.inputMode" = "Input Mode";
+"menu.inputMode.tap" = "Tap to Speak";
+"menu.inputMode.hold" = "Hold to Speak";
 "menu.silence.duration" = "Silence Duration";
+
+/* Custom Prompt */
+"settings.prompt.label" = "System Prompt:";
+"settings.prompt.title" = "Custom System Prompt";
+"settings.prompt.desc" = "Enter the system prompt used to guide the LLM on how to refine the transcribed text. Leave blank to use the default prompt for the selected language.";
+"settings.prompt.edit" = "Edit...";
+"settings.prompt.done" = "Done";
+"settings.prompt.cancel" = "Cancel";
+"settings.prompt.reset" = "Reset to Default";
+"settings.delay.immediate" = "Immediate";

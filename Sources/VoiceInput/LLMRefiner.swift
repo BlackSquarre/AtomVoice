@@ -1,13 +1,56 @@
 import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "com.miaolingru.VoiceInput", category: "LLMRefiner")
 
 final class LLMRefiner {
-    private let systemPrompt = """
-    Input is always raw speech transcription. Never respond conversationally. Fix obvious errors only:
-    1. Fix Chinese homophones and mis-transcribed English tech terms (e.g. 配森→Python, 杰森→JSON, 诶匹爱→API, 吉特→Git, 卡夫卡→Kafka, 瑞迪斯→Redis).
-    2. Add missing sentence-ending punctuation (Chinese: 。？！, English: .?!).
-    3. DO NOT rewrite, add, remove, or explain anything. Return ONLY the corrected text.
-    """
+    // 动态获取系统提示词
+    private var currentSystemPrompt: String {
+        let customPrompt = UserDefaults.standard.string(forKey: "llmSystemPrompt") ?? ""
+        if !customPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return customPrompt
+        }
+        return Self.currentDefaultSystemPrompt
+    }
 
+    static var currentDefaultSystemPrompt: String {
+        let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        
+        let baseInstructions = "Input is raw speech transcription. Fix obvious errors ONLY. DO NOT rewrite, add, remove, or explain anything. Return ONLY the corrected text."
+        
+        switch lang {
+        case "zh-CN", "zh-TW":
+            return """
+            \(baseInstructions)
+            1. Fix Chinese homophones and mis-transcribed English tech terms (e.g. 配森→Python, 杰森→JSON, 诶匹爱→API, 吉特→Git, 卡夫卡→Kafka, 瑞迪斯→Redis).
+            2. Add missing sentence-ending punctuation (。？！).
+            """
+        case "en-US":
+            return """
+            \(baseInstructions)
+            1. Fix mis-transcribed technical terms, proper nouns, and common English homophones.
+            2. Add missing sentence-ending punctuation (.?!).
+            """
+        case "ja-JP":
+            return """
+            \(baseInstructions)
+            1. Fix mis-transcribed technical terms and common Japanese homophones.
+            2. Add missing sentence-ending punctuation (。？！).
+            """
+        case "ko-KR":
+            return """
+            \(baseInstructions)
+            1. Fix mis-transcribed technical terms and common Korean homophones.
+            2. Add missing sentence-ending punctuation (.?!).
+            """
+        default:
+            return """
+            \(baseInstructions)
+            1. Fix mis-transcribed technical terms.
+            2. Add missing sentence-ending punctuation.
+            """
+        }
+    }
     /// completion: (refinedText, errorMessage) — 成功时 errorMessage 为 nil，失败时 refinedText 为 nil
     func refine(text: String, completion: @escaping (String?, String?) -> Void) {
         let baseURL = UserDefaults.standard.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1"
@@ -19,7 +62,8 @@ final class LLMRefiner {
             return
         }
 
-        let urlString = baseURL.hasSuffix("/") ? "\(baseURL)chat/completions" : "\(baseURL)/chat/completions"
+        let urlString = Self.buildCompletionsURL(base: baseURL)
+        logger.debug("[refine] baseURL=\(baseURL, privacy: .public) → \(urlString, privacy: .public)")
         guard let url = URL(string: urlString) else {
             completion(nil, loc("error.invalidUrl"))
             return
@@ -34,7 +78,7 @@ final class LLMRefiner {
         let body: [String: Any] = [
             "model": model,
             "messages": [
-                ["role": "system", "content": systemPrompt],
+                ["role": "system", "content": currentSystemPrompt],
                 ["role": "user", "content": text],
             ],
             "temperature": 0.1,
@@ -81,19 +125,26 @@ final class LLMRefiner {
                 return
             }
 
+            // Debug: 输出原始响应体
+            let rawBody = String(data: data, encoding: .utf8) ?? "<无法解码>"
+            logger.debug("[refine] 原始响应(\(elapsed, privacy: .public)s): \(rawBody, privacy: .public)")
+
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let choices = json["choices"] as? [[String: Any]],
                    let first = choices.first,
                    let message = first["message"] as? [String: Any],
                    let content = message["content"] as? String {
-                    print("[LLMRefiner] 完成(\(elapsed)s)")
+                    logger.info("[refine] 完成(\(elapsed, privacy: .public)s)")
                     completion(content.trimmingCharacters(in: .whitespacesAndNewlines), nil)
                 } else {
-                    print("[LLMRefiner] 响应格式异常(\(elapsed)s)")
+                    let bodyPreview = String(rawBody.prefix(500))
+                    logger.error("[refine] 响应格式异常(\(elapsed, privacy: .public)s), body: \(bodyPreview, privacy: .public)")
+                    print("[LLMRefiner] 响应格式异常(\(elapsed)s), body: \(bodyPreview)")
                     completion(nil, loc("error.badFormat"))
                 }
             } catch {
+                logger.error("[refine] JSON 解析错误(\(elapsed, privacy: .public)s): \(error.localizedDescription, privacy: .public)")
                 print("[LLMRefiner] JSON 解析错误(\(elapsed)s): \(error)")
                 completion(nil, loc("error.jsonParse"))
             }
@@ -110,7 +161,8 @@ final class LLMRefiner {
             return
         }
 
-        let urlString = baseURL.hasSuffix("/") ? "\(baseURL)chat/completions" : "\(baseURL)/chat/completions"
+        let urlString = Self.buildCompletionsURL(base: baseURL)
+        logger.debug("[testConnection] baseURL=\(baseURL, privacy: .public) → \(urlString, privacy: .public)")
         guard let url = URL(string: urlString) else {
             completion(false, "Invalid URL")
             return
@@ -145,5 +197,28 @@ final class LLMRefiner {
                 completion(false, "HTTP \(httpResponse.statusCode): \(body.prefix(200))")
             }
         }.resume()
+    }
+
+    // MARK: - URL 拼接（自动处理用户填写的各种格式）
+    /// 支持的 baseURL 格式：
+    ///   - https://api.openai.com/v1
+    ///   - https://api.openai.com/v1/
+    ///   - https://api.openai.com/v1/chat
+    ///   - https://api.openai.com/v1/chat/
+    ///   - https://api.openai.com/v1/chat/completions
+    static func buildCompletionsURL(base: String) -> String {
+        var b = base
+        // 去掉尾部斜杠
+        while b.hasSuffix("/") { b = String(b.dropLast()) }
+        // 已经是完整路径
+        if b.hasSuffix("/chat/completions") || b.hasSuffix("/chat/completions") {
+            return b
+        }
+        // 已经有 /chat 结尾
+        if b.hasSuffix("/chat") {
+            return b + "/completions"
+        }
+        // 标准情况：只有 /v1 等
+        return b + "/chat/completions"
     }
 }

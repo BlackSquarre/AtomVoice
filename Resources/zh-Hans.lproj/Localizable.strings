@@ -106,8 +106,18 @@
 "menu.launchAtLogin" = "开机启动";
 "menu.help" = "权限与帮助";
 
-/* Silence Auto-Stop */
-"menu.silence" = "静音自动停止";
-"menu.silence.enabled" = "已启用";
-"menu.silence.disabled" = "已禁用";
+/* Input Mode */
+"menu.inputMode" = "输入方式";
+"menu.inputMode.tap" = "单击说话";
+"menu.inputMode.hold" = "长按说话";
 "menu.silence.duration" = "静音时长";
+
+/* Custom Prompt */
+"settings.prompt.label" = "系统提示词:";
+"settings.prompt.title" = "自定义系统提示词";
+"settings.prompt.desc" = "输入用于指导 LLM 如何优化识别文本的系统提示词（System Prompt）。保持空白则使用依据当前选定语言的默认提示词。";
+"settings.prompt.edit" = "编辑...";
+"settings.prompt.done" = "完成";
+"settings.prompt.cancel" = "取消";
+"settings.prompt.reset" = "恢复默认";
+"settings.delay.immediate" = "立即注入";

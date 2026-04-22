@@ -102,39 +102,40 @@ final class MenuBarController {
         animItem.submenu = animMenu
         menu.addItem(animItem)
 
-        // 静音自动停止
-        let silenceItem = NSMenuItem(title: loc("menu.silence"), action: nil, keyEquivalent: "")
-        silenceItem.image = icon("waveform.badge.minus")
-        let silenceMenu = NSMenu()
-        let silenceEnabled = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        // 输入方式: 单击说话 or 长按说话
+        let inputModeItem = NSMenuItem(title: loc("menu.inputMode"), action: nil, keyEquivalent: "")
+        inputModeItem.image = icon("hand.point.up.left")
+        let inputModeMenu = NSMenu()
+        let isTapMode = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
 
-        let silenceToggle = NSMenuItem(
-            title: silenceEnabled ? loc("menu.silence.enabled") : loc("menu.silence.disabled"),
-            action: #selector(toggleSilenceAutoStop(_:)),
-            keyEquivalent: ""
-        )
-        silenceToggle.target = self
-        silenceToggle.state = silenceEnabled ? .on : .off
-        silenceMenu.addItem(silenceToggle)
+        let tapItem = NSMenuItem(title: loc("menu.inputMode.tap"), action: #selector(selectInputModeTap(_:)), keyEquivalent: "")
+        tapItem.target = self
+        tapItem.state = isTapMode ? .on : .off
+        inputModeMenu.addItem(tapItem)
 
-        silenceMenu.addItem(.separator())
+        let holdItem = NSMenuItem(title: loc("menu.inputMode.hold"), action: #selector(selectInputModeHold(_:)), keyEquivalent: "")
+        holdItem.target = self
+        holdItem.state = !isTapMode ? .on : .off
+        inputModeMenu.addItem(holdItem)
+
+        inputModeMenu.addItem(.separator())
         let durationLabel = NSMenuItem(title: loc("menu.silence.duration"), action: nil, keyEquivalent: "")
         durationLabel.isEnabled = false
-        silenceMenu.addItem(durationLabel)
+        inputModeMenu.addItem(durationLabel)
 
         let currentDuration = UserDefaults.standard.double(forKey: "silenceDuration")
-        for (title, value) in [("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
+        for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
             let item = NSMenuItem(title: title, action: #selector(selectSilenceDuration(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = value
             item.state = abs(currentDuration - value) < 0.01 ? .on : .off
             item.indentationLevel = 1
-            item.isEnabled = silenceEnabled
-            silenceMenu.addItem(item)
+            item.isEnabled = isTapMode
+            inputModeMenu.addItem(item)
         }
 
-        silenceItem.submenu = silenceMenu
-        menu.addItem(silenceItem)
+        inputModeItem.submenu = inputModeMenu
+        menu.addItem(inputModeItem)
 
         // 自动标点
         let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
@@ -241,9 +242,13 @@ final class MenuBarController {
         rebuildMenu()
     }
 
-    @objc private func toggleSilenceAutoStop(_ sender: NSMenuItem) {
-        let current = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
-        UserDefaults.standard.set(!current, forKey: "silenceAutoStopEnabled")
+    @objc private func selectInputModeTap(_ sender: NSMenuItem) {
+        UserDefaults.standard.set(true, forKey: "silenceAutoStopEnabled")
+        rebuildMenu()
+    }
+
+    @objc private func selectInputModeHold(_ sender: NSMenuItem) {
+        UserDefaults.standard.set(false, forKey: "silenceAutoStopEnabled")
         rebuildMenu()
     }
 

@@ -244,6 +244,137 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
     }
 }
 
+// MARK: - 提示词编辑器
+
+final class PromptEditorController: NSObject, NSTextViewDelegate {
+    private var sheet: NSWindow!
+    private var textView: NSTextView!
+    private var placeholderLabel: NSTextField!
+    var onDone: (() -> Void)?
+
+    func show(in parent: NSWindow) {
+        buildSheet()
+        parent.beginSheet(sheet, completionHandler: nil)
+    }
+
+    private func buildSheet() {
+        sheet = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 450, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        sheet.title = loc("settings.prompt.title")
+        let cv = sheet.contentView!
+        let p: CGFloat = 20
+
+        let desc = NSTextField(labelWithString: loc("settings.prompt.desc"))
+        desc.font = .systemFont(ofSize: 12)
+        desc.textColor = .secondaryLabelColor
+        desc.lineBreakMode = .byWordWrapping
+        desc.translatesAutoresizingMaskIntoConstraints = false
+        cv.addSubview(desc)
+
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        
+        textView = NSTextView()
+        textView.isRichText = false
+        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.autoresizingMask = [.width]
+        textView.delegate = self
+        // Set up placeholder label
+        placeholderLabel = NSTextField(labelWithString: LLMRefiner.currentDefaultSystemPrompt)
+        placeholderLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        placeholderLabel.textColor = .placeholderTextColor
+        placeholderLabel.lineBreakMode = .byWordWrapping
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.isBordered = false
+        placeholderLabel.drawsBackground = false
+        placeholderLabel.isEditable = false
+        placeholderLabel.isSelectable = false
+        // Add placeholder directly to text view
+        textView.addSubview(placeholderLabel)
+        
+        NSLayoutConstraint.activate([
+            placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 4),
+            placeholderLabel.trailingAnchor.constraint(equalTo: textView.trailingAnchor, constant: -4)
+        ])
+
+        // Load custom prompt
+        if let custom = UserDefaults.standard.string(forKey: "llmSystemPrompt"), !custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            textView.string = custom
+        }
+        updatePlaceholderVisibility()
+        scroll.documentView = textView
+        cv.addSubview(scroll)
+
+        let resetBtn = NSButton(title: loc("settings.prompt.reset"), target: self, action: #selector(resetDefault))
+        resetBtn.translatesAutoresizingMaskIntoConstraints = false
+        resetBtn.bezelStyle = .rounded
+        cv.addSubview(resetBtn)
+
+        let doneBtn = NSButton(title: loc("settings.prompt.done"), target: self, action: #selector(done))
+        doneBtn.translatesAutoresizingMaskIntoConstraints = false
+        doneBtn.bezelStyle = .rounded
+        doneBtn.keyEquivalent = "\r"
+        cv.addSubview(doneBtn)
+
+        let cancelBtn = NSButton(title: loc("settings.prompt.cancel"), target: self, action: #selector(cancel))
+        cancelBtn.translatesAutoresizingMaskIntoConstraints = false
+        cancelBtn.bezelStyle = .rounded
+        cancelBtn.keyEquivalent = "\u{1b}"
+        cv.addSubview(cancelBtn)
+
+        NSLayoutConstraint.activate([
+            desc.topAnchor.constraint(equalTo: cv.topAnchor, constant: p),
+            desc.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: p),
+            desc.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -p),
+
+            scroll.topAnchor.constraint(equalTo: desc.bottomAnchor, constant: 10),
+            scroll.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: p),
+            scroll.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -p),
+            scroll.bottomAnchor.constraint(equalTo: doneBtn.topAnchor, constant: -p),
+
+            resetBtn.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: p),
+            resetBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -p),
+
+            doneBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -p),
+            doneBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -p),
+
+            cancelBtn.trailingAnchor.constraint(equalTo: doneBtn.leadingAnchor, constant: -8),
+            cancelBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -p),
+        ])
+    }
+
+    @objc private func resetDefault() {
+        textView.string = ""
+        updatePlaceholderVisibility()
+    }
+
+    @objc private func cancel() {
+        sheet.sheetParent?.endSheet(sheet)
+    }
+
+    @objc private func done() {
+        UserDefaults.standard.set(textView.string, forKey: "llmSystemPrompt")
+        onDone?()
+        sheet.sheetParent?.endSheet(sheet)
+    }
+
+    // MARK: NSTextViewDelegate
+    func textDidChange(_ notification: Notification) {
+        updatePlaceholderVisibility()
+    }
+
+    private func updatePlaceholderVisibility() {
+        placeholderLabel.isHidden = !textView.string.isEmpty
+    }
+}
+
 // MARK: - 设置窗口
 
 final class SettingsWindowController: NSObject {
@@ -252,10 +383,12 @@ final class SettingsWindowController: NSObject {
     private var apiBaseURLField: NSTextField!
     private var apiKeyField: NSSecureTextField!
     private var modelField: NSTextField!
-    private var delayField: NSTextField!
+    private var delayPopup: NSPopUpButton!
+    private let delayOptions: [Double] = [0, 0.5, 1.0, 1.5, 2.0]
     private var statusLabel: NSTextField!
     private let llmRefiner: LLMRefiner
     private var providerEditor: ProviderEditorController?
+    private var promptEditor: PromptEditorController?
     private var providers: [LLMProvider] = []
 
     init(llmRefiner: LLMRefiner) {
@@ -326,25 +459,25 @@ final class SettingsWindowController: NSObject {
         apiKeyField = makeSecureField(placeholder: "sk-...")
         modelField  = makeField(placeholder: "gpt-4o-mini")
 
-        // 延迟行 = 数字字段 + 说明文字
-        delayField = makeField(placeholder: "0.3")
-        delayField.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        // 延迟行 = 下拉选项
+        delayPopup = NSPopUpButton()
+        delayPopup.translatesAutoresizingMaskIntoConstraints = false
+        for v in delayOptions {
+            let title = v == 0 ? loc("settings.delay.immediate") : String(format: "%.1fs", v)
+            delayPopup.addItem(withTitle: title)
+        }
+        delayPopup.widthAnchor.constraint(equalToConstant: 100).isActive = true
 
-        let delayHint = NSTextField(labelWithString: "秒（0 为立即注入）")
-        delayHint.font = .systemFont(ofSize: 11)
-        delayHint.textColor = .tertiaryLabelColor
-
-        let delayRow = NSStackView(views: [delayField, delayHint])
-        delayRow.orientation = .horizontal
-        delayRow.spacing = 6
-        delayRow.alignment = .centerY
+        // 提示词
+        let promptBtn = makeButton(loc("settings.prompt.edit"), action: #selector(editPrompt(_:)))
 
         let rows: [(String, NSView)] = [
             ("服务商:", providerRow),
             ("API 地址:", apiBaseURLField),
             ("API 密钥:", apiKeyField),
             ("模型:", modelField),
-            ("结果展示延迟:", delayRow),
+            (loc("settings.prompt.label"), promptBtn),
+            ("结果展示延迟:", delayPopup),
         ]
         for (title, control) in rows {
             let label = NSTextField(labelWithString: title)
@@ -440,7 +573,9 @@ final class SettingsWindowController: NSObject {
         apiKeyField?.stringValue     = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
         modelField?.stringValue      = UserDefaults.standard.string(forKey: "llmModel") ?? "gpt-4o-mini"
         let delay = UserDefaults.standard.double(forKey: "llmResultDelay")
-        delayField?.stringValue      = String(format: "%.1f", delay > 0 ? delay : 0.3)
+        // 选中最近的选项
+        let closestIdx = delayOptions.enumerated().min(by: { abs($0.element - delay) < abs($1.element - delay) })?.offset ?? 1
+        delayPopup?.selectItem(at: closestIdx)
         statusLabel?.stringValue     = ""
     }
 
@@ -463,6 +598,13 @@ final class SettingsWindowController: NSObject {
         let editor = ProviderEditorController()
         editor.onDone = { [weak self] _ in self?.refreshFields() }
         providerEditor = editor
+        editor.show(in: w)
+    }
+
+    @objc private func editPrompt(_ sender: NSButton) {
+        guard let w = window else { return }
+        let editor = PromptEditorController()
+        promptEditor = editor
         editor.show(in: w)
     }
 
@@ -493,7 +635,8 @@ final class SettingsWindowController: NSObject {
         UserDefaults.standard.set(apiBaseURLField.stringValue, forKey: "llmAPIBaseURL")
         UserDefaults.standard.set(apiKeyField.stringValue,     forKey: "llmAPIKey")
         UserDefaults.standard.set(modelField.stringValue,      forKey: "llmModel")
-        UserDefaults.standard.set(max(0, Double(delayField.stringValue) ?? 0.3), forKey: "llmResultDelay")
+        let selectedDelay = delayOptions[delayPopup.indexOfSelectedItem]
+        UserDefaults.standard.set(selectedDelay, forKey: "llmResultDelay")
         statusLabel.stringValue = "已保存"
         statusLabel.textColor = .systemGreen
         window?.close()

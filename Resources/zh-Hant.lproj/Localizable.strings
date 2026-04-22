@@ -105,8 +105,18 @@
 "menu.launchAtLogin" = "登入時啟動";
 "menu.help" = "權限與說明";
 
-/* Silence Auto-Stop */
-"menu.silence" = "靜音自動停止";
-"menu.silence.enabled" = "已啟用";
-"menu.silence.disabled" = "已停用";
+/* Input Mode */
+"menu.inputMode" = "輸入方式";
+"menu.inputMode.tap" = "單擊說話";
+"menu.inputMode.hold" = "長按說話";
 "menu.silence.duration" = "靜音時長";
+
+/* Custom Prompt */
+"settings.prompt.label" = "系統提示詞:";
+"settings.prompt.title" = "自定義系統提示詞";
+"settings.prompt.desc" = "輸入用於指導 LLM 如何優化識別文本的系統提示詞（System Prompt）。保持空白則使用依據當前選定語言的默認提示詞。";
+"settings.prompt.edit" = "編輯...";
+"settings.prompt.done" = "完成";
+"settings.prompt.cancel" = "取消";
+"settings.prompt.reset" = "恢復默認";
+"settings.delay.immediate" = "立即注入";

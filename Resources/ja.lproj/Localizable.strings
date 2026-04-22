@@ -105,8 +105,18 @@
 "menu.launchAtLogin" = "ログイン時に起動";
 "menu.help" = "権限とヘルプ";
 
-/* Silence Auto-Stop */
-"menu.silence" = "無音で自動停止";
-"menu.silence.enabled" = "有効";
-"menu.silence.disabled" = "無効";
+/* Input Mode */
+"menu.inputMode" = "入力モード";
+"menu.inputMode.tap" = "クリックして話す";
+"menu.inputMode.hold" = "長押しして話す";
 "menu.silence.duration" = "無音判定時間";
+
+/* Custom Prompt */
+"settings.prompt.label" = "システムプロンプト:";
+"settings.prompt.title" = "カスタムシステムプロンプト";
+"settings.prompt.desc" = "LLMに音声認識テキストの修正方法を指示するシステムプロンプトを入力します。空白のままにすると、選択した言語に応じたデフォルトのプロンプトが使用されます。";
+"settings.prompt.edit" = "編集...";
+"settings.prompt.done" = "完了";
+"settings.prompt.cancel" = "キャンセル";
+"settings.prompt.reset" = "デフォルトに戻す";
+"settings.delay.immediate" = "即時入力";
