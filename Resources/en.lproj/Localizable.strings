@@ -1,7 +1,8 @@
 /* App */
-"app.title" = "Voice Input";
-"menu.holdFn" = "Hold Fn key to record";
-"menu.about" = "About VoiceInput";
+"app.title" = "AtomVoice";
+"menu.holdFn" = "Hold Fn to start voice input";
+"menu.tapFn" = "Click Fn to start voice input";
+"menu.about" = "About AtomVoice";
 "menu.language" = "Recognition Language";
 "menu.animation" = "Animation";
 "menu.animation.dynamicIsland" = "Dynamic Island";
@@ -16,7 +17,7 @@
 "menu.llm.enabled" = "Enabled";
 "menu.llm.disabled" = "Disabled";
 "menu.settings" = "Settings...";
-"menu.quit" = "Quit VoiceInput";
+"menu.quit" = "Quit";
 
 /* Settings */
 "settings.title" = "LLM Refinement Settings";
@@ -50,7 +51,8 @@
 "capsule.refining" = "Refining...";
 
 /* About */
-"about.title" = "About VoiceInput";
+"about.appName" = "AtomVoice";
+"about.title" = "About AtomVoice";
 "about.version" = "Version %@ (%@)";
 "about.bilibili" = "Bilibili";
 "about.github" = "GitHub";
@@ -71,16 +73,16 @@
 "permission.speech.title" = "Speech Recognition Required";
 "permission.speech.message" = "Please grant speech recognition access in System Settings > Privacy & Security > Speech Recognition.";
 "accessibility.warning.title" = "Accessibility Permission Lost";
-"accessibility.warning.message" = "Please go to System Settings > Privacy & Security > Accessibility, remove and re-add VoiceInput.";
+"accessibility.warning.message" = "Please go to System Settings > Privacy & Security > Accessibility, remove and re-add AtomVoice.";
 "accessibility.openSettings" = "Open System Settings";
 "accessibility.ignore" = "Ignore";
 
 /* Permissions Window */
 "permissions.window.title" = "System Permission Status";
-"permissions.heading" = "Grant permissions required for VoiceInput";
+"permissions.heading" = "Grant permissions required for AtomVoice";
 "permissions.guide.title" = "How to grant permissions";
 "permissions.guide.step1" = "Click the button on the right to open System Settings";
-"permissions.guide.step2" = "Find VoiceInput in the list and enable the toggle";
+"permissions.guide.step2" = "Find AtomVoice in the list and enable the toggle";
 "permissions.guide.step3" = "Return here and confirm the status turns green (Granted)";
 "permissions.troubleshoot" = "Troubleshooting";
 "permissions.reset" = "Reset All Permissions";
@@ -90,11 +92,11 @@
 "permissions.close" = "Close";
 
 "permission.accessibility.title" = "Accessibility";
-"permission.accessibility.desc" = "VoiceInput requires Accessibility permission to monitor the Fn key globally. This is the core feature.";
+"permission.accessibility.desc" = "AtomVoice requires Accessibility permission to monitor the Fn key globally. This is the core feature.";
 "permission.microphone.title" = "Microphone";
-"permission.microphone.desc" = "VoiceInput requires Microphone permission to record your voice.";
+"permission.microphone.desc" = "AtomVoice requires Microphone permission to record your voice.";
 "permission.speech.title" = "Speech Recognition";
-"permission.speech.desc" = "VoiceInput requires Speech Recognition permission to transcribe your voice to text.";
+"permission.speech.desc" = "AtomVoice requires Speech Recognition permission to transcribe your voice to text.";
 
 "permission.status.granted" = "Granted";
 "permission.status.denied" = "Denied";
@@ -109,7 +111,7 @@
 "menu.inputMode" = "Input Mode";
 "menu.inputMode.tap" = "Tap to Speak";
 "menu.inputMode.hold" = "Hold to Speak";
-"menu.silence.duration" = "Silence Duration";
+"menu.silence.duration" = "Stop Delay";
 
 /* Custom Prompt */
 "settings.prompt.label" = "System Prompt:";
@@ -120,3 +122,21 @@
 "settings.prompt.cancel" = "Cancel";
 "settings.prompt.reset" = "Reset to Default";
 "settings.delay.immediate" = "Immediate";
+
+/* Update */
+"menu.checkForUpdates" = "Check for Updates...";
+"update.available.title" = "Update Available";
+"update.available.message" = "AtomVoice %@ is available (you have %@). Install now?";
+"update.upToDate.title" = "You're Up to Date";
+"update.upToDate.message" = "AtomVoice %@ is the latest version.";
+"update.install" = "Install";
+"update.later" = "Later";
+"update.downloading" = "Downloading %@...";
+"update.installing" = "Installing...";
+"update.done.title" = "Update Ready";
+"update.done.message" = "AtomVoice %@ has been downloaded. Restart now to apply the update.";
+"update.restart" = "Restart Now";
+"update.error.title" = "Update Failed";
+"update.error.fetch" = "Could not check for updates: %@";
+"update.error.download" = "Download failed: %@";
+"update.error.install" = "Installation failed: %@";

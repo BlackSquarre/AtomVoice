@@ -1,7 +1,8 @@
 /* App */
-"app.title" = "語音輸入";
-"menu.holdFn" = "按住 Fn 鍵開始錄音";
-"menu.about" = "關於 VoiceInput";
+"app.title" = "原子微語";
+"menu.holdFn" = "按住 Fn 鍵開始語音輸入";
+"menu.tapFn" = "單擊 Fn 鍵開始語音輸入";
+"menu.about" = "關於 AtomVoice";
 "menu.language" = "辨識語言";
 "menu.animation" = "動畫效果";
 "menu.animation.dynamicIsland" = "靈動島";
@@ -16,7 +17,7 @@
 "menu.llm.enabled" = "已啟用";
 "menu.llm.disabled" = "已停用";
 "menu.settings" = "設定...";
-"menu.quit" = "退出語音輸入";
+"menu.quit" = "退出";
 
 /* Settings */
 "settings.title" = "LLM 文字優化設定";
@@ -50,7 +51,8 @@
 "capsule.refining" = "優化中...";
 
 /* About */
-"about.title" = "關於 VoiceInput";
+"about.appName" = "原子微語";
+"about.title" = "關於 AtomVoice";
 "about.version" = "版本 %@ (%@)";
 "about.bilibili" = "Bilibili 主頁";
 "about.github" = "GitHub 專案";
@@ -71,16 +73,16 @@
 "permission.speech.title" = "需要語音辨識權限";
 "permission.speech.message" = "請在系統設定 > 隱私權與安全性 > 語音辨識中授權本應用程式。";
 "accessibility.warning.title" = "輔助使用權限已失效";
-"accessibility.warning.message" = "請前往系統設定 > 隱私權與安全性 > 輔助使用，移除並重新新增語音輸入。";
+"accessibility.warning.message" = "請前往系統設定 > 隱私權與安全性 > 輔助使用，移除並重新新增原子微語。";
 "accessibility.openSettings" = "開啟系統設定";
 "accessibility.ignore" = "忽略";
 
 /* Permissions Window */
 "permissions.window.title" = "系統權限狀態";
-"permissions.heading" = "授予 VoiceInput 完整功能所需權限";
+"permissions.heading" = "授予 AtomVoice 完整功能所需權限";
 "permissions.guide.title" = "如何授予權限";
 "permissions.guide.step1" = "點擊右側按鈕開啟系統設定";
-"permissions.guide.step2" = "在列表中找到 VoiceInput 並開啟對應開關";
+"permissions.guide.step2" = "在列表中找到 AtomVoice 並開啟對應開關";
 "permissions.guide.step3" = "返回此視窗，確認狀態變為綠色「已授權」";
 "permissions.troubleshoot" = "疑難排解";
 "permissions.reset" = "重置所有權限";
@@ -90,11 +92,11 @@
 "permissions.close" = "關閉";
 
 "permission.accessibility.title" = "輔助使用";
-"permission.accessibility.desc" = "VoiceInput 需要輔助使用權限來全域監聽 Fn 鍵，這是核心功能。";
+"permission.accessibility.desc" = "AtomVoice 需要輔助使用權限來全域監聽 Fn 鍵，這是核心功能。";
 "permission.microphone.title" = "麥克風";
-"permission.microphone.desc" = "VoiceInput 需要麥克風權限來錄製您的語音。";
+"permission.microphone.desc" = "AtomVoice 需要麥克風權限來錄製您的語音。";
 "permission.speech.title" = "語音辨識";
-"permission.speech.desc" = "VoiceInput 需要語音辨識權限來將您的語音轉錄為文字。";
+"permission.speech.desc" = "AtomVoice 需要語音辨識權限來將您的語音轉錄為文字。";
 
 "permission.status.granted" = "已授權";
 "permission.status.denied" = "已拒絕";
@@ -109,7 +111,7 @@
 "menu.inputMode" = "輸入方式";
 "menu.inputMode.tap" = "單擊說話";
 "menu.inputMode.hold" = "長按說話";
-"menu.silence.duration" = "靜音時長";
+"menu.silence.duration" = "停錄延遲";
 
 /* Custom Prompt */
 "settings.prompt.label" = "系統提示詞:";
@@ -120,3 +122,21 @@
 "settings.prompt.cancel" = "取消";
 "settings.prompt.reset" = "恢復默認";
 "settings.delay.immediate" = "立即注入";
+
+/* Update */
+"menu.checkForUpdates" = "檢查更新...";
+"update.available.title" = "有新版本";
+"update.available.message" = "AtomVoice %@ 已發布（目前版本 %@），是否立即安裝？";
+"update.upToDate.title" = "已是最新版本";
+"update.upToDate.message" = "目前執行的 AtomVoice %@ 已是最新版本。";
+"update.install" = "安裝";
+"update.later" = "稍後";
+"update.downloading" = "正在下載 %@...";
+"update.installing" = "正在安裝...";
+"update.done.title" = "更新已就緒";
+"update.done.message" = "AtomVoice %@ 已下載完成，重新啟動後生效。";
+"update.restart" = "立即重新啟動";
+"update.error.title" = "更新失敗";
+"update.error.fetch" = "檢查更新失敗：%@";
+"update.error.download" = "下載失敗：%@";
+"update.error.install" = "安裝失敗：%@";

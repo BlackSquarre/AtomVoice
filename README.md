@@ -1,6 +1,6 @@
 [中文](README-zh.md) | **English**
 
-# VoiceInput
+# AtomVoice
 
 A lightweight macOS menu bar voice input app. Hold **Fn** to record, release to inject transcribed text into any focused input field.
 
@@ -37,13 +37,13 @@ All speech recognition runs **on-device** via Apple's Speech Recognition framewo
 
 **From Release (recommended)**
 
-Download from [Releases](https://github.com/BlackSquarre/VoiceInputAlpha/releases), unzip, drag to Applications.
+Download from [Releases](https://github.com/BlackSquarre/AtomVoice/releases), unzip, drag to Applications.
 
 **Build from source**
 
 ```bash
-git clone https://github.com/BlackSquarre/VoiceInputAlpha.git
-cd VoiceInputAlpha
+git clone https://github.com/BlackSquarre/AtomVoice.git
+cd AtomVoice
 make install
 ```
 
@@ -51,9 +51,9 @@ make install
 
 Ad-hoc signed (not notarized). On first open:
 
-1. Right-click `VoiceInput.app` → **Open** → click **Open**
+1. Right-click `AtomVoice.app` → **Open** → click **Open**
 2. Or go to **System Settings → Privacy & Security** → **Open Anyway**
-3. Or run: `xattr -cr /Applications/VoiceInput.app`
+3. Or run: `xattr -cr /Applications/AtomVoice.app`
 
 ## Usage
 
@@ -82,7 +82,7 @@ make clean    # Clean build artifacts
 ## Project Structure
 
 ```
-Sources/VoiceInput/
+Sources/AtomVoice/
 ├── AppDelegate.swift          # App entry, recording pipeline
 ├── FnKeyMonitor.swift         # Global Fn key monitoring (CGEvent tap)
 ├── AudioEngine.swift          # AVAudioEngine + FFT band analysis

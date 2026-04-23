@@ -1,5 +1,6 @@
-APP_NAME    = VoiceInput
-VERSION     = 0.9.3
+APP_NAME    = AtomVoice
+SRC_DIR     = Sources/AtomVoice
+VERSION     = 0.9.4
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
@@ -9,13 +10,13 @@ INSTALL_DIR = /Applications
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
-	swift build -c release
+	swift build -c release -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(DIST_DIR)/Test/$(APP_NAME).app)
 	@echo "Dev build: $(DIST_DIR)/Test/$(APP_NAME).app"
 
-# ── 默认构建（当前机器原生架构）──────────────────────────────────────
+# ── 默认构建（当前机器原生架构，含 DEBUG_BUILD 标记）────────────────
 build:
-	swift build -c release
+	swift build -c release -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(APP_BUNDLE))
 	@echo "Built: $(APP_BUNDLE)"
 
@@ -72,10 +73,10 @@ define bundle_app
 	rm -rf "$(2)"
 	mkdir -p "$(2)/Contents/MacOS" "$(2)/Contents/Resources"
 	cp "$(1)" "$(2)/Contents/MacOS/$(APP_NAME)"
-	cp Sources/$(APP_NAME)/Info.plist "$(2)/Contents/Info.plist"
-	cp Sources/$(APP_NAME)/AppIcon.icns "$(2)/Contents/Resources/AppIcon.icns"
+	cp $(SRC_DIR)/Info.plist "$(2)/Contents/Info.plist"
+	cp $(SRC_DIR)/AppIcon.icns "$(2)/Contents/Resources/AppIcon.icns"
 	cp -R Resources/*.lproj "$(2)/Contents/Resources/"
 	cp -R Resources/Icons "$(2)/Contents/Resources/"
 	find "$(2)/Contents/Resources" -name "*.strings" | while read f; do printf '\xef\xbb\xbf' > "$$f.tmp" && cat "$$f" >> "$$f.tmp" && mv "$$f.tmp" "$$f"; done
-	codesign --force --sign "Apple Development: miaolingru@gmail.com (XJS89V9J9T)" --entitlements VoiceInput.entitlements "$(2)"
+	codesign --force --sign "Apple Development: miaolingru@gmail.com (XJS89V9J9T)" --entitlements AtomVoice.entitlements "$(2)"
 endef

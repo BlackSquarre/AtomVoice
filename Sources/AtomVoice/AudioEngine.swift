@@ -40,6 +40,11 @@ final class AudioEngineController {
         if let s = fftSetup { vDSP_destroy_fftsetup(s) }
     }
 
+    /// 滚动分段时切换识别请求，后续 buffer 将推送到新请求
+    func switchRequest(_ newRequest: SFSpeechAudioBufferRecognitionRequest) {
+        recognitionRequest = newRequest
+    }
+
     func start(bandsHandler: @escaping ([Float]) -> Void,
                recognitionRequest: SFSpeechAudioBufferRecognitionRequest?) {
         self.bandsHandler = bandsHandler

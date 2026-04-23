@@ -1,7 +1,8 @@
 /* App */
-"app.title" = "音声入力";
-"menu.holdFn" = "Fn キーを押したまま録音";
-"menu.about" = "VoiceInput について";
+"app.title" = "原子微声";
+"menu.holdFn" = "Fn キーを押したまま音声入力";
+"menu.tapFn" = "Fn キーをクリックして音声入力";
+"menu.about" = "原子微声 について";
 "menu.language" = "認識言語";
 "menu.animation" = "アニメーション";
 "menu.animation.dynamicIsland" = "ダイナミックアイランド";
@@ -16,7 +17,7 @@
 "menu.llm.enabled" = "有効";
 "menu.llm.disabled" = "無効";
 "menu.settings" = "設定...";
-"menu.quit" = "VoiceInput を終了";
+"menu.quit" = "終了";
 
 /* Settings */
 "settings.title" = "LLM テキスト最適化設定";
@@ -50,7 +51,8 @@
 "capsule.refining" = "最適化中...";
 
 /* About */
-"about.title" = "VoiceInput について";
+"about.appName" = "原子微声";
+"about.title" = "原子微声 について";
 "about.version" = "バージョン %@ (%@)";
 "about.bilibili" = "Bilibili";
 "about.github" = "GitHub プロジェクト";
@@ -71,16 +73,16 @@
 "permission.speech.title" = "音声認識へのアクセスが必要です";
 "permission.speech.message" = "システム設定 > プライバシーとセキュリティ > 音声認識で本アプリを許可してください。";
 "accessibility.warning.title" = "アクセシビリティの権限が無効です";
-"accessibility.warning.message" = "システム設定 > プライバシーとセキュリティ > アクセシビリティで、VoiceInput を削除して再追加してください。";
+"accessibility.warning.message" = "システム設定 > プライバシーとセキュリティ > アクセシビリティで、原子微声 を削除して再追加してください。";
 "accessibility.openSettings" = "システム設定を開く";
 "accessibility.ignore" = "無視";
 
 /* Permissions Window */
 "permissions.window.title" = "システム権限の状態";
-"permissions.heading" = "VoiceInput に必要な権限を許可してください";
+"permissions.heading" = "原子微声 に必要な権限を許可してください";
 "permissions.guide.title" = "権限の許可方法";
 "permissions.guide.step1" = "右側のボタンをクリックしてシステム設定を開く";
-"permissions.guide.step2" = "リストから VoiceInput を見つけてスイッチをオンにする";
+"permissions.guide.step2" = "リストから AtomVoice を見つけてスイッチをオンにする";
 "permissions.guide.step3" = "このウィンドウに戻り、状態が緑色「許可済み」になっていることを確認";
 "permissions.troubleshoot" = "トラブルシューティング";
 "permissions.reset" = "すべての権限をリセット";
@@ -90,11 +92,11 @@
 "permissions.close" = "閉じる";
 
 "permission.accessibility.title" = "アクセシビリティ";
-"permission.accessibility.desc" = "VoiceInput は Fn キーをグローバルに監視するためにアクセシビリティ権限が必要です。これはコア機能です。";
+"permission.accessibility.desc" = "AtomVoice は Fn キーをグローバルに監視するためにアクセシビリティ権限が必要です。これはコア機能です。";
 "permission.microphone.title" = "マイク";
-"permission.microphone.desc" = "VoiceInput は音声を録音するためにマイク権限が必要です。";
+"permission.microphone.desc" = "AtomVoice は音声を録音するためにマイク権限が必要です。";
 "permission.speech.title" = "音声認識";
-"permission.speech.desc" = "VoiceInput は音声をテキストに変換するために音声認識権限が必要です。";
+"permission.speech.desc" = "AtomVoice は音声をテキストに変換するために音声認識権限が必要です。";
 
 "permission.status.granted" = "許可済み";
 "permission.status.denied" = "拒否済み";
@@ -109,7 +111,7 @@
 "menu.inputMode" = "入力モード";
 "menu.inputMode.tap" = "クリックして話す";
 "menu.inputMode.hold" = "長押しして話す";
-"menu.silence.duration" = "無音判定時間";
+"menu.silence.duration" = "停止ディレイ";
 
 /* Custom Prompt */
 "settings.prompt.label" = "システムプロンプト:";
@@ -120,3 +122,21 @@
 "settings.prompt.cancel" = "キャンセル";
 "settings.prompt.reset" = "デフォルトに戻す";
 "settings.delay.immediate" = "即時入力";
+
+/* Update */
+"menu.checkForUpdates" = "アップデートを確認...";
+"update.available.title" = "アップデートがあります";
+"update.available.message" = "AtomVoice %@ が利用可能です（現在のバージョン：%@）。今すぐインストールしますか？";
+"update.upToDate.title" = "最新バージョンです";
+"update.upToDate.message" = "AtomVoice %@ は最新バージョンです。";
+"update.install" = "インストール";
+"update.later" = "後で";
+"update.downloading" = "%@ をダウンロード中...";
+"update.installing" = "インストール中...";
+"update.done.title" = "アップデート準備完了";
+"update.done.message" = "AtomVoice %@ のダウンロードが完了しました。今すぐ再起動して適用しますか？";
+"update.restart" = "今すぐ再起動";
+"update.error.title" = "アップデート失敗";
+"update.error.fetch" = "アップデートの確認に失敗しました：%@";
+"update.error.download" = "ダウンロードに失敗しました：%@";
+"update.error.install" = "インストールに失敗しました：%@";

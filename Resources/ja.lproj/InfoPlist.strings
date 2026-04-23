@@ -1,2 +1,2 @@
-NSMicrophoneUsageDescription = "VoiceInputは音声を認識するためにマイクへのアクセスが必要です。";
-NSSpeechRecognitionUsageDescription = "VoiceInputは音声をテキストに変換するために音声認識を使用します。";
+NSMicrophoneUsageDescription = "原子微声は音声を認識するためにマイクへのアクセスが必要です。";
+NSSpeechRecognitionUsageDescription = "原子微声は音声をテキストに変換するために音声認識を使用します。";

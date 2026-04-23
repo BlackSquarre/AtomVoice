@@ -1,2 +1,2 @@
-NSMicrophoneUsageDescription = "語音輸入需要使用麥克風來辨識您的語音。";
-NSSpeechRecognitionUsageDescription = "語音輸入需要使用語音辨識將您的語音轉換為文字。";
+NSMicrophoneUsageDescription = "原子微語需要使用麥克風來辨識您的語音。";
+NSSpeechRecognitionUsageDescription = "原子微語需要使用語音辨識將您的語音轉換為文字。";

@@ -37,11 +37,8 @@ final class MenuBarController {
     private func rebuildMenu() {
         let menu = NSMenu()
 
-        let titleItem = NSMenuItem(title: loc("app.title"), action: nil, keyEquivalent: "")
-        titleItem.isEnabled = false
-        menu.addItem(titleItem)
-
-        let instructionItem = NSMenuItem(title: loc("menu.holdFn"), action: nil, keyEquivalent: "")
+        let instructionKey = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled") ? "menu.tapFn" : "menu.holdFn"
+        let instructionItem = NSMenuItem(title: loc(instructionKey), action: nil, keyEquivalent: "")
         instructionItem.isEnabled = false
         menu.addItem(instructionItem)
 
@@ -104,7 +101,7 @@ final class MenuBarController {
 
         // 输入方式: 单击说话 or 长按说话
         let inputModeItem = NSMenuItem(title: loc("menu.inputMode"), action: nil, keyEquivalent: "")
-        inputModeItem.image = icon("hand.point.up.left")
+        inputModeItem.image = icon("waveform")
         let inputModeMenu = NSMenu()
         let isTapMode = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
 
@@ -118,20 +115,22 @@ final class MenuBarController {
         holdItem.state = !isTapMode ? .on : .off
         inputModeMenu.addItem(holdItem)
 
-        inputModeMenu.addItem(.separator())
-        let durationLabel = NSMenuItem(title: loc("menu.silence.duration"), action: nil, keyEquivalent: "")
-        durationLabel.isEnabled = false
-        inputModeMenu.addItem(durationLabel)
+        // 停录延迟仅在单击说话模式下显示
+        if isTapMode {
+            inputModeMenu.addItem(.separator())
+            let durationLabel = NSMenuItem(title: loc("menu.silence.duration"), action: nil, keyEquivalent: "")
+            durationLabel.isEnabled = false
+            inputModeMenu.addItem(durationLabel)
 
-        let currentDuration = UserDefaults.standard.double(forKey: "silenceDuration")
-        for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
-            let item = NSMenuItem(title: title, action: #selector(selectSilenceDuration(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = value
-            item.state = abs(currentDuration - value) < 0.01 ? .on : .off
-            item.indentationLevel = 1
-            item.isEnabled = isTapMode
-            inputModeMenu.addItem(item)
+            let currentDuration = UserDefaults.standard.double(forKey: "silenceDuration")
+            for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
+                let item = NSMenuItem(title: title, action: #selector(selectSilenceDuration(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = value
+                item.state = abs(currentDuration - value) < 0.01 ? .on : .off
+                item.indentationLevel = 1
+                inputModeMenu.addItem(item)
+            }
         }
 
         inputModeItem.submenu = inputModeMenu
@@ -190,6 +189,11 @@ final class MenuBarController {
         menu.addItem(helpItem)
 
         menu.addItem(.separator())
+
+        let updateItem = NSMenuItem(title: loc("menu.checkForUpdates"), action: #selector(checkForUpdates(_:)), keyEquivalent: "")
+        updateItem.image = icon("arrow.down.circle")
+        updateItem.target = self
+        menu.addItem(updateItem)
 
         let aboutItem = NSMenuItem(title: loc("menu.about"), action: #selector(openAbout(_:)), keyEquivalent: "")
         aboutItem.image = icon("info.circle")
@@ -295,6 +299,10 @@ final class MenuBarController {
     @objc private func openPermissions(_ sender: NSMenuItem) {
         if permissionsWindow == nil { permissionsWindow = PermissionsWindowController() }
         permissionsWindow?.showWindow()
+    }
+
+    @objc private func checkForUpdates(_ sender: NSMenuItem) {
+        UpdateChecker.shared.checkForUpdates(silent: false)
     }
 
     @objc private func openAbout(_ sender: NSMenuItem) {

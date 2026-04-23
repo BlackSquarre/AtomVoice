@@ -339,9 +339,9 @@ final class PermissionsWindowController: NSObject {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         task.arguments = ["-a", "Terminal", "--args", "-e",
-            "tccutil reset Microphone com.blacksquarre.VoiceInput && " +
-            "tccutil reset SpeechRecognition com.blacksquarre.VoiceInput && " +
-            "echo '完成，请重启 VoiceInput'"]
+            "tccutil reset Microphone com.blacksquarre.AtomVoice && " +
+            "tccutil reset SpeechRecognition com.blacksquarre.AtomVoice && " +
+            "echo '完成，请重启 AtomVoice'"]
         try? task.run()
     }
 

@@ -1,2 +1,2 @@
-NSMicrophoneUsageDescription = "语音输入需要使用麦克风来识别您的语音。";
-NSSpeechRecognitionUsageDescription = "语音输入需要使用语音识别将您的语音转换为文字。";
+NSMicrophoneUsageDescription = "原子微语需要使用麦克风来识别您的语音。";
+NSSpeechRecognitionUsageDescription = "原子微语需要使用语音识别将您的语音转换为文字。";

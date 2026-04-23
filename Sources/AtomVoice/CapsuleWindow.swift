@@ -10,6 +10,14 @@ final class CapsuleWindowController {
     private var shimmerLayer: CAGradientLayer?
     private var shimmerClipLayer: CALayer?  // 裁剪为胶囊形状的容器层
 
+    #if DEBUG_BUILD
+    private var timerLabel: NSTextField?
+    private var elapsedTimer: Timer?
+    private var recordingStartTime: Date?
+    private let timerLabelWidth: CGFloat = 34
+    private let timerLabelGap: CGFloat = 8
+    #endif
+
     private let capsuleHeight: CGFloat = 50
     private let cornerRadius: CGFloat = 25
     private let waveformWidth: CGFloat = 24
@@ -36,7 +44,12 @@ final class CapsuleWindowController {
     // MARK: - 布局计算
 
     private func fullWidth(forTextWidth tw: CGFloat) -> CGFloat {
-        tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
+        let base = tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
+        #if DEBUG_BUILD
+        return base + timerLabelGap + timerLabelWidth
+        #else
+        return base
+        #endif
     }
 
     private func targetFrame(width: CGFloat) -> NSRect {
@@ -148,12 +161,31 @@ final class CapsuleWindowController {
             waveform.widthAnchor.constraint(equalToConstant: waveformWidth),
             waveform.heightAnchor.constraint(equalToConstant: 29),
             label.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
-            label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             textMinW, textMaxW,
             refLabel.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
             refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
+
+        #if DEBUG_BUILD
+        // 计时器标签：固定宽度，紧贴右边
+        let timerLbl = NSTextField(labelWithString: "0s")
+        timerLbl.translatesAutoresizingMaskIntoConstraints = false
+        timerLbl.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        timerLbl.textColor = .tertiaryLabelColor
+        timerLbl.alignment = .right
+        container.addSubview(timerLbl)
+        NSLayoutConstraint.activate([
+            label.trailingAnchor.constraint(equalTo: timerLbl.leadingAnchor, constant: -timerLabelGap),
+            timerLbl.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            timerLbl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            timerLbl.widthAnchor.constraint(equalToConstant: timerLabelWidth),
+        ])
+        self.timerLabel = timerLbl
+        startElapsedTimer()
+        #else
+        label.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+        #endif
 
         self.panel = panel
         self.waveformView = waveform
@@ -518,12 +550,37 @@ final class CapsuleWindowController {
         })
     }
 
+    // MARK: - Debug 计时器
+
+    #if DEBUG_BUILD
+    private func startElapsedTimer() {
+        recordingStartTime = Date()
+        elapsedTimer?.invalidate()
+        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self, let start = self.recordingStartTime else { return }
+            let elapsed = Int(Date().timeIntervalSince(start))
+            if elapsed < 60 {
+                self.timerLabel?.stringValue = "\(elapsed)s"
+            } else {
+                self.timerLabel?.stringValue = "\(elapsed / 60):\(String(format: "%02d", elapsed % 60))"
+            }
+        }
+        RunLoop.main.add(elapsedTimer!, forMode: .common)
+    }
+    #endif
+
     // MARK: - Cleanup
 
     private func cleanup() {
         stopShimmer()
         springTimer?.invalidate()
         springTimer = nil
+        #if DEBUG_BUILD
+        elapsedTimer?.invalidate()
+        elapsedTimer = nil
+        timerLabel = nil
+        recordingStartTime = nil
+        #endif
         waveformView?.stopAnimating()
         waveformView = nil
         textLabel = nil

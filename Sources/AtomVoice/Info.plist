@@ -13,24 +13,24 @@
         <string>ko</string>
     </array>
     <key>CFBundleName</key>
-    <string>VoiceInput</string>
+    <string>AtomVoice</string>
     <key>CFBundleIdentifier</key>
-    <string>com.blacksquarre.VoiceInput</string>
+    <string>com.blacksquarre.AtomVoice</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.9.3</string>
+    <string>0.9.4</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>VoiceInput</string>
+    <string>AtomVoice</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>VoiceInput needs microphone access to transcribe your speech.</string>
+    <string>AtomVoice needs microphone access to transcribe your speech.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>VoiceInput uses speech recognition to convert your voice to text.</string>
+    <string>AtomVoice uses speech recognition to convert your voice to text.</string>
 </dict>
 </plist>

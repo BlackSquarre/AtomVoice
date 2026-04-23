@@ -52,11 +52,23 @@ final class AboutWindowController: NSObject {
         vStack.setCustomSpacing(12, after: iconView)
 
         // ── 应用名称 ────────────────────────────────────────────
-        let nameLabel = NSTextField(labelWithString: "VoiceInput")
+        let nameLabel = NSTextField(labelWithString: loc("about.appName"))
         nameLabel.font = .boldSystemFont(ofSize: 17)
         nameLabel.textColor = .labelColor
         vStack.addArrangedSubview(nameLabel)
-        vStack.setCustomSpacing(4, after: nameLabel)
+        vStack.setCustomSpacing(2, after: nameLabel)
+
+        // ── 英文副标题（非英语环境显示）────────────────────────
+        let langCode = Locale.current.language.languageCode?.identifier ?? "en"
+        if langCode != "en" {
+            let enLabel = NSTextField(labelWithString: "AtomVoice")
+            enLabel.font = .systemFont(ofSize: 11)
+            enLabel.textColor = .tertiaryLabelColor
+            vStack.addArrangedSubview(enLabel)
+            vStack.setCustomSpacing(4, after: enLabel)
+        } else {
+            vStack.setCustomSpacing(4, after: nameLabel)
+        }
 
         // ── 版本号 ──────────────────────────────────────────────
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -65,7 +77,19 @@ final class AboutWindowController: NSObject {
         verLabel.font = .systemFont(ofSize: 11.5)
         verLabel.textColor = .secondaryLabelColor
         vStack.addArrangedSubview(verLabel)
+        vStack.setCustomSpacing(4, after: verLabel)
+
+        // ── 开发构建标识（仅 DEBUG_BUILD 时显示）────────────────
+        #if DEBUG_BUILD
+        let devBadge = NSTextField(labelWithString: "⚙ Development Build")
+        devBadge.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        devBadge.textColor = .systemOrange
+        devBadge.alignment = .center
+        vStack.addArrangedSubview(devBadge)
+        vStack.setCustomSpacing(16, after: devBadge)
+        #else
         vStack.setCustomSpacing(20, after: verLabel)
+        #endif
 
         // ── 链接：Bilibili + GitHub 左右排列，仅图标，浅色 ───────
         let linksRow = NSStackView()
@@ -81,7 +105,7 @@ final class AboutWindowController: NSObject {
         linksRow.addArrangedSubview(makeLinkIcon(
             svgName: "github",
             fallbackSymbol: "chevron.left.forwardslash.chevron.right",
-            url: "https://github.com/BlackSquarre/VoiceInputAlpha",
+            url: "https://github.com/BlackSquarre/AtomVoice",
             accessibilityLabel: "GitHub"
         ))
         vStack.addArrangedSubview(linksRow)

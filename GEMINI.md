@@ -1,16 +1,23 @@
-# AtomVoice — Claude 协作指南
+# AtomVoice — Gemini CLI 协作指南
 
 ## 项目简介
 
-macOS 菜单栏语音输入工具，名称 **AtomVoice**（中文：原子微语）。按住 Fn 键录音，松开后自动将识别文字注入到当前输入框。
+macOS 菜单栏语音输入工具。按住 Fn 键录音，松开后自动将识别文字注入到当前输入框。
 纯 Swift + AppKit，目标系统 macOS 14+。
+
+## Gemini 专属工作流与规则
+
+1. **严格限制修改范围**：**绝对不要修改与当前任务不相关的代码。** 保持代码的纯净，不要进行无端的“代码清理”或无关重构。
+2. **精准搜索与编辑**：利用 `grep_search` 和 `glob` 高效定位代码，并使用 `read_file` 或 `replace` 工具进行外科手术式的精准修改，以节约上下文并降低风险。
+3. **验证驱动的开发**：在修改任何 BUG 之前，请优先在终端中尝试复现。在代码修改后，如果可以，请运行相关指令（如 `make dev`）进行验证，确保修改真正有效。
+4. **行动前解释**：在执行对文件系统或代码库有重大影响的工具调用前，简短地（一句话）说明操作意图或策略。
 
 ## 构建与运行
 
 ### 开发调试
 ```bash
-make dev        # 编译并安装到 dist/Test/AtomVoice.app（供确认后使用，含 DEBUG_BUILD 标记）
-make run        # 编译并直接运行（当前机器原生架构，含 DEBUG_BUILD 标记）
+make dev        # 编译并安装到 dist/Test/AtomVoice.app（供确认后使用）
+make run        # 编译并直接运行（当前机器原生架构）
 ```
 
 ### 发版构建
@@ -47,16 +54,6 @@ AppDelegate
   `Resources/en.lproj/` `zh-Hans.lproj/` `zh-Hant.lproj/` `ja.lproj/` `ko.lproj/`
 - 不硬编码用户界面字符串。
 - 可以主动建议编写测试（目前项目无测试）。
-
-## Debug 专属功能
-
-`make dev` / `make run` 编译时带 `-Xswiftc -DDEBUG_BUILD` 标记，`make release` 不带。
-所有 debug 专属 UI 必须用 `#if DEBUG_BUILD` 包裹，**绝不出现在正式发版中**：
-
-- **「关于」窗口**：版本号下显示橙色 "⚙ Development Build" 标识（`AboutWindow.swift`）
-- **胶囊计时器**：录音时胶囊右侧实时显示已录时长，格式 "10s" / "1:05"（`CapsuleWindow.swift`）
-
-新增 debug 专属功能时沿用 `#if DEBUG_BUILD` 模式，同时更新本节。
 
 ## 发版流程
 

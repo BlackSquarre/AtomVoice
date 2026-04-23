@@ -1,2 +1,2 @@
-NSMicrophoneUsageDescription = "VoiceInput이 음성을 인식하려면 마이크 접근 권한이 필요합니다.";
-NSSpeechRecognitionUsageDescription = "VoiceInput은 음성을 텍스트로 변환하기 위해 음성 인식을 사용합니다.";
+NSMicrophoneUsageDescription = "아톰보이스이 음성을 인식하려면 마이크 접근 권한이 필요합니다.";
+NSSpeechRecognitionUsageDescription = "아톰보이스은 음성을 텍스트로 변환하기 위해 음성 인식을 사용합니다.";

@@ -1,6 +1,6 @@
 **中文** | [English](README.md)
 
-# VoiceInput
+# AtomVoice（原子微语）
 
 轻量级 macOS 菜单栏语音输入法。按住 **Fn** 键录音，松开后文字自动注入当前输入框。
 
@@ -37,13 +37,13 @@
 
 **从 Release 下载（推荐）**
 
-前往 [Releases](https://github.com/BlackSquarre/VoiceInputAlpha/releases)，下载对应架构的 zip，解压后拖入应用程序文件夹。
+前往 [Releases](https://github.com/BlackSquarre/AtomVoice/releases)，下载对应架构的 zip，解压后拖入应用程序文件夹。
 
 **从源码构建**
 
 ```bash
-git clone https://github.com/BlackSquarre/VoiceInputAlpha.git
-cd VoiceInputAlpha
+git clone https://github.com/BlackSquarre/AtomVoice.git
+cd AtomVoice
 make install
 ```
 
@@ -51,9 +51,9 @@ make install
 
 临时签名，未经 Apple 公证。首次打开时：
 
-1. 右键点击 `VoiceInput.app` → **打开** → 点击**打开**
+1. 右键点击 `AtomVoice.app` → **打开** → 点击**打开**
 2. 或前往**系统设置 → 隐私与安全性** → **仍然打开**
-3. 或在终端运行：`xattr -cr /Applications/VoiceInput.app`
+3. 或在终端运行：`xattr -cr /Applications/AtomVoice.app`
 
 ## 使用方法
 
@@ -82,7 +82,7 @@ make clean    # 清理构建产物
 ## 项目结构
 
 ```
-Sources/VoiceInput/
+Sources/AtomVoice/
 ├── AppDelegate.swift          # 应用入口，录音流水线
 ├── FnKeyMonitor.swift         # Fn 键全局监听（CGEvent tap）
 ├── AudioEngine.swift          # AVAudioEngine + FFT 频段分析

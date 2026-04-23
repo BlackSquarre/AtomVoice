@@ -2,19 +2,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "VoiceInput",
+    name: "AtomVoice",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "VoiceInput",
-            path: "Sources/VoiceInput",
+            name: "AtomVoice",
+            path: "Sources/AtomVoice",
             exclude: ["Info.plist", "AppIcon.icns"],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/VoiceInput/Info.plist",
+                    "-Xlinker", "Sources/AtomVoice/Info.plist",
                 ]),
             ]
         ),

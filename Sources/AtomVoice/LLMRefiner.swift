@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-private let logger = Logger(subsystem: "com.miaolingru.VoiceInput", category: "LLMRefiner")
+private let logger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "LLMRefiner")
 
 final class LLMRefiner {
     // 动态获取系统提示词

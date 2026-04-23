@@ -77,6 +77,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.onImmediateStop = { [weak self] in self?.stopRecordingImmediate() }
         fnKeyMonitor.start()
 
+        // 启动 5 秒后静默检查更新（不阻塞启动流程）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            UpdateChecker.shared.checkForUpdates(silent: true)
+        }
+
         // 监听前台应用切换：录音期间切换程序则取消录音
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -144,11 +149,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async { [self] in
             capsuleWindow.show()
 
-            let request = speechRecognizer.start { [weak self] text, isFinal in
-                DispatchQueue.main.async {
-                    self?.capsuleWindow.updateText(text)
+            let request = speechRecognizer.start(
+                onResult: { [weak self] text, isFinal in
+                    DispatchQueue.main.async {
+                        self?.capsuleWindow.updateText(text)
+                    }
+                },
+                onRequestSwitch: { [weak self] newRequest in
+                    self?.audioEngine.switchRequest(newRequest)
                 }
-            }
+            )
 
             audioEngine.start(
                 bandsHandler: { [weak self] bands in

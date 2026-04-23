@@ -1,7 +1,8 @@
 /* App */
-"app.title" = "음성 입력";
-"menu.holdFn" = "Fn 키를 누르고 있으면 녹음";
-"menu.about" = "VoiceInput 정보";
+"app.title" = "아톰보이스";
+"menu.holdFn" = "Fn 키를 누르고 있으면 음성 입력";
+"menu.tapFn" = "Fn 키를 클릭하면 음성 입력";
+"menu.about" = "아톰보이스 정보";
 "menu.language" = "인식 언어";
 "menu.animation" = "애니메이션";
 "menu.animation.dynamicIsland" = "다이나믹 아일랜드";
@@ -16,7 +17,7 @@
 "menu.llm.enabled" = "활성화됨";
 "menu.llm.disabled" = "비활성화됨";
 "menu.settings" = "설정...";
-"menu.quit" = "VoiceInput 종료";
+"menu.quit" = "종료";
 
 /* Settings */
 "settings.title" = "LLM 텍스트 최적화 설정";
@@ -50,7 +51,8 @@
 "capsule.refining" = "최적화 중...";
 
 /* About */
-"about.title" = "VoiceInput 정보";
+"about.appName" = "아톰보이스";
+"about.title" = "아톰보이스 정보";
 "about.version" = "버전 %@ (%@)";
 "about.bilibili" = "Bilibili";
 "about.github" = "GitHub 프로젝트";
@@ -71,16 +73,16 @@
 "permission.speech.title" = "음성 인식 권한이 필요합니다";
 "permission.speech.message" = "시스템 설정 > 개인 정보 보호 및 보안 > 음성 인식에서 이 앱을 허용해 주세요.";
 "accessibility.warning.title" = "손쉬운 사용 권한이 무효화되었습니다";
-"accessibility.warning.message" = "시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 VoiceInput을 제거하고 다시 추가해 주세요.";
+"accessibility.warning.message" = "시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 아톰보이스을 제거하고 다시 추가해 주세요.";
 "accessibility.openSettings" = "시스템 설정 열기";
 "accessibility.ignore" = "무시";
 
 /* Permissions Window */
 "permissions.window.title" = "시스템 권한 상태";
-"permissions.heading" = "VoiceInput에 필요한 권한을 허용해 주세요";
+"permissions.heading" = "아톰보이스에 필요한 권한을 허용해 주세요";
 "permissions.guide.title" = "권한 허용 방법";
 "permissions.guide.step1" = "오른쪽 버튼을 클릭하여 시스템 설정 열기";
-"permissions.guide.step2" = "목록에서 VoiceInput을 찾아 스위치를 켜기";
+"permissions.guide.step2" = "목록에서 아톰보이스을 찾아 스위치를 켜기";
 "permissions.guide.step3" = "이 창으로 돌아와 상태가 녹색 「허용됨」으로 바뀌었는지 확인";
 "permissions.troubleshoot" = "문제 해결";
 "permissions.reset" = "모든 권한 재설정";
@@ -90,11 +92,11 @@
 "permissions.close" = "닫기";
 
 "permission.accessibility.title" = "손쉬운 사용";
-"permission.accessibility.desc" = "VoiceInput은 Fn 키를 전역으로 모니터링하기 위해 손쉬운 사용 권한이 필요합니다. 이것은 핵심 기능입니다.";
+"permission.accessibility.desc" = "아톰보이스은 Fn 키를 전역으로 모니터링하기 위해 손쉬운 사용 권한이 필요합니다. 이것은 핵심 기능입니다.";
 "permission.microphone.title" = "마이크";
-"permission.microphone.desc" = "VoiceInput은 음성을 녹음하기 위해 마이크 권한이 필요합니다.";
+"permission.microphone.desc" = "아톰보이스은 음성을 녹음하기 위해 마이크 권한이 필요합니다.";
 "permission.speech.title" = "음성 인식";
-"permission.speech.desc" = "VoiceInput은 음성을 텍스트로 변환하기 위해 음성 인식 권한이 필요합니다.";
+"permission.speech.desc" = "아톰보이스은 음성을 텍스트로 변환하기 위해 음성 인식 권한이 필요합니다.";
 
 "permission.status.granted" = "허용됨";
 "permission.status.denied" = "거부됨";
@@ -109,7 +111,7 @@
 "menu.inputMode" = "입력 방식";
 "menu.inputMode.tap" = "클릭하여 말하기";
 "menu.inputMode.hold" = "길게 눌러 말하기";
-"menu.silence.duration" = "무음 판정 시간";
+"menu.silence.duration" = "정지 딜레이";
 
 /* Custom Prompt */
 "settings.prompt.label" = "시스템 프롬프트:";
@@ -120,3 +122,21 @@
 "settings.prompt.cancel" = "취소";
 "settings.prompt.reset" = "기본값 복원";
 "settings.delay.immediate" = "즉시 입력";
+
+/* Update */
+"menu.checkForUpdates" = "업데이트 확인...";
+"update.available.title" = "업데이트 사용 가능";
+"update.available.message" = "아톰보이스 %@이(가) 출시되었습니다（현재 버전：%@）。지금 설치하시겠습니까？";
+"update.upToDate.title" = "최신 버전입니다";
+"update.upToDate.message" = "아톰보이스 %@이(가) 최신 버전입니다.";
+"update.install" = "설치";
+"update.later" = "나중에";
+"update.downloading" = "%@ 다운로드 중...";
+"update.installing" = "설치 중...";
+"update.done.title" = "업데이트 준비 완료";
+"update.done.message" = "아톰보이스 %@ 다운로드가 완료되었습니다. 지금 재시작하여 업데이트를 적용하시겠습니까？";
+"update.restart" = "지금 재시작";
+"update.error.title" = "업데이트 실패";
+"update.error.fetch" = "업데이트 확인 실패: %@";
+"update.error.download" = "다운로드 실패: %@";
+"update.error.install" = "설치 실패: %@";

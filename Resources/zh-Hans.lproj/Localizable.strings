@@ -1,7 +1,8 @@
 /* App */
-"app.title" = "语音输入";
-"menu.holdFn" = "按住 Fn 键开始录音";
-"menu.about" = "关于 VoiceInput";
+"app.title" = "原子微语";
+"menu.holdFn" = "按住 Fn 键开始语音输入";
+"menu.tapFn" = "单击 Fn 键开始语音输入";
+"menu.about" = "关于原子微语";
 "menu.language" = "识别语言";
 "menu.animation" = "动画效果";
 "menu.animation.dynamicIsland" = "灵动岛";
@@ -16,7 +17,7 @@
 "menu.llm.enabled" = "已启用";
 "menu.llm.disabled" = "已禁用";
 "menu.settings" = "设置...";
-"menu.quit" = "退出语音输入";
+"menu.quit" = "退出";
 
 /* Settings */
 "settings.title" = "LLM 文本优化设置";
@@ -50,7 +51,8 @@
 "capsule.refining" = "优化中...";
 
 /* About */
-"about.title" = "关于 VoiceInput";
+"about.appName" = "原子微语";
+"about.title" = "关于 AtomVoice";
 "about.version" = "版本 %@ (%@)";
 "about.bilibili" = "Bilibili 主页";
 "about.github" = "GitHub 项目";
@@ -71,16 +73,16 @@
 "permission.speech.title" = "需要语音识别权限";
 "permission.speech.message" = "请在系统设置 > 隐私与安全性 > 语音识别中授权本应用。";
 "accessibility.warning.title" = "辅助功能权限已失效";
-"accessibility.warning.message" = "请前往系统设置 > 隐私与安全性 > 辅助功能，移除并重新添加语音输入。";
+"accessibility.warning.message" = "请前往系统设置 > 隐私与安全性 > 辅助功能，移除并重新添加原子微语。";
 "accessibility.openSettings" = "打开系统设置";
 "accessibility.ignore" = "忽略";
 
 /* Permissions Window */
 "permissions.window.title" = "系统权限状态";
-"permissions.heading" = "授予 VoiceInput 完整功能所需权限";
+"permissions.heading" = "授予 AtomVoice 完整功能所需权限";
 "permissions.guide.title" = "如何授予权限";
 "permissions.guide.step1" = "点击右侧按钮打开系统设置";
-"permissions.guide.step2" = "在列表中找到 VoiceInput 并开启对应开关";
+"permissions.guide.step2" = "在列表中找到 AtomVoice 并开启对应开关";
 "permissions.guide.step3" = "返回此窗口，确认状态变为绿色「已授权」";
 "permissions.troubleshoot" = "故障排除";
 "permissions.reset" = "重置所有权限";
@@ -90,11 +92,11 @@
 "permissions.close" = "关闭";
 
 "permission.accessibility.title" = "辅助功能";
-"permission.accessibility.desc" = "VoiceInput 需要辅助功能权限来全局监听 Fn 键，这是核心功能。";
+"permission.accessibility.desc" = "AtomVoice 需要辅助功能权限来全局监听 Fn 键，这是核心功能。";
 "permission.microphone.title" = "麦克风";
-"permission.microphone.desc" = "VoiceInput 需要麦克风权限来录制您的语音。";
+"permission.microphone.desc" = "AtomVoice 需要麦克风权限来录制您的语音。";
 "permission.speech.title" = "语音识别";
-"permission.speech.desc" = "VoiceInput 需要语音识别权限来将您的语音转录为文字。";
+"permission.speech.desc" = "AtomVoice 需要语音识别权限来将您的语音转录为文字。";
 
 "permission.status.granted" = "已授权";
 "permission.status.denied" = "已拒绝";
@@ -110,7 +112,7 @@
 "menu.inputMode" = "输入方式";
 "menu.inputMode.tap" = "单击说话";
 "menu.inputMode.hold" = "长按说话";
-"menu.silence.duration" = "静音时长";
+"menu.silence.duration" = "停录延迟";
 
 /* Custom Prompt */
 "settings.prompt.label" = "系统提示词:";
@@ -121,3 +123,21 @@
 "settings.prompt.cancel" = "取消";
 "settings.prompt.reset" = "恢复默认";
 "settings.delay.immediate" = "立即注入";
+
+/* Update */
+"menu.checkForUpdates" = "检查更新...";
+"update.available.title" = "有新版本";
+"update.available.message" = "AtomVoice %@ 已发布（当前版本 %@），是否立即安装？";
+"update.upToDate.title" = "已是最新版本";
+"update.upToDate.message" = "当前运行的 AtomVoice %@ 已是最新版本。";
+"update.install" = "安装";
+"update.later" = "稍后";
+"update.downloading" = "正在下载 %@...";
+"update.installing" = "正在安装...";
+"update.done.title" = "更新已就绪";
+"update.done.message" = "AtomVoice %@ 已下载完成，重启后生效。";
+"update.restart" = "立即重启";
+"update.error.title" = "更新失败";
+"update.error.fetch" = "检查更新失败：%@";
+"update.error.download" = "下载失败：%@";
+"update.error.install" = "安装失败：%@";
