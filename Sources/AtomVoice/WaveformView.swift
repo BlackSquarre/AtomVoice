@@ -15,7 +15,7 @@ final class WaveformView: NSView {
 
     // MARK: - 状态
     private var bandLevels: [CGFloat] = [0, 0, 0, 0, 0]   // 来自 FFT 的 5 个频段能量
-    private var smoothedLevels: [CGFloat] = [0, 0, 0, 0, 0]
+
     private var barHeights: [CGFloat]
     private var displayTime: CGFloat = 0
     private var isAnimating = false
@@ -79,7 +79,6 @@ final class WaveformView: NSView {
         timer?.invalidate()
         timer = nil
         bandLevels     = [0, 0, 0, 0, 0]
-        smoothedLevels = [0, 0, 0, 0, 0]
         displayTime = 0
         for i in 0..<barCount { barHeights[i] = minBarHeight }
         needsDisplay = true

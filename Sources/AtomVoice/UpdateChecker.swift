@@ -16,7 +16,8 @@ final class UpdateChecker: NSObject {
     /// 检查更新
     /// - Parameter silent: true = 无新版时不弹提示（启动时后台静默检查用）
     func checkForUpdates(silent: Bool = false) {
-        fetchLatestRelease { [weak self] result in
+        let includeBeta = UserDefaults.standard.bool(forKey: "includeBetaUpdates")
+        fetchLatestRelease(includeBeta: includeBeta) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let err):
@@ -36,10 +37,14 @@ final class UpdateChecker: NSObject {
     private struct Release {
         let version: String
         let downloadURL: URL
+        let isPreRelease: Bool
     }
 
-    private func fetchLatestRelease(completion: @escaping (Result<Release, Error>) -> Void) {
-        let urlStr = "https://api.github.com/repos/\(owner)/\(repo)/releases/latest"
+    private func fetchLatestRelease(includeBeta: Bool, completion: @escaping (Result<Release, Error>) -> Void) {
+        // includeBeta 时拉取列表取第一条（含 pre-release），否则只取正式最新版
+        let urlStr = includeBeta
+            ? "https://api.github.com/repos/\(owner)/\(repo)/releases?per_page=1"
+            : "https://api.github.com/repos/\(owner)/\(repo)/releases/latest"
         guard let url = URL(string: urlStr) else { return }
         var req = URLRequest(url: url, timeoutInterval: 15)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -48,11 +53,20 @@ final class UpdateChecker: NSObject {
             if let error { completion(.failure(error)); return }
             guard let data else { completion(.failure(URLError(.badServerResponse))); return }
             do {
-                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let tagName = json["tag_name"] as? String,
-                      let assets  = json["assets"]   as? [[String: Any]]
+                // 列表端点返回数组，latest 端点返回对象
+                let jsonObject = try JSONSerialization.jsonObject(with: data)
+                let json: [String: Any]?
+                if let arr = jsonObject as? [[String: Any]] {
+                    json = arr.first
+                } else {
+                    json = jsonObject as? [String: Any]
+                }
+                guard let json,
+                      let tagName   = json["tag_name"]   as? String,
+                      let assets    = json["assets"]     as? [[String: Any]]
                 else { completion(.failure(URLError(.cannotParseResponse))); return }
 
+                let isPreRelease = json["prerelease"] as? Bool ?? false
                 let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
 
                 // 优先 Universal，其次按当前架构选包
@@ -69,7 +83,7 @@ final class UpdateChecker: NSObject {
                        }),
                        let dlStr = asset["browser_download_url"] as? String,
                        let dlURL = URL(string: dlStr) {
-                        completion(.success(Release(version: version, downloadURL: dlURL)))
+                        completion(.success(Release(version: version, downloadURL: dlURL, isPreRelease: isPreRelease)))
                         return
                     }
                 }
@@ -92,9 +106,13 @@ final class UpdateChecker: NSObject {
             return
         }
 
+        let displayVersion = release.isPreRelease
+            ? "\(release.version) (\(loc("update.beta")))"
+            : release.version
+
         let alert = NSAlert()
         alert.messageText = loc("update.available.title")
-        alert.informativeText = loc("update.available.message", release.version, current)
+        alert.informativeText = loc("update.available.message", displayVersion, current)
         alert.addButton(withTitle: loc("update.install"))
         alert.addButton(withTitle: loc("update.later"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -117,7 +135,6 @@ final class UpdateChecker: NSObject {
                 }
                 guard let tmpURL else { return }
 
-                // 更新进度文字，切到后台线程解压
                 self.updateProgressLabel(loc("update.installing"))
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
@@ -142,7 +159,6 @@ final class UpdateChecker: NSObject {
 
     private func extractZip(_ zipURL: URL) throws -> URL {
         let fm = FileManager.default
-        // 固定路径：进程退出后脚本还能访问
         let updateDir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("AtomVoiceUpdate")
         try? fm.removeItem(at: updateDir)
@@ -276,15 +292,31 @@ final class UpdateChecker: NSObject {
         alert.runModal()
     }
 
-    /// 比较两个版本号字符串，如 "1.2.3" > "1.2.2"
+    /// 将版本字符串拆分为基础版本号和 pre-release 标签
+    /// 例："0.9.5-beta.1" → ("0.9.5", "beta.1")；"0.9.5" → ("0.9.5", nil)
+    private func splitPreRelease(_ version: String) -> (base: String, preRelease: String?) {
+        let s = version.hasPrefix("v") ? String(version.dropFirst()) : version
+        if let idx = s.firstIndex(of: "-") {
+            return (String(s[..<idx]), String(s[s.index(after: idx)...]))
+        }
+        return (s, nil)
+    }
+
+    /// 比较两个版本号（支持 pre-release 格式，如 0.9.5-beta.1）
+    /// 规则：基础版本号更大 → 更新；基础相同时 stable > pre-release
     private func isNewer(_ version: String, than current: String) -> Bool {
-        let v = version.split(separator: ".").compactMap { Int($0) }
-        let c = current.split(separator: ".").compactMap { Int($0) }
+        let (vBase, vPre) = splitPreRelease(version)
+        let (cBase, cPre) = splitPreRelease(current)
+        let v = vBase.split(separator: ".").compactMap { Int($0) }
+        let c = cBase.split(separator: ".").compactMap { Int($0) }
         for i in 0..<max(v.count, c.count) {
             let vi = i < v.count ? v[i] : 0
             let ci = i < c.count ? c[i] : 0
             if vi != ci { return vi > ci }
         }
+        // 基础版本号相同：stable 比 pre-release 新；pre-release 比 stable 旧
+        if cPre != nil && vPre == nil { return true }
+        if cPre == nil && vPre != nil { return false }
         return false
     }
 

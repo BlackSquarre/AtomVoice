@@ -4,6 +4,8 @@
 "menu.tapFn" = "單擊 Fn 鍵開始語音輸入";
 "menu.about" = "關於 AtomVoice";
 "menu.language" = "辨識語言";
+"menu.audioInput" = "輸入裝置";
+"menu.audioInput.default" = "系統預設";
 "menu.animation" = "動畫效果";
 "menu.animation.dynamicIsland" = "靈動島";
 "menu.animation.minimal" = "簡約模式";
@@ -125,6 +127,7 @@
 
 /* Update */
 "menu.checkForUpdates" = "檢查更新...";
+"menu.betaUpdates" = "包含測試版";
 "update.available.title" = "有新版本";
 "update.available.message" = "AtomVoice %@ 已發布（目前版本 %@），是否立即安裝？";
 "update.upToDate.title" = "已是最新版本";
@@ -140,3 +143,4 @@
 "update.error.fetch" = "檢查更新失敗：%@";
 "update.error.download" = "下載失敗：%@";
 "update.error.install" = "安裝失敗：%@";
+"update.beta" = "測試版";

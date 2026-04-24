@@ -59,6 +59,33 @@ final class MenuBarController {
         langItem.submenu = langMenu
         menu.addItem(langItem)
 
+        // 音频输入设备
+        let audioInputItem = NSMenuItem(title: loc("menu.audioInput"), action: nil, keyEquivalent: "")
+        audioInputItem.image = icon("mic.badge.plus")
+        let audioInputMenu = NSMenu()
+        let savedUID = UserDefaults.standard.string(forKey: "audioInputDeviceUID") ?? ""
+
+        // 系统默认选项
+        let defaultItem = NSMenuItem(title: loc("menu.audioInput.default"), action: #selector(selectAudioInput(_:)), keyEquivalent: "")
+        defaultItem.target = self
+        defaultItem.representedObject = "" as String
+        defaultItem.state = savedUID.isEmpty ? .on : .off
+        audioInputMenu.addItem(defaultItem)
+        audioInputMenu.addItem(.separator())
+
+        // 列出所有输入设备
+        let devices = AudioEngineController.availableInputDevices()
+        for device in devices {
+            let item = NSMenuItem(title: device.name, action: #selector(selectAudioInput(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = device.uid
+            item.state = device.uid == savedUID ? .on : .off
+            audioInputMenu.addItem(item)
+        }
+
+        audioInputItem.submenu = audioInputMenu
+        menu.addItem(audioInputItem)
+
         menu.addItem(.separator())
 
         // 动画效果
@@ -195,6 +222,13 @@ final class MenuBarController {
         updateItem.target = self
         menu.addItem(updateItem)
 
+        let betaItem = NSMenuItem(title: loc("menu.betaUpdates"), action: #selector(toggleBetaUpdates(_:)), keyEquivalent: "")
+        betaItem.image = icon("flask")
+        betaItem.target = self
+        betaItem.state = UserDefaults.standard.bool(forKey: "includeBetaUpdates") ? .on : .off
+        betaItem.indentationLevel = 1
+        menu.addItem(betaItem)
+
         let aboutItem = NSMenuItem(title: loc("menu.about"), action: #selector(openAbout(_:)), keyEquivalent: "")
         aboutItem.image = icon("info.circle")
         aboutItem.target = self
@@ -231,6 +265,12 @@ final class MenuBarController {
         guard let code = sender.representedObject as? String else { return }
         UserDefaults.standard.set(code, forKey: "selectedLanguage")
         onLanguageChanged()
+        rebuildMenu()
+    }
+
+    @objc private func selectAudioInput(_ sender: NSMenuItem) {
+        guard let uid = sender.representedObject as? String else { return }
+        UserDefaults.standard.set(uid, forKey: "audioInputDeviceUID")
         rebuildMenu()
     }
 
@@ -299,6 +339,12 @@ final class MenuBarController {
     @objc private func openPermissions(_ sender: NSMenuItem) {
         if permissionsWindow == nil { permissionsWindow = PermissionsWindowController() }
         permissionsWindow?.showWindow()
+    }
+
+    @objc private func toggleBetaUpdates(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: "includeBetaUpdates")
+        UserDefaults.standard.set(!current, forKey: "includeBetaUpdates")
+        rebuildMenu()
     }
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {

@@ -211,7 +211,7 @@ final class LLMRefiner {
         // 去掉尾部斜杠
         while b.hasSuffix("/") { b = String(b.dropLast()) }
         // 已经是完整路径
-        if b.hasSuffix("/chat/completions") || b.hasSuffix("/chat/completions") {
+        if b.hasSuffix("/chat/completions") {
             return b
         }
         // 已经有 /chat 结尾

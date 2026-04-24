@@ -37,7 +37,7 @@ final class FnKeyMonitor {
             options: .defaultTap,
             eventsOfInterest: mask,
             callback: { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
-                guard let refcon = refcon else { return Unmanaged.passRetained(event) }
+                guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
                 let monitor = Unmanaged<FnKeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
                 return monitor.handleEvent(proxy: proxy, type: type, event: event)
             },
@@ -76,7 +76,7 @@ final class FnKeyMonitor {
                     }
                 }
             }
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         // 拦截 NX_SYSDEFINED（type 14）：Globe 键触发字符检视器的系统事件
@@ -86,7 +86,7 @@ final class FnKeyMonitor {
                 print("[FnKeyMonitor] 拦截 NX_SYSDEFINED (Fn/Globe)")
                 return nil
             }
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         let flags = event.flags
@@ -134,7 +134,7 @@ final class FnKeyMonitor {
                 }
             }
 
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         if type == .flagsChanged {
@@ -172,6 +172,6 @@ final class FnKeyMonitor {
             }
         }
 
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 }

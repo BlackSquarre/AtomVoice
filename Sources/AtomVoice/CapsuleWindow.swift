@@ -60,7 +60,10 @@ final class CapsuleWindowController {
     // MARK: - Show
 
     func show() {
-        if panel != nil { return }
+        if panel != nil {
+            // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板
+            cleanup()
+        }
 
         let fw = fullWidth(forTextWidth: minTextWidth)
         let target = targetFrame(width: fw)
@@ -359,6 +362,8 @@ final class CapsuleWindowController {
 
     func updateText(_ text: String) {
         guard let label = textLabel, let panel = panel else { return }
+        // 确保文字颜色恢复为默认（showError 会改为红色）
+        label.textColor = .labelColor
         label.stringValue = text
 
         let measured = (text as NSString).size(withAttributes: [.font: label.font!])
@@ -386,8 +391,9 @@ final class CapsuleWindowController {
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
-        textLabel?.textColor = .systemRed
         updateText("⚠️ \(message)")
+        // 在 updateText 之后设置红色（updateText 会重置为默认颜色）
+        textLabel?.textColor = .systemRed
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.dismiss()

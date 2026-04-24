@@ -4,6 +4,8 @@
 "menu.tapFn" = "Fn 키를 클릭하면 음성 입력";
 "menu.about" = "아톰보이스 정보";
 "menu.language" = "인식 언어";
+"menu.audioInput" = "입력 장치";
+"menu.audioInput.default" = "시스템 기본값";
 "menu.animation" = "애니메이션";
 "menu.animation.dynamicIsland" = "다이나믹 아일랜드";
 "menu.animation.minimal" = "미니멀";
@@ -125,6 +127,7 @@
 
 /* Update */
 "menu.checkForUpdates" = "업데이트 확인...";
+"menu.betaUpdates" = "베타 버전 포함";
 "update.available.title" = "업데이트 사용 가능";
 "update.available.message" = "아톰보이스 %@이(가) 출시되었습니다（현재 버전：%@）。지금 설치하시겠습니까？";
 "update.upToDate.title" = "최신 버전입니다";
@@ -140,3 +143,4 @@
 "update.error.fetch" = "업데이트 확인 실패: %@";
 "update.error.download" = "다운로드 실패: %@";
 "update.error.install" = "설치 실패: %@";
+"update.beta" = "베타";

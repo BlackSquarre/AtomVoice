@@ -4,6 +4,8 @@
 "menu.tapFn" = "单击 Fn 键开始语音输入";
 "menu.about" = "关于原子微语";
 "menu.language" = "识别语言";
+"menu.audioInput" = "输入设备";
+"menu.audioInput.default" = "系统默认";
 "menu.animation" = "动画效果";
 "menu.animation.dynamicIsland" = "灵动岛";
 "menu.animation.minimal" = "简约模式";
@@ -126,6 +128,7 @@
 
 /* Update */
 "menu.checkForUpdates" = "检查更新...";
+"menu.betaUpdates" = "包含测试版";
 "update.available.title" = "有新版本";
 "update.available.message" = "AtomVoice %@ 已发布（当前版本 %@），是否立即安装？";
 "update.upToDate.title" = "已是最新版本";
@@ -141,3 +144,4 @@
 "update.error.fetch" = "检查更新失败：%@";
 "update.error.download" = "下载失败：%@";
 "update.error.install" = "安装失败：%@";
+"update.beta" = "测试版";

@@ -4,6 +4,8 @@
 "menu.tapFn" = "Click Fn to start voice input";
 "menu.about" = "About AtomVoice";
 "menu.language" = "Recognition Language";
+"menu.audioInput" = "Input Device";
+"menu.audioInput.default" = "System Default";
 "menu.animation" = "Animation";
 "menu.animation.dynamicIsland" = "Dynamic Island";
 "menu.animation.minimal" = "Minimal";
@@ -125,6 +127,7 @@
 
 /* Update */
 "menu.checkForUpdates" = "Check for Updates...";
+"menu.betaUpdates" = "Include Beta Versions";
 "update.available.title" = "Update Available";
 "update.available.message" = "AtomVoice %@ is available (you have %@). Install now?";
 "update.upToDate.title" = "You're Up to Date";
@@ -140,3 +143,4 @@
 "update.error.fetch" = "Could not check for updates: %@";
 "update.error.download" = "Download failed: %@";
 "update.error.install" = "Installation failed: %@";
+"update.beta" = "Beta";

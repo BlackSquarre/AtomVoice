@@ -93,7 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func activeAppDidChange(_ notification: Notification) {
         guard isRecording else { return }
-        // 录音期间切换了前台应用，取消本次录音
+        // 静音模式（单击说话）下，切换窗口是正常流程，不取消录音
+        let silenceMode = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        if silenceMode { return }
+        // 长按模式下切换了前台应用，取消本次录音
         cancelRecording()
     }
 

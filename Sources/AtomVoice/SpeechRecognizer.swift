@@ -77,7 +77,11 @@ final class SpeechRecognizerController {
 
     private func roll() {
         guard let recognizer, recognizer.isAvailable,
-              let oldRequest = recognitionRequest else { return }
+              let oldRequest = recognitionRequest else {
+            // 识别器暂时不可用时仍重新安排定时器，避免滚动永久停止
+            scheduleRollingTimer()
+            return
+        }
 
         // 1. 提交当前分段文字到 offset
         segmentOffset += currentSegmentText

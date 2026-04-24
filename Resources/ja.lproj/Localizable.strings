@@ -4,6 +4,8 @@
 "menu.tapFn" = "Fn キーをクリックして音声入力";
 "menu.about" = "原子微声 について";
 "menu.language" = "認識言語";
+"menu.audioInput" = "入力デバイス";
+"menu.audioInput.default" = "システムデフォルト";
 "menu.animation" = "アニメーション";
 "menu.animation.dynamicIsland" = "ダイナミックアイランド";
 "menu.animation.minimal" = "シンプル";
@@ -125,6 +127,7 @@
 
 /* Update */
 "menu.checkForUpdates" = "アップデートを確認...";
+"menu.betaUpdates" = "ベータ版を含む";
 "update.available.title" = "アップデートがあります";
 "update.available.message" = "AtomVoice %@ が利用可能です（現在のバージョン：%@）。今すぐインストールしますか？";
 "update.upToDate.title" = "最新バージョンです";
@@ -140,3 +143,4 @@
 "update.error.fetch" = "アップデートの確認に失敗しました：%@";
 "update.error.download" = "ダウンロードに失敗しました：%@";
 "update.error.install" = "インストールに失敗しました：%@";
+"update.beta" = "ベータ";

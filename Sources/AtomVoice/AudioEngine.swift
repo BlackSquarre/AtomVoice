@@ -1,6 +1,7 @@
 import AVFoundation
 import Speech
 import Accelerate
+import CoreAudio
 
 final class AudioEngineController {
     let engine = AVAudioEngine()
@@ -18,6 +19,7 @@ final class AudioEngineController {
     private var fftSetup: FFTSetup?
     private var hannWindow: [Float] = []
     private var sampleBuffer: [Float] = []
+    private let bufferQueue = DispatchQueue(label: "com.atomvoice.audioBuffer")  // 保护 sampleBuffer 和静音检测状态
 
     // 只覆盖人声核心频率范围 100–6000 Hz
     // 男声基频 85-180Hz → 第2根；女声上共振峰 2000-4000Hz → 第4根
@@ -40,6 +42,104 @@ final class AudioEngineController {
         if let s = fftSetup { vDSP_destroy_fftsetup(s) }
     }
 
+    // MARK: - 输入设备管理
+
+    /// 音频输入设备信息
+    struct AudioInputDevice {
+        let id: AudioDeviceID
+        let name: String
+        let uid: String
+    }
+
+    /// 列出所有可用的音频输入设备
+    static func availableInputDevices() -> [AudioInputDevice] {
+        var propAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &propAddr, 0, nil, &dataSize) == noErr else { return [] }
+
+        let count = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: 0, count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &propAddr, 0, nil, &dataSize, &deviceIDs) == noErr else { return [] }
+
+        var result: [AudioInputDevice] = []
+        for id in deviceIDs {
+            // 检查是否有输入通道
+            var inputAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreamConfiguration,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var bufSize: UInt32 = 0
+            guard AudioObjectGetPropertyDataSize(id, &inputAddr, 0, nil, &bufSize) == noErr, bufSize > 0 else { continue }
+
+            let bufferList = UnsafeMutablePointer<AudioBufferList>.allocate(capacity: 1)
+            defer { bufferList.deallocate() }
+            guard AudioObjectGetPropertyData(id, &inputAddr, 0, nil, &bufSize, bufferList) == noErr else { continue }
+
+            let channelCount = (0..<Int(bufferList.pointee.mNumberBuffers)).reduce(0) { total, i in
+                total + Int(UnsafeMutableAudioBufferListPointer(bufferList)[i].mNumberChannels)
+            }
+            guard channelCount > 0 else { continue }
+
+            // 获取设备名称
+            var nameAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceNameCFString,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var name: Unmanaged<CFString>?
+            var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>>.size)
+            AudioObjectGetPropertyData(id, &nameAddr, 0, nil, &nameSize, &name)
+            let deviceName = name?.takeUnretainedValue() as String? ?? "Unknown"
+
+            // 获取设备 UID
+            var uidAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var uid: Unmanaged<CFString>?
+            var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>>.size)
+            AudioObjectGetPropertyData(id, &uidAddr, 0, nil, &uidSize, &uid)
+            let deviceUID = uid?.takeUnretainedValue() as String? ?? ""
+
+            result.append(AudioInputDevice(id: id, name: deviceName, uid: deviceUID))
+        }
+        return result
+    }
+
+    /// 将选中的输入设备应用到 AVAudioEngine
+    private func applySelectedInputDevice() {
+        let savedUID = UserDefaults.standard.string(forKey: "audioInputDeviceUID") ?? ""
+        guard !savedUID.isEmpty else { return }  // 空 = 系统默认
+
+        let devices = AudioEngineController.availableInputDevices()
+        guard let device = devices.first(where: { $0.uid == savedUID }) else {
+            print("[AudioEngine] 保存的输入设备 \(savedUID) 不可用，使用系统默认")
+            return
+        }
+
+        let audioUnit = engine.inputNode.audioUnit!
+        var deviceID = device.id
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceID,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        if status == noErr {
+            print("[AudioEngine] 输入设备已切换为: \(device.name)")
+        } else {
+            print("[AudioEngine] 切换输入设备失败: \(status)")
+        }
+    }
+
     /// 滚动分段时切换识别请求，后续 buffer 将推送到新请求
     func switchRequest(_ newRequest: SFSpeechAudioBufferRecognitionRequest) {
         recognitionRequest = newRequest
@@ -53,6 +153,9 @@ final class AudioEngineController {
         silenceDuration = 0
         recordingDuration = 0
 
+        // 应用用户选择的输入设备
+        applySelectedInputDevice()
+
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         let sampleRate = Float(format.sampleRate)
@@ -63,22 +166,25 @@ final class AudioEngineController {
 
             if let channelData = buffer.floatChannelData {
                 let count = Int(buffer.frameLength)
-                self.sampleBuffer.append(
-                    contentsOf: UnsafeBufferPointer(start: channelData[0], count: count)
-                )
 
-                // 静音检测：用 RMS 判断音量
-                let bufferDuration = Double(count) / Double(sampleRate)
-                self.recordingDuration += bufferDuration
-                self.detectSilence(channelData: channelData[0], frameCount: count, bufferDuration: bufferDuration)
-            }
+                self.bufferQueue.sync {
+                    self.sampleBuffer.append(
+                        contentsOf: UnsafeBufferPointer(start: channelData[0], count: count)
+                    )
 
-            // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率
-            while self.sampleBuffer.count >= self.fftSize {
-                let chunk = Array(self.sampleBuffer.prefix(self.fftSize))
-                self.sampleBuffer.removeFirst(self.fftSize / 2)
-                let bands = self.computeBands(samples: chunk, sampleRate: sampleRate)
-                self.bandsHandler?(bands)
+                    // 静音检测：用 RMS 判断音量
+                    let bufferDuration = Double(count) / Double(sampleRate)
+                    self.recordingDuration += bufferDuration
+                    self.detectSilence(channelData: channelData[0], frameCount: count, bufferDuration: bufferDuration)
+
+                    // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率
+                    while self.sampleBuffer.count >= self.fftSize {
+                        let chunk = Array(self.sampleBuffer.prefix(self.fftSize))
+                        self.sampleBuffer.removeFirst(self.fftSize / 2)
+                        let bands = self.computeBands(samples: chunk, sampleRate: sampleRate)
+                        self.bandsHandler?(bands)
+                    }
+                }
             }
         }
 
@@ -91,9 +197,11 @@ final class AudioEngineController {
         engine.stop()
         bandsHandler = nil
         recognitionRequest = nil
-        sampleBuffer = []
-        silenceDuration = 0
-        recordingDuration = 0
+        bufferQueue.sync {
+            sampleBuffer = []
+            silenceDuration = 0
+            recordingDuration = 0
+        }
     }
 
     // MARK: - 静音检测
