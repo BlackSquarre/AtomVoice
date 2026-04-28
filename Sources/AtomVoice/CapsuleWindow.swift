@@ -578,6 +578,7 @@ final class CapsuleWindowController {
     // MARK: - Cleanup
 
     private func cleanup() {
+        panel?.orderOut(nil)
         stopShimmer()
         springTimer?.invalidate()
         springTimer = nil

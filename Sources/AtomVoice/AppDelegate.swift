@@ -151,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         guard !isRecording else { return }
+        
+        // 取消正在进行的 LLM 处理（如果有）
+        llmRefiner.cancel()
+        
         isRecording = true
         fnKeyMonitor.isRecording = true
 
@@ -237,11 +241,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// ESC 取消录音：停止一切，不注入文字
     private func cancelRecording() {
-        guard isRecording else { return }
         isRecording = false
         fnKeyMonitor.isRecording = false
 
         DispatchQueue.main.async { [self] in
+            llmRefiner.cancel()
             _ = speechRecognizer.stop()
             audioEngine.stop()
             capsuleWindow.dismiss()

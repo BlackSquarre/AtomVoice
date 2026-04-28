@@ -45,8 +45,12 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
 
     // 全部完成
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        // 网络错误（排除主动取消）
-        if let nsErr = error as? NSError, nsErr.code != NSURLErrorCancelled {
+        if let nsErr = error as NSError? {
+            if nsErr.code == NSURLErrorCancelled {
+                // 主动取消，不触发完成回调
+                return
+            }
+            // 其他网络错误
             DispatchQueue.main.async { self.onComplete(nil, nsErr.localizedDescription) }
             return
         }
@@ -139,6 +143,12 @@ final class LLMRefiner {
     // 持有流式 session / delegate，防止被释放
     private var streamSession: URLSession?
     private var streamDelegate: StreamDelegate?
+
+    func cancel() {
+        streamSession?.invalidateAndCancel()
+        streamSession = nil
+        streamDelegate = nil
+    }
 
     // MARK: - 主要接口
 

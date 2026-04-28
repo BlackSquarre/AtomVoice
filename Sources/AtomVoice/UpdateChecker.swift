@@ -1,4 +1,5 @@
 import Cocoa
+import Security
 
 /// 轻量自动更新模块：检查 GitHub Releases，下载并替换 .app
 final class UpdateChecker: NSObject {
@@ -7,6 +8,8 @@ final class UpdateChecker: NSObject {
 
     private let owner = "BlackSquarre"
     private let repo  = "AtomVoice"
+    private let expectedBundleIdentifier = "com.blacksquarre.AtomVoice"
+    private let expectedTeamIdentifier = "NC623693G3"
 
     private var progressWindow: NSWindow?
     private var progressLabel: NSTextField?
@@ -139,6 +142,7 @@ final class UpdateChecker: NSObject {
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
                         let newApp = try self.extractZip(tmpURL)
+                        try self.validateDownloadedApp(newApp, expectedVersion: release.version)
                         DispatchQueue.main.async {
                             self.closeProgress()
                             self.promptRestart(version: release.version, newAppURL: newApp)
@@ -160,9 +164,10 @@ final class UpdateChecker: NSObject {
     private func extractZip(_ zipURL: URL) throws -> URL {
         let fm = FileManager.default
         let updateDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("AtomVoiceUpdate")
-        try? fm.removeItem(at: updateDir)
+            .appendingPathComponent("AtomVoiceUpdate-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: updateDir, withIntermediateDirectories: true)
+
+        try validateZipEntries(zipURL)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
@@ -174,10 +179,102 @@ final class UpdateChecker: NSObject {
         }
 
         let contents = try fm.contentsOfDirectory(at: updateDir, includingPropertiesForKeys: nil)
-        guard let newApp = contents.first(where: { $0.pathExtension == "app" }) else {
+        let apps = contents.filter { $0.pathExtension == "app" }
+        guard apps.count == 1, let newApp = apps.first else {
             throw UpdateError.appNotFound
         }
         return newApp
+    }
+
+    private func validateZipEntries(_ zipURL: URL) throws {
+        let proc = Process()
+        let pipe = Pipe()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        proc.arguments = ["-Z1", zipURL.path]
+        proc.standardOutput = pipe
+        proc.standardError = Pipe()
+        try proc.run()
+        proc.waitUntilExit()
+        guard proc.terminationStatus == 0 else {
+            throw UpdateError.zipListingFailed(proc.terminationStatus)
+        }
+
+        let output = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let listing = String(data: output, encoding: .utf8) else {
+            throw UpdateError.invalidZipEntry("<invalid utf8>")
+        }
+
+        for entry in listing.split(separator: "\n", omittingEmptySubsequences: true) {
+            let path = String(entry)
+            let components = path.split(separator: "/", omittingEmptySubsequences: false)
+            if path.hasPrefix("/") || components.contains("..") || path.contains("\0") {
+                throw UpdateError.invalidZipEntry(path)
+            }
+        }
+    }
+
+    private func validateDownloadedApp(_ appURL: URL, expectedVersion: String) throws {
+        let infoURL = appURL.appendingPathComponent("Contents/Info.plist")
+        guard let info = NSDictionary(contentsOf: infoURL) as? [String: Any] else {
+            throw UpdateError.invalidBundle("Cannot read Info.plist")
+        }
+        guard info["CFBundleIdentifier"] as? String == expectedBundleIdentifier else {
+            throw UpdateError.invalidBundle("Unexpected bundle identifier")
+        }
+
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        guard let downloadedVersion = info["CFBundleShortVersionString"] as? String,
+              isNewer(downloadedVersion, than: current) || downloadedVersion == expectedVersion else {
+            throw UpdateError.invalidBundle("Downloaded app version is not newer")
+        }
+
+        var staticCode: SecStaticCode?
+        let createStatus = SecStaticCodeCreateWithPath(appURL as CFURL, SecCSFlags(), &staticCode)
+        guard createStatus == errSecSuccess, let staticCode else {
+            throw UpdateError.signatureInvalid(securityErrorDescription(createStatus))
+        }
+
+        let requirementText = """
+        anchor apple generic and identifier "\(expectedBundleIdentifier)" and certificate leaf[subject.OU] = "\(expectedTeamIdentifier)"
+        """
+        var requirement: SecRequirement?
+        let requirementStatus = SecRequirementCreateWithString(requirementText as CFString, SecCSFlags(), &requirement)
+        guard requirementStatus == errSecSuccess, let requirement else {
+            throw UpdateError.signatureInvalid(securityErrorDescription(requirementStatus))
+        }
+
+        var validationError: Unmanaged<CFError>?
+        let validateStatus = SecStaticCodeCheckValidityWithErrors(
+            staticCode,
+            SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures),
+            requirement,
+            &validationError
+        )
+        if validateStatus != errSecSuccess {
+            let detail = validationError?.takeRetainedValue().localizedDescription
+            throw UpdateError.signatureInvalid(securityErrorDescription(validateStatus, detail: detail))
+        }
+
+        var signingInfo: CFDictionary?
+        let infoStatus = SecCodeCopySigningInformation(
+            staticCode,
+            SecCSFlags(rawValue: kSecCSSigningInformation),
+            &signingInfo
+        )
+        guard infoStatus == errSecSuccess,
+              let dict = signingInfo as? [String: Any],
+              dict[kSecCodeInfoIdentifier as String] as? String == expectedBundleIdentifier,
+              dict[kSecCodeInfoTeamIdentifier as String] as? String == expectedTeamIdentifier else {
+            throw UpdateError.signatureInvalid(securityErrorDescription(infoStatus))
+        }
+    }
+
+    private func securityErrorDescription(_ status: OSStatus, detail: String? = nil) -> String {
+        let message = SecCopyErrorMessageString(status, nil) as String? ?? "OSStatus \(status)"
+        if let detail, !detail.isEmpty {
+            return "\(message): \(detail)"
+        }
+        return message
     }
 
     // MARK: - 安装与重启
@@ -199,16 +296,35 @@ final class UpdateChecker: NSObject {
         let newPath     = newAppURL.path
         let tmpDir      = newAppURL.deletingLastPathComponent().path
         let scriptPath  = (NSTemporaryDirectory() as NSString)
-                              .appendingPathComponent("atomvoice_update.sh")
+                              .appendingPathComponent("atomvoice_update_\(UUID().uuidString).sh")
 
         let script = """
         #!/bin/bash
+        set -euo pipefail
+        current_path="$1"
+        new_path="$2"
+        tmp_dir="$3"
+        backup_path="${current_path}.previous"
+
         sleep 1.5
-        rm -rf '\(currentPath)'
-        ditto '\(newPath)' '\(currentPath)'
-        open '\(currentPath)'
-        rm -rf '\(tmpDir)'
-        rm -f '\(scriptPath)'
+        rm -rf -- "$backup_path"
+        if [ -e "$current_path" ]; then
+          mv -- "$current_path" "$backup_path"
+        fi
+        if ditto -- "$new_path" "$current_path"; then
+          open -- "$current_path"
+          rm -rf -- "$backup_path"
+          rm -rf -- "$tmp_dir"
+          rm -f -- "$0"
+        else
+          rm -rf -- "$current_path"
+          if [ -e "$backup_path" ]; then
+            mv -- "$backup_path" "$current_path"
+          fi
+          rm -rf -- "$tmp_dir"
+          rm -f -- "$0"
+          exit 1
+        fi
         """
 
         do {
@@ -217,7 +333,7 @@ final class UpdateChecker: NSObject {
                                                   ofItemAtPath: scriptPath)
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-            proc.arguments = [scriptPath]
+            proc.arguments = [scriptPath, currentPath, newPath, tmpDir]
             try proc.run()
             NSApp.terminate(nil)
         } catch {
@@ -323,11 +439,23 @@ final class UpdateChecker: NSObject {
     private enum UpdateError: LocalizedError {
         case unzipFailed(Int32)
         case appNotFound
+        case zipListingFailed(Int32)
+        case invalidZipEntry(String)
+        case invalidBundle(String)
+        case signatureInvalid(String)
 
         var errorDescription: String? {
             switch self {
             case .unzipFailed(let code): return "unzip failed (exit code \(code))"
             case .appNotFound:           return "No .app bundle found in zip"
+            case .zipListingFailed(let code):
+                return "zip listing failed (exit code \(code))"
+            case .invalidZipEntry(let entry):
+                return "Unsafe zip entry: \(entry)"
+            case .invalidBundle(let reason):
+                return "Downloaded app is invalid: \(reason)"
+            case .signatureInvalid(let reason):
+                return "Downloaded app signature is invalid: \(reason)"
             }
         }
     }

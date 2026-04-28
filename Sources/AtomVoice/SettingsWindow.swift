@@ -12,11 +12,11 @@ final class ProviderStore {
     static let key = "llmProviders"
 
     static let defaults: [LLMProvider] = [
-        LLMProvider(name: "OpenAI",            baseURL: "https://api.openai.com/v1",                           defaultModel: "gpt-4o-mini"),
+        LLMProvider(name: "OpenAI",            baseURL: "https://api.openai.com/v1",                           defaultModel: "gpt-4.1-mini"),
         LLMProvider(name: "Anthropic (Claude)",baseURL: "https://api.anthropic.com/v1",                        defaultModel: "claude-sonnet-4-6"),
         LLMProvider(name: "DeepSeek",          baseURL: "https://api.deepseek.com/v1",                         defaultModel: "deepseek-v4-flash"),
-        LLMProvider(name: "Moonshot (Kimi)",   baseURL: "https://api.moonshot.cn/v1",                          defaultModel: "moonshot-v1-8k"),
-        LLMProvider(name: "阿里云百炼 (Qwen)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",   defaultModel: "qwen-turbo"),
+        LLMProvider(name: "Moonshot (Kimi)",   baseURL: "https://api.moonshot.cn/v1",                          defaultModel: "kimi-latest"),
+        LLMProvider(name: "阿里云百炼 (Qwen)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",   defaultModel: "qwen-turbo-latest"),
         LLMProvider(name: "智谱 AI (GLM)",     baseURL: "https://open.bigmodel.cn/api/paas/v4",                defaultModel: "glm-4-flash"),
         LLMProvider(name: "零一万物 (Yi)",     baseURL: "https://api.lingyiwanwu.com/v1",                      defaultModel: "yi-lightning"),
         LLMProvider(name: "Groq",              baseURL: "https://api.groq.com/openai/v1",                      defaultModel: "llama-3.3-70b-versatile"),
