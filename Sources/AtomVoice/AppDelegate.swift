@@ -107,23 +107,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Window activation helpers
 
-    /// 在 LSUIElement=true (accessory) 模式下，普通 activate() 不会夺焦。
-    /// 显示任何普通窗口前调用此函数切换策略并强制置前。
+    /// 在 LSUIElement=true 的菜单栏应用里，窗口/弹窗要先切到可激活状态，
+    /// 再显式激活当前 app 并把目标窗口提到最前。
     static func bringToFront(_ window: NSWindow) {
-        NSApp.setActivationPolicy(.regular)
+        activateForForegroundInteraction()
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+
+        // 菜单项 action 执行时菜单还在收起过程中，下一轮 runloop 再抢一次焦点更稳定。
         DispatchQueue.main.async {
+            activateForForegroundInteraction()
+            window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
-            if #available(macOS 14.0, *) { NSApp.activate() }
-            else { NSApp.activate(ignoringOtherApps: true) }
         }
     }
 
+    @discardableResult
+    static func runModalAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
+        activateForForegroundInteraction()
+        alert.window.level = .modalPanel
+        let response = alert.runModal()
+        resetActivationIfNeeded()
+        return response
+    }
+
     /// 窗口关闭时调用：若已无其他普通窗口可见，恢复 accessory 策略。
-    static func resetActivationIfNeeded(closing: NSWindow) {
-        let hasOther = NSApp.windows.contains {
-            $0 !== closing && $0.isVisible && $0.styleMask.contains(.titled)
+    static func resetActivationIfNeeded(closing: NSWindow? = nil) {
+        let hasOther = NSApp.windows.contains { window in
+            if let closing, window === closing { return false }
+            return window.isVisible && window.styleMask.contains(.titled)
         }
         if !hasOther { NSApp.setActivationPolicy(.accessory) }
+    }
+
+    private static func activateForForegroundInteraction() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.unhide(nil)
+        let currentApp = NSRunningApplication.current
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+           frontmostApp.processIdentifier != currentApp.processIdentifier {
+            currentApp.activate(from: frontmostApp, options: [.activateAllWindows])
+        } else {
+            currentApp.activate(options: [.activateAllWindows])
+        }
+        NSApp.activate()
     }
 
     private func requestPermissions() {
@@ -133,7 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let alert = NSAlert()
                     alert.messageText = loc("permission.mic.title")
                     alert.informativeText = loc("permission.mic.message")
-                    alert.runModal()
+                    AppDelegate.runModalAlert(alert)
                 }
             }
         }
@@ -143,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let alert = NSAlert()
                     alert.messageText = loc("permission.speech.title")
                     alert.informativeText = loc("permission.speech.message")
-                    alert.runModal()
+                    AppDelegate.runModalAlert(alert)
                 }
             }
         }

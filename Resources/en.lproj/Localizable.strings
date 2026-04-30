@@ -21,6 +21,7 @@
 "menu.llm.howto" = "How to use LLM Refinement";
 "menu.settings" = "Settings...";
 "menu.quit" = "Quit";
+"common.ok" = "OK";
 
 /* Settings */
 "settings.title" = "LLM Refinement Settings";
@@ -50,6 +51,16 @@
 "provider.label.name" = "Name:";
 "provider.label.url" = "URL:";
 "provider.label.model" = "Model:";
+"provider.preset.openai" = "OpenAI";
+"provider.preset.anthropic" = "Anthropic (Claude)";
+"provider.preset.deepseek" = "DeepSeek";
+"provider.preset.moonshot" = "Moonshot (Kimi)";
+"provider.preset.alibaba" = "Alibaba Cloud Bailian (Qwen)";
+"provider.preset.zhipu" = "Zhipu AI (GLM)";
+"provider.preset.lingyi" = "01.AI (Yi)";
+"provider.preset.groq" = "Groq";
+"provider.preset.ollama" = "Ollama (Local)";
+"provider.preset.custom" = "Custom";
 
 /* Capsule */
 "capsule.refining" = "Refining...";
@@ -63,7 +74,7 @@
 "about.copyright" = "© 2026 Miao Lingru. All rights reserved.";
 
 /* LLM How-to */
-"llm.howto.message" = "1. Choose a provider (OpenAI, Anthropic, DeepSeek, or custom).\n2. Enter your API key.\n3. Select a model and save.\n4. Enable \"LLM Refinement\" in the menu.\n\nAfter each voice recording, the recognized text is sent to the LLM for correction. Streaming output shows results in real time. Press Space or Backspace during recording to skip LLM and type immediately.";
+"llm.howto.message" = "LLM Refinement runs after speech recognition finishes. It asks your selected model to review the recognized text and fix misheard words, homophones, incorrect proper nouns, and punctuation, so the text that gets typed is closer to what you meant to say.\n\nFor example: it can correct \"配森\" to \"Python\", add missing punctuation, and clean up sentences that are obviously awkward.\n\nHow to use it:\n1. Choose a provider (OpenAI, Anthropic, DeepSeek, or custom).\n2. Enter your API key.\n3. Select a model and save.\n4. Enable \"LLM Refinement\" in the menu.\n\nWhen enabled, after each recording, the recognized text is sent to your selected LLM provider for correction; the audio itself is not sent. Press Space or Backspace during recording to skip LLM and type immediately.";
 
 /* Errors */
 "error.noApiKey" = "API key not set";
@@ -96,6 +107,7 @@
 "permissions.reset.confirm.title" = "Reset Permissions";
 "permissions.reset.confirm.message" = "This will run tccutil in Terminal to reset microphone and speech recognition permissions. You will need to re-authorize afterward.";
 "permissions.reset.confirm.ok" = "Continue";
+"permissions.reset.terminalDone" = "Done. Please restart AtomVoice.";
 "permissions.close" = "Close";
 
 "permission.accessibility.title" = "Accessibility";

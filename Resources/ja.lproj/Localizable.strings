@@ -21,6 +21,7 @@
 "menu.llm.howto" = "LLM最適化の使い方";
 "menu.settings" = "設定...";
 "menu.quit" = "終了";
+"common.ok" = "OK";
 
 /* Settings */
 "settings.title" = "LLM テキスト最適化設定";
@@ -50,6 +51,16 @@
 "provider.label.name" = "名前:";
 "provider.label.url" = "アドレス:";
 "provider.label.model" = "モデル:";
+"provider.preset.openai" = "OpenAI";
+"provider.preset.anthropic" = "Anthropic (Claude)";
+"provider.preset.deepseek" = "DeepSeek";
+"provider.preset.moonshot" = "Moonshot (Kimi)";
+"provider.preset.alibaba" = "Alibaba Cloud Bailian (Qwen)";
+"provider.preset.zhipu" = "Zhipu AI (GLM)";
+"provider.preset.lingyi" = "01.AI (Yi)";
+"provider.preset.groq" = "Groq";
+"provider.preset.ollama" = "Ollama（ローカル）";
+"provider.preset.custom" = "カスタム";
 
 /* Capsule */
 "capsule.refining" = "最適化中...";
@@ -63,7 +74,7 @@
 "about.copyright" = "© 2026 缪凌儒BlackSquare\nAll rights reserved.";
 
 /* LLM How-to */
-"llm.howto.message" = "1. プロバイダーを選択（OpenAI、Anthropic、DeepSeek、またはカスタム）。\n2. APIキーを入力。\n3. モデルを選択して保存。\n4. メニューで「LLMテキスト最適化」を有効化。\n\n録音終了後、認識テキストがLLMに送信されて修正されます。ストリーミング出力でリアルタイムにプレビュー可能。録音中にスペースまたはバックスペースを押すとLLMをスキップして即入力できます。";
+"llm.howto.message" = "LLM最適化は、音声認識が終わったあとに、選択したモデルが認識テキストをもう一度確認し、聞き間違い、同音異義語の誤認識、固有名詞の誤り、句読点の不足を修正します。最終的に入力される文章を、あなたが本来言いたかった内容に近づけます。\n\n例：「配森」を「Python」に修正したり、抜けている句読点を補ったり、明らかに不自然な文を整えたりできます。\n\n使い方：\n1. プロバイダーを選択（OpenAI、Anthropic、DeepSeek、またはカスタム）。\n2. APIキーを入力。\n3. モデルを選択して保存。\n4. メニューで「LLMテキスト最適化」を有効化。\n\n有効にすると、録音終了後に認識テキストが選択したLLMプロバイダーへ送信され、修正されます。音声そのものは送信されません。録音中にスペースまたはバックスペースを押すと、LLMをスキップしてすぐに入力できます。";
 
 /* Errors */
 "error.noApiKey" = "API キーが設定されていません";
@@ -96,6 +107,7 @@
 "permissions.reset.confirm.title" = "権限をリセット";
 "permissions.reset.confirm.message" = "ターミナルで tccutil を実行してマイクと音声認識の権限をリセットします。リセット後に再度許可が必要です。";
 "permissions.reset.confirm.ok" = "続ける";
+"permissions.reset.terminalDone" = "完了しました。AtomVoice を再起動してください。";
 "permissions.close" = "閉じる";
 
 "permission.accessibility.title" = "アクセシビリティ";

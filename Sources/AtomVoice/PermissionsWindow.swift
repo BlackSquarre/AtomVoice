@@ -335,17 +335,21 @@ final class PermissionsWindowController: NSObject {
         alert.informativeText = loc("permissions.reset.confirm.message")
         alert.addButton(withTitle: loc("permissions.reset.confirm.ok"))
         alert.addButton(withTitle: loc("settings.cancel"))
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         task.arguments = ["-a", "Terminal", "--args", "-e",
             "tccutil reset Microphone com.blacksquarre.AtomVoice && " +
             "tccutil reset SpeechRecognition com.blacksquarre.AtomVoice && " +
-            "echo '完成，请重启 AtomVoice'"]
+            "printf '%s\\n' \(shellQuoted(loc("permissions.reset.terminalDone")))"]
         try? task.run()
     }
 
     @objc private func closeWindow() { window?.close() }
+
+    private func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
 }
 
 // MARK: - NSWindowDelegate

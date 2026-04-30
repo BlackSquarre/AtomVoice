@@ -383,9 +383,31 @@ final class MenuBarController {
     @objc private func openLLMHowto(_ sender: NSMenuItem) {
         let alert = NSAlert()
         alert.messageText = loc("menu.llm.howto")
-        alert.informativeText = loc("llm.howto.message")
-        alert.addButton(withTitle: NSLocalizedString("OK", comment: ""))
-        alert.runModal()
+        alert.accessoryView = makeLLMHowtoTextView()
+        alert.addButton(withTitle: loc("common.ok"))
+        AppDelegate.runModalAlert(alert)
+    }
+
+    private func makeLLMHowtoTextView() -> NSView {
+        let text = loc("llm.howto.message")
+        let width: CGFloat = 560
+        let font = NSFont.systemFont(ofSize: 13)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+
+        let height = ceil((text as NSString).boundingRect(
+            with: NSSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font, .paragraphStyle: paragraph]
+        ).height) + 4
+
+        let textField = NSTextField(wrappingLabelWithString: text)
+        textField.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        textField.font = font
+        textField.textColor = .secondaryLabelColor
+        textField.maximumNumberOfLines = 0
+        textField.preferredMaxLayoutWidth = width
+        return textField
     }
 
     @objc private func openAbout(_ sender: NSMenuItem) {
@@ -404,7 +426,7 @@ final class MenuBarController {
         alert.informativeText = loc("accessibility.warning.message")
         alert.addButton(withTitle: loc("accessibility.openSettings"))
         alert.addButton(withTitle: loc("accessibility.ignore"))
-        if alert.runModal() == .alertFirstButtonReturn {
+        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         }
         statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: loc("app.title"))

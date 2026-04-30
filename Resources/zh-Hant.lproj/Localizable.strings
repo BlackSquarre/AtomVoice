@@ -21,6 +21,7 @@
 "menu.llm.howto" = "如何使用 LLM 優化";
 "menu.settings" = "設定...";
 "menu.quit" = "退出";
+"common.ok" = "確定";
 
 /* Settings */
 "settings.title" = "LLM 文字優化設定";
@@ -50,6 +51,16 @@
 "provider.label.name" = "名稱:";
 "provider.label.url" = "位址:";
 "provider.label.model" = "模型:";
+"provider.preset.openai" = "OpenAI";
+"provider.preset.anthropic" = "Anthropic (Claude)";
+"provider.preset.deepseek" = "DeepSeek";
+"provider.preset.moonshot" = "Moonshot (Kimi)";
+"provider.preset.alibaba" = "阿里雲百煉 (Qwen)";
+"provider.preset.zhipu" = "智譜 AI (GLM)";
+"provider.preset.lingyi" = "零一萬物 (Yi)";
+"provider.preset.groq" = "Groq";
+"provider.preset.ollama" = "Ollama (本機)";
+"provider.preset.custom" = "自訂";
 
 /* Capsule */
 "capsule.refining" = "優化中...";
@@ -63,7 +74,7 @@
 "about.copyright" = "© 2026 缪凌儒. 保留所有權利。";
 
 /* LLM How-to */
-"llm.howto.message" = "1. 選擇服務商（OpenAI、Anthropic、DeepSeek 或自訂）。\n2. 填寫 API 金鑰。\n3. 選擇模型並儲存。\n4. 在選單中啟用「LLM 文字優化」。\n\n每次錄音結束後，辨識文字將送至 LLM 進行修正，支援串流輸出即時預覽。錄音期間按空白鍵或退格鍵可略過 LLM 直接上屏。";
+"llm.howto.message" = "LLM 優化會在語音辨識完成後，再讓大型語言模型檢查一遍辨識文字，協助修正聽錯的詞、同音誤辨、專有名詞錯誤和標點問題，讓最後輸入的內容更接近你原本想說的話。\n\n例如：把「配森」修正為「Python」，補上漏掉的標點，整理明顯不通順的句子。\n\n使用方法：\n1. 選擇服務商（OpenAI、Anthropic、DeepSeek 或自訂）。\n2. 填寫 API 金鑰。\n3. 選擇模型並儲存。\n4. 在選單中啟用「LLM 文字優化」。\n\n開啟後，每次錄音結束，辨識出的文字會傳送給你選擇的 LLM 服務商進行修正；音訊本身不會傳送。錄音期間按空白鍵或退格鍵，可以略過 LLM 直接上屏。";
 
 /* Errors */
 "error.noApiKey" = "未設定 API 金鑰";
@@ -96,6 +107,7 @@
 "permissions.reset.confirm.title" = "重置權限";
 "permissions.reset.confirm.message" = "將在終端機執行 tccutil 重置麥克風和語音辨識權限，重置後需要重新授權。";
 "permissions.reset.confirm.ok" = "繼續";
+"permissions.reset.terminalDone" = "完成，請重新啟動 AtomVoice";
 "permissions.close" = "關閉";
 
 "permission.accessibility.title" = "輔助使用";

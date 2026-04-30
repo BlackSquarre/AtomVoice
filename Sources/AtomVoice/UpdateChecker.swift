@@ -118,7 +118,7 @@ final class UpdateChecker: NSObject {
         alert.informativeText = loc("update.available.message", displayVersion, current)
         alert.addButton(withTitle: loc("update.install"))
         alert.addButton(withTitle: loc("update.later"))
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
         startDownload(release)
     }
 
@@ -285,7 +285,7 @@ final class UpdateChecker: NSObject {
         alert.informativeText = loc("update.done.message", version)
         alert.addButton(withTitle: loc("update.restart"))
         alert.addButton(withTitle: loc("update.later"))
-        if alert.runModal() == .alertFirstButtonReturn {
+        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
             applyAndRelaunch(newAppURL: newAppURL)
         }
     }
@@ -404,8 +404,8 @@ final class UpdateChecker: NSObject {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        alert.addButton(withTitle: loc("common.ok"))
+        AppDelegate.runModalAlert(alert)
     }
 
     /// 将版本字符串拆分为基础版本号和 pre-release 标签

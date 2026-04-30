@@ -11,18 +11,20 @@ struct LLMProvider: Codable {
 final class ProviderStore {
     static let key = "llmProviders"
 
-    static let defaults: [LLMProvider] = [
-        LLMProvider(name: "OpenAI",            baseURL: "https://api.openai.com/v1",                           defaultModel: "gpt-4.1-mini"),
-        LLMProvider(name: "Anthropic (Claude)",baseURL: "https://api.anthropic.com/v1",                        defaultModel: "claude-sonnet-4-6"),
-        LLMProvider(name: "DeepSeek",          baseURL: "https://api.deepseek.com/v1",                         defaultModel: "deepseek-v4-flash"),
-        LLMProvider(name: "Moonshot (Kimi)",   baseURL: "https://api.moonshot.cn/v1",                          defaultModel: "kimi-latest"),
-        LLMProvider(name: "阿里云百炼 (Qwen)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",   defaultModel: "qwen-turbo-latest"),
-        LLMProvider(name: "智谱 AI (GLM)",     baseURL: "https://open.bigmodel.cn/api/paas/v4",                defaultModel: "glm-4-flash"),
-        LLMProvider(name: "零一万物 (Yi)",     baseURL: "https://api.lingyiwanwu.com/v1",                      defaultModel: "yi-lightning"),
-        LLMProvider(name: "Groq",              baseURL: "https://api.groq.com/openai/v1",                      defaultModel: "llama-3.3-70b-versatile"),
-        LLMProvider(name: "Ollama (本地)",     baseURL: "http://localhost:11434/v1",                           defaultModel: "qwen2.5:1.5b"),
-        LLMProvider(name: "自定义",            baseURL: "",                                                    defaultModel: ""),
-    ]
+    static var defaults: [LLMProvider] {
+        [
+            LLMProvider(name: loc("provider.preset.openai"),    baseURL: "https://api.openai.com/v1",                         defaultModel: "gpt-4.1-mini"),
+            LLMProvider(name: loc("provider.preset.anthropic"), baseURL: "https://api.anthropic.com/v1",                      defaultModel: "claude-sonnet-4-6"),
+            LLMProvider(name: loc("provider.preset.deepseek"),  baseURL: "https://api.deepseek.com/v1",                       defaultModel: "deepseek-v4-flash"),
+            LLMProvider(name: loc("provider.preset.moonshot"),  baseURL: "https://api.moonshot.cn/v1",                        defaultModel: "kimi-latest"),
+            LLMProvider(name: loc("provider.preset.alibaba"),   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel: "qwen-turbo-latest"),
+            LLMProvider(name: loc("provider.preset.zhipu"),     baseURL: "https://open.bigmodel.cn/api/paas/v4",              defaultModel: "glm-4-flash"),
+            LLMProvider(name: loc("provider.preset.lingyi"),    baseURL: "https://api.lingyiwanwu.com/v1",                    defaultModel: "yi-lightning"),
+            LLMProvider(name: loc("provider.preset.groq"),      baseURL: "https://api.groq.com/openai/v1",                    defaultModel: "llama-3.3-70b-versatile"),
+            LLMProvider(name: loc("provider.preset.ollama"),    baseURL: "http://localhost:11434/v1",                         defaultModel: "qwen2.5:1.5b"),
+            LLMProvider(name: loc("provider.preset.custom"),    baseURL: "",                                                  defaultModel: ""),
+        ]
+    }
 
     static func load() -> [LLMProvider] {
         guard let data = UserDefaults.standard.data(forKey: key),
@@ -62,7 +64,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
             backing: .buffered,
             defer: false
         )
-        sheet.title = "管理服务商"
+        sheet.title = loc("provider.title")
         let cv = sheet.contentView!
         let p: CGFloat = 20
 
@@ -81,7 +83,9 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
         tableView.allowsMultipleSelection = false
 
         let cols: [(String, String, CGFloat)] = [
-            ("name", "名称", 110), ("url", "API 地址", 250), ("model", "默认模型", 140)
+            ("name", loc("provider.col.name"), 110),
+            ("url", loc("provider.col.url"), 250),
+            ("model", loc("provider.col.model"), 140)
         ]
         for (id, title, w) in cols {
             let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(id))
@@ -116,7 +120,9 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
         nameField  = makeField(); urlField = makeField(); modelField = makeField()
         nameField.delegate = self; urlField.delegate = self; modelField.delegate = self
 
-        for (label, field) in [("名称:", nameField!), ("地址:", urlField!), ("模型:", modelField!)] {
+        for (label, field) in [(loc("provider.label.name"), nameField!),
+                               (loc("provider.label.url"), urlField!),
+                               (loc("provider.label.model"), modelField!)] {
             let l = NSTextField(labelWithString: label)
             l.alignment = .right; l.font = .systemFont(ofSize: 12)
             l.textColor = .secondaryLabelColor
@@ -126,7 +132,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
         grid.column(at: 0).width = 44
 
         // 完成按钮
-        let doneBtn = NSButton(title: "完成", target: self, action: #selector(done))
+        let doneBtn = NSButton(title: loc("provider.done"), target: self, action: #selector(done))
         doneBtn.translatesAutoresizingMaskIntoConstraints = false
         doneBtn.bezelStyle = .rounded
         doneBtn.keyEquivalent = "\r"
@@ -217,7 +223,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
     // MARK: Actions
 
     @objc private func addRow() {
-        providers.append(LLMProvider(name: "新服务商", baseURL: "", defaultModel: ""))
+        providers.append(LLMProvider(name: loc("provider.new"), baseURL: "", defaultModel: ""))
         tableView.reloadData()
         let i = providers.count - 1
         tableView.selectRowIndexes(IndexSet(integer: i), byExtendingSelection: false)
@@ -672,12 +678,12 @@ final class SettingsWindowController: NSObject {
         UserDefaults.standard.set(apiKeyField.stringValue,     forKey: "llmAPIKey")
         UserDefaults.standard.set(modelField.stringValue,      forKey: "llmModel")
 
-        statusLabel.stringValue = "正在测试..."
+        statusLabel.stringValue = loc("settings.testing")
         statusLabel.textColor = .secondaryLabelColor
 
         llmRefiner.testConnection { [weak self] success, msg in
             DispatchQueue.main.async {
-                self?.statusLabel.stringValue = success ? "连接成功!" : "连接失败: \(msg)"
+                self?.statusLabel.stringValue = success ? loc("settings.connected") : loc("settings.connectFailed", msg)
                 self?.statusLabel.textColor = success ? .systemGreen : .systemRed
                 if let b = origBase  { UserDefaults.standard.set(b, forKey: "llmAPIBaseURL") }
                 if let k = origKey   { UserDefaults.standard.set(k, forKey: "llmAPIKey") }
@@ -692,7 +698,7 @@ final class SettingsWindowController: NSObject {
         UserDefaults.standard.set(modelField.stringValue,      forKey: "llmModel")
         let selectedDelay = delayOptions[delayPopup.indexOfSelectedItem]
         UserDefaults.standard.set(selectedDelay, forKey: "llmResultDelay")
-        statusLabel.stringValue = "已保存"
+        statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
         window?.close()
     }

@@ -21,6 +21,7 @@
 "menu.llm.howto" = "LLM 최적화 사용 방법";
 "menu.settings" = "설정...";
 "menu.quit" = "종료";
+"common.ok" = "확인";
 
 /* Settings */
 "settings.title" = "LLM 텍스트 최적화 설정";
@@ -50,6 +51,16 @@
 "provider.label.name" = "이름:";
 "provider.label.url" = "주소:";
 "provider.label.model" = "모델:";
+"provider.preset.openai" = "OpenAI";
+"provider.preset.anthropic" = "Anthropic (Claude)";
+"provider.preset.deepseek" = "DeepSeek";
+"provider.preset.moonshot" = "Moonshot (Kimi)";
+"provider.preset.alibaba" = "Alibaba Cloud Bailian (Qwen)";
+"provider.preset.zhipu" = "Zhipu AI (GLM)";
+"provider.preset.lingyi" = "01.AI (Yi)";
+"provider.preset.groq" = "Groq";
+"provider.preset.ollama" = "Ollama(로컬)";
+"provider.preset.custom" = "사용자 지정";
 
 /* Capsule */
 "capsule.refining" = "최적화 중...";
@@ -63,7 +74,7 @@
 "about.copyright" = "© 2026 缪凌儒BlackSquare\nAll rights reserved.";
 
 /* LLM How-to */
-"llm.howto.message" = "1. 공급자를 선택합니다（OpenAI、Anthropic、DeepSeek 또는 사용자 지정）。\n2. API 키를 입력합니다.\n3. 모델을 선택하고 저장합니다.\n4. 메뉴에서 「LLM 텍스트 최적화」를 활성화합니다.\n\n녹음이 끝나면 인식된 텍스트가 LLM으로 전송되어 수정됩니다. 스트리밍 출력으로 실시간 미리보기가 가능합니다. 녹음 중 스페이스 또는 백스페이스를 누르면 LLM을 건너뛰고 바로 입력할 수 있습니다.";
+"llm.howto.message" = "LLM 최적화는 음성 인식이 끝난 뒤 선택한 모델이 인식된 텍스트를 다시 확인하여 잘못 들은 단어, 동음이의어 오인식, 고유명사 오류, 구두점 문제를 수정합니다. 최종 입력되는 내용이 원래 말하려던 내용에 더 가까워집니다.\n\n예: 「配森」을 「Python」으로 고치거나, 빠진 구두점을 보완하거나, 명백하게 어색한 문장을 다듬을 수 있습니다.\n\n사용 방법:\n1. 공급자를 선택합니다(OpenAI, Anthropic, DeepSeek 또는 사용자 지정).\n2. API 키를 입력합니다.\n3. 모델을 선택하고 저장합니다.\n4. 메뉴에서 「LLM 텍스트 최적화」를 활성화합니다.\n\n활성화하면 녹음이 끝날 때마다 인식된 텍스트가 선택한 LLM 공급자로 전송되어 수정됩니다. 오디오 자체는 전송되지 않습니다. 녹음 중 스페이스 또는 백스페이스를 누르면 LLM을 건너뛰고 바로 입력할 수 있습니다.";
 
 /* Errors */
 "error.noApiKey" = "API 키가 설정되지 않았습니다";
@@ -96,6 +107,7 @@
 "permissions.reset.confirm.title" = "권한 재설정";
 "permissions.reset.confirm.message" = "터미널에서 tccutil을 실행하여 마이크 및 음성 인식 권한을 재설정합니다. 재설정 후 다시 허용해야 합니다.";
 "permissions.reset.confirm.ok" = "계속";
+"permissions.reset.terminalDone" = "완료되었습니다. AtomVoice를 다시 시작하세요.";
 "permissions.close" = "닫기";
 
 "permission.accessibility.title" = "손쉬운 사용";
