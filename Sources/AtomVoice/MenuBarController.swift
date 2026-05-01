@@ -19,6 +19,9 @@ final class MenuBarController {
         ("zh-TW", "繁體中文"),
         ("ja-JP", "日本語"),
         ("ko-KR", "한국어"),
+        ("es-ES", "Español"),
+        ("fr-FR", "Français"),
+        ("de-DE", "Deutsch"),
     ]
 
     init(onLanguageChanged: @escaping () -> Void, llmRefiner: LLMRefiner) {

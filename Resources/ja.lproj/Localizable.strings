@@ -84,6 +84,7 @@
 "error.noData" = "レスポンスデータがありません";
 "error.badFormat" = "レスポンス形式が異常です";
 "error.jsonParse" = "JSON 解析エラー";
+"error.noInputDevice" = "マイクまたは入力デバイスが見つかりません";
 
 /* Permissions */
 "permission.mic.title" = "マイクへのアクセスが必要です";

@@ -386,8 +386,8 @@ final class CapsuleWindowController {
         }
     }
 
-    /// LLM 失败时显示错误提示，3 秒后自动消失（文字注入由调用方先行处理）
-    func showError(_ message: String) {
+    /// 显示错误提示，一段时间后自动消失。
+    func showError(_ message: String, dismissAfter delay: TimeInterval = 3) {
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
@@ -395,7 +395,7 @@ final class CapsuleWindowController {
         // 在 updateText 之后设置红色（updateText 会重置为默认颜色）
         textLabel?.textColor = .systemRed
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             self?.dismiss()
         }
     }

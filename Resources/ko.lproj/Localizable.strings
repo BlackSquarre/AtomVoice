@@ -84,6 +84,7 @@
 "error.noData" = "응답 데이터 없음";
 "error.badFormat" = "응답 형식이 올바르지 않습니다";
 "error.jsonParse" = "JSON 파싱 오류";
+"error.noInputDevice" = "마이크 또는 입력 장치를 찾을 수 없습니다";
 
 /* Permissions */
 "permission.mic.title" = "마이크 접근 권한이 필요합니다";

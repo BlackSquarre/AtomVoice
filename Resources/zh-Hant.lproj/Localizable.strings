@@ -84,6 +84,7 @@
 "error.noData" = "無回應資料";
 "error.badFormat" = "回應格式異常";
 "error.jsonParse" = "JSON 解析失敗";
+"error.noInputDevice" = "找不到麥克風或輸入裝置";
 
 /* Permissions */
 "permission.mic.title" = "需要麥克風權限";

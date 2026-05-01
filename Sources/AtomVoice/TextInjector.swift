@@ -3,13 +3,20 @@ import Carbon
 
 final class TextInjector {
     func inject(text: String) {
+        // 如果光标后方已有标点，则移除注入文本末尾的标点
+        var finalText = text
+        if let nextChar = getCharacterAfterCursor(),
+           PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
+            finalText = removeTrailingPunctuation(text)
+        }
+
         // Save current clipboard
         let pasteboard = NSPasteboard.general
         let previousContents = savePasteboard(pasteboard)
 
         // Set text to clipboard
         pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        pasteboard.setString(finalText, forType: .string)
 
         // Check if current input source is CJK, switch to ASCII if needed
         let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
@@ -37,6 +44,47 @@ final class TextInjector {
                 }
             }
         }
+    }
+
+    // MARK: - 光标标点检测
+
+    /// 获取当前聚焦输入框中光标后方的第一个字符
+    private func getCharacterAfterCursor() -> Character? {
+        let systemWide = AXUIElementCreateSystemWide()
+
+        // 获取当前聚焦的 UI 元素
+        var focused: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
+        guard result == .success, let focusedElement = focused else { return nil }
+
+        // 获取选区范围（光标位置）
+        var selectedRange: CFTypeRef?
+        let rangeResult = AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXSelectedTextRangeAttribute as CFString, &selectedRange)
+        guard rangeResult == .success, let range = selectedRange else { return nil }
+
+        var rangeValue = CFRange()
+        AXValueGetValue(range as! AXValue, .cfRange, &rangeValue)
+
+        // 获取输入框文本内容
+        var value: CFTypeRef?
+        let textResult = AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXValueAttribute as CFString, &value)
+        guard textResult == .success, let text = value as? String else { return nil }
+
+        // 计算光标后方位置
+        let nextIndex = rangeValue.location + rangeValue.length
+        guard nextIndex >= 0, nextIndex < text.count else { return nil }
+
+        let index = text.index(text.startIndex, offsetBy: nextIndex)
+        return text[index]
+    }
+
+    /// 移除文本末尾的标点符号
+    private func removeTrailingPunctuation(_ text: String) -> String {
+        var trimmed = text
+        while let last = trimmed.last, PunctuationProcessor.isSentenceEndingPunctuation(last) {
+            trimmed = String(trimmed.dropLast())
+        }
+        return trimmed
     }
 
     private func isCJKInputSource(_ source: TISInputSource) -> Bool {

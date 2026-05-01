@@ -75,7 +75,7 @@ struct PunctuationProcessor {
         if isCJK {
             return trimmed + detectCJKPunctuation(trimmed, language: language)
         } else {
-            return trimmed + detectEnglishPunctuation(trimmed)
+            return trimmed + detectLatinPunctuation(trimmed, language: language)
         }
     }
 
@@ -154,39 +154,83 @@ struct PunctuationProcessor {
         return "。"
     }
 
-    // MARK: - 英文标点检测
+    // MARK: - 拉丁语系标点检测
 
-    private static func detectEnglishPunctuation(_ text: String) -> String {
+    private static func detectLatinPunctuation(_ text: String, language: String) -> String {
         let lower = text.lowercased().trimmingCharacters(in: .whitespaces)
         let words = lower.components(separatedBy: .whitespaces)
         let firstWord = words.first ?? ""
 
-        // 疑问句
-        let questionStarters = ["what", "where", "when", "who", "whom", "whose",
-                                 "which", "why", "how", "is", "are", "was", "were",
-                                 "do", "does", "did", "can", "could", "will", "would",
-                                 "shall", "should", "may", "might", "have", "has", "had",
-                                 "isn't", "aren't", "wasn't", "weren't", "don't", "doesn't",
-                                 "didn't", "can't", "couldn't", "won't", "wouldn't"]
+        // 疑问句特征词
+        let questionStarters: [String]
+        let tagQuestions: [String]
+        let exclamationStarters: [String]
+        let exclamationEnders: [String]
+
+        switch language {
+        case let l where l.hasPrefix("es"):
+            // 西班牙语
+            questionStarters = ["qué", "dónde", "cómo", "cuándo", "por", "quién",
+                                "cuál", "cuánto", "cuánta", "cuántos", "cuántas",
+                                "verdad", "no", "es", "son", "está", "están",
+                                "puede", "pueden", "debe", "deben", "hay",
+                                "tiene", "tienen", "será", "serán"]
+            tagQuestions = ["verdad", "no", "correcto", "ok"]
+            exclamationStarters = ["ay", "ojalá", "bravo", "magnífico", "increíble",
+                                   "genial", "fantástico", "vaya", "dios", "caramba"]
+            exclamationEnders = ["increíble", "fantástico", "magnífico", "genial",
+                                 "maravilloso", "excelente", "perfecto", "por fin"]
+        case let l where l.hasPrefix("fr"):
+            // 法语
+            questionStarters = ["où", "quand", "comment", "pourquoi", "qui", "quel",
+                                "quelle", "quels", "quelles", "combien", "est-ce",
+                                "est", "sont", "peut", "peuvent", "doit", "doivent",
+                                "y", "a", "sera", "seront"]
+            tagQuestions = ["n'est-ce pas", "non", "d'accord", "ok"]
+            exclamationStarters = ["oh", "bravo", "formidable", "magnifique", "incroyable",
+                                   "génial", "fantastique", "mince", "diable", "zut"]
+            exclamationEnders = ["incroyable", "fantastique", "magnifique", "génial",
+                                 "merveilleux", "excellent", "parfait", "enfin"]
+        case let l where l.hasPrefix("de"):
+            // 德语
+            questionStarters = ["wo", "wie", "warum", "wann", "wer", "welcher",
+                                "welche", "welches", "was", "kann", "kannst", "können",
+                                "ist", "sind", "war", "wird", "werden", "hat", "haben",
+                                "soll", "sollen", "möchtest", "möchten", "darf", "dürfen"]
+            tagQuestions = ["nicht wahr", "richtig", "ok", "gell"]
+            exclamationStarters = ["ach", "wow", "toll", "fantastisch", "unglaublich",
+                                   "super", "großartig", "herrlich", "donnerwetter", "oha"]
+            exclamationEnders = ["unglaublich", "fantastisch", "großartig", "wunderbar",
+                                 "ausgezeichnet", "perfekt", "endlich", "super"]
+        default:
+            // 英语（默认）
+            questionStarters = ["what", "where", "when", "who", "whom", "whose",
+                                "which", "why", "how", "is", "are", "was", "were",
+                                "do", "does", "did", "can", "could", "will", "would",
+                                "shall", "should", "may", "might", "have", "has", "had",
+                                "isn't", "aren't", "wasn't", "weren't", "don't", "doesn't",
+                                "didn't", "can't", "couldn't", "won't", "wouldn't"]
+            tagQuestions = ["right", "huh", "yeah", "no", "correct", "ok", "isn't it"]
+            exclamationStarters = ["wow", "oh", "amazing", "great", "awesome",
+                                   "incredible", "fantastic", "holy", "damn",
+                                   "god", "omg", "no way", "unbelievable"]
+            exclamationEnders = ["amazing", "awesome", "great", "incredible",
+                                 "fantastic", "wonderful", "excellent", "perfect",
+                                 "finally", "at last"]
+        }
+
+        // 疑问句检测
         if questionStarters.contains(firstWord) {
             return "?"
         }
-        // 句末 right/huh/yeah 等反问
-        let tagQuestions = ["right", "huh", "yeah", "no", "correct", "ok", "isn't it"]
         for tag in tagQuestions {
             if lower.hasSuffix(tag) { return "?" }
         }
 
-        // 感叹句
-        let exclamationStarters = ["wow", "oh", "amazing", "great", "awesome",
-                                    "incredible", "fantastic", "holy", "damn",
-                                    "god", "omg", "no way", "unbelievable"]
+        // 感叹句检测
         for starter in exclamationStarters {
             if lower.hasPrefix(starter) { return "!" }
         }
-        let exclamationEnders = ["amazing", "awesome", "great", "incredible",
-                                  "fantastic", "wonderful", "excellent", "perfect",
-                                  "finally", "at last"]
         for ender in exclamationEnders {
             if lower.hasSuffix(ender) { return "!" }
         }
@@ -196,7 +240,15 @@ struct PunctuationProcessor {
 
     // MARK: - 辅助
 
-    private static func isSentenceEndingPunctuation(_ char: Character) -> Bool {
+    /// 检查文本末尾是否有句末标点
+    static func hasTrailingPunctuation(_ text: String) -> Bool {
+        guard let last = text.trimmingCharacters(in: .whitespacesAndNewlines).last else {
+            return false
+        }
+        return isSentenceEndingPunctuation(last)
+    }
+
+    static func isSentenceEndingPunctuation(_ char: Character) -> Bool {
         let endings: Set<Character> = [
             ".", "!", "?",          // 英文
             "。", "！", "？",       // 中文全角

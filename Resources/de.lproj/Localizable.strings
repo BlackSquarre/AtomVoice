@@ -1,0 +1,181 @@
+/* App */
+"app.title" = "AtomVoice";
+"menu.holdFn" = "Fn-Taste gedrückt halten für Spracheingabe";
+"menu.tapFn" = "Fn-Taste klicken für Spracheingabe";
+"menu.about" = "Über AtomVoice";
+"menu.language" = "Erkennungssprache";
+"menu.audioInput" = "Eingabegerät";
+"menu.audioInput.default" = "Systemstandard";
+"menu.animation" = "Animation";
+"menu.animation.dynamicIsland" = "Dynamic Island";
+"menu.animation.minimal" = "Minimalistisch";
+"menu.animation.none" = "Keine";
+"menu.animation.speed" = "Animationsgeschwindigkeit";
+"menu.animation.slow" = "Langsam";
+"menu.animation.medium" = "Mittel";
+"menu.animation.fast" = "Schnell";
+"menu.punctuation" = "Automatische Zeichensetzung";
+"menu.llm" = "LLM-Verfeinerung";
+"menu.llm.enabled" = "Aktiviert";
+"menu.llm.disabled" = "Deaktiviert";
+"menu.llm.howto" = "So verwenden Sie die LLM-Verfeinerung";
+"menu.settings" = "Einstellungen...";
+"menu.quit" = "Beenden";
+"common.ok" = "OK";
+
+/* Settings */
+"settings.title" = "LLM-Verfeinerung Einstellungen";
+"settings.llm.desc" = "Verwenden Sie ein LLM, um Spracherkennungsfehler automatisch zu korrigieren und die Zeichensetzung zu verbessern. Geben Sie Ihren API-Schlüssel ein, um zu aktivieren.";
+"settings.provider" = "Anbieter:";
+"settings.apiUrl" = "API-Basis-URL:";
+"settings.apiKey" = "API-Schlüssel:";
+"settings.model" = "Modell:";
+"settings.delay" = "Ergebnisverzögerung:";
+"settings.delayUnit" = "Sek (0 = sofort injizieren)";
+"settings.manage" = "Verwalten...";
+"settings.test" = "Testen";
+"settings.save" = "Speichern";
+"settings.cancel" = "Abbrechen";
+"settings.testing" = "Teste...";
+"settings.connected" = "Verbindung erfolgreich!";
+"settings.connectFailed" = "Verbindung fehlgeschlagen: %@";
+"settings.saved" = "Gespeichert";
+
+/* Provider Editor */
+"provider.title" = "Anbieter verwalten";
+"provider.col.name" = "Name";
+"provider.col.url" = "API-URL";
+"provider.col.model" = "Standardmodell";
+"provider.new" = "Neuer Anbieter";
+"provider.done" = "Fertig";
+"provider.label.name" = "Name:";
+"provider.label.url" = "URL:";
+"provider.label.model" = "Modell:";
+"provider.preset.openai" = "OpenAI";
+"provider.preset.anthropic" = "Anthropic (Claude)";
+"provider.preset.deepseek" = "DeepSeek";
+"provider.preset.moonshot" = "Moonshot (Kimi)";
+"provider.preset.alibaba" = "Alibaba Cloud Bailian (Qwen)";
+"provider.preset.zhipu" = "Zhipu AI (GLM)";
+"provider.preset.lingyi" = "01.AI (Yi)";
+"provider.preset.groq" = "Groq";
+"provider.preset.ollama" = "Ollama (Lokal)";
+"provider.preset.custom" = "Benutzerdefiniert";
+
+/* Capsule */
+"capsule.refining" = "Verfeinerung...";
+
+/* About */
+"about.appName" = "AtomVoice";
+"about.title" = "Über AtomVoice";
+"about.version" = "Version %@ (%@)";
+"about.bilibili" = "Bilibili";
+"about.github" = "GitHub";
+"about.copyright" = "© 2026 Miao Lingru. Alle Rechte vorbehalten.";
+
+/* LLM How-to */
+"llm.howto.message" = "Die LLM-Verfeinerung wird nach der Spracherkennung ausgeführt. Das ausgewählte Modell überprüft den erkannten Text und korrigiert falsch gehörte Wörter, Homophone, falsche Eigennamen und Zeichensetzung, sodass der endgültige Text dem entspricht, was Sie sagen wollten.\n\nZum Beispiel: Es kann \"pirson\" in \"Python\" korrigieren, fehlende Zeichensetzung hinzufügen und offensichtlich falsche Sätze korrigieren.\n\nSo verwenden Sie es:\n1. Wählen Sie einen Anbieter (OpenAI, Anthropic, DeepSeek oder benutzerdefiniert).\n2. Geben Sie Ihren API-Schlüssel ein.\n3. Wählen Sie ein Modell und speichern Sie.\n4. Aktivieren Sie \"LLM-Verfeinerung\" im Menü.\n\nWenn aktiviert, wird nach jeder Aufnahme der erkannte Text an den ausgewählten LLM-Anbieter zur Korrektur gesendet; die Audiodatei selbst wird nicht gesendet. Drücken Sie während der Aufnahme Leertaste oder Rücktaste, um LLM zu überspringen und sofort einzugeben.";
+
+/* Errors */
+"error.noApiKey" = "API-Schlüssel nicht konfiguriert";
+"error.invalidUrl" = "Ungültige API-URL";
+"error.timeout" = "Zeitüberschreitung (%.2fs)";
+"error.noNetwork" = "Keine Netzwerkverbindung";
+"error.noData" = "Keine Antwortdaten";
+"error.badFormat" = "Unerwartetes Antwortformat";
+"error.jsonParse" = "JSON-Analysefehler";
+"error.noInputDevice" = "Kein Mikrofon oder Eingabegerät gefunden";
+
+/* Permissions */
+"permission.mic.title" = "Mikrofonzugriff erforderlich";
+"permission.mic.message" = "Bitte gewähren Sie den Mikrofonzugriff in Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon.";
+"permission.speech.title" = "Spracherkennungszugriff erforderlich";
+"permission.speech.message" = "Bitte gewähren Sie den Zugriff auf Spracherkennung in Systemeinstellungen > Datenschutz & Sicherheit > Spracherkennung.";
+"accessibility.warning.title" = "Barrierefreiheitsberechtigung verloren";
+"accessibility.warning.message" = "Bitte gehen Sie zu Systemeinstellungen > Datenschutz & Sicherheit > Barrierefreiheit, entfernen und fügen Sie AtomVoice erneut hinzu.";
+"accessibility.openSettings" = "Systemeinstellungen öffnen";
+"accessibility.ignore" = "Ignorieren";
+
+/* Permissions Window */
+"permissions.window.title" = "Systemberechtigungsstatus";
+"permissions.heading" = "Gewähren Sie die für AtomVoice erforderlichen Berechtigungen";
+"permissions.guide.title" = "So erteilen Sie Berechtigungen";
+"permissions.guide.step1" = "Klicken Sie auf die Schaltfläche rechts, um die Systemeinstellungen zu öffnen";
+"permissions.guide.step2" = "Finden Sie AtomVoice in der Liste und aktivieren Sie den Schalter";
+"permissions.guide.step3" = "Kehren Sie hierher zurück und bestätigen Sie, dass der Status grün wird (Erteilt)";
+"permissions.troubleshoot" = "Fehlerbehebung";
+"permissions.reset" = "Alle Berechtigungen zurücksetzen";
+"permissions.reset.confirm.title" = "Berechtigungen zurücksetzen";
+"permissions.reset.confirm.message" = "Dies führt tccutil im Terminal aus, um Mikrofon- und Spracherkennungsberechtigungen zurückzusetzen. Sie müssen danach erneut autorisieren.";
+"permissions.reset.confirm.ok" = "Fortfahren";
+"permissions.reset.terminalDone" = "Fertig. Bitte starten Sie AtomVoice neu.";
+"permissions.close" = "Schließen";
+
+"permission.accessibility.title" = "Barrierefreiheit";
+"permission.accessibility.desc" = "AtomVoice benötigt die Barrierefreiheitsberechtigung, um die Fn-Taste global zu überwachen. Dies ist die Kernfunktion.";
+"permission.microphone.title" = "Mikrofon";
+"permission.microphone.desc" = "AtomVoice benötigt die Mikrofonberechtigung, um Ihre Stimme aufzuzeichnen.";
+"permission.speech.title" = "Spracherkennung";
+"permission.speech.desc" = "AtomVoice benötigt die Spracherkennungsberechtigung, um Ihre Stimme in Text umzuwandeln.";
+
+"permission.status.granted" = "Erteilt";
+"permission.status.denied" = "Verweigert";
+"permission.status.notDetermined" = "Nicht bestimmt";
+"permission.action.open" = "Systemeinstellungen öffnen";
+"permission.action.request" = "Berechtigung anfordern";
+
+"menu.launchAtLogin" = "Beim Starten öffnen";
+"menu.help" = "Berechtigungen & Hilfe";
+
+/* Trigger Key */
+"menu.triggerKey" = "Auslösertaste";
+"menu.triggerKey.fn" = "Fn / Globe (Standard)";
+"menu.triggerKey.rightOption" = "Rechte Option ⌥";
+"menu.triggerKey.rightControl" = "Rechte Control ^";
+"menu.triggerKey.rightCommand" = "Rechte Command ⌘";
+"menu.triggerKey.fn.symbol" = "Fn";
+"menu.triggerKey.rightOption.symbol" = "Rechte Option ⌥";
+"menu.triggerKey.rightControl.symbol" = "Rechte Control ^";
+"menu.triggerKey.rightCommand.symbol" = "Rechte Command ⌘";
+"menu.holdKey" = "%@ halten";
+"menu.tapKey" = "%@ klicken";
+"menu.startVoiceInput" = "für Spracheingabe";
+
+/* Other Settings */
+"menu.otherSettings" = "Weitere Einstellungen";
+
+/* Input Mode */
+"menu.inputMode" = "Eingabemodus";
+"menu.inputMode.tap" = "Tippen zum Sprechen";
+"menu.inputMode.hold" = "Halten zum Sprechen";
+"menu.silence.duration" = "Stopp-Verzögerung";
+
+/* Custom Prompt */
+"settings.prompt.label" = "System-Prompt:";
+"settings.prompt.title" = "Benutzerdefinierter System-Prompt";
+"settings.prompt.desc" = "Geben Sie den System-Prompt ein, der das LLM anleitet, wie es den erkannten Text verfeinern soll. Leer lassen, um den Standard-Prompt der ausgewählten Sprache zu verwenden.";
+"settings.prompt.edit" = "Bearbeiten...";
+"settings.prompt.done" = "Fertig";
+"settings.prompt.cancel" = "Abbrechen";
+"settings.prompt.reset" = "Standard wiederherstellen";
+"settings.delay.immediate" = "Sofort";
+
+/* Update */
+"menu.checkForUpdates" = "Nach Updates suchen...";
+"menu.betaUpdates" = "Beta-Versionen einschließen";
+"update.available.title" = "Update verfügbar";
+"update.available.message" = "AtomVoice %@ ist verfügbar (Sie haben %@). Jetzt installieren?";
+"update.upToDate.title" = "Sie sind auf dem neuesten Stand";
+"update.upToDate.message" = "AtomVoice %@ ist die neueste Version.";
+"update.install" = "Installieren";
+"update.later" = "Später";
+"update.downloading" = "Lade %@ herunter...";
+"update.installing" = "Installiere...";
+"update.done.title" = "Update bereit";
+"update.done.message" = "AtomVoice %@ wurde heruntergeladen. Jetzt neu starten, um das Update anzuwenden?";
+"update.restart" = "Jetzt neu starten";
+"update.error.title" = "Update fehlgeschlagen";
+"update.error.fetch" = "Updates konnten nicht überprüft werden: %@";
+"update.error.download" = "Download fehlgeschlagen: %@";
+"update.error.install" = "Installation fehlgeschlagen: %@";
+"update.beta" = "Beta";

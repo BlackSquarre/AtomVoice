@@ -84,6 +84,7 @@
 "error.noData" = "No response data";
 "error.badFormat" = "Unexpected response format";
 "error.jsonParse" = "JSON parse error";
+"error.noInputDevice" = "No microphone or input device found";
 
 /* Permissions */
 "permission.mic.title" = "Microphone Access Required";

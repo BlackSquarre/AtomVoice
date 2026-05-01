@@ -178,6 +178,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         guard !isRecording else { return }
+
+        guard !AudioEngineController.availableInputDevices().isEmpty else {
+            DispatchQueue.main.async { [self] in
+                capsuleWindow.show()
+                capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
+            }
+            return
+        }
         
         // 取消正在进行的 LLM 处理（如果有）
         llmRefiner.cancel()

@@ -1,0 +1,2 @@
+NSMicrophoneUsageDescription = "AtomVoice a besoin d'accéder au microphone pour transcrire votre voix.";
+NSSpeechRecognitionUsageDescription = "AtomVoice utilise la reconnaissance vocale pour convertir votre voix en texte.";

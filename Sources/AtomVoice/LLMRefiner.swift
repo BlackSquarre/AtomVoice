@@ -135,6 +135,12 @@ final class LLMRefiner {
             return "\(base)\n1. Fix mis-transcribed technical terms.\n2. Add missing sentence-ending punctuation (。？！)."
         case "ko-KR":
             return "\(base)\n1. Fix mis-transcribed technical terms.\n2. Add missing sentence-ending punctuation (.?!)."
+        case "es-ES":
+            return "\(base)\n1. Corrige errores de transcripción, homófonos y términos técnicos.\n2. Añade puntuación final (.?!)."
+        case "fr-FR":
+            return "\(base)\n1. Corrige les erreurs de transcription, les homophones et les termes techniques.\n2. Ajoute la ponctuation finale (.?!)."
+        case "de-DE":
+            return "\(base)\n1. Korrigiere Transkriptionsfehler, Homophone und Fachbegriffe.\n2. Füge abschließende Zeichensetzung hinzu (.?!)."
         default:
             return "\(base)\n1. Fix mis-transcribed technical terms.\n2. Add missing sentence-ending punctuation."
         }
