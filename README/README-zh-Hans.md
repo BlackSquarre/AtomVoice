@@ -2,7 +2,7 @@
 
 # AtomVoice（原子微语）
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 轻量级 macOS 菜单栏语音输入法。按住 **Fn** 键录音，松开后文字自动注入当前输入框。
 

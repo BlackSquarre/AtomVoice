@@ -2,7 +2,7 @@
 
 # AtomVoice（原子微語）
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 輕量級 macOS 選單列語音輸入法。按住 **Fn** 鍵錄音，鬆開後文字自動注入當前輸入框。
 

@@ -2,7 +2,7 @@
 
 # AtomVoice（原子微語）
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 軽量 macOS メニューバー音声入力アプリ。**Fn** キーを押して録音し、離すと文字が現在の入力欄に自動挿入されます。
 

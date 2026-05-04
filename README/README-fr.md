@@ -2,7 +2,7 @@
 
 # AtomVoice
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 Une application légère de saisie vocale pour la barre de menus macOS. Appuie sur **Fn** pour enregistrer, relâche pour injecter le texte transcrit dans le champ de saisie actif.
 

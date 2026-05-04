@@ -2,7 +2,7 @@
 
 # AtomVoice
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 A lightweight macOS menu bar voice input app. Hold **Fn** to record, release to inject transcribed text into any focused input field.
 

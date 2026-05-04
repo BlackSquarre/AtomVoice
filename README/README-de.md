@@ -2,7 +2,7 @@
 
 # AtomVoice
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 Eine leichtgewichtige macOS Menüleiste-Spracheingabe-App. **Fn** gedrückt halten um aufzunnehmen, loslassen um den transkribierten Text in das aktive Eingabefeld einzufügen.
 

@@ -2,7 +2,7 @@
 
 # AtomVoice（原子微語）
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 경량 macOS 메뉴 바 음성 입력 앱. **Fn** 키를 눌러 녹음하고, 놓으면 텍스트가 현재 입력 필드에 자동 주입됩니다.
 
