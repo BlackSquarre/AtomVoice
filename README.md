@@ -1,8 +1,8 @@
-[简体中文](README-zh-Hans.md) | [繁體中文](README-zh-Hant.md) | [日本語](README-ja.md) | [한국어](README-ko.md) | [Español](README-es.md) | [Français](README-fr.md) | [Deutsch](README-de.md) | **English**
+[简体中文](README/README-zh-Hans.md) | [繁體中文](README/README-zh-Hant.md) | [日本語](README/README-ja.md) | [한국어](README/README-ko.md) | [Español](README/README-es.md) | [Français](README/README-fr.md) | [Deutsch](README/README-de.md) | **English**
 
 # AtomVoice
 
-<p align="center"><img src="../AppIcon-1024.png" width="128"></p>
+<p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
 A lightweight macOS menu bar voice input app. Hold **Fn** to record, release to inject transcribed text into any focused input field.
 

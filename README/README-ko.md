@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README-zh-Hans.md) | [繁體中文](README-zh-Hant.md) | [日本語](README-ja.md) | **한국어** | [Español](README-es.md) | [Français](README-fr.md) | [Deutsch](README-de.md)
+
 # AtomVoice（原子微語）
 
 <p align="center"><img src="../AppIcon-1024.png" width="128"></p>
@@ -25,7 +27,7 @@
 - **LLM 최적화** — OpenAI 호환 API로 오인식된 단어 자동 수정 (예: 配森→Python); 9개 프로바이더 프리셋 + 커스텀 목록
 - **다이나믹 아일랜드 애니메이션** — 120Hz 스프링 물리 시뮬레이션 + 가우시안 블러
 - **다크/라이트 모드 자동 전환** — macOS 26에서는 Liquid Glass, 이전 시스템에서는 Visual Effect 블러
-- **5개 UI 언어** — 简体中文, 繁體中文, English, 日本語, 한국어
+- **7개 UI 언어** — 简体中文, 繁體中文, English, 日本語, 한국어, Español, Français, Deutsch
 - **CJK IME 호환** — 붙여넣기 전 자동으로 ASCII 입력 소스로 전환
 
 ## 시스템 요구 사항

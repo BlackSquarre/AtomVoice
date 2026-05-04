@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README-zh-Hans.md) | [繁體中文](README-zh-Hant.md) | **日本語** | [한국어](README-ko.md) | [Español](README-es.md) | [Français](README-fr.md) | [Deutsch](README-de.md)
+
 # AtomVoice（原子微語）
 
 <p align="center"><img src="../AppIcon-1024.png" width="128"></p>
@@ -25,7 +27,7 @@
 - **LLM 最適化** — OpenAI 互換 API で転写ミスを自動修正（例：配森→Python）；9 つのプロバイダープリセット + カスタムリスト
 - **ダイナミックアイランドアニメーション** — 120Hz のスプリング物理シミュレーション + ガウスブラー
 - **ダーク/ライトモード自動切替** — macOS 26 では Liquid Glass、旧システムでは Visual Effect ブラー
-- **5 つの UI 言語** — 簡体中文、繁體中文、English、日本語、한국어
+- **7 つの UI 言語** — 簡体中文、繁體中文、English、日本語、한국어、Español、Français、Deutsch
 - **CJK IME 対応** — ペースト前に自動で ASCII 入力ソースに切替
 
 ## システム要件

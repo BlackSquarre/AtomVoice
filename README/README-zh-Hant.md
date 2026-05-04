@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README-zh-Hans.md) | **繁體中文** | [日本語](README-ja.md) | [한국어](README-ko.md) | [Español](README-es.md) | [Français](README-fr.md) | [Deutsch](README-de.md)
+
 # AtomVoice（原子微語）
 
 <p align="center"><img src="../AppIcon-1024.png" width="128"></p>
@@ -25,7 +27,7 @@
 - **LLM 文本優化** — 接入 OpenAI 相容 API，自動糾錯（如配森→Python）；內建 9 個服務商預設，列表可自由編輯
 - **動態島風格動畫** — 120Hz 真實彈簧物理積分 + 高斯模糊；「優化中」時全膠囊掃光效果
 - **深色/淺色模式自動適應** — macOS 26 液態玻璃，舊系統毛玻璃降級
-- **5 種介面語言** — 簡體中文、繁體中文、English、日本語、한국어
+- **7 種介面語言** — 簡體中文、繁體中文、English、日本語、한국어、Español、Français、Deutsch
 - **CJK 輸入法相容** — 注入前自動切換輸入來源，防止中文輸入法攔截
 
 ## 系統需求
