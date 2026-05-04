@@ -7,8 +7,16 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "AtomVoice",
+            dependencies: ["SherpaOnnxShim", "AudioTapShim"],
             path: "Sources/AtomVoice",
-            exclude: ["Info.plist", "AppIcon.icns"],
+            exclude: [
+                "Info.plist",
+                "AppIcon.icns",
+                "AppIcon.png",
+                "AppIcon-1024.png",
+                "AppIcon-source-chromakey.png",
+                "AppIcon.iconset",
+            ],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",
@@ -17,6 +25,16 @@ let package = Package(
                     "-Xlinker", "Sources/AtomVoice/Info.plist",
                 ]),
             ]
+        ),
+        .target(
+            name: "SherpaOnnxShim",
+            path: "Sources/SherpaOnnxShim",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "AudioTapShim",
+            path: "Sources/AudioTapShim",
+            publicHeadersPath: "include"
         ),
     ]
 )

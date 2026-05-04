@@ -4,6 +4,10 @@
 "menu.tapFn" = "Fn 키를 클릭하면 음성 입력";
 "menu.about" = "아톰보이스 정보";
 "menu.language" = "인식 언어";
+"menu.recognitionEngine" = "인식 엔진";
+"menu.recognitionEngine.apple" = "Apple 음성 인식";
+"menu.recognitionEngine.sherpaOnnx" = "Sherpa 로컬 인식";
+"menu.sherpaOpenFolder" = "Sherpa 폴더 열기";
 "menu.audioInput" = "입력 장치";
 "menu.audioInput.default" = "시스템 기본값";
 "menu.animation" = "애니메이션";
@@ -85,6 +89,9 @@
 "error.badFormat" = "응답 형식이 올바르지 않습니다";
 "error.jsonParse" = "JSON 파싱 오류";
 "error.noInputDevice" = "마이크 또는 입력 장치를 찾을 수 없습니다";
+"error.sherpaRuntimeMissing" = "Sherpa 런타임을 찾을 수 없습니다. dylib 파일을 다음 위치에 넣어 주세요:\n%@";
+"error.sherpaModelMissing" = "Sherpa 모델을 찾을 수 없습니다. 모델 파일을 다음 위치에 넣어 주세요:\n%@";
+"error.sherpaLoadFailed" = "Sherpa 시작 실패: %@";
 
 /* Permissions */
 "permission.mic.title" = "마이크 접근 권한이 필요합니다";
@@ -143,11 +150,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "기타 설정";
+"menu.appleOnDeviceSpeech" = "Apple 강제 오프라인 인식";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple 강제 오프라인 인식 (현재 언어에서 사용할 수 없음)";
+"menu.engine.howto" = "엔진 선택 방법";
+"engine.howto.message" = "• Apple 음성 인식\n적합한 경우: 일상 입력, 안정적인 네트워크, 높은 인식 정확도가 중요한 경우.\n장점: macOS와의 통합이 좋고, 스트리밍 결과가 빠르며, 언어 지원이 비교적 넓습니다.\n단점: 일반적으로 네트워크와 시스템 서비스에 의존합니다. 음성이 Apple 온라인 서비스에서 처리될 수 있고, 약한 네트워크나 서비스 이상 시 안정성이 떨어질 수 있습니다.\n\n• SherpaOnnx 음성 인식\n적합한 경우: 개인정보 보호, 오프라인 사용, Apple 음성 서비스에 의존하지 않는 것이 중요한 경우.\n장점: 완전히 기기에서 실행되고, 인터넷이 필요 없으며, 오디오를 제3자에게 보내지 않습니다.\n단점: 모델과 런타임 파일을 준비해야 합니다. 현재 모델은 언어 범위, 정확도, 문장부호, 고유명사 인식이 Apple보다 약할 수 있으며, 더 많은 로컬 리소스를 사용합니다.\n\n• Apple 강제 오프라인 인식\n적합한 경우: Apple 엔진의 사용 경험을 유지하면서 클라우드 처리를 최대한 피하고 싶은 경우.\n단점: 일부 언어가 지원되지 않습니다. 정확도가 낮아질 수 있고, 시스템에 로컬 음성 자산이 없으면 인식 시작에 실패할 수 있으며, 여전히 Apple Speech 프레임워크의 제한을 받습니다.\n\n추천: 정확도 우선이면 Apple, 개인정보 보호와 완전 오프라인 우선이면 SherpaOnnx, Apple을 계속 쓰면서 로컬 처리를 선호하면 Apple 강제 오프라인 인식을 켜세요.";
 
 /* Input Mode */
 "menu.inputMode" = "입력 방식";
 "menu.inputMode.tap" = "클릭하여 말하기";
 "menu.inputMode.hold" = "길게 눌러 말하기";
+"menu.inputMode.liveInsertion" = "실시간 입력(실험)";
+"menu.inputMode.liveInsertion.tooltip" = "Apple 음성 인식에서만 사용할 수 있습니다. 녹음 중 완료된 문장을 바로 입력하며, 실시간 입력된 텍스트는 LLM 최적화를 건너뜁니다.";
 "menu.silence.duration" = "정지 딜레이";
 
 /* Custom Prompt */

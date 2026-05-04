@@ -112,6 +112,13 @@ final class SpeechRecognizerController {
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
         req.addsPunctuation = true
+        if UserDefaults.standard.bool(forKey: "appleOnDeviceRecognitionEnabled") {
+            if recognizer?.supportsOnDeviceRecognition == true {
+                req.requiresOnDeviceRecognition = true
+            } else {
+                print("[SpeechRecognizer] On-device recognition is unavailable for the selected language")
+            }
+        }
         return req
     }
 

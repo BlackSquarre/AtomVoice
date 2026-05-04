@@ -132,11 +132,10 @@ final class PermissionsWindowController: NSObject {
             vStack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -20),
         ])
 
-        // 麦克风图标，使用系统强调色
+        // App 图标
         let iconView = NSImageView()
-        iconView.image = NSImage(systemSymbolName: "mic.circle.fill", accessibilityDescription: nil)
-        iconView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 50, weight: .light)
-        iconView.contentTintColor = .controlAccentColor
+        iconView.image = NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.widthAnchor.constraint(equalToConstant: 56).isActive = true
         iconView.heightAnchor.constraint(equalToConstant: 56).isActive = true

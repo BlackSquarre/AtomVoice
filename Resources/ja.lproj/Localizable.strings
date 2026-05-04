@@ -4,6 +4,10 @@
 "menu.tapFn" = "Fn キーをクリックして音声入力";
 "menu.about" = "原子微声 について";
 "menu.language" = "認識言語";
+"menu.recognitionEngine" = "認識エンジン";
+"menu.recognitionEngine.apple" = "Apple 音声認識";
+"menu.recognitionEngine.sherpaOnnx" = "Sherpa ローカル認識";
+"menu.sherpaOpenFolder" = "Sherpa フォルダを開く";
 "menu.audioInput" = "入力デバイス";
 "menu.audioInput.default" = "システムデフォルト";
 "menu.animation" = "アニメーション";
@@ -85,6 +89,9 @@
 "error.badFormat" = "レスポンス形式が異常です";
 "error.jsonParse" = "JSON 解析エラー";
 "error.noInputDevice" = "マイクまたは入力デバイスが見つかりません";
+"error.sherpaRuntimeMissing" = "Sherpa ランタイムが見つかりません。dylib ファイルを次の場所に置いてください：\n%@";
+"error.sherpaModelMissing" = "Sherpa モデルが見つかりません。モデルファイルを次の場所に置いてください：\n%@";
+"error.sherpaLoadFailed" = "Sherpa の起動に失敗しました：%@";
 
 /* Permissions */
 "permission.mic.title" = "マイクへのアクセスが必要です";
@@ -143,11 +150,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "その他の設定";
+"menu.appleOnDeviceSpeech" = "Apple 強制オフライン認識";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple 強制オフライン認識（この言語では利用不可）";
+"menu.engine.howto" = "エンジンの選び方";
+"engine.howto.message" = "• Apple 音声認識\n適した用途：日常入力、安定したネットワーク、認識精度を優先したい場合。\n強み：macOSとの統合が良く、ストリーミング結果が速く、多言語対応も比較的充実しています。\n弱点：通常ネットワークやシステムサービスに依存します。音声がAppleのオンラインサービスで処理される可能性があり、弱いネットワークやサービス障害時に安定性が下がることがあります。\n\n• SherpaOnnx 音声認識\n適した用途：プライバシー重視、オフライン利用、Apple音声サービスに依存したくない場合。\n強み：完全にローカルで動作し、インターネット不要で、音声を第三者に送信しません。\n弱点：モデルとランタイムの準備が必要です。現在のモデルは言語対応、精度、句読点、固有名詞認識でAppleに劣る場合があり、ローカルリソースも多く使います。\n\n• Apple 強制オフライン認識\n適した用途：Appleの使い勝手を保ちながら、できるだけクラウド処理を避けたい場合。\n弱点：一部の言語は非対応です。精度が下がる可能性があり、システムにローカル音声アセットがない場合は認識を開始できないことがあります。Apple Speechフレームワークの制限も受けます。\n\nおすすめ：精度優先ならApple、プライバシーと完全オフライン優先ならSherpaOnnx、Appleを使い続けつつローカル処理を優先したいならApple強制オフライン認識を有効にしてください。";
 
 /* Input Mode */
 "menu.inputMode" = "入力モード";
 "menu.inputMode.tap" = "クリックして話す";
 "menu.inputMode.hold" = "長押しして話す";
+"menu.inputMode.liveInsertion" = "ライブ入力（実験）";
+"menu.inputMode.liveInsertion.tooltip" = "Apple 音声認識のみ。録音中に完了した文を直接入力します。ライブ入力済みの文は LLM 最適化をスキップします。";
 "menu.silence.duration" = "停止ディレイ";
 
 /* Custom Prompt */

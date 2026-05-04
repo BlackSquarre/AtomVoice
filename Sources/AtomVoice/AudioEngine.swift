@@ -2,11 +2,14 @@ import AVFoundation
 import Speech
 import Accelerate
 import CoreAudio
+import AudioTapShim
 
 final class AudioEngineController {
     let engine = AVAudioEngine()
     private var bandsHandler: (([Float]) -> Void)?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var audioBufferHandler: ((AVAudioPCMBuffer, AVAudioTime) -> Void)?
+    private var tapInstalled = false
 
     // 静音自动停止
     var onSilenceTimeout: (() -> Void)?
@@ -76,8 +79,13 @@ final class AudioEngineController {
             var bufSize: UInt32 = 0
             guard AudioObjectGetPropertyDataSize(id, &inputAddr, 0, nil, &bufSize) == noErr, bufSize > 0 else { continue }
 
-            let bufferList = UnsafeMutablePointer<AudioBufferList>.allocate(capacity: 1)
-            defer { bufferList.deallocate() }
+            let rawBuffer = UnsafeMutableRawPointer.allocate(
+                byteCount: Int(bufSize),
+                alignment: MemoryLayout<AudioBufferList>.alignment
+            )
+            defer { rawBuffer.deallocate() }
+
+            let bufferList = rawBuffer.bindMemory(to: AudioBufferList.self, capacity: 1)
             guard AudioObjectGetPropertyData(id, &inputAddr, 0, nil, &bufSize, bufferList) == noErr else { continue }
 
             let channelCount = (0..<Int(bufferList.pointee.mNumberBuffers)).reduce(0) { total, i in
@@ -123,7 +131,10 @@ final class AudioEngineController {
             return
         }
 
-        let audioUnit = engine.inputNode.audioUnit!
+        guard let audioUnit = engine.inputNode.audioUnit else {
+            print("[AudioEngine] 输入节点不可用，无法切换输入设备")
+            return
+        }
         var deviceID = device.id
         let status = AudioUnitSetProperty(
             audioUnit,
@@ -145,24 +156,37 @@ final class AudioEngineController {
         recognitionRequest = newRequest
     }
 
+    @discardableResult
     func start(bandsHandler: @escaping ([Float]) -> Void,
-               recognitionRequest: SFSpeechAudioBufferRecognitionRequest?) {
+               recognitionRequest: SFSpeechAudioBufferRecognitionRequest?,
+               audioBufferHandler: ((AVAudioPCMBuffer, AVAudioTime) -> Void)? = nil) -> Bool {
+        stop()
+
         self.bandsHandler = bandsHandler
         self.recognitionRequest = recognitionRequest
-        sampleBuffer = []
-        silenceDuration = 0
-        recordingDuration = 0
+        self.audioBufferHandler = audioBufferHandler
+        bufferQueue.sync {
+            sampleBuffer = []
+            silenceDuration = 0
+            recordingDuration = 0
+        }
 
         // 应用用户选择的输入设备
         applySelectedInputDevice()
 
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            print("[AudioEngine] 输入格式无效: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
+            stop()
+            return false
+        }
         let sampleRate = Float(format.sampleRate)
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        let installed = AtomVoiceInstallAudioTap(inputNode, 0, 1024, format) { [weak self] buffer, time in
             guard let self else { return }
             self.recognitionRequest?.append(buffer)
+            self.audioBufferHandler?(buffer, time)
 
             if let channelData = buffer.floatChannelData {
                 let count = Int(buffer.frameLength)
@@ -187,16 +211,33 @@ final class AudioEngineController {
                 }
             }
         }
+        guard installed else {
+            stop()
+            return false
+        }
+        tapInstalled = true
 
-        do { try engine.start() }
-        catch { print("[AudioEngine] 启动失败: \(error)") }
+        do {
+            try engine.start()
+            return true
+        } catch {
+            print("[AudioEngine] 启动失败: \(error)")
+            stop()
+            return false
+        }
     }
 
     func stop() {
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+        if engine.isRunning {
+            engine.stop()
+        }
         bandsHandler = nil
         recognitionRequest = nil
+        audioBufferHandler = nil
         bufferQueue.sync {
             sampleBuffer = []
             silenceDuration = 0

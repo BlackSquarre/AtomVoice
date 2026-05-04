@@ -4,6 +4,10 @@
 "menu.tapFn" = "单击 Fn 键开始语音输入";
 "menu.about" = "关于原子微语";
 "menu.language" = "识别语言";
+"menu.recognitionEngine" = "识别引擎";
+"menu.recognitionEngine.apple" = "Apple 语音识别";
+"menu.recognitionEngine.sherpaOnnx" = "Sherpa 本地识别";
+"menu.sherpaOpenFolder" = "打开 Sherpa 文件夹";
 "menu.audioInput" = "输入设备";
 "menu.audioInput.default" = "系统默认";
 "menu.animation" = "动画效果";
@@ -85,6 +89,9 @@
 "error.badFormat" = "响应格式异常";
 "error.jsonParse" = "JSON 解析失败";
 "error.noInputDevice" = "未找到麦克风或输入设备";
+"error.sherpaRuntimeMissing" = "未找到 Sherpa 运行库，请将 dylib 文件放到：\n%@";
+"error.sherpaModelMissing" = "未找到 Sherpa 模型，请将模型文件放到：\n%@";
+"error.sherpaLoadFailed" = "Sherpa 启动失败：%@";
 
 /* Permissions */
 "permission.mic.title" = "需要麦克风权限";
@@ -144,11 +151,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "其他设置";
+"menu.appleOnDeviceSpeech" = "Apple 强制离线识别";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple 强制离线识别（当前语言不可用）";
+"menu.engine.howto" = "如何选择引擎";
+"engine.howto.message" = "• Apple 语音识别\n适合：日常输入、网络稳定、优先追求识别准确率。\n优势：系统集成好，流式结果快，多语言支持更完整。\n劣势：通常依赖网络；语音可能由 Apple 在线服务处理；弱网或系统服务异常时稳定性会下降。\n\n• SherpaOnnx 语音识别\n适合：重视隐私、离线环境，或不想依赖 Apple 语音服务。\n优势：完全本地运行，无需联网，音频不会发给第三方。\n劣势：需要准备模型和运行库；当前模型在语言覆盖、准确率、标点、专有名词识别上通常不如 Apple；也会占用更多本机资源。\n\n• Apple 强制离线识别\n适合：想保留 Apple 引擎体验，但尽量避免云端处理。\n劣势：部分语言不支持；准确率可能下降；系统缺少本地语音资源时可能无法开始识别；仍受 Apple Speech 框架限制。\n\n建议：优先准确率选 Apple；优先隐私和完全离线选 SherpaOnnx；想继续用 Apple 引擎但尽量本地处理，就开启 Apple 强制离线识别。";
 
 /* Input Mode */
 "menu.inputMode" = "输入方式";
 "menu.inputMode.tap" = "单击说话";
 "menu.inputMode.hold" = "长按说话";
+"menu.inputMode.liveInsertion" = "实时上屏（实验）";
+"menu.inputMode.liveInsertion.tooltip" = "仅 Apple 语音识别可用。录音过程中会把已完成句子直接上屏，实时上屏部分不会再走 LLM 优化。";
 "menu.silence.duration" = "停录延迟";
 
 /* Custom Prompt */

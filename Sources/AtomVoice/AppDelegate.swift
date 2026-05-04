@@ -7,18 +7,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fnKeyMonitor: FnKeyMonitor!
     private var audioEngine: AudioEngineController!
     private var speechRecognizer: SpeechRecognizerController!
+    private var sherpaRecognizer: SherpaOnnxRecognizerController!
     private var capsuleWindow: CapsuleWindowController!
     private var textInjector: TextInjector!
     private var llmRefiner: LLMRefiner!
     private var isRecording = false
+    private var currentRecordingEngine = "apple"
+    private var liveInsertionActive = false
+    private var liveInsertionCommittedText = ""
+    private var liveInsertionLatestText = ""
+    private var liveInsertionPasteInFlight = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        terminateOtherRunningInstances()
+
         UserDefaults.standard.register(defaults: [
             "selectedLanguage": "zh-CN",
+            "recognitionEngine": "apple",
+            "appleLiveInsertionEnabled": false,
             "llmEnabled": false,
             "llmAPIBaseURL": "https://api.openai.com/v1",
             "llmModel": "gpt-4o-mini",
             "autoPunctuationEnabled": true,
+            "appleOnDeviceRecognitionEnabled": false,
             "llmResultDelay": 0.3,
             "animationStyle": "dynamicIsland",
             "animationSpeed": "medium",
@@ -35,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         capsuleWindow = CapsuleWindowController()
         audioEngine = AudioEngineController()
         speechRecognizer = SpeechRecognizerController()
+        sherpaRecognizer = SherpaOnnxRecognizerController()
 
         menuBarController = MenuBarController(
             onLanguageChanged: { [weak self] in
@@ -94,6 +106,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+    }
+
+    private func terminateOtherRunningInstances() {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return }
+
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let otherApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+            .filter { $0.processIdentifier != currentPID }
+        guard !otherApps.isEmpty else { return }
+
+        // 菜单栏应用不应该多开；新实例启动时清理旧实例，避免出现多个状态栏菜单。
+        otherApps.forEach { app in
+            print("[AppDelegate] 正在退出旧实例 pid=\(app.processIdentifier)")
+            app.terminate()
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            otherApps.filter { !$0.isTerminated }.forEach { app in
+                print("[AppDelegate] 旧实例未正常退出，强制结束 pid=\(app.processIdentifier)")
+                app.forceTerminate()
+            }
+        }
     }
 
     @objc private func activeAppDidChange(_ notification: Notification) {
@@ -192,30 +226,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         isRecording = true
         fnKeyMonitor.isRecording = true
+        currentRecordingEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
+        liveInsertionActive = currentRecordingEngine == "apple" &&
+            UserDefaults.standard.bool(forKey: "appleLiveInsertionEnabled") &&
+            !UserDefaults.standard.bool(forKey: "llmEnabled")
+        liveInsertionCommittedText = ""
+        liveInsertionLatestText = ""
+        liveInsertionPasteInFlight = false
 
         DispatchQueue.main.async { [self] in
             capsuleWindow.show()
 
-            let request = speechRecognizer.start(
-                onResult: { [weak self] text, isFinal in
+            if currentRecordingEngine == "sherpaOnnx" {
+                if let error = sherpaRecognizer.start(onResult: { [weak self] text, _ in
                     DispatchQueue.main.async {
                         self?.capsuleWindow.updateText(text)
                     }
-                },
-                onRequestSwitch: { [weak self] newRequest in
-                    self?.audioEngine.switchRequest(newRequest)
+                }) {
+                    isRecording = false
+                    fnKeyMonitor.isRecording = false
+                    capsuleWindow.showError(error, dismissAfter: 6)
+                    return
                 }
-            )
 
-            audioEngine.start(
-                bandsHandler: { [weak self] bands in
-                    DispatchQueue.main.async {
-                        self?.capsuleWindow.updateBands(bands)
+                if !audioEngine.start(
+                    bandsHandler: { [weak self] bands in
+                        DispatchQueue.main.async {
+                            self?.capsuleWindow.updateBands(bands)
+                        }
+                    },
+                    recognitionRequest: nil,
+                    audioBufferHandler: { [weak self] buffer, _ in
+                        self?.sherpaRecognizer.accept(buffer: buffer)
                     }
-                },
-                recognitionRequest: request
-            )
+                ) {
+                    _ = sherpaRecognizer.stop()
+                    handleAudioStartFailure()
+                }
+            } else {
+                let request = speechRecognizer.start(
+                    onResult: { [weak self] text, isFinal in
+                        DispatchQueue.main.async {
+                            guard let self else { return }
+                            self.capsuleWindow.updateText(text)
+                            self.commitAppleLiveSegmentIfNeeded(from: text, isFinal: isFinal)
+                        }
+                    },
+                    onRequestSwitch: { [weak self] newRequest in
+                        self?.audioEngine.switchRequest(newRequest)
+                    }
+                )
+
+                if !audioEngine.start(
+                    bandsHandler: { [weak self] bands in
+                        DispatchQueue.main.async {
+                            self?.capsuleWindow.updateBands(bands)
+                        }
+                    },
+                    recognitionRequest: request
+                ) {
+                    _ = speechRecognizer.stop()
+                    handleAudioStartFailure()
+                }
+            }
         }
+    }
+
+    private func handleAudioStartFailure() {
+        isRecording = false
+        fnKeyMonitor.isRecording = false
+        liveInsertionActive = false
+        liveInsertionCommittedText = ""
+        liveInsertionLatestText = ""
+        liveInsertionPasteInFlight = false
+        capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
     }
 
     private func stopRecording() {
@@ -224,23 +308,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.isRecording = false
 
         DispatchQueue.main.async { [self] in
-            let rawText = speechRecognizer.stop()
+            let recognizedText = currentRecordingEngine == "sherpaOnnx" ? sherpaRecognizer.stop() : speechRecognizer.stop()
             audioEngine.stop()
+            let rawText = remainingTextAfterLiveInsertion(recognizedText)
 
             if rawText.isEmpty {
                 capsuleWindow.dismiss()
                 return
             }
 
-            // 本地自动标点
-            var processedText = rawText
-            if UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") {
-                let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
-                processedText = PunctuationProcessor.process(rawText, language: lang)
+            let processedText = applyAutoPunctuation(to: rawText)
+            if processedText != rawText {
                 capsuleWindow.updateText(processedText)
             }
 
-            let llmEnabled = UserDefaults.standard.bool(forKey: "llmEnabled")
+            let llmEnabled = UserDefaults.standard.bool(forKey: "llmEnabled") && liveInsertionCommittedText.isEmpty
             let apiKey = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
 
             if llmEnabled && !apiKey.isEmpty {
@@ -274,6 +356,105 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func commitAppleLiveSegmentIfNeeded(from text: String, isFinal: Bool) {
+        guard liveInsertionActive, isRecording, currentRecordingEngine == "apple" else { return }
+        liveInsertionLatestText = text
+        guard !liveInsertionPasteInFlight else { return }
+        guard text.hasPrefix(liveInsertionCommittedText) else { return }
+
+        let uncommitted = String(text.dropFirst(liveInsertionCommittedText.count))
+        guard let endIndex = committableLiveSegmentEnd(in: uncommitted, isFinal: isFinal) else { return }
+
+        let segment = String(uncommitted[..<endIndex])
+        guard !segment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        liveInsertionCommittedText += segment
+        liveInsertionPasteInFlight = true
+        textInjector.inject(text: segment) { [weak self] in
+            guard let self else { return }
+            self.liveInsertionPasteInFlight = false
+            if self.isRecording {
+                self.commitAppleLiveSegmentIfNeeded(from: self.liveInsertionLatestText, isFinal: false)
+            }
+        }
+    }
+
+    private func committableLiveSegmentEnd(in text: String, isFinal: Bool) -> String.Index? {
+        var sentenceEnds: [String.Index] = []
+        var index = text.startIndex
+
+        while index < text.endIndex {
+            let next = text.index(after: index)
+            if PunctuationProcessor.isSentenceEndingPunctuation(text[index]) {
+                var end = next
+                while end < text.endIndex, text[end].isWhitespace {
+                    end = text.index(after: end)
+                }
+                sentenceEnds.append(end)
+            }
+            index = next
+        }
+
+        for end in sentenceEnds.reversed() {
+            let candidate = String(text[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let trailing = String(text[end...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if candidate.count >= 3, isFinal || trailing.count >= 3 {
+                return end
+            }
+        }
+
+        return nil
+    }
+
+    private func remainingTextAfterLiveInsertion(_ text: String) -> String {
+        guard liveInsertionActive, !liveInsertionCommittedText.isEmpty else { return text }
+
+        if text.hasPrefix(liveInsertionCommittedText) {
+            return String(text.dropFirst(liveInsertionCommittedText.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let committed = liveInsertionCommittedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !committed.isEmpty, text.hasPrefix(committed) {
+            return String(text.dropFirst(committed.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let commonPrefixEnd = commonPrefixEndIndex(in: text, with: liveInsertionCommittedText)
+        let commonPrefixLength = text.distance(from: text.startIndex, to: commonPrefixEnd)
+        if commonPrefixLength > 0 {
+            print("[LiveInsertion] 最终文本与已上屏前缀不完全一致，从共同前缀后继续注入")
+            return String(text[commonPrefixEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        print("[LiveInsertion] 最终文本与已上屏前缀不一致，注入完整最终文本以避免丢字")
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func commonPrefixEndIndex(in text: String, with prefix: String) -> String.Index {
+        var textIndex = text.startIndex
+        var prefixIndex = prefix.startIndex
+
+        while textIndex < text.endIndex,
+              prefixIndex < prefix.endIndex,
+              text[textIndex] == prefix[prefixIndex] {
+            textIndex = text.index(after: textIndex)
+            prefixIndex = prefix.index(after: prefixIndex)
+        }
+
+        return textIndex
+    }
+
+    private func applyAutoPunctuation(to rawText: String) -> String {
+        guard UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") else { return rawText }
+
+        if currentRecordingEngine == "sherpaOnnx",
+           let punctuated = sherpaRecognizer.punctuate(rawText) {
+            return punctuated
+        }
+
+        let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        return PunctuationProcessor.process(rawText, language: lang)
+    }
+
     /// ESC 取消录音：停止一切，不注入文字
     private func cancelRecording() {
         isRecording = false
@@ -281,8 +462,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         DispatchQueue.main.async { [self] in
             llmRefiner.cancel()
-            _ = speechRecognizer.stop()
+            if currentRecordingEngine == "sherpaOnnx" {
+                _ = sherpaRecognizer.stop()
+            } else {
+                _ = speechRecognizer.stop()
+            }
             audioEngine.stop()
+            liveInsertionActive = false
+            liveInsertionCommittedText = ""
+            liveInsertionLatestText = ""
+            liveInsertionPasteInFlight = false
             capsuleWindow.dismiss()
         }
     }
@@ -294,8 +483,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.isRecording = false
 
         DispatchQueue.main.async { [self] in
-            let rawText = speechRecognizer.stop()
+            let recognizedText = currentRecordingEngine == "sherpaOnnx" ? sherpaRecognizer.stop() : speechRecognizer.stop()
             audioEngine.stop()
+            let rawText = remainingTextAfterLiveInsertion(recognizedText)
 
             if rawText.isEmpty {
                 capsuleWindow.dismiss()
@@ -303,11 +493,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             // 本地自动标点（保留），但跳过 LLM
-            var processedText = rawText
-            if UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") {
-                let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
-                processedText = PunctuationProcessor.process(rawText, language: lang)
-            }
+            let processedText = applyAutoPunctuation(to: rawText)
 
             capsuleWindow.dismiss { [self] in
                 textInjector.inject(text: processedText)

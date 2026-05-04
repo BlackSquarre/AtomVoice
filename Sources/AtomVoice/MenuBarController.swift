@@ -33,7 +33,7 @@ final class MenuBarController {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: loc("app.title"))
+            button.image = Self.statusBarIcon(accessibilityDescription: loc("app.title"))
         }
         rebuildMenu()
     }
@@ -69,6 +69,53 @@ final class MenuBarController {
         }
         langItem.submenu = langMenu
         menu.addItem(langItem)
+
+        // 识别引擎
+        let engineItem = NSMenuItem(title: loc("menu.recognitionEngine"), action: nil, keyEquivalent: "")
+        engineItem.image = icon("cpu")
+        let engineMenu = NSMenu()
+        let currentEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
+        let engineOptions: [(String, String, String)] = [
+            ("apple", loc("menu.recognitionEngine.apple"), "apple.logo"),
+            ("sherpaOnnx", loc("menu.recognitionEngine.sherpaOnnx"), "mountain.2.fill")
+        ]
+        for (code, title, iconName) in engineOptions {
+            let item = NSMenuItem(title: title, action: #selector(selectRecognitionEngine(_:)), keyEquivalent: "")
+            item.image = icon(iconName)
+            item.target = self
+            item.representedObject = code
+            item.state = code == currentEngine ? .on : .off
+            engineMenu.addItem(item)
+        }
+        engineMenu.addItem(.separator())
+
+        // Apple 本地识别（设备端处理）
+        let onDeviceSupported = Self.supportsOnDeviceRecognition(for: currentLang)
+        let onDeviceEnabled = UserDefaults.standard.bool(forKey: "appleOnDeviceRecognitionEnabled") && onDeviceSupported
+        let onDeviceItem = NSMenuItem(
+            title: loc(onDeviceSupported ? "menu.appleOnDeviceSpeech" : "menu.appleOnDeviceSpeech.unavailable"),
+            action: #selector(toggleAppleOnDeviceSpeech(_:)),
+            keyEquivalent: ""
+        )
+        onDeviceItem.image = icon("lock.shield")
+        onDeviceItem.target = self
+        onDeviceItem.state = onDeviceEnabled ? .on : .off
+        onDeviceItem.isEnabled = onDeviceSupported
+        engineMenu.addItem(onDeviceItem)
+
+        let engineHowtoItem = NSMenuItem(title: loc("menu.engine.howto"), action: #selector(openEngineHowto(_:)), keyEquivalent: "")
+        engineHowtoItem.image = icon("questionmark.circle")
+        engineHowtoItem.target = self
+        engineMenu.addItem(engineHowtoItem)
+
+        engineMenu.addItem(.separator())
+
+        let openSherpaFolderItem = NSMenuItem(title: loc("menu.sherpaOpenFolder"), action: #selector(openSherpaFolder(_:)), keyEquivalent: "")
+        openSherpaFolderItem.target = self
+        openSherpaFolderItem.image = icon("folder")
+        engineMenu.addItem(openSherpaFolderItem)
+        engineItem.submenu = engineMenu
+        menu.addItem(engineItem)
 
         // 自动标点
         let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
@@ -117,6 +164,13 @@ final class MenuBarController {
         holdItem.target = self
         holdItem.state = !isTapMode ? .on : .off
         inputModeMenu.addItem(holdItem)
+        inputModeMenu.addItem(.separator())
+        let liveInsertionItem = NSMenuItem(title: loc("menu.inputMode.liveInsertion"), action: #selector(toggleAppleLiveInsertion(_:)), keyEquivalent: "")
+        liveInsertionItem.target = self
+        liveInsertionItem.state = UserDefaults.standard.bool(forKey: "appleLiveInsertionEnabled") ? .on : .off
+        liveInsertionItem.isEnabled = currentEngine == "apple"
+        liveInsertionItem.toolTip = loc("menu.inputMode.liveInsertion.tooltip")
+        inputModeMenu.addItem(liveInsertionItem)
         if isTapMode {
             inputModeMenu.addItem(.separator())
             let durationLabel = NSMenuItem(title: loc("menu.silence.duration"), action: nil, keyEquivalent: "")
@@ -281,15 +335,245 @@ final class MenuBarController {
         AXIsProcessTrusted()
     }
 
+    private static func supportsOnDeviceRecognition(for languageCode: String) -> Bool {
+        SFSpeechRecognizer(locale: Locale(identifier: languageCode))?.supportsOnDeviceRecognition == true
+    }
+
     private func icon(_ name: String) -> NSImage? {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)
+    }
+
+    private static func statusBarIcon(accessibilityDescription: String) -> NSImage? {
+        let image: NSImage?
+        if let url = Bundle.main.url(forResource: "atomvoice-status",
+                                     withExtension: "svg",
+                                     subdirectory: "Icons") {
+            image = NSImage(contentsOf: url)
+        } else {
+            image = NSImage(systemSymbolName: "waveform", accessibilityDescription: accessibilityDescription)
+        }
+        image?.isTemplate = true
+        image?.accessibilityDescription = accessibilityDescription
+        image?.size = NSSize(width: 17, height: 17)
+        return image
     }
 
     @objc private func selectLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
         UserDefaults.standard.set(code, forKey: "selectedLanguage")
+        if UserDefaults.standard.bool(forKey: "appleOnDeviceRecognitionEnabled"),
+           !Self.supportsOnDeviceRecognition(for: code) {
+            UserDefaults.standard.set(false, forKey: "appleOnDeviceRecognitionEnabled")
+        }
         onLanguageChanged()
         rebuildMenu()
+    }
+
+    @objc private func selectRecognitionEngine(_ sender: NSMenuItem) {
+        guard let code = sender.representedObject as? String else { return }
+        UserDefaults.standard.set(code, forKey: "recognitionEngine")
+        rebuildMenu()
+    }
+
+    @objc private func openSherpaFolder(_ sender: NSMenuItem) {
+        SherpaOnnxRecognizerController.openSupportDirectory()
+    }
+
+    @objc private func toggleAppleOnDeviceSpeech(_ sender: NSMenuItem) {
+        let currentLang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        guard Self.supportsOnDeviceRecognition(for: currentLang) else {
+            UserDefaults.standard.set(false, forKey: "appleOnDeviceRecognitionEnabled")
+            rebuildMenu()
+            return
+        }
+        let current = UserDefaults.standard.bool(forKey: "appleOnDeviceRecognitionEnabled")
+        UserDefaults.standard.set(!current, forKey: "appleOnDeviceRecognitionEnabled")
+        rebuildMenu()
+    }
+
+    @objc private func openEngineHowto(_ sender: NSMenuItem) {
+        let alert = NSAlert()
+        alert.messageText = loc("menu.engine.howto")
+        alert.icon = NSImage(systemSymbolName: "cpu", accessibilityDescription: nil)
+        alert.accessoryView = makeEngineHowtoTextView()
+        alert.addButton(withTitle: loc("common.ok"))
+        AppDelegate.runModalAlert(alert)
+    }
+
+    private func makeEngineHowtoTextView() -> NSView {
+        let text = loc("engine.howto.message")
+        let width: CGFloat = 660
+        let height: CGFloat = 430
+
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 16, height: 14)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: width - 32, height: .greatestFiniteMagnitude)
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.textStorage?.setAttributedString(makeEngineHowtoAttributedString(text))
+
+        if let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
+            layoutManager.ensureLayout(for: textContainer)
+            let usedHeight = layoutManager.usedRect(for: textContainer).height + textView.textContainerInset.height * 2
+            textView.frame = NSRect(x: 0, y: 0, width: width, height: max(height, ceil(usedHeight)))
+        }
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    private func makeEngineHowtoAttributedString(_ text: String) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: "")
+        let lines = text.components(separatedBy: .newlines)
+
+        let headingParagraph = NSMutableParagraphStyle()
+        headingParagraph.lineSpacing = 2
+        headingParagraph.paragraphSpacing = 6
+        headingParagraph.lineBreakMode = .byWordWrapping
+
+        let bodyParagraph = NSMutableParagraphStyle()
+        bodyParagraph.lineSpacing = 3
+        bodyParagraph.paragraphSpacing = 7
+        bodyParagraph.lineBreakMode = .byWordWrapping
+
+        let summaryParagraph = NSMutableParagraphStyle()
+        summaryParagraph.lineSpacing = 3
+        summaryParagraph.paragraphSpacing = 0
+        summaryParagraph.lineBreakMode = .byWordWrapping
+
+        let headingAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: headingParagraph,
+        ]
+        let bodyAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12.5),
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .paragraphStyle: bodyParagraph,
+        ]
+        let summaryAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: summaryParagraph,
+        ]
+
+        let summaryPrefixes = ["建议", "建議", "Recommendation", "おすすめ", "추천", "Empfehlung"]
+        var previousLineWasBlank = false
+
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.isEmpty {
+                if !previousLineWasBlank, result.length > 0 {
+                    result.append(NSAttributedString(string: "\n"))
+                }
+                previousLineWasBlank = true
+                continue
+            }
+
+            let attributes: [NSAttributedString.Key: Any]
+            if line.hasPrefix("• ") {
+                attributes = headingAttributes
+            } else if summaryPrefixes.contains(where: { line.hasPrefix($0) }) {
+                attributes = summaryAttributes
+            } else {
+                attributes = bodyAttributes
+            }
+
+            result.append(NSAttributedString(string: line + "\n", attributes: attributes))
+            previousLineWasBlank = false
+        }
+
+        return result
+    }
+
+    private func makeLLMHowtoAttributedString(_ text: String) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: "")
+        let lines = text.components(separatedBy: .newlines)
+
+        let headingParagraph = NSMutableParagraphStyle()
+        headingParagraph.lineSpacing = 2
+        headingParagraph.paragraphSpacing = 6
+        headingParagraph.lineBreakMode = .byWordWrapping
+
+        let bodyParagraph = NSMutableParagraphStyle()
+        bodyParagraph.lineSpacing = 3
+        bodyParagraph.paragraphSpacing = 7
+        bodyParagraph.lineBreakMode = .byWordWrapping
+
+        let listParagraph = NSMutableParagraphStyle()
+        listParagraph.lineSpacing = 3
+        listParagraph.paragraphSpacing = 4
+        listParagraph.lineBreakMode = .byWordWrapping
+        listParagraph.headIndent = 20
+        listParagraph.firstLineHeadIndent = 0
+
+        let noteParagraph = NSMutableParagraphStyle()
+        noteParagraph.lineSpacing = 3
+        noteParagraph.paragraphSpacing = 0
+        noteParagraph.lineBreakMode = .byWordWrapping
+
+        let headingAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: headingParagraph,
+        ]
+        let bodyAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12.5),
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .paragraphStyle: bodyParagraph,
+        ]
+        let listAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12.5),
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .paragraphStyle: listParagraph,
+        ]
+        let noteAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: noteParagraph,
+        ]
+
+        let headingPrefixes = ["LLM", "例如", "使用方法", "For example", "How to use", "例", "使い方", "예", "사용 방법"]
+        let notePrefixes = ["开启后", "When enabled", "有効にすると", "활성화하면"]
+        var previousLineWasBlank = false
+
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.isEmpty {
+                if !previousLineWasBlank, result.length > 0 {
+                    result.append(NSAttributedString(string: "\n"))
+                }
+                previousLineWasBlank = true
+                continue
+            }
+
+            let attributes: [NSAttributedString.Key: Any]
+            if headingPrefixes.contains(where: { line.hasPrefix($0) }) {
+                attributes = headingAttributes
+            } else if notePrefixes.contains(where: { line.hasPrefix($0) }) {
+                attributes = noteAttributes
+            } else if line.hasPrefix("1.") || line.hasPrefix("2.") || line.hasPrefix("3.") || line.hasPrefix("4.") {
+                attributes = listAttributes
+            } else {
+                attributes = bodyAttributes
+            }
+
+            result.append(NSAttributedString(string: line + "\n", attributes: attributes))
+            previousLineWasBlank = false
+        }
+
+        return result
     }
 
     @objc private func selectTriggerKey(_ sender: NSMenuItem) {
@@ -325,6 +609,12 @@ final class MenuBarController {
 
     @objc private func selectInputModeHold(_ sender: NSMenuItem) {
         UserDefaults.standard.set(false, forKey: "silenceAutoStopEnabled")
+        rebuildMenu()
+    }
+
+    @objc private func toggleAppleLiveInsertion(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: "appleLiveInsertionEnabled")
+        UserDefaults.standard.set(!current, forKey: "appleLiveInsertionEnabled")
         rebuildMenu()
     }
 
@@ -386,6 +676,7 @@ final class MenuBarController {
     @objc private func openLLMHowto(_ sender: NSMenuItem) {
         let alert = NSAlert()
         alert.messageText = loc("menu.llm.howto")
+        alert.icon = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
         alert.accessoryView = makeLLMHowtoTextView()
         alert.addButton(withTitle: loc("common.ok"))
         AppDelegate.runModalAlert(alert)
@@ -394,23 +685,34 @@ final class MenuBarController {
     private func makeLLMHowtoTextView() -> NSView {
         let text = loc("llm.howto.message")
         let width: CGFloat = 560
-        let font = NSFont.systemFont(ofSize: 13)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineBreakMode = .byWordWrapping
+        let height: CGFloat = 380
 
-        let height = ceil((text as NSString).boundingRect(
-            with: NSSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font, .paragraphStyle: paragraph]
-        ).height) + 4
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
 
-        let textField = NSTextField(wrappingLabelWithString: text)
-        textField.frame = NSRect(x: 0, y: 0, width: width, height: height)
-        textField.font = font
-        textField.textColor = .secondaryLabelColor
-        textField.maximumNumberOfLines = 0
-        textField.preferredMaxLayoutWidth = width
-        return textField
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 16, height: 14)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: width - 32, height: .greatestFiniteMagnitude)
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.textStorage?.setAttributedString(makeLLMHowtoAttributedString(text))
+
+        if let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
+            layoutManager.ensureLayout(for: textContainer)
+            let usedHeight = layoutManager.usedRect(for: textContainer).height + textView.textContainerInset.height * 2
+            textView.frame = NSRect(x: 0, y: 0, width: width, height: max(height, ceil(usedHeight)))
+        }
+
+        scrollView.documentView = textView
+        return scrollView
     }
 
     @objc private func openAbout(_ sender: NSMenuItem) {
@@ -432,6 +734,6 @@ final class MenuBarController {
         if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         }
-        statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: loc("app.title"))
+        statusItem.button?.image = Self.statusBarIcon(accessibilityDescription: loc("app.title"))
     }
 }

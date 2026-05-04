@@ -4,6 +4,10 @@
 "menu.tapFn" = "Fn-Taste klicken für Spracheingabe";
 "menu.about" = "Über AtomVoice";
 "menu.language" = "Erkennungssprache";
+"menu.recognitionEngine" = "Erkennungs-Engine";
+"menu.recognitionEngine.apple" = "Apple-Spracherkennung";
+"menu.recognitionEngine.sherpaOnnx" = "Lokale Sherpa-Erkennung";
+"menu.sherpaOpenFolder" = "Sherpa-Ordner öffnen";
 "menu.audioInput" = "Eingabegerät";
 "menu.audioInput.default" = "Systemstandard";
 "menu.animation" = "Animation";
@@ -85,6 +89,9 @@
 "error.badFormat" = "Unerwartetes Antwortformat";
 "error.jsonParse" = "JSON-Analysefehler";
 "error.noInputDevice" = "Kein Mikrofon oder Eingabegerät gefunden";
+"error.sherpaRuntimeMissing" = "Sherpa-Laufzeit nicht gefunden. Legen Sie die dylib-Dateien hier ab:\n%@";
+"error.sherpaModelMissing" = "Sherpa-Modell nicht gefunden. Legen Sie die Modelldateien hier ab:\n%@";
+"error.sherpaLoadFailed" = "Sherpa konnte nicht gestartet werden: %@";
 
 /* Permissions */
 "permission.mic.title" = "Mikrofonzugriff erforderlich";
@@ -143,11 +150,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "Weitere Einstellungen";
+"menu.appleOnDeviceSpeech" = "Apple Erzwungene Offline-Erkennung";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple Erzwungene Offline-Erkennung (nicht verfügbar)";
+"menu.engine.howto" = "Engine Auswählen";
+"engine.howto.message" = "• Apple-Spracherkennung\nAm besten für: alltägliche Diktate, stabile Netzwerke und höchste Erkennungsgenauigkeit.\nStärken: gut in macOS integriert, schnelle Streaming-Ergebnisse und meist breitere Sprachunterstützung.\nNachteile: hängt normalerweise von Netzwerk- und Systemdiensten ab; Audio kann von Apples Online-Dienst verarbeitet werden; schwaches Netzwerk oder Apple-Dienstprobleme können die Zuverlässigkeit verringern.\n\n• SherpaOnnx-Spracherkennung\nAm besten für: Datenschutz, Offline-Nutzung oder Unabhängigkeit von Apple-Sprachdiensten.\nStärken: läuft vollständig lokal, benötigt kein Internet und sendet kein Audio an Dritte.\nNachteile: Modell- und Laufzeitdateien müssen vorbereitet werden; aktuelle Modelle können bei Sprachabdeckung, Genauigkeit, Interpunktion und Eigennamen-Erkennung schwächer als Apple sein; verbraucht mehr lokale Ressourcen.\n\n• Apple Erzwungene Offline-Erkennung\nAm besten für: Apple Speech weiter nutzen, aber Cloud-Verarbeitung möglichst vermeiden.\nNachteile: einige Sprachen werden nicht unterstützt; die Genauigkeit kann sinken; die Erkennung kann fehlschlagen, wenn lokale Sprachressourcen fehlen; weiterhin durch das Apple Speech Framework begrenzt.\n\nEmpfehlung: Apple für Genauigkeit; SherpaOnnx für Datenschutz und vollständig offline; Apple Erzwungene Offline-Erkennung, wenn Sie Apple Speech nutzen, aber lokale Verarbeitung bevorzugen.";
 
 /* Input Mode */
 "menu.inputMode" = "Eingabemodus";
 "menu.inputMode.tap" = "Tippen zum Sprechen";
 "menu.inputMode.hold" = "Halten zum Sprechen";
+"menu.inputMode.liveInsertion" = "Live-Einfügen (experimentell)";
+"menu.inputMode.liveInsertion.tooltip" = "Nur Apple-Spracherkennung. Fertige Sätze werden während der Aufnahme eingefügt; live eingefügter Text überspringt die LLM-Verfeinerung.";
 "menu.silence.duration" = "Stopp-Verzögerung";
 
 /* Custom Prompt */

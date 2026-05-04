@@ -2,7 +2,46 @@ import Cocoa
 import Carbon
 
 final class TextInjector {
-    func inject(text: String) {
+    private struct PendingInjection {
+        let text: String
+        let completion: (() -> Void)?
+    }
+
+    private var pendingInjections: [PendingInjection] = []
+    private var isInjecting = false
+
+    func inject(text: String, completion: (() -> Void)? = nil) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [self] in
+                inject(text: text, completion: completion)
+            }
+            return
+        }
+
+        pendingInjections.append(PendingInjection(text: text, completion: completion))
+        processNextInjection()
+    }
+
+    private func processNextInjection() {
+        guard !isInjecting, !pendingInjections.isEmpty else { return }
+
+        let next = pendingInjections.removeFirst()
+        guard !next.text.isEmpty else {
+            next.completion?()
+            processNextInjection()
+            return
+        }
+
+        isInjecting = true
+        performInject(text: next.text) { [weak self] in
+            guard let self else { return }
+            self.isInjecting = false
+            next.completion?()
+            self.processNextInjection()
+        }
+    }
+
+    private func performInject(text: String, completion: (() -> Void)? = nil) {
         // 如果光标后方已有标点，则移除注入文本末尾的标点
         var finalText = text
         if let nextChar = getCharacterAfterCursor(),
@@ -41,6 +80,7 @@ final class TextInjector {
                 // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     self.restorePasteboard(pasteboard, contents: previousContents)
+                    completion?()
                 }
             }
         }

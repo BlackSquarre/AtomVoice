@@ -4,6 +4,10 @@
 "menu.tapFn" = "Click Fn to start voice input";
 "menu.about" = "About AtomVoice";
 "menu.language" = "Recognition Language";
+"menu.recognitionEngine" = "Recognition Engine";
+"menu.recognitionEngine.apple" = "Apple Speech";
+"menu.recognitionEngine.sherpaOnnx" = "Sherpa Local Recognition";
+"menu.sherpaOpenFolder" = "Open Sherpa Folder";
 "menu.audioInput" = "Input Device";
 "menu.audioInput.default" = "System Default";
 "menu.animation" = "Animation";
@@ -85,6 +89,9 @@
 "error.badFormat" = "Unexpected response format";
 "error.jsonParse" = "JSON parse error";
 "error.noInputDevice" = "No microphone or input device found";
+"error.sherpaRuntimeMissing" = "Sherpa runtime not found. Put the dylib files in:\n%@";
+"error.sherpaModelMissing" = "Sherpa model not found. Put the model files in:\n%@";
+"error.sherpaLoadFailed" = "Sherpa failed to start: %@";
 
 /* Permissions */
 "permission.mic.title" = "Microphone Access Required";
@@ -143,11 +150,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "Other Settings";
+"menu.appleOnDeviceSpeech" = "Apple Force Offline";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple Force Offline (Unavailable)";
+"menu.engine.howto" = "How to Choose an Engine";
+"engine.howto.message" = "• Apple Speech\nBest for: everyday dictation, stable networks, and prioritizing recognition accuracy.\nStrengths: well integrated with macOS, fast streaming results, and usually broader language support.\nTradeoffs: normally depends on network/system services; audio may be processed by Apple's online service; weak network or Apple service issues can reduce reliability.\n\n• SherpaOnnx\nBest for: privacy-focused use, offline environments, or avoiding Apple Speech services.\nStrengths: fully local, no internet required, and audio is not sent to third parties.\nTradeoffs: requires model and runtime files; current models may be weaker than Apple Speech in language coverage, accuracy, punctuation, and proper-noun recognition; uses more local resources.\n\n• Apple Force Offline\nBest for: keeping the Apple Speech experience while avoiding cloud processing as much as possible.\nTradeoffs: some languages are unsupported; accuracy may drop; recognition may fail if local speech assets are missing; still limited by Apple's Speech framework.\n\nRecommendation: choose Apple for accuracy; choose SherpaOnnx for privacy and fully offline use; enable Apple Force Offline if you want Apple Speech but prefer local processing.";
 
 /* Input Mode */
 "menu.inputMode" = "Input Mode";
 "menu.inputMode.tap" = "Tap to Speak";
 "menu.inputMode.hold" = "Hold to Speak";
+"menu.inputMode.liveInsertion" = "Live Insert (Experimental)";
+"menu.inputMode.liveInsertion.tooltip" = "Apple Speech only. Completed sentences are inserted while recording; LLM refinement is skipped for live-inserted text.";
 "menu.silence.duration" = "Stop Delay";
 
 /* Custom Prompt */

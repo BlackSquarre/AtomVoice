@@ -4,6 +4,10 @@
 "menu.tapFn" = "單擊 Fn 鍵開始語音輸入";
 "menu.about" = "關於 AtomVoice";
 "menu.language" = "辨識語言";
+"menu.recognitionEngine" = "辨識引擎";
+"menu.recognitionEngine.apple" = "Apple 語音辨識";
+"menu.recognitionEngine.sherpaOnnx" = "Sherpa 本機辨識";
+"menu.sherpaOpenFolder" = "開啟 Sherpa 資料夾";
 "menu.audioInput" = "輸入裝置";
 "menu.audioInput.default" = "系統預設";
 "menu.animation" = "動畫效果";
@@ -85,6 +89,9 @@
 "error.badFormat" = "回應格式異常";
 "error.jsonParse" = "JSON 解析失敗";
 "error.noInputDevice" = "找不到麥克風或輸入裝置";
+"error.sherpaRuntimeMissing" = "找不到 Sherpa 執行庫，請將 dylib 檔案放到：\n%@";
+"error.sherpaModelMissing" = "找不到 Sherpa 模型，請將模型檔案放到：\n%@";
+"error.sherpaLoadFailed" = "Sherpa 啟動失敗：%@";
 
 /* Permissions */
 "permission.mic.title" = "需要麥克風權限";
@@ -143,11 +150,17 @@
 
 /* Other Settings */
 "menu.otherSettings" = "其他設定";
+"menu.appleOnDeviceSpeech" = "Apple 強制離線辨識";
+"menu.appleOnDeviceSpeech.unavailable" = "Apple 強制離線辨識（目前語言不可用）";
+"menu.engine.howto" = "如何選擇引擎";
+"engine.howto.message" = "• Apple 語音辨識\n適合：日常輸入、網路穩定、優先追求辨識準確率。\n優勢：系統整合好，流式結果快，多語言支援更完整。\n劣勢：通常依賴網路；語音可能由 Apple 線上服務處理；弱網或系統服務異常時穩定性會下降。\n\n• SherpaOnnx 語音辨識\n適合：重視隱私、離線環境，或不想依賴 Apple 語音服務。\n優勢：完全本機運行，無需連網，音訊不會送給第三方。\n劣勢：需要準備模型和執行庫；目前模型在語言覆蓋、準確率、標點、專有名詞辨識上通常不如 Apple；也會占用更多本機資源。\n\n• Apple 強制離線辨識\n適合：想保留 Apple 引擎體驗，但盡量避免雲端處理。\n劣勢：部分語言不支援；準確率可能下降；系統缺少本機語音資源時可能無法開始辨識；仍受 Apple Speech 框架限制。\n\n建議：優先準確率選 Apple；優先隱私和完全離線選 SherpaOnnx；想繼續用 Apple 引擎但盡量本機處理，就開啟 Apple 強制離線辨識。";
 
 /* Input Mode */
 "menu.inputMode" = "輸入方式";
 "menu.inputMode.tap" = "單擊說話";
 "menu.inputMode.hold" = "長按說話";
+"menu.inputMode.liveInsertion" = "即時上屏（實驗）";
+"menu.inputMode.liveInsertion.tooltip" = "僅 Apple 語音辨識可用。錄音過程中會將已完成句子直接上屏，即時上屏部分不會再經過 LLM 優化。";
 "menu.silence.duration" = "停錄延遲";
 
 /* Custom Prompt */
