@@ -11,8 +11,17 @@ enum SherpaOnnxStartFailureKind {
 }
 
 final class SherpaOnnxRecognizerController {
-    static let modelName = "sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23-mobile"
     static let punctuationModelName = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8"
+
+    /// 当前选中的模型预设（Currently selected model preset）
+    static var currentPreset: SherpaModelPreset {
+        SherpaModelPreset.current
+    }
+
+    /// 当前模型目录名（Current model directory name）
+    static var modelName: String {
+        currentPreset.extractedDirName
+    }
 
     private let queue = DispatchQueue(label: "com.atomvoice.sherpaOnnx")
     private var context: OpaquePointer?

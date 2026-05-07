@@ -2,7 +2,7 @@
 "app.title" = "原子微語";
 "menu.holdFn" = "按住 Fn 鍵開始語音輸入";
 "menu.tapFn" = "單擊 Fn 鍵開始語音輸入";
-"menu.about" = "關於 AtomVoice";
+"menu.about" = "關於原子微語";
 "menu.language" = "辨識語言";
 "menu.recognitionEngine" = "辨識引擎";
 "menu.recognitionEngine.apple" = "Apple 語音辨識";
@@ -72,7 +72,7 @@
 
 /* About */
 "about.appName" = "原子微語";
-"about.title" = "關於 AtomVoice";
+"about.title" = "關於原子微語";
 "about.version" = "版本 %@ (%@)";
 "about.bilibili" = "Bilibili 主頁";
 "about.github" = "GitHub 專案";
@@ -119,25 +119,25 @@
 
 /* Permissions Window */
 "permissions.window.title" = "系統權限狀態";
-"permissions.heading" = "授予 AtomVoice 完整功能所需權限";
+"permissions.heading" = "授予原子微語完整功能所需權限";
 "permissions.guide.title" = "如何授予權限";
 "permissions.guide.step1" = "點擊右側按鈕開啟系統設定";
-"permissions.guide.step2" = "在列表中找到 AtomVoice 並開啟對應開關";
+"permissions.guide.step2" = "在列表中找到原子微語並開啟對應開關";
 "permissions.guide.step3" = "返回此視窗，確認狀態變為綠色「已授權」";
 "permissions.troubleshoot" = "疑難排解";
 "permissions.reset" = "重置所有權限";
 "permissions.reset.confirm.title" = "重置權限";
 "permissions.reset.confirm.message" = "將在終端機執行 tccutil 重置麥克風和語音辨識權限，重置後需要重新授權。";
 "permissions.reset.confirm.ok" = "繼續";
-"permissions.reset.terminalDone" = "完成，請重新啟動 AtomVoice";
+"permissions.reset.terminalDone" = "完成，請重新啟動原子微語";
 "permissions.close" = "關閉";
 
 "permission.accessibility.title" = "輔助使用";
-"permission.accessibility.desc" = "AtomVoice 需要輔助使用權限來全域監聽 Fn 鍵，這是核心功能。";
+"permission.accessibility.desc" = "原子微語需要輔助使用權限來全域監聽 Fn 鍵，這是核心功能。";
 "permission.microphone.title" = "麥克風";
-"permission.microphone.desc" = "AtomVoice 需要麥克風權限來錄製您的語音。";
+"permission.microphone.desc" = "原子微語需要麥克風權限來錄製您的語音。";
 "permission.speech.title" = "語音辨識";
-"permission.speech.desc" = "AtomVoice 需要語音辨識權限來將您的語音轉錄為文字。";
+"permission.speech.desc" = "原子微語需要語音辨識權限來將您的語音轉錄為文字。";
 
 "permission.status.granted" = "已授權";
 "permission.status.denied" = "已拒絕";
@@ -168,7 +168,7 @@
 "menu.appleOnDeviceSpeech" = "Apple 強制離線辨識";
 "menu.appleOnDeviceSpeech.unavailable" = "Apple 強制離線辨識（目前語言不可用）";
 "menu.engine.howto" = "如何選擇引擎";
-"engine.howto.message" = "• Apple 語音辨識\n適合：日常輸入、網路穩定、優先追求辨識準確率。\n優勢：系統整合好，流式結果快，多語言支援更完整。\n劣勢：通常依賴網路；語音可能由 Apple 線上服務處理；弱網或系統服務異常時穩定性會下降。\n\n• SherpaOnnx 語音辨識\n適合：重視隱私、離線環境，或不想依賴 Apple 語音服務。\n優勢：完全本機運行，無需連網，音訊不會送給第三方。\n劣勢：需要準備模型和執行庫；目前模型在語言覆蓋、準確率、標點、專有名詞辨識上通常不如 Apple；也會占用更多本機資源。\n\n• Apple 強制離線辨識\n適合：想保留 Apple 引擎體驗，但盡量避免雲端處理。\n劣勢：部分語言不支援；準確率可能下降；系統缺少本機語音資源時可能無法開始辨識；仍受 Apple Speech 框架限制。\n\n建議：優先準確率選 Apple；優先隱私和完全離線選 SherpaOnnx；想繼續用 Apple 引擎但盡量本機處理，就開啟 Apple 強制離線辨識。";
+"engine.howto.message" = "• Apple 語音辨識\n適合：免費開箱即用、多語言覆蓋、低設定成本的日常輸入。\n更新後：它仍是通用預設選擇，不需要 API Key，流式結果快；目前語言支援且系統已下載本機語音資源時，可以開啟「Apple 強制離線辨識」。\n限制：很多語言預設仍會走 Apple 線上服務；弱網或 Apple 服務異常會影響穩定性；強制離線可能不可用或準確率下降。\n\n• Sherpa 本機辨識\n適合：隱私優先、斷網使用、不希望音訊進雲端。\n更新後：可以在「辨識引擎設定」裡依目前語言選擇模型預設，並自動下載執行庫、ASR 模型和標點模型。音訊始終留在本機。\n限制：首次需要下載較大的模型檔案；大模型會占用更多磁碟、記憶體和載入時間；長句、多語言混說、標點和專有名詞可能仍不如雲端服務。\n\n• 豆包雲端辨識\n適合：中文普通話準確率優先、低延遲流式辨識，以及 ITN、語義順滑、標點、二遍辨識等雲端能力。\n更新後：在豆包/ASR 設定裡配置 API Key、Resource ID 和 Endpoint；辨識語言、自動標點、停錄延遲跟隨主選單；憑證保存到鑰匙串。\n限制：麥克風音訊會發送到火山引擎/豆包，需要穩定網路，並可能產生火山引擎帳號費用。\n\n• LLM 文字潤飾\n說明：它不是辨識引擎，而是 ASR 後處理。可修正聽錯詞、同音詞、標點、專有名詞和格式；開啟後會把辨識文字發送給所選 LLM 服務商，音訊不會發送。\n\n建議：中文準確率優先選豆包；隱私和完全離線優先選 Sherpa；免費通用和多語言優先選 Apple；只想讓 Apple Speech 盡量本機處理時，再開啟 Apple 強制離線辨識。";
 
 /* Input Mode */
 "menu.inputMode" = "輸入方式";
@@ -177,6 +177,16 @@
 "menu.inputMode.liveInsertion" = "即時上屏（實驗）";
 "menu.inputMode.liveInsertion.tooltip" = "僅 Apple 語音辨識可用。錄音過程中會將已完成句子直接上屏，即時上屏部分不會再經過 LLM 優化。";
 "menu.silence.duration" = "停錄延遲";
+
+/* Steady Noise */
+"menu.steadyNoise.sensitivity" = "噪聲靈敏度";
+"menu.steadyNoise.low" = "低（冷氣/風扇環境）";
+"menu.steadyNoise.medium" = "中（預設）";
+"menu.steadyNoise.high" = "高（安靜環境）";
+"tooltip.menu.steadyNoise" = "偵測持續噪聲（如冷氣、風扇）並自動停止錄音";
+"tooltip.steadyNoise.low" = "需要非常穩定的噪聲才觸發停止，適合有冷氣/風扇的環境";
+"tooltip.steadyNoise.medium" = "預設靈敏度";
+"tooltip.steadyNoise.high" = "較容易觸發停止，適合相對安靜的環境";
 
 /* Custom Prompt */
 "settings.prompt.label" = "系統提示詞:";
@@ -192,15 +202,15 @@
 "menu.checkForUpdates" = "檢查更新...";
 "menu.betaUpdates" = "包含測試版";
 "update.available.title" = "有新版本";
-"update.available.message" = "AtomVoice %@ 已發布（目前版本 %@），是否立即安裝？";
+"update.available.message" = "原子微語 %@ 已發布（目前版本 %@），是否立即安裝？";
 "update.upToDate.title" = "已是最新版本";
-"update.upToDate.message" = "目前執行的 AtomVoice %@ 已是最新版本。";
+"update.upToDate.message" = "目前執行的原子微語 %@ 已是最新版本。";
 "update.install" = "安裝";
 "update.later" = "稍後";
 "update.downloading" = "正在下載 %@...";
 "update.installing" = "正在安裝...";
 "update.done.title" = "更新已就緒";
-"update.done.message" = "AtomVoice %@ 已下載完成，重新啟動後生效。";
+"update.done.message" = "原子微語 %@ 已下載完成，重新啟動後生效。";
 "update.restart" = "立即重新啟動";
 "update.error.title" = "更新失敗";
 "update.error.fetch" = "檢查更新失敗：%@";
@@ -239,3 +249,153 @@
 "tooltip.menu.launchAtLogin" = "登入時自動啟動原子微語";
 "tooltip.menu.help" = "查看權限狀態和疑難排解指南";
 "tooltip.menu.about" = "查看版本資訊和相關連結";
+
+/* Doubao ASR */
+"menu.recognitionEngine.doubao" = "豆包雲端辨識";
+"menu.doubaoSettings" = "豆包 ASR 設定...";
+"doubao.connecting" = "正在連接豆包 ASR...";
+"doubao.privacy.title" = "使用豆包雲端辨識？";
+"doubao.privacy.message" = "豆包雲端辨識會將麥克風音訊傳送到火山引擎/豆包服務進行轉寫，並可能在你的火山引擎帳號中產生用量費用。只有接受雲端處理時才繼續。";
+"doubao.privacy.continue" = "繼續使用";
+"doubao.error.privacyNotAccepted" = "請先在選單中啟用豆包雲端辨識，並確認音訊雲端處理提示。";
+"doubao.error.missingApiKey" = "請先設定豆包 ASR API Key。";
+"doubao.error.missingResourceID" = "請先設定豆包 ASR Resource ID。";
+"doubao.error.invalidEndpoint" = "豆包 ASR Endpoint 必須是有效的 wss:// 位址。";
+"doubao.error.protocol" = "豆包 ASR 返回了無效協議幀。";
+"doubao.error.unsupportedCompression" = "豆包 ASR 返回了目前版本暫不支援解碼的壓縮資料。";
+"doubao.error.timeout" = "豆包 ASR 辨識逾時，請重試。";
+"doubao.error.sendFailed" = "傳送音訊到豆包 ASR 失敗：%@";
+"doubao.error.connectionFailed" = "豆包 ASR 連線失敗：%@";
+"doubao.error.server" = "豆包 ASR 錯誤：%@";
+"doubao.settings.title" = "豆包 ASR 設定";
+"doubao.settings.desc" = "設定火山引擎豆包串流語音辨識。只有選擇該辨識引擎時，音訊才會傳送到豆包服務。";
+"doubao.settings.apiKey" = "API Key:";
+"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.options" = "選項:";
+"doubao.settings.enablePunctuation" = "啟用標點";
+"doubao.settings.enableITN" = "啟用 ITN";
+"doubao.settings.enableDDC" = "啟用語意順滑";
+"doubao.settings.enableNonstream" = "文本潤飾";
+"doubao.settings.finalTimeout" = "逾時時間:";
+"doubao.settings.keychainFailed" = "無法將 API Key 儲存到鑰匙圈。";
+"tooltip.doubao.apiKey" = "火山引擎控制台裡的 APP Key，用於連接豆包語音服務。";
+"tooltip.doubao.resourceID" = "調用服務的資源資訊 ID，例如豆包串流語音辨識模型 2.0 的小時版或並發版。";
+"tooltip.doubao.endpoint" = "豆包串流語音辨識接口地址，預設使用官方推薦的雙向串流優化版。";
+"tooltip.doubao.enablePunctuation" = "文件參數 enable_punc：啟用標點，預設開啟。";
+"tooltip.doubao.enableITN" = "文件參數 enable_itn：文本規範化，把原始語音輸出轉換成更可讀的書面形式，例如「一九七零年」變成「1970年」。";
+"tooltip.doubao.enableDDC" = "文件參數 enable_ddc：語意順滑，刪除或修改停頓詞、語氣詞、語意重複詞等不流暢部分。";
+"tooltip.doubao.enableNonstream" = "文件參數 enable_nonstream：開啟串流+非串流二遍辨識，實時返回逐字文本，再重新辨識分句音訊片段以提升最終準確率。";
+"tooltip.doubao.finalTimeout" = "鬆手後最多等待多久拿文本潤飾後的最終結果；逾時則使用目前已有辨識結果。";
+"doubao.settings.accountSection" = "帳號與服務";
+"doubao.settings.effectSection" = "豆包專屬效果";
+"doubao.settings.globalSection" = "跟隨全域設定";
+"doubao.settings.globalLanguage" = "辨識語言:";
+"doubao.settings.globalPunctuation" = "自動標點:";
+"doubao.settings.globalTimeout" = "停錄延遲:";
+"doubao.settings.globalOn" = "開啟";
+"doubao.settings.globalOff" = "關閉";
+"doubao.settings.globalTimeoutValue" = "%.1f 秒";
+"tooltip.doubao.globalLanguage" = "跟隨選單裡的辨識語言，並同步到豆包 audio.language 參數。";
+"tooltip.doubao.globalPunctuation" = "跟隨選單裡的自動標點開關，並同步到豆包 enable_punc 參數。";
+"tooltip.doubao.globalTimeout" = "跟隨輸入方式裡的停錄延遲，並同步到豆包 end_window_size 參數；長按模式使用低延遲預設值。";
+"doubao.settings.effects" = "效果:";
+"doubao.settings.globalFollow" = "跟隨:";
+"doubao.settings.globalSummary" = "辨識語言：%@；自動標點：%@；停錄延遲：%@";
+"tooltip.doubao.globalInfo" = "這些設定來自主選單，不在豆包設定裡重複配置；會直接同步到豆包 API 參數。";
+
+/* Cloud ASR */
+"cloudASR.error.noConnection" = "無法建立語音辨識連線";
+"cloudASR.error.connectionFailed" = "語音辨識連線失敗：%@";
+"cloudASR.error.timeout" = "辨識逾時，請重試";
+
+/* 離線模型下載 */
+"alert.onDeviceModel.title" = "離線模型未下載";
+"alert.onDeviceModel.message" = "目前語言的離線語音辨識模型尚未下載。請前往 系統設定 → 一般 → 鍵盤 → 聽寫，下載對應語言的模型。";
+"alert.onDeviceModel.openSettings" = "開啟系統設定";
+"menu.debug.testOnDeviceAlert" = "測試離線模型下載提示";
+
+
+/* OOBE — 首次啟動引導 */
+"oobe.window.title" = "歡迎使用原子微語";
+"oobe.skip" = "略過";
+"oobe.back" = "返回";
+"oobe.next" = "繼續";
+"oobe.done" = "開始使用";
+"oobe.skip.confirm.title" = "略過引導？";
+"oobe.skip.confirm.message" = "你隨時可從選單列重新開啟引導。";
+"oobe.skip.confirm.ok" = "略過";
+
+"oobe.welcome.title" = "歡迎使用原子微語";
+"oobe.welcome.tagline" = "按下即說，言出即文。";
+"oobe.welcome.subtitle" = "輕盈、隱私優先的語音輸入，暢達任意 Mac 應用，不限時長。";
+"oobe.welcome.hint" = "開始之前，先來設定一下。";
+
+"oobe.perm.heading" = "授予所需權限";
+"oobe.perm.subtitle" = "原子微語需要三項系統權限才能運作。點擊各項授權或開啟「系統設定」。";
+
+"oobe.trigger.heading" = "選擇觸發按鍵";
+"oobe.trigger.subtitle" = "按住此鍵開始語音輸入。之後可隨時於選單列修改。";
+
+"oobe.engine.heading" = "選擇識別引擎";
+"oobe.engine.subtitle" = "卡片從左到右依隱私保護由高至低排列。之後可隨時於選單列切換。";
+"oobe.engine.recommended" = "推薦";
+"oobe.engine.attr.privacy" = "隱私";
+"oobe.engine.attr.quality" = "效果";
+"oobe.engine.attr.cost" = "費用";
+
+"oobe.engine.privacy.high" = "本地推理";
+"oobe.engine.privacy.medium" = "Apple 本地 + 雲端";
+"oobe.engine.privacy.low" = "純雲端";
+"oobe.engine.quality.fair" = "中等";
+"oobe.engine.quality.good" = "良好";
+"oobe.engine.quality.best" = "頂級";
+"oobe.engine.cost.free" = "免費";
+"oobe.engine.cost.paid" = "付費 · 需 API Key";
+"oobe.engine.cost.local" = "免費 · 需下載模型";
+
+"oobe.engine.sherpa.title" = "本地離線";
+"oobe.engine.sherpa.tagline" = "音訊完全不離開本機。";
+"oobe.engine.sherpa.desc" = "基於 Sherpa-ONNX 完全於本機推理。長句準確度略弱。需一次性下載本地模型。";
+
+"oobe.engine.apple.title" = "Apple 語音";
+"oobe.engine.apple.tagline" = "macOS 內建，免費，多語言。";
+"oobe.engine.apple.desc" = "蘋果系統識別。多數語言走雲端，部分語言支援端上模式以提升隱私。";
+
+"oobe.engine.doubao.title" = "豆包串流";
+"oobe.engine.doubao.tagline" = "中文識別業界頂級，串流低延遲。";
+"oobe.engine.doubao.desc" = "音訊上傳至火山引擎伺服器，普通話/方言識別最佳。需配置 API Key，按量付費。";
+
+"oobe.done.title" = "一切就緒";
+"oobe.done.body" = "按住 %@ 即可說話，鬆開自動上屏。原子微語已停留於選單列。";
+"oobe.done.followup.apple" = "提示：可於選單列啟用 Apple 端上識別以提升隱私。";
+"oobe.done.followup.doubao" = "接下來將開啟豆包設定，請填入 API Key。";
+"oobe.done.followup.sherpa" = "接下來將提示你下載本地識別模型。";
+
+"menu.rerunOOBE" = "重新執行設定引導…";
+"oobe.trigger.selected" = "已選擇：%@";
+
+/* OOBE 输入模式 / 本地下载副本 */
+"oobe.trigger.mode.title" = "觸發方式"; "oobe.trigger.mode.hold" = "長按說話"; "oobe.trigger.mode.tap" = "單擊說話"; "oobe.trigger.mode.hold.desc" = "按住觸發鍵開始說話，鬆開自動上屏。"; "oobe.trigger.mode.tap.desc" = "單擊開始，再次點擊或停頓一段時間後自動上屏。"; "oobe.engine.cost.localNote" = "需下載模型";
+
+/* 識別引擎設定視窗 */
+"menu.asrSettings" = "識別引擎設定...";
+"asrSettings.title" = "識別引擎設定";
+"asrSettings.tab.doubao" = "豆包雲端識別";
+"asrSettings.tab.sherpa" = "Sherpa 本地識別";
+"asrSettings.tab.apple" = "Apple 離線識別";
+"asrSettings.sherpa.desc" = "選擇目前語言的離線識別模型。模型會在首次使用時自動下載。";
+"asrSettings.sherpa.currentLang" = "目前語言:";
+"asrSettings.sherpa.downloadStatus" = "下載狀態:";
+"asrSettings.sherpa.downloaded" = "已下載";
+"asrSettings.sherpa.notDownloaded" = "未下載";
+"asrSettings.sherpa.download" = "下載選中模型";
+"asrSettings.sherpa.download.confirm" = "下載選中的模型？這可能需要幾分鐘時間。";
+"asrSettings.sherpa.downloading" = "下載中...";
+"asrSettings.apple.desc" = "使用 Apple 語音辨識的離線模式。音訊在裝置本地處理，不傳送到雲端。";
+"asrSettings.apple.status" = "目前狀態:";
+"asrSettings.apple.modelDownloaded" = "已下載離線模型";
+"asrSettings.apple.modelNotDownloaded" = "離線模型未下載";
+"asrSettings.apple.enable" = "啟用 Apple 強制離線識別";
+"asrSettings.apple.note" = "部分語言可能不支援離線識別。如果模型未下載，請點擊下方按鈕前往系統設定下載。";
+"asrSettings.apple.openSettings" = "開啟系統設定下載模型";

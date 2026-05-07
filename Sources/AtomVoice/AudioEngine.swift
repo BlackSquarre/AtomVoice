@@ -17,6 +17,16 @@ final class AudioEngineController {
     private var recordingDuration: Double = 0
     private let silenceGuardPeriod: Double = 0.5  // 录音前 0.5 秒不检测静音（Skip silence detection for the first 0.5s）
 
+    // 持续噪声检测（Steady noise detection）
+    // 如果音频能量长时间稳定（方差低），说明是持续噪声而非人声
+    // (If audio energy is stable for a long time (low variance), it's steady noise, not speech)
+    private var rmsHistory: [Float] = []
+    private let rmsHistorySize = 30  // 记录最近 30 个 RMS 值（约 1.5 秒）(Keep last 30 RMS values, ~1.5 seconds)
+    private var steadyNoiseDuration: Double = 0
+    // 方差阈值：越小越难触发（需要更稳定的噪声）；越大越容易触发
+    // (Variance threshold: smaller = harder to trigger (needs steadier noise); larger = easier to trigger)
+    private var steadyNoiseThreshold: Float = 0.001
+
     // FFT
     private let fftSize = 1024
     private var fftSetup: FFTSetup?
@@ -244,6 +254,8 @@ final class AudioEngineController {
         bufferQueue.sync {
             sampleBuffer = []
             silenceDuration = 0
+            steadyNoiseDuration = 0
+            rmsHistory = []
             recordingDuration = 0
         }
     }
@@ -261,22 +273,73 @@ final class AudioEngineController {
         let threshold = UserDefaults.standard.double(forKey: "silenceThreshold")
         let requiredDuration = UserDefaults.standard.double(forKey: "silenceDuration")
 
+        // 更新持续噪声灵敏度设置（Update steady noise sensitivity setting）
+        let sensitivity = UserDefaults.standard.integer(forKey: "steadyNoiseSensitivity")
+        switch sensitivity {
+        case 0: steadyNoiseThreshold = 0.0005  // 低灵敏度：需要非常稳定的噪声才触发 (Low: needs very steady noise)
+        case 2: steadyNoiseThreshold = 0.003   // 高灵敏度：较容易触发 (High: triggers easier)
+        default: steadyNoiseThreshold = 0.001   // 中灵敏度 (Medium)
+        }
+
         // 计算 RMS（用 Accelerate，几乎零开销）（Compute RMS via Accelerate, near-zero overhead）
         var rms: Float = 0
         vDSP_rmsqv(channelData, 1, &rms, vDSP_Length(frameCount))
         let dB = 20 * log10(max(rms, 1e-7))
 
+        // 更新 RMS 历史，用于持续噪声检测（Update RMS history for steady noise detection）
+        rmsHistory.append(rms)
+        if rmsHistory.count > rmsHistorySize {
+            rmsHistory.removeFirst()
+        }
+
+        // 检测持续噪声：RMS 有值但方差很低（Detect steady noise: RMS is present but variance is low）
+        let isSteadyNoise = rmsHistory.count >= rmsHistorySize && detectSteadyNoise(rmsHistory: rmsHistory, currentRMS: rms)
+
         if Double(dB) < threshold {
+            // 完全静音（Complete silence）
             silenceDuration += bufferDuration
+            steadyNoiseDuration = 0
             if silenceDuration >= requiredDuration {
                 silenceDuration = 0  // 防止重复触发（Prevent repeated triggers）
                 DispatchQueue.main.async { [weak self] in
                     self?.onSilenceTimeout?()
                 }
             }
-        } else {
+        } else if isSteadyNoise {
+            // 持续噪声（如空调、风扇）：能量稳定，不是人声（Steady noise like AC/fan: stable energy, not speech）
             silenceDuration = 0
+            steadyNoiseDuration += bufferDuration
+            if steadyNoiseDuration >= requiredDuration {
+                steadyNoiseDuration = 0
+                DispatchQueue.main.async { [weak self] in
+                    self?.onSilenceTimeout?()
+                }
+            }
+        } else {
+            // 有人声（Speech detected）
+            silenceDuration = 0
+            steadyNoiseDuration = 0
         }
+    }
+
+    /// 检测持续噪声：RMS 有值但方差很低（Detect steady noise: RMS is present but variance is low）
+    private func detectSteadyNoise(rmsHistory: [Float], currentRMS: Float) -> Bool {
+        // 只在 RMS 高于完全静音阈值时才检测（Only check when RMS is above complete silence）
+        // 避免把真正的安静误判为噪声（Avoid misjudging real silence as noise）
+        guard currentRMS > 0.005 else { return false }
+
+        // 计算 RMS 方差（Compute RMS variance）
+        var mean: Float = 0
+        vDSP_meanv(rmsHistory, 1, &mean, vDSP_Length(rmsHistory.count))
+
+        var variance: Float = 0
+        var squaredDiffs = [Float](repeating: 0, count: rmsHistory.count)
+        let meanVec = [Float](repeating: mean, count: rmsHistory.count)
+        vDSP_vsub(rmsHistory, 1, meanVec, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
+        vDSP_vsq(squaredDiffs, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
+        vDSP_meanv(squaredDiffs, 1, &variance, vDSP_Length(rmsHistory.count))
+
+        return variance < steadyNoiseThreshold
     }
 
     // MARK: - FFT

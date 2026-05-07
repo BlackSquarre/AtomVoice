@@ -168,7 +168,7 @@
 "menu.appleOnDeviceSpeech" = "Apple Force Offline";
 "menu.appleOnDeviceSpeech.unavailable" = "Apple Force Offline (Unavailable)";
 "menu.engine.howto" = "How to Choose an Engine";
-"engine.howto.message" = "• Apple Speech\nBest for: everyday dictation, stable networks, and prioritizing recognition accuracy.\nStrengths: well integrated with macOS, fast streaming results, and usually broader language support.\nTradeoffs: normally depends on network/system services; audio may be processed by Apple's online service; weak network or Apple service issues can reduce reliability.\n\n• SherpaOnnx\nBest for: privacy-focused use, offline environments, or avoiding Apple Speech services.\nStrengths: fully local, no internet required, and audio is not sent to third parties.\nTradeoffs: requires model and runtime files; current models may be weaker than Apple Speech in language coverage, accuracy, punctuation, and proper-noun recognition; uses more local resources.\n\n• Apple Force Offline\nBest for: keeping the Apple Speech experience while avoiding cloud processing as much as possible.\nTradeoffs: some languages are unsupported; accuracy may drop; recognition may fail if local speech assets are missing; still limited by Apple's Speech framework.\n\nRecommendation: choose Apple for accuracy; choose SherpaOnnx for privacy and fully offline use; enable Apple Force Offline if you want Apple Speech but prefer local processing.";
+"engine.howto.message" = "• Apple Speech\nBest for: free, built-in dictation, broad language coverage, and low setup cost.\nWhat changed: it remains the default general-purpose engine. It needs no API key, supports fast streaming results, and can use Apple Force Offline for supported languages when the local speech asset is installed.\nTradeoffs: many languages still use Apple's online service by default; weak networks or Apple service issues can affect reliability. Forced offline mode may be unavailable or less accurate.\n\n• Sherpa Local Recognition\nBest for: privacy-first use, offline work, and avoiding cloud audio processing.\nWhat changed: the app now supports model presets by current language and can download the runtime, ASR model, and punctuation model from Recognition Engine Settings. Audio stays on this Mac.\nTradeoffs: first setup downloads large model files; larger presets use more disk, memory, and startup time. Current local models may be weaker with long sentences, mixed languages, punctuation, and proper nouns.\n\n• Doubao Cloud ASR\nBest for: Mandarin Chinese accuracy, low-latency streaming, and cloud ASR features such as ITN, disfluency cleanup, punctuation, and second-pass refinement.\nWhat changed: configure API Key, Resource ID, and Endpoint in Doubao/ASR settings. Language, auto punctuation, and stop delay follow the main menu; credentials are stored in Keychain.\nTradeoffs: microphone audio is sent to Volcengine/Doubao, requires a stable network, and may incur usage costs on your Volcengine account.\n\n• LLM Text Refinement\nNote: this is not a recognition engine. It runs after ASR to fix misheard words, homophones, punctuation, names, and formatting. The recognized text is sent to your selected LLM provider; audio is not sent.\n\nRecommendation: choose Doubao for best Chinese accuracy; Sherpa for privacy and fully offline use; Apple for free, general, multilingual dictation; Apple Force Offline only when you want Apple Speech to stay local as much as possible.";
 
 /* Input Mode */
 "menu.inputMode" = "Input Mode";
@@ -177,6 +177,16 @@
 "menu.inputMode.liveInsertion" = "Live Insert (Experimental)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple Speech only. Completed sentences are inserted while recording; LLM refinement is skipped for live-inserted text.";
 "menu.silence.duration" = "Stop Delay";
+
+/* Steady Noise */
+"menu.steadyNoise.sensitivity" = "Noise Sensitivity";
+"menu.steadyNoise.low" = "Low (AC/Fan environment)";
+"menu.steadyNoise.medium" = "Medium (Default)";
+"menu.steadyNoise.high" = "High (Quiet environment)";
+"tooltip.menu.steadyNoise" = "Detect steady noise (like AC, fan) and auto-stop recording";
+"tooltip.steadyNoise.low" = "Needs very steady noise to trigger stop, good for environments with AC/fan";
+"tooltip.steadyNoise.medium" = "Default sensitivity";
+"tooltip.steadyNoise.high" = "Triggers stop more easily, good for relatively quiet environments";
 
 /* Custom Prompt */
 "settings.prompt.label" = "System Prompt:";
@@ -239,3 +249,153 @@
 "tooltip.menu.launchAtLogin" = "Automatically start AtomVoice when you log in";
 "tooltip.menu.help" = "View permission status and troubleshooting guide";
 "tooltip.menu.about" = "View version info and links";
+
+/* Doubao ASR */
+"menu.recognitionEngine.doubao" = "Doubao Cloud ASR";
+"menu.doubaoSettings" = "Doubao ASR Settings...";
+"doubao.connecting" = "Connecting to Doubao ASR...";
+"doubao.privacy.title" = "Use Doubao Cloud ASR?";
+"doubao.privacy.message" = "Doubao Cloud ASR sends microphone audio to Volcengine/Doubao for transcription. This may incur usage costs on your Volcengine account. Continue only if you accept this cloud processing.";
+"doubao.privacy.continue" = "Continue";
+"doubao.error.privacyNotAccepted" = "Enable Doubao Cloud ASR from the menu first and confirm the cloud audio notice.";
+"doubao.error.missingApiKey" = "Please configure the Doubao ASR API Key first.";
+"doubao.error.missingResourceID" = "Please configure the Doubao ASR Resource ID first.";
+"doubao.error.invalidEndpoint" = "Doubao ASR endpoint must be a valid wss:// URL.";
+"doubao.error.protocol" = "Doubao ASR returned an invalid protocol frame.";
+"doubao.error.unsupportedCompression" = "Doubao ASR returned compressed data that this build cannot decode yet.";
+"doubao.error.timeout" = "Doubao ASR timed out. Please try again.";
+"doubao.error.sendFailed" = "Failed to send audio to Doubao ASR: %@";
+"doubao.error.connectionFailed" = "Doubao ASR connection failed: %@";
+"doubao.error.server" = "Doubao ASR error: %@";
+"doubao.settings.title" = "Doubao ASR Settings";
+"doubao.settings.desc" = "Configure Volcengine Doubao streaming speech recognition. Audio will be sent to Doubao only when this recognition engine is selected.";
+"doubao.settings.apiKey" = "API Key:";
+"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.options" = "Options:";
+"doubao.settings.enablePunctuation" = "Enable punctuation";
+"doubao.settings.enableITN" = "Enable ITN";
+"doubao.settings.enableDDC" = "Enable disfluency cleanup";
+"doubao.settings.enableNonstream" = "Text polish";
+"doubao.settings.finalTimeout" = "Timeout:";
+"doubao.settings.keychainFailed" = "Failed to save API Key to Keychain.";
+"tooltip.doubao.apiKey" = "The APP Key from the Volcengine console, used to connect to Doubao Speech.";
+"tooltip.doubao.resourceID" = "The service resource ID, such as the hourly or concurrent resource for Doubao streaming ASR 2.0.";
+"tooltip.doubao.endpoint" = "The Doubao streaming ASR endpoint. The default uses the officially recommended optimized bidirectional streaming endpoint.";
+"tooltip.doubao.enablePunctuation" = "Document parameter enable_punc: enable punctuation. Enabled by default.";
+"tooltip.doubao.enableITN" = "Document parameter enable_itn: text normalization, converting raw ASR output into readable written text, such as “nineteen seventy” to “1970”.";
+"tooltip.doubao.enableDDC" = "Document parameter enable_ddc: semantic smoothing, removing or modifying disfluent parts such as pauses, filler words, and repeated words.";
+"tooltip.doubao.enableNonstream" = "Document parameter enable_nonstream: enables streaming + non-streaming second-pass recognition; returns live text first, then re-recognizes sentence audio segments to improve final accuracy.";
+"tooltip.doubao.finalTimeout" = "How long to wait after release for the polished final result; if it times out, AtomVoice uses the current recognized text.";
+"doubao.settings.accountSection" = "Account & Service";
+"doubao.settings.effectSection" = "Doubao Effects";
+"doubao.settings.globalSection" = "Follows Global Settings";
+"doubao.settings.globalLanguage" = "Language:";
+"doubao.settings.globalPunctuation" = "Auto punctuation:";
+"doubao.settings.globalTimeout" = "Stop delay:";
+"doubao.settings.globalOn" = "On";
+"doubao.settings.globalOff" = "Off";
+"doubao.settings.globalTimeoutValue" = "%.1f sec";
+"tooltip.doubao.globalLanguage" = "Follows the recognition language menu and syncs to Doubao audio.language.";
+"tooltip.doubao.globalPunctuation" = "Follows the Auto Punctuation menu switch and syncs to Doubao enable_punc.";
+"tooltip.doubao.globalTimeout" = "Follows the Input Mode stop delay and syncs to Doubao end_window_size; hold-to-speak uses a low-latency default.";
+"doubao.settings.effects" = "Effects:";
+"doubao.settings.globalFollow" = "Follows:";
+"doubao.settings.globalSummary" = "Language: %@; Auto punctuation: %@; Stop delay: %@";
+"tooltip.doubao.globalInfo" = "These come from the main menu instead of being duplicated here, and are synced directly to Doubao API parameters.";
+
+/* Cloud ASR */
+"cloudASR.error.noConnection" = "Could not create speech recognition connection";
+"cloudASR.error.connectionFailed" = "Speech recognition connection failed: %@";
+"cloudASR.error.timeout" = "Recognition timed out. Please try again.";
+
+/* On-Device Model Download */
+"alert.onDeviceModel.title" = "Offline Model Not Downloaded";
+"alert.onDeviceModel.message" = "The offline speech recognition model for the current language has not been downloaded. Please go to System Settings → General → Keyboard → Dictation to download the model.";
+"alert.onDeviceModel.openSettings" = "Open System Settings";
+"menu.debug.testOnDeviceAlert" = "Test On-Device Model Alert";
+
+
+/* OOBE — First-launch onboarding */
+"oobe.window.title" = "Welcome to AtomVoice";
+"oobe.skip" = "Skip";
+"oobe.back" = "Back";
+"oobe.next" = "Continue";
+"oobe.done" = "Get Started";
+"oobe.skip.confirm.title" = "Skip onboarding?";
+"oobe.skip.confirm.message" = "You can re-run the onboarding any time from the menu bar.";
+"oobe.skip.confirm.ok" = "Skip";
+
+"oobe.welcome.title" = "Welcome to AtomVoice";
+"oobe.welcome.tagline" = "Press to talk. Speak to text.";
+"oobe.welcome.subtitle" = "A lightweight, privacy-first voice input that works in any Mac app, with no time limit.";
+"oobe.welcome.hint" = "Let's get you set up.";
+
+"oobe.perm.heading" = "Grant Permissions";
+"oobe.perm.subtitle" = "AtomVoice needs three permissions to work. Click each row to grant or open System Settings.";
+
+"oobe.trigger.heading" = "Choose Your Trigger Key";
+"oobe.trigger.subtitle" = "Hold this key to start dictation. You can change it later from the menu bar.";
+
+"oobe.engine.heading" = "Choose a Recognition Engine";
+"oobe.engine.subtitle" = "Cards are sorted left-to-right by privacy, from highest to lowest. You can switch later from the menu bar.";
+"oobe.engine.recommended" = "Recommended";
+"oobe.engine.attr.privacy" = "Privacy";
+"oobe.engine.attr.quality" = "Quality";
+"oobe.engine.attr.cost" = "Cost";
+
+"oobe.engine.privacy.high" = "On-device";
+"oobe.engine.privacy.medium" = "Apple on-device + cloud";
+"oobe.engine.privacy.low" = "Cloud only";
+"oobe.engine.quality.fair" = "Fair";
+"oobe.engine.quality.good" = "Good";
+"oobe.engine.quality.best" = "Excellent";
+"oobe.engine.cost.free" = "Free";
+"oobe.engine.cost.paid" = "Paid · API key";
+"oobe.engine.cost.local" = "Free · Model download";
+
+"oobe.engine.sherpa.title" = "Local Offline";
+"oobe.engine.sherpa.tagline" = "No audio ever leaves your Mac.";
+"oobe.engine.sherpa.desc" = "Runs entirely on-device with Sherpa-ONNX. Slightly lower accuracy on long sentences. Requires a one-time model download.";
+
+"oobe.engine.apple.title" = "Apple Speech";
+"oobe.engine.apple.tagline" = "Built into macOS, free, multilingual.";
+"oobe.engine.apple.desc" = "Apple's speech recognition. Most languages process in the cloud; some support on-device mode for added privacy.";
+
+"oobe.engine.doubao.title" = "Doubao Streaming";
+"oobe.engine.doubao.tagline" = "Top-tier Chinese accuracy, low latency.";
+"oobe.engine.doubao.desc" = "Streams audio to Volcengine servers. Best Mandarin / dialect recognition. Requires an API key — usage is billed.";
+
+"oobe.done.title" = "You're all set";
+"oobe.done.body" = "Hold %@ to dictate, release to insert. AtomVoice lives in your menu bar.";
+"oobe.done.followup.apple" = "Tip: Apple's on-device mode can be enabled from the menu bar for added privacy.";
+"oobe.done.followup.doubao" = "Next: we'll open Doubao settings so you can enter your API key.";
+"oobe.done.followup.sherpa" = "Next: we'll prompt you to download the local recognition model.";
+
+"menu.rerunOOBE" = "Run Setup Guide Again...";
+"oobe.trigger.selected" = "Selected: %@";
+
+/* OOBE 输入模式 / 本地下载副本 */
+"oobe.trigger.mode.title" = "Input mode"; "oobe.trigger.mode.hold" = "Hold to talk"; "oobe.trigger.mode.tap" = "Tap to talk"; "oobe.trigger.mode.hold.desc" = "Hold the trigger key while speaking; release to insert."; "oobe.trigger.mode.tap.desc" = "Tap once to start, tap again or stay silent to stop and insert."; "oobe.engine.cost.localNote" = "Model download required";
+
+/* ASR Settings Window */
+"menu.asrSettings" = "Recognition Engine Settings...";
+"asrSettings.title" = "Recognition Engine Settings";
+"asrSettings.tab.doubao" = "Doubao Cloud ASR";
+"asrSettings.tab.sherpa" = "Sherpa Local";
+"asrSettings.tab.apple" = "Apple Offline";
+"asrSettings.sherpa.desc" = "Select offline recognition model for the current language. Models are automatically downloaded on first use.";
+"asrSettings.sherpa.currentLang" = "Current Language:";
+"asrSettings.sherpa.downloadStatus" = "Download Status:";
+"asrSettings.sherpa.downloaded" = "Downloaded";
+"asrSettings.sherpa.notDownloaded" = "Not Downloaded";
+"asrSettings.sherpa.download" = "Download Selected Model";
+"asrSettings.sherpa.download.confirm" = "Download the selected model? This may take a few minutes.";
+"asrSettings.sherpa.downloading" = "Downloading...";
+"asrSettings.apple.desc" = "Use Apple Speech offline mode. Audio is processed on-device and not sent to the cloud.";
+"asrSettings.apple.status" = "Current Status:";
+"asrSettings.apple.modelDownloaded" = "Offline model downloaded";
+"asrSettings.apple.modelNotDownloaded" = "Offline model not downloaded";
+"asrSettings.apple.enable" = "Enable Apple Force Offline";
+"asrSettings.apple.note" = "Some languages may not support offline recognition. Click the button below to go to System Settings to download the model.";
+"asrSettings.apple.openSettings" = "Open System Settings to Download Model";

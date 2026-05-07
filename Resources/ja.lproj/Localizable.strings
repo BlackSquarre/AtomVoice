@@ -168,7 +168,7 @@
 "menu.appleOnDeviceSpeech" = "Apple 強制オフライン認識";
 "menu.appleOnDeviceSpeech.unavailable" = "Apple 強制オフライン認識（この言語では利用不可）";
 "menu.engine.howto" = "エンジンの選び方";
-"engine.howto.message" = "• Apple 音声認識\n適した用途：日常入力、安定したネットワーク、認識精度を優先したい場合。\n強み：macOSとの統合が良く、ストリーミング結果が速く、多言語対応も比較的充実しています。\n弱点：通常ネットワークやシステムサービスに依存します。音声がAppleのオンラインサービスで処理される可能性があり、弱いネットワークやサービス障害時に安定性が下がることがあります。\n\n• SherpaOnnx 音声認識\n適した用途：プライバシー重視、オフライン利用、Apple音声サービスに依存したくない場合。\n強み：完全にローカルで動作し、インターネット不要で、音声を第三者に送信しません。\n弱点：モデルとランタイムの準備が必要です。現在のモデルは言語対応、精度、句読点、固有名詞認識でAppleに劣る場合があり、ローカルリソースも多く使います。\n\n• Apple 強制オフライン認識\n適した用途：Appleの使い勝手を保ちながら、できるだけクラウド処理を避けたい場合。\n弱点：一部の言語は非対応です。精度が下がる可能性があり、システムにローカル音声アセットがない場合は認識を開始できないことがあります。Apple Speechフレームワークの制限も受けます。\n\nおすすめ：精度優先ならApple、プライバシーと完全オフライン優先ならSherpaOnnx、Appleを使い続けつつローカル処理を優先したいならApple強制オフライン認識を有効にしてください。";
+"engine.howto.message" = "• Apple 音声認識\n適した用途：無料ですぐ使える、幅広い言語、設定の少ない日常入力。\n更新後：汎用の標準候補です。APIキー不要で、ストリーミング結果が速く、対応言語でローカル音声アセットがインストール済みなら「Apple 強制オフライン認識」を有効にできます。\n制限：多くの言語では既定でAppleのオンラインサービスを使います。ネットワークやApple側サービスの影響を受け、強制オフラインは利用不可または精度低下の可能性があります。\n\n• Sherpa ローカル認識\n適した用途：プライバシー優先、オフライン作業、クラウドへ音声を送信したくない場合。\n更新後：「認識エンジン設定」で現在の言語に合わせてモデルプリセットを選び、ランタイム、ASRモデル、句読点モデルをダウンロードできます。音声はこのMac内に留まります。\n制限：初回に大きなモデルファイルのダウンロードが必要です。大きなプリセットほどディスク、メモリ、読み込み時間を使います。長文、混在言語、句読点、固有名詞ではクラウドサービスに劣る場合があります。\n\n• Doubao クラウドASR\n適した用途：中国語（普通話）の精度重視、低遅延ストリーミング、ITN、フィラー除去、句読点、二段階認識などのクラウド機能。\n更新後：Doubao/ASR設定でAPI Key、Resource ID、Endpointを設定します。認識言語、自動句読点、停止遅延はメインメニューに追従し、認証情報はキーチェーンに保存されます。\n制限：マイク音声はVolcengine/Doubaoへ送信されます。安定したネットワークが必要で、Volcengineアカウントに利用料金が発生する場合があります。\n\n• LLM テキスト修正\n説明：これは認識エンジンではなく、ASR後の任意処理です。聞き間違い、同音語、句読点、固有名詞、書式を修正できます。有効時は認識テキストを選択したLLMプロバイダーへ送信しますが、音声は送信しません。\n\nおすすめ：中国語の精度優先ならDoubao、プライバシーと完全オフラインならSherpa、無料で汎用・多言語ならApple、Apple Speechをできるだけローカルにしたい場合のみApple強制オフライン認識を有効にしてください。";
 
 /* Input Mode */
 "menu.inputMode" = "入力モード";
@@ -177,6 +177,16 @@
 "menu.inputMode.liveInsertion" = "ライブ入力（実験）";
 "menu.inputMode.liveInsertion.tooltip" = "Apple 音声認識のみ。録音中に完了した文を直接入力します。ライブ入力済みの文は LLM 最適化をスキップします。";
 "menu.silence.duration" = "停止ディレイ";
+
+/* Steady Noise */
+"menu.steadyNoise.sensitivity" = "ノイズ感度";
+"menu.steadyNoise.low" = "低（エアコン/扇風機環境）";
+"menu.steadyNoise.medium" = "中（デフォルト）";
+"menu.steadyNoise.high" = "高（静かな環境）";
+"tooltip.menu.steadyNoise" = "持続的なノイズ（エアコン、扇風機など）を検出して録音を自動停止";
+"tooltip.steadyNoise.low" = "非常に安定したノイズでないと停止しません。エアコン/扇風機のある環境に適しています";
+"tooltip.steadyNoise.medium" = "デフォルト感度";
+"tooltip.steadyNoise.high" = "停止しやすく、比較的静かな環境に適しています";
 
 /* Custom Prompt */
 "settings.prompt.label" = "システムプロンプト:";
@@ -239,3 +249,153 @@
 "tooltip.menu.launchAtLogin" = "ログイン時に原子微声を自動起動";
 "tooltip.menu.help" = "権限の状態とトラブルシューティングを表示";
 "tooltip.menu.about" = "バージョン情報とリンクを表示";
+
+/* Doubao ASR */
+"menu.recognitionEngine.doubao" = "Doubao クラウド ASR";
+"menu.doubaoSettings" = "Doubao ASR 設定...";
+"doubao.connecting" = "Doubao ASR に接続中...";
+"doubao.privacy.title" = "Doubao クラウド ASR を使用しますか？";
+"doubao.privacy.message" = "Doubao クラウド ASR は、文字起こしのためにマイク音声を Volcengine/Doubao に送信します。Volcengine アカウントで利用料金が発生する場合があります。クラウド処理に同意する場合のみ続行してください。";
+"doubao.privacy.continue" = "続行";
+"doubao.error.privacyNotAccepted" = "まずメニューで Doubao クラウド ASR を有効にし、クラウド音声処理の通知を確認してください。";
+"doubao.error.missingApiKey" = "先に Doubao ASR API Key を設定してください。";
+"doubao.error.missingResourceID" = "先に Doubao ASR Resource ID を設定してください。";
+"doubao.error.invalidEndpoint" = "Doubao ASR endpoint は有効な wss:// URL である必要があります。";
+"doubao.error.protocol" = "Doubao ASR が無効なプロトコルフレームを返しました。";
+"doubao.error.unsupportedCompression" = "Doubao ASR が、このビルドではまだデコードできない圧縮データを返しました。";
+"doubao.error.timeout" = "Doubao ASR がタイムアウトしました。もう一度お試しください。";
+"doubao.error.sendFailed" = "Doubao ASR への音声送信に失敗しました: %@";
+"doubao.error.connectionFailed" = "Doubao ASR の接続に失敗しました: %@";
+"doubao.error.server" = "Doubao ASR エラー: %@";
+"doubao.settings.title" = "Doubao ASR 設定";
+"doubao.settings.desc" = "Volcengine Doubao のストリーミング音声認識を設定します。この認識エンジンを選択した場合のみ、音声が Doubao に送信されます。";
+"doubao.settings.apiKey" = "API Key:";
+"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.options" = "オプション:";
+"doubao.settings.enablePunctuation" = "句読点を有効化";
+"doubao.settings.enableITN" = "ITN を有効化";
+"doubao.settings.enableDDC" = "言い淀み補正を有効化";
+"doubao.settings.enableNonstream" = "テキスト補正";
+"doubao.settings.finalTimeout" = "タイムアウト:";
+"doubao.settings.keychainFailed" = "API Key をキーチェーンに保存できませんでした。";
+"tooltip.doubao.apiKey" = "Volcengine コンソールの APP Key。Doubao 音声サービスへの接続に使います。";
+"tooltip.doubao.resourceID" = "サービスのリソース ID。例：Doubao ストリーミング ASR 2.0 の時間版または同時接続版。";
+"tooltip.doubao.endpoint" = "Doubao ストリーミング音声認識のエンドポイント。既定では公式推奨の双方向ストリーミング最適化版を使います。";
+"tooltip.doubao.enablePunctuation" = "文档参数 enable_punc：句読点を有効化します。既定では有効です。";
+"tooltip.doubao.enableITN" = "文档参数 enable_itn：テキスト正規化。ASR の生出力を読みやすい書き言葉に変換します。";
+"tooltip.doubao.enableDDC" = "文档参数 enable_ddc：セマンティック・スムージング。停顿词、语气词、重复词など不自然な部分を削除または修正します。";
+"tooltip.doubao.enableNonstream" = "文档参数 enable_nonstream：ストリーミング+非ストリーミングの二段階認識。まずリアルタイム文字を返し、分句音声を再認識して最終精度を上げます。";
+"tooltip.doubao.finalTimeout" = "キーを離した後、補正済みの最終結果を最大何秒待つか。タイムアウト時は現在の認識結果を使います。";
+"doubao.settings.accountSection" = "アカウントとサービス";
+"doubao.settings.effectSection" = "Doubao 専用効果";
+"doubao.settings.globalSection" = "全体設定に従う";
+"doubao.settings.globalLanguage" = "認識言語:";
+"doubao.settings.globalPunctuation" = "自動句読点:";
+"doubao.settings.globalTimeout" = "停止遅延:";
+"doubao.settings.globalOn" = "オン";
+"doubao.settings.globalOff" = "オフ";
+"doubao.settings.globalTimeoutValue" = "%.1f 秒";
+"tooltip.doubao.globalLanguage" = "メニューの認識言語に従い、Doubao の audio.language パラメータに同期します。";
+"tooltip.doubao.globalPunctuation" = "メニューの自動句読点スイッチに従い、Doubao の enable_punc に同期します。";
+"tooltip.doubao.globalTimeout" = "入力方式の停止遅延に従い、Doubao の end_window_size に同期します。長押しモードでは低遅延の既定値を使います。";
+"doubao.settings.effects" = "効果:";
+"doubao.settings.globalFollow" = "連動:";
+"doubao.settings.globalSummary" = "認識言語：%@；自動句読点：%@；停止遅延：%@";
+"tooltip.doubao.globalInfo" = "これらはメインメニューの設定に従い、この画面では重複設定しません。Doubao API パラメータへ直接同期されます。";
+
+/* Cloud ASR */
+"cloudASR.error.noConnection" = "音声認識接続を作成できません";
+"cloudASR.error.connectionFailed" = "音声認識接続に失敗しました：%@";
+"cloudASR.error.timeout" = "認識がタイムアウトしました。もう一度お試しください。";
+
+/* オフラインモデルダウンロード */
+"alert.onDeviceModel.title" = "オフラインモデルが未ダウンロード";
+"alert.onDeviceModel.message" = "現在の言語のオフライン音声認識モデルがダウンロードされていません。システム設定 → 一般 → キーボード → ディクテーションに移動してモデルをダウンロードしてください。";
+"alert.onDeviceModel.openSettings" = "システム設定を開く";
+"menu.debug.testOnDeviceAlert" = "オフラインモデルアラートをテスト";
+
+
+/* OOBE — 初回起動ガイド */
+"oobe.window.title" = "AtomVoice へようこそ";
+"oobe.skip" = "スキップ";
+"oobe.back" = "戻る";
+"oobe.next" = "続ける";
+"oobe.done" = "始める";
+"oobe.skip.confirm.title" = "ガイドをスキップしますか？";
+"oobe.skip.confirm.message" = "メニューバーからいつでもガイドを再表示できます。";
+"oobe.skip.confirm.ok" = "スキップ";
+
+"oobe.welcome.title" = "AtomVoice へようこそ";
+"oobe.welcome.tagline" = "押して話す。話せば文字に。";
+"oobe.welcome.subtitle" = "軽量・プライバシー重視の音声入力。あらゆる Mac アプリで使え、時間制限はありません。";
+"oobe.welcome.hint" = "始める前に、少しだけ設定を。";
+
+"oobe.perm.heading" = "必要な権限を許可";
+"oobe.perm.subtitle" = "AtomVoice は 3 つのシステム権限を必要とします。各項目をクリックして許可するか、システム設定を開いてください。";
+
+"oobe.trigger.heading" = "トリガーキーを選択";
+"oobe.trigger.subtitle" = "このキーを押している間、音声入力が開始されます。後でメニューバーから変更できます。";
+
+"oobe.engine.heading" = "認識エンジンを選択";
+"oobe.engine.subtitle" = "カードはプライバシーが高い順に左から並んでいます。後でメニューバーから変更できます。";
+"oobe.engine.recommended" = "推奨";
+"oobe.engine.attr.privacy" = "プライバシー";
+"oobe.engine.attr.quality" = "精度";
+"oobe.engine.attr.cost" = "コスト";
+
+"oobe.engine.privacy.high" = "ローカル推論";
+"oobe.engine.privacy.medium" = "Apple ローカル + クラウド";
+"oobe.engine.privacy.low" = "クラウドのみ";
+"oobe.engine.quality.fair" = "普通";
+"oobe.engine.quality.good" = "良い";
+"oobe.engine.quality.best" = "最高";
+"oobe.engine.cost.free" = "無料";
+"oobe.engine.cost.paid" = "有料 · API キー";
+"oobe.engine.cost.local" = "無料 · モデルのDL要";
+
+"oobe.engine.sherpa.title" = "ローカルオフライン";
+"oobe.engine.sherpa.tagline" = "音声は端末から出ません。";
+"oobe.engine.sherpa.desc" = "Sherpa-ONNX により完全にローカル推論。長文の精度はやや劣ります。初回のみモデルのダウンロードが必要です。";
+
+"oobe.engine.apple.title" = "Apple Speech";
+"oobe.engine.apple.tagline" = "macOS 内蔵、無料、多言語対応。";
+"oobe.engine.apple.desc" = "Apple の音声認識。多くの言語はクラウド処理ですが、一部はオンデバイスモードに対応します。";
+
+"oobe.engine.doubao.title" = "Doubao ストリーミング";
+"oobe.engine.doubao.tagline" = "中国語認識トップクラス、低遅延。";
+"oobe.engine.doubao.desc" = "音声を Volcengine サーバーへストリーミング送信。中国語認識が最高水準。API キーが必要で従量課金です。";
+
+"oobe.done.title" = "セットアップ完了";
+"oobe.done.body" = "%@ を押している間に話し、離すと自動入力されます。AtomVoice はメニューバーに常駐します。";
+"oobe.done.followup.apple" = "ヒント：メニューバーから Apple のオンデバイスモードを有効化するとプライバシーが向上します。";
+"oobe.done.followup.doubao" = "次に Doubao 設定を開きます。API キーを入力してください。";
+"oobe.done.followup.sherpa" = "次にローカル認識モデルのダウンロードを案内します。";
+
+"menu.rerunOOBE" = "セットアップガイドを再実行…";
+"oobe.trigger.selected" = "選択中：%@";
+
+/* OOBE 输入模式 / 本地下载副本 */
+"oobe.trigger.mode.title" = "入力方式"; "oobe.trigger.mode.hold" = "押している間"; "oobe.trigger.mode.tap" = "タップ"; "oobe.trigger.mode.hold.desc" = "トリガーキーを押している間に話し、離すと挿入されます。"; "oobe.trigger.mode.tap.desc" = "1 回タップで開始、再度タップまたは無音で停止＆挿入。"; "oobe.engine.cost.localNote" = "モデルのDLが必要";
+
+/* 認識エンジン設定ウィンドウ */
+"menu.asrSettings" = "認識エンジン設定...";
+"asrSettings.title" = "認識エンジン設定";
+"asrSettings.tab.doubao" = "Doubao クラウド認識";
+"asrSettings.tab.sherpa" = "Sherpa ローカル";
+"asrSettings.tab.apple" = "Apple オフライン";
+"asrSettings.sherpa.desc" = "現在の言語のオフライン認識モデルを選択します。モデルは初回使用時に自動的にダウンロードされます。";
+"asrSettings.sherpa.currentLang" = "現在の言語:";
+"asrSettings.sherpa.downloadStatus" = "ダウンロード状態:";
+"asrSettings.sherpa.downloaded" = "ダウンロード済み";
+"asrSettings.sherpa.notDownloaded" = "未ダウンロード";
+"asrSettings.sherpa.download" = "選択したモデルをダウンロード";
+"asrSettings.sherpa.download.confirm" = "選択したモデルをダウンロードしますか？数分かかる場合があります。";
+"asrSettings.sherpa.downloading" = "ダウンロード中...";
+"asrSettings.apple.desc" = "Apple 音声認識のオフラインモードを使用します。音声はデバイス上で処理され、クラウドに送信されません。";
+"asrSettings.apple.status" = "現在の状態:";
+"asrSettings.apple.modelDownloaded" = "オフラインモデル ダウンロード済み";
+"asrSettings.apple.modelNotDownloaded" = "オフラインモデル 未ダウンロード";
+"asrSettings.apple.enable" = "Apple 強制オフライン認識を有効にする";
+"asrSettings.apple.note" = "一部の言語はオフライン認識をサポートしていない場合があります。モデルがダウンロードされていない場合は、下のボタンをクリックしてシステム設定に移動してください。";
+"asrSettings.apple.openSettings" = "システム設定を開いてモデルをダウンロード";

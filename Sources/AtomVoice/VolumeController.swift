@@ -82,6 +82,7 @@ final class VolumeController {
     }
 
     func saveAndDecreaseVolume() {
+        guard savedVolume == nil else { return } // 已经在降低/已降低状态，跳过重复调用
         guard let current = getSystemVolume() else { return }
         savedVolume = current
         let target = Int(Double(current) * decreaseRatio)

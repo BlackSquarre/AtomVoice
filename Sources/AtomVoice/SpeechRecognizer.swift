@@ -34,15 +34,20 @@ final class SpeechRecognizerController {
         onResult: @escaping (String, Bool) -> Void,
         onRequestSwitch: @escaping (SFSpeechAudioBufferRecognitionRequest) -> Void
     ) -> SFSpeechAudioBufferRecognitionRequest? {
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+
         self.onResult = onResult
         self.onRequestSwitch = onRequestSwitch
         segmentOffset = ""
         currentSegmentText = ""
-        activeTaskID = 0
+        activeTaskID += 1
+        let taskID = activeTaskID
 
         let request = makeRequest()
         recognitionRequest = request
-        startTask(request: request, taskID: 0)
+        startTask(request: request, taskID: taskID)
         scheduleRollingTimer()
         return request
     }
@@ -61,6 +66,106 @@ final class SpeechRecognizerController {
         onRequestSwitch = nil
 
         return segmentOffset + currentSegmentText
+    }
+
+    // MARK: - 缓存音频识别
+
+    /// 用已缓存的音频 buffer 补跑一次 Apple Speech，用于云端识别失败后的兜底。
+    /// (Run Apple Speech over cached audio buffers as a fallback after cloud recognition fails.)
+    func recognize(
+        buffers: [AVAudioPCMBuffer],
+        onResult: @escaping (String, Bool) -> Void,
+        completion: @escaping (String) -> Void
+    ) {
+        rollingTimer?.invalidate()
+        rollingTimer = nil
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        onRequestSwitch = nil
+        self.onResult = nil
+
+        segmentOffset = ""
+        currentSegmentText = ""
+        activeTaskID += 1
+        let taskID = activeTaskID
+
+        guard !buffers.isEmpty, let recognizer else {
+            DispatchQueue.main.async { completion("") }
+            return
+        }
+
+        let request = makeRequest()
+        recognitionRequest = request
+
+        let duration = audioDuration(of: buffers)
+        let timeout = min(90, max(8, duration + 6))
+        var didFinish = false
+        var timeoutTimer: Timer?
+
+        var finishRecognition: (() -> Void)!
+        finishRecognition = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self, !didFinish, taskID == self.activeTaskID else { return }
+                didFinish = true
+                timeoutTimer?.invalidate()
+                timeoutTimer = nil
+
+                let finalText = self.segmentOffset + self.currentSegmentText
+                self.activeTaskID += 1
+                self.recognitionRequest?.endAudio()
+                self.recognitionTask?.finish()
+                self.recognitionTask = nil
+                self.recognitionRequest = nil
+                completion(finalText)
+            }
+        }
+
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                guard let self, taskID == self.activeTaskID, !didFinish else { return }
+
+                if let result {
+                    self.currentSegmentText = result.bestTranscription.formattedString
+                    let fullText = self.segmentOffset + self.currentSegmentText
+                    onResult(fullText, result.isFinal)
+                    if result.isFinal {
+                        finishRecognition()
+                    }
+                }
+
+                if let error {
+                    let nsError = error as NSError
+                    // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
+                    if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
+                        print("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                    }
+                    if result == nil {
+                        finishRecognition()
+                    }
+                }
+            }
+        }
+
+        timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
+            finishRecognition()
+        }
+
+        let buffersToAppend = buffers
+        DispatchQueue.global(qos: .userInitiated).async {
+            for buffer in buffersToAppend {
+                request.append(buffer)
+            }
+            request.endAudio()
+        }
+    }
+
+    private func audioDuration(of buffers: [AVAudioPCMBuffer]) -> TimeInterval {
+        buffers.reduce(0) { total, buffer in
+            guard buffer.format.sampleRate > 0 else { return total }
+            return total + Double(buffer.frameLength) / buffer.format.sampleRate
+        }
     }
 
     // MARK: - 滚动分段

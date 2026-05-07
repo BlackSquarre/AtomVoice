@@ -11,15 +11,18 @@
         <string>zh-Hant</string>
         <string>ja</string>
         <string>ko</string>
+        <string>es</string>
+        <string>fr</string>
+        <string>de</string>
     </array>
     <key>CFBundleName</key>
     <string>AtomVoice</string>
     <key>CFBundleIdentifier</key>
     <string>com.blacksquarre.AtomVoice</string>
     <key>CFBundleVersion</key>
-    <string>4</string>
+    <string>5</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.10.1 Beta 3</string>
+    <string>0.10.1 Beta 4</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>

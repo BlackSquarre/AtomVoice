@@ -9,6 +9,8 @@ final class MenuBarController {
     private let onLanguageChanged: () -> Void
     private let llmRefiner: LLMRefiner
     private var settingsWindow: SettingsWindowController?
+    private var doubaoSettingsWindow: DoubaoSettingsWindowController?
+    private var asrSettingsWindow: ASRSettingsWindowController?
     private var aboutWindow: AboutWindowController?
     private var permissionsWindow: PermissionsWindowController?
     var onTriggerKeyChanged: ((UInt16) -> Void)?
@@ -78,7 +80,8 @@ final class MenuBarController {
         let currentEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
         let engineOptions: [(String, String, String)] = [
             ("apple", loc("menu.recognitionEngine.apple"), "apple.logo"),
-            ("sherpaOnnx", loc("menu.recognitionEngine.sherpaOnnx"), "mountain.2.fill")
+            ("sherpaOnnx", loc("menu.recognitionEngine.sherpaOnnx"), "mountain.2.fill"),
+            (VolcengineASRSettings.engineCode, loc("menu.recognitionEngine.doubao"), "cloud")
         ]
         for (code, title, iconName) in engineOptions {
             let item = NSMenuItem(title: title, action: #selector(selectRecognitionEngine(_:)), keyEquivalent: "")
@@ -111,23 +114,15 @@ final class MenuBarController {
 
         engineMenu.addItem(.separator())
 
-        let openSherpaFolderItem = NSMenuItem(title: loc("menu.sherpaOpenFolder"), action: #selector(openSherpaFolder(_:)), keyEquivalent: "")
-        openSherpaFolderItem.target = self
-        openSherpaFolderItem.image = icon("folder")
-        engineMenu.addItem(openSherpaFolderItem)
-        engineItem.submenu = engineMenu
-        menu.addItem(engineItem)
+        // 识别引擎设置（Recognition engine settings）
+        let asrSettingsItem = NSMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), keyEquivalent: "")
+        asrSettingsItem.target = self
+        asrSettingsItem.image = icon("gear")
+        engineMenu.addItem(asrSettingsItem)
 
-        // 自动标点（Auto punctuation）
-        let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
-        let punctItem = NSMenuItem(title: loc("menu.punctuation"), action: #selector(togglePunctuation(_:)), keyEquivalent: "")
-        punctItem.image = icon("text.badge.plus")
-        punctItem.target = self
-        punctItem.state = punctEnabled ? .on : .off
-        punctItem.toolTip = loc("tooltip.menu.punctuation")
-        menu.addItem(punctItem)
+        engineMenu.addItem(.separator())
 
-        // LLM 优化（LLM refinement）
+        // LLM 优化放在识别引擎菜单末尾，避免主菜单过长（Keep LLM refinement at the end of Recognition Engine to shorten the main menu）
         let llmItem = NSMenuItem(title: loc("menu.llm"), action: nil, keyEquivalent: "")
         llmItem.image = icon("wand.and.stars")
         llmItem.toolTip = loc("tooltip.menu.llm")
@@ -151,7 +146,19 @@ final class MenuBarController {
         howtoItem.target = self
         llmMenu.addItem(howtoItem)
         llmItem.submenu = llmMenu
-        menu.addItem(llmItem)
+        engineMenu.addItem(llmItem)
+
+        engineItem.submenu = engineMenu
+        menu.addItem(engineItem)
+
+        // 自动标点（Auto punctuation）
+        let punctEnabled = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
+        let punctItem = NSMenuItem(title: loc("menu.punctuation"), action: #selector(togglePunctuation(_:)), keyEquivalent: "")
+        punctItem.image = icon("text.badge.plus")
+        punctItem.target = self
+        punctItem.state = punctEnabled ? .on : .off
+        punctItem.toolTip = loc("tooltip.menu.punctuation")
+        menu.addItem(punctItem)
 
         menu.addItem(.separator())
 
@@ -186,6 +193,25 @@ final class MenuBarController {
                 item.target = self
                 item.representedObject = value
                 item.state = abs(currentDuration - value) < 0.01 ? .on : .off
+                item.indentationLevel = 1
+                inputModeMenu.addItem(item)
+            }
+            inputModeMenu.addItem(.separator())
+            let noiseLabel = NSMenuItem(title: loc("menu.steadyNoise.sensitivity"), action: nil, keyEquivalent: "")
+            noiseLabel.isEnabled = false
+            noiseLabel.toolTip = loc("tooltip.menu.steadyNoise")
+            inputModeMenu.addItem(noiseLabel)
+            let currentSensitivity = UserDefaults.standard.integer(forKey: "steadyNoiseSensitivity")
+            for (title, value, tooltip) in [
+                (loc("menu.steadyNoise.low"), 0, loc("tooltip.steadyNoise.low")),
+                (loc("menu.steadyNoise.medium"), 1, loc("tooltip.steadyNoise.medium")),
+                (loc("menu.steadyNoise.high"), 2, loc("tooltip.steadyNoise.high"))
+            ] {
+                let item = NSMenuItem(title: title, action: #selector(selectSteadyNoiseSensitivity(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = value
+                item.state = currentSensitivity == value ? .on : .off
+                item.toolTip = tooltip
                 item.indentationLevel = 1
                 inputModeMenu.addItem(item)
             }
@@ -344,6 +370,25 @@ final class MenuBarController {
         betaItem.indentationLevel = 1
         m.addItem(betaItem)
 
+        let oobeItem = NSMenuItem(title: loc("menu.rerunOOBE"), action: #selector(rerunOOBE(_:)), keyEquivalent: "")
+        oobeItem.image = icon("sparkles.rectangle.stack")
+        oobeItem.target = self
+        m.addItem(oobeItem)
+
+        #if DEBUG_BUILD
+        m.addItem(.separator())
+
+        // Debug: 测试离线模型下载提示弹窗（Debug: Test offline model download prompt）
+        let testOnDeviceAlertItem = NSMenuItem(
+            title: loc("menu.debug.testOnDeviceAlert"),
+            action: #selector(debugTestOnDeviceAlert(_:)),
+            keyEquivalent: ""
+        )
+        testOnDeviceAlertItem.image = icon("ladybug")
+        testOnDeviceAlertItem.target = self
+        m.addItem(testOnDeviceAlertItem)
+        #endif
+
         return m
     }
 
@@ -357,8 +402,10 @@ final class MenuBarController {
     }
 
     private var hasAllPermissions: Bool {
-        AVCaptureDevice.authorizationStatus(for: .audio) == .authorized &&
-        SFSpeechRecognizer.authorizationStatus() == .authorized &&
+        let currentEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
+        let speechRequired = currentEngine == "apple"
+        return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized &&
+        (!speechRequired || SFSpeechRecognizer.authorizationStatus() == .authorized) &&
         AXIsProcessTrusted()
     }
 
@@ -414,6 +461,26 @@ final class MenuBarController {
             return
         }
 
+        if code == VolcengineASRSettings.engineCode {
+            if !UserDefaults.standard.bool(forKey: "doubaoASRPrivacyAccepted") {
+                let alert = NSAlert()
+                alert.messageText = loc("doubao.privacy.title")
+                alert.informativeText = loc("doubao.privacy.message")
+                alert.icon = NSImage(systemSymbolName: "cloud", accessibilityDescription: nil)
+                alert.addButton(withTitle: loc("doubao.privacy.continue"))
+                alert.addButton(withTitle: loc("common.cancel"))
+                guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+                UserDefaults.standard.set(true, forKey: "doubaoASRPrivacyAccepted")
+            }
+
+            UserDefaults.standard.set(code, forKey: "recognitionEngine")
+            rebuildMenu()
+            if !VolcengineASRSettings.hasAPIKey {
+                openDoubaoSettingsWindow()
+            }
+            return
+        }
+
         UserDefaults.standard.set(code, forKey: "recognitionEngine")
         rebuildMenu()
     }
@@ -434,9 +501,45 @@ final class MenuBarController {
         SherpaOnnxRecognizerController.openSupportDirectory()
     }
 
+    @objc private func openDoubaoSettings(_ sender: NSMenuItem) {
+        openDoubaoSettingsWindow()
+    }
+
+    @objc private func openASRSettings(_ sender: NSMenuItem) {
+        if asrSettingsWindow == nil {
+            asrSettingsWindow = ASRSettingsWindowController()
+        }
+        asrSettingsWindow?.showWindow()
+    }
+
+    /// 公开方法：从 AppDelegate / OOBE 完成时调用（Public: called from AppDelegate / OOBE finish）
+    func openDoubaoSettingsFromOutside() {
+        openDoubaoSettingsWindow()
+    }
+
+    /// 公开方法：让外部触发菜单重建（Public: allow external menu rebuild）
+    func rebuildMenuPublic() {
+        rebuildMenu()
+    }
+
+    @objc private func rerunOOBE(_ sender: NSMenuItem) {
+        // 重置完成标志并交给 AppDelegate 展示窗口
+        // (Reset completion flag and let AppDelegate present the window)
+        UserDefaults.standard.set(false, forKey: OOBEWindowController.completionDefaultsKey)
+        (NSApp.delegate as? AppDelegate)?.showOOBE()
+    }
+
+    private func openDoubaoSettingsWindow() {
+        if doubaoSettingsWindow == nil {
+            doubaoSettingsWindow = DoubaoSettingsWindowController()
+        }
+        doubaoSettingsWindow?.showWindow()
+    }
+
     @objc private func toggleAppleOnDeviceSpeech(_ sender: NSMenuItem) {
         let currentLang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
         guard Self.supportsOnDeviceRecognition(for: currentLang) else {
+            showOnDeviceModelDownloadAlert()
             UserDefaults.standard.set(false, forKey: "appleOnDeviceRecognitionEnabled")
             rebuildMenu()
             return
@@ -445,6 +548,28 @@ final class MenuBarController {
         UserDefaults.standard.set(!current, forKey: "appleOnDeviceRecognitionEnabled")
         rebuildMenu()
     }
+
+    /// 弹窗提示用户下载离线语音模型（Show alert prompting user to download offline speech model）
+    private func showOnDeviceModelDownloadAlert() {
+        let alert = NSAlert()
+        alert.messageText = loc("alert.onDeviceModel.title")
+        alert.informativeText = loc("alert.onDeviceModel.message")
+        alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+        alert.addButton(withTitle: loc("alert.onDeviceModel.openSettings"))
+        alert.addButton(withTitle: loc("common.cancel"))
+
+        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Dictation") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
+    #if DEBUG_BUILD
+    @objc private func debugTestOnDeviceAlert(_ sender: NSMenuItem) {
+        showOnDeviceModelDownloadAlert()
+    }
+    #endif
 
     @objc private func openEngineHowto(_ sender: NSMenuItem) {
         let alert = NSAlert()
@@ -523,7 +648,7 @@ final class MenuBarController {
             .paragraphStyle: summaryParagraph,
         ]
 
-        let summaryPrefixes = ["建议", "建議", "Recommendation", "おすすめ", "추천", "Empfehlung"]
+        let summaryPrefixes = ["建议", "建議", "Recommendation", "おすすめ", "추천", "Recomendación", "Recommandation", "Empfehlung"]
         var previousLineWasBlank = false
 
         for rawLine in lines {
@@ -676,6 +801,12 @@ final class MenuBarController {
     @objc private func selectSilenceDuration(_ sender: NSMenuItem) {
         guard let duration = sender.representedObject as? Double else { return }
         UserDefaults.standard.set(duration, forKey: "silenceDuration")
+        rebuildMenu()
+    }
+
+    @objc private func selectSteadyNoiseSensitivity(_ sender: NSMenuItem) {
+        guard let sensitivity = sender.representedObject as? Int else { return }
+        UserDefaults.standard.set(sensitivity, forKey: "steadyNoiseSensitivity")
         rebuildMenu()
     }
 

@@ -77,7 +77,9 @@ final class CapsuleWindowController {
 
     // MARK: - Show
 
-    func show(showRecordingTimer: Bool = true) {
+    func show(showRecordingTimer: Bool = true,
+              initialText: String = "",
+              showWaveformInitially: Bool = true) {
         if panel != nil {
             // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板（Previous showError 3s delay hasn't ended when re-recording, clean up old panel first）
             cleanup()
@@ -86,9 +88,9 @@ final class CapsuleWindowController {
         #if DEBUG_BUILD
         debugTimerVisible = showRecordingTimer
         #endif
-        waveformVisible = true
+        waveformVisible = showWaveformInitially
 
-        let fw = fullWidth(forTextWidth: minTextWidth)
+        let fw = fullWidth(forTextWidth: initialTextWidth(initialText))
         let target = targetFrame(width: fw)
         activeAnimationInset = animationStyle == "dynamicIsland" ? spotlightAnimationInset : 0
 
@@ -119,7 +121,7 @@ final class CapsuleWindowController {
 
         let waveform = WaveformView(frame: .zero)
         waveform.translatesAutoresizingMaskIntoConstraints = false
-        waveform.alphaValue = animationStyle == "none" ? 1 : 0
+        waveform.alphaValue = (animationStyle == "none" && waveformVisible) ? 1 : 0
         container.addSubview(waveform)
 
         let label = NSTextField(labelWithString: "")
@@ -129,6 +131,7 @@ final class CapsuleWindowController {
         label.lineBreakMode = .byTruncatingHead
         label.maximumNumberOfLines = 1
         label.cell?.truncatesLastVisibleLine = true
+        label.stringValue = initialText
         container.addSubview(label)
 
         let refLabel = NSTextField(labelWithString: loc("capsule.refining"))
@@ -248,6 +251,13 @@ final class CapsuleWindowController {
         }
     }
 
+    private func initialTextWidth(_ text: String) -> CGFloat {
+        guard !text.isEmpty else { return minTextWidth }
+        let font = NSFont.systemFont(ofSize: 13.5, weight: .medium)
+        let measured = (text as NSString).size(withAttributes: [.font: font])
+        return min(max(measured.width + 18, minTextWidth), maxTextWidth)
+    }
+
     // MARK: - Spotlight 入场：中心弹性缩放 + 高斯模糊收敛
 
     private func setCenterAnchor(for layer: CALayer) {
@@ -361,6 +371,7 @@ final class CapsuleWindowController {
         CATransaction.commit()
 
         surface.layoutSubtreeIfNeeded()
+        updateShimmerFrame()
     }
 
     private func animateInSpring(panel: NSPanel, container: NSView, targetFrame: NSRect) {
@@ -566,6 +577,7 @@ final class CapsuleWindowController {
 
         if animationStyle == "none" {
             panel.setFrame(frame, display: false)
+            updateShimmerFrame()
             completion?()
         } else {
             NSAnimationContext.runAnimationGroup({ ctx in
@@ -574,11 +586,23 @@ final class CapsuleWindowController {
                     ? CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
                     : CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrame(frame, display: true)
-            }, completionHandler: completion)
+            }, completionHandler: { [weak self] in
+                self?.updateShimmerFrame()
+                completion?()
+            })
         }
     }
 
     func showProgress(_ text: String, hidesWaveform: Bool = true) {
+        guard panel != nil else {
+            show(showRecordingTimer: false, initialText: text, showWaveformInitially: !hidesWaveform)
+            refiningLabel?.isHidden = true
+            textLabel?.isHidden = false
+            DispatchQueue.main.async { [weak self] in
+                self?.applyShimmerToCapsule()
+            }
+            return
+        }
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
@@ -621,10 +645,11 @@ final class CapsuleWindowController {
     // 用一个 clipLayer（有 cornerRadius + masksToBounds）套住 shimmer 光带（Use a clipLayer with cornerRadius + masksToBounds to wrap the shimmer band）
     // 无论底层是 NSGlassEffectView 还是 NSVisualEffectView，都能精确裁剪为胶囊轮廓（Precisely clips to capsule outline regardless of whether the underlying view is NSGlassEffectView or NSVisualEffectView）
 
-    private func applyShimmerToCapsule() {
+    func applyShimmerToCapsule() {
         guard let cv = animationSurfaceView ?? panel?.contentView else { return }
         cv.wantsLayer = true
         guard let rootLayer = cv.layer else { return }
+        stopShimmer()
 
         let capsuleW = cv.bounds.width
         let bandW: CGFloat = capsuleW * 0.55
@@ -664,7 +689,22 @@ final class CapsuleWindowController {
         shimmerClipLayer = clip
     }
 
-    private func stopShimmer() {
+    private func updateShimmerFrame() {
+        guard let cv = animationSurfaceView ?? panel?.contentView,
+              let clip = shimmerClipLayer,
+              let sl = shimmerLayer
+        else { return }
+
+        let capsuleW = cv.bounds.width
+        let bandW = max(1, capsuleW * 0.55)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        clip.frame = CGRect(x: 0, y: 0, width: capsuleW, height: capsuleHeight)
+        sl.frame = CGRect(x: -bandW, y: 0, width: bandW, height: capsuleHeight)
+        CATransaction.commit()
+    }
+
+    func stopShimmer() {
         shimmerLayer?.removeAllAnimations()
         shimmerClipLayer?.removeFromSuperlayer()
         shimmerLayer     = nil

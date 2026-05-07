@@ -8,6 +8,10 @@ private let logger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "
 /// 下载 → 解压 → 清理临时文件（Download → Extract → Clean up temp files）
 final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private static let runtimeArchiveRootName = "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib"
+    private static let requiredRuntimeLibs = [
+        "libsherpa-onnx-c-api.dylib",
+        "libonnxruntime.1.24.4.dylib",
+    ]
 
     struct DownloadItem {
         let name: String
@@ -17,28 +21,6 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     static let shared = SherpaModelDownloader()
-
-    /// 三个下载任务（Three download tasks）
-    static let items: [DownloadItem] = [
-        DownloadItem(
-            name: "runtime",
-            url: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2")!,
-            extractDir: SherpaOnnxRecognizerController.supportDirectory,
-            archiveName: "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2"
-        ),
-        DownloadItem(
-            name: "asr",
-            url: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23-mobile.tar.bz2")!,
-            extractDir: SherpaOnnxRecognizerController.modelsDirectory,
-            archiveName: "sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23-mobile.tar.bz2"
-        ),
-        DownloadItem(
-            name: "punct",
-            url: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")!,
-            extractDir: SherpaOnnxRecognizerController.modelsDirectory,
-            archiveName: "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2"
-        ),
-    ]
 
     /// 下载进度回调（主线程）（Download progress callback (main thread)）
     /// - Parameters:
@@ -54,39 +36,44 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private var itemsToDownload: [DownloadItem] = []
     private var currentItemIndex = 0
     private var totalItems = 0
+    private var verificationPreset: SherpaModelPreset?
     private(set) var isDownloading = false
 
     /// Sherpa 运行所需文件清单（Sherpa runtime required file list）
     static var requiredFiles: [(name: String, url: URL)] {
+        requiredFiles(for: SherpaModelPreset.current)
+    }
+
+    private static func requiredFiles(for preset: SherpaModelPreset) -> [(name: String, url: URL)] {
         let rt = SherpaOnnxRecognizerController.runtimeLibDirectory
-        let asr = SherpaOnnxRecognizerController.modelDirectory
+        let asr = preset.modelDirectory
         let punct = SherpaOnnxRecognizerController.punctuationModelDirectory
 
         return [
             ("libsherpa-onnx-c-api.dylib", rt.appendingPathComponent("libsherpa-onnx-c-api.dylib")),
             ("libonnxruntime.1.24.4.dylib", rt.appendingPathComponent("libonnxruntime.1.24.4.dylib")),
-            ("encoder-epoch-99-avg-1.int8.onnx", asr.appendingPathComponent("encoder-epoch-99-avg-1.int8.onnx")),
-            ("decoder-epoch-99-avg-1.onnx", asr.appendingPathComponent("decoder-epoch-99-avg-1.onnx")),
-            ("joiner-epoch-99-avg-1.int8.onnx", asr.appendingPathComponent("joiner-epoch-99-avg-1.int8.onnx")),
-            ("tokens.txt", asr.appendingPathComponent("tokens.txt")),
+            (preset.encoderFile, asr.appendingPathComponent(preset.encoderFile)),
+            (preset.decoderFile, asr.appendingPathComponent(preset.decoderFile)),
+            (preset.joinerFile, asr.appendingPathComponent(preset.joinerFile)),
+            (preset.tokensFile, asr.appendingPathComponent(preset.tokensFile)),
             ("model.int8.onnx", punct.appendingPathComponent("model.int8.onnx")),
         ]
     }
 
     static var missingRequiredFiles: [(name: String, url: URL)] {
-        requiredFiles.filter { !isUsableFile($0.url) }
+        missingRequiredFiles(for: SherpaModelPreset.current)
+    }
+
+    private static func missingRequiredFiles(for preset: SherpaModelPreset) -> [(name: String, url: URL)] {
+        requiredFiles(for: preset).filter { !isUsableFile($0.url) }
     }
 
     @discardableResult
-    static func repairExtractedFilesIfNeeded() -> Bool {
+    static func repairExtractedFilesIfNeeded(for preset: SherpaModelPreset = SherpaModelPreset.current) -> Bool {
         let sourceLibDirectory = SherpaOnnxRecognizerController.supportDirectory
             .appendingPathComponent(runtimeArchiveRootName, isDirectory: true)
             .appendingPathComponent("lib", isDirectory: true)
         let targetLibDirectory = SherpaOnnxRecognizerController.runtimeLibDirectory
-        let requiredRuntimeLibs = [
-            "libsherpa-onnx-c-api.dylib",
-            "libonnxruntime.1.24.4.dylib",
-        ]
 
         do {
             try FileManager.default.createDirectory(at: targetLibDirectory, withIntermediateDirectories: true)
@@ -105,16 +92,20 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             return false
         }
 
-        return allModelsReady
+        return allModelsReady(for: preset)
     }
 
     /// 是否所有模型都已存在。只在下载完成、启动自愈或错误恢复时调用。（Whether all models are present. Only called after download completion, startup self-repair, or error recovery.）
     static var allModelsReady: Bool {
-        missingRequiredFiles.isEmpty
+        allModelsReady(for: SherpaModelPreset.current)
     }
 
-    static func printMissingRequiredFiles() {
-        let missingFiles = missingRequiredFiles
+    static func allModelsReady(for preset: SherpaModelPreset) -> Bool {
+        missingRequiredFiles(for: preset).isEmpty
+    }
+
+    static func printMissingRequiredFiles(for preset: SherpaModelPreset = SherpaModelPreset.current) {
+        let missingFiles = missingRequiredFiles(for: preset)
         if missingFiles.isEmpty {
             print("[SherpaOnnx] 必需文件都存在，但模型仍无法加载，可能是文件损坏或版本不兼容")
             return
@@ -128,19 +119,82 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
     /// 开始下载所有缺失的模型（Start downloading all missing models）
     func startDownload() {
+        startDownload(preset: SherpaModelPreset.current)
+    }
+
+    /// 开始下载指定预设模型（Start downloading specified preset model）
+    func startDownload(preset: SherpaModelPreset) {
         guard !isDownloading else { return }
         isDownloading = true
+        verificationPreset = preset
 
         // 创建目录（Create directories）
         try? SherpaOnnxRecognizerController.createSupportDirectories()
 
-        itemsToDownload = Self.items
+        // 构建下载列表：运行库 + 指定模型 + 标点模型
+        let runtimeItem = DownloadItem(
+            name: "runtime",
+            url: SherpaModelPreset.needsMirror
+                ? URL(string: "https://ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2")!
+                : URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2")!,
+            extractDir: SherpaOnnxRecognizerController.supportDirectory,
+            archiveName: "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2"
+        )
+
+        let asrItem = DownloadItem(
+            name: "asr",
+            url: preset.downloadURL,
+            extractDir: SherpaOnnxRecognizerController.modelsDirectory,
+            archiveName: preset.archiveName
+        )
+
+        let punctItem = DownloadItem(
+            name: "punct",
+            url: SherpaModelPreset.needsMirror
+                ? URL(string: "https://ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")!
+                : URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")!,
+            extractDir: SherpaOnnxRecognizerController.modelsDirectory,
+            archiveName: "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2"
+        )
+
+        // 检查哪些需要下载
+        itemsToDownload = []
+        let runtimeMissing = Self.requiredRuntimeLibs.contains {
+            !Self.isUsableFile(SherpaOnnxRecognizerController.runtimeLibDirectory.appendingPathComponent($0))
+        }
+        if runtimeMissing {
+            itemsToDownload.append(runtimeItem)
+        }
+        if !preset.isDownloaded {
+            itemsToDownload.append(asrItem)
+        }
+        if !Self.isUsableFile(SherpaOnnxRecognizerController.punctuationModelDirectory.appendingPathComponent("model.int8.onnx")) {
+            itemsToDownload.append(punctItem)
+        }
+
+        guard !itemsToDownload.isEmpty else {
+            isDownloading = false
+            let success = Self.allModelsReady(for: preset) || Self.repairExtractedFilesIfNeeded(for: preset)
+            verificationPreset = nil
+            if success {
+                UserDefaults.standard.set(true, forKey: "sherpaModelsReady")
+            } else {
+                Self.printMissingRequiredFiles(for: preset)
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.onComplete?(success, success ? nil : "Extracted files not found")
+                self?.onProgress = nil
+                self?.onComplete = nil
+            }
+            return
+        }
+
         currentItemIndex = 0
         totalItems = itemsToDownload.count
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 600  // 10 分钟总超时（10-minute total timeout）
+        config.timeoutIntervalForResource = 600
         session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
 
         downloadNext()
@@ -151,6 +205,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         currentTask?.cancel()
         session?.invalidateAndCancel()
         session = nil
+        verificationPreset = nil
         isDownloading = false
     }
 
@@ -163,12 +218,14 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             session?.finishTasksAndInvalidate()
             session = nil
 
-            let success = Self.allModelsReady || Self.repairExtractedFilesIfNeeded()
+            let preset = verificationPreset ?? SherpaModelPreset.current
+            let success = Self.allModelsReady(for: preset) || Self.repairExtractedFilesIfNeeded(for: preset)
+            verificationPreset = nil
             if success {
                 UserDefaults.standard.set(true, forKey: "sherpaModelsReady")
                 logger.info("[下载] 所有模型验证通过，已标记 sherpaModelsReady = true")
             } else {
-                Self.printMissingRequiredFiles()
+                Self.printMissingRequiredFiles(for: preset)
             }
             DispatchQueue.main.async { [weak self] in
                 if success {
@@ -274,6 +331,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         isDownloading = false
         session?.invalidateAndCancel()
         session = nil
+        verificationPreset = nil
         DispatchQueue.main.async { [weak self] in
             self?.onComplete?(false, message)
             self?.onProgress = nil
