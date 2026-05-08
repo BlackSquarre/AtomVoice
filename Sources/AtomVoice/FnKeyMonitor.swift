@@ -10,9 +10,11 @@ struct TriggerKeyOption {
 
     static let all: [TriggerKeyOption] = [
         TriggerKeyOption(keyCode: 63, locKey: "menu.triggerKey.fn",           flagMask: .maskSecondaryFn, symbolKey: "menu.triggerKey.fn.symbol"),
+        TriggerKeyOption(keyCode: 59, locKey: "menu.triggerKey.leftControl",  flagMask: .maskControl,     symbolKey: "menu.triggerKey.leftControl.symbol"),
+        TriggerKeyOption(keyCode: 58, locKey: "menu.triggerKey.leftOption",   flagMask: .maskAlternate,   symbolKey: "menu.triggerKey.leftOption.symbol"),
+        TriggerKeyOption(keyCode: 54, locKey: "menu.triggerKey.rightCommand", flagMask: .maskCommand,     symbolKey: "menu.triggerKey.rightCommand.symbol"),
         TriggerKeyOption(keyCode: 61, locKey: "menu.triggerKey.rightOption",  flagMask: .maskAlternate,   symbolKey: "menu.triggerKey.rightOption.symbol"),
         TriggerKeyOption(keyCode: 62, locKey: "menu.triggerKey.rightControl", flagMask: .maskControl,     symbolKey: "menu.triggerKey.rightControl.symbol"),
-        TriggerKeyOption(keyCode: 54, locKey: "menu.triggerKey.rightCommand", flagMask: .maskCommand,     symbolKey: "menu.triggerKey.rightCommand.symbol"),
     ]
 
     static func option(for keyCode: UInt16) -> TriggerKeyOption {

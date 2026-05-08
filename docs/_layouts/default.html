@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title | default: site.title }}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}">
+  <meta property="og:title" content="{{ page.title | default: site.title }}">
+  <meta property="og:description" content="{{ page.description | default: site.description }}">
+  <meta property="og:image" content="{{ '/assets/img/AppIcon.png' | absolute_url }}">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="{{ '/assets/img/AppIcon.png' | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <script>
+    const I18N = {{ site.data.i18n | jsonify }};
+    const LANGS = ['en','zh_hans','zh_hant','ja','ko','es','fr','de'];
+
+    function detectLang() {
+      const s = localStorage.getItem('av-lang');
+      if (s && LANGS.includes(s)) return s;
+      const bl = (navigator.language || 'en').toLowerCase();
+      if (bl.startsWith('zh-hant') || bl.startsWith('zh-tw') || bl.startsWith('zh-hk')) return 'zh_hant';
+      if (bl.startsWith('zh')) return 'zh_hans';
+      if (bl.startsWith('ja')) return 'ja';
+      if (bl.startsWith('ko')) return 'ko';
+      if (bl.startsWith('es')) return 'es';
+      if (bl.startsWith('fr')) return 'fr';
+      if (bl.startsWith('de')) return 'de';
+      return 'en';
+    }
+
+    function applyLang(lang) {
+      localStorage.setItem('av-lang', lang);
+      const t = I18N[lang] || I18N['en'];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (t[k] !== undefined) el.textContent = t[k];
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      document.documentElement.lang = lang.replace('_', '-');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const lang = detectLang();
+      applyLang(lang);
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+      });
+    });
+  </script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="{{ '/' | relative_url }}">
+        <img src="{{ '/assets/img/AppIcon.png' | relative_url }}" alt="AtomVoice" width="26" height="26">
+        <span>AtomVoice</span>
+      </a>
+      <div class="nav-right">
+        <a href="https://github.com/BlackSquarre/AtomVoice/releases/latest" class="nav-download" data-i18n="btn_download">Download</a>
+        <div class="lang-switcher" role="group" aria-label="Language">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="zh_hans">中</button>
+          <button class="lang-btn" data-lang="zh_hant">繁</button>
+          <button class="lang-btn" data-lang="ja">日</button>
+          <button class="lang-btn" data-lang="ko">한</button>
+          <button class="lang-btn" data-lang="es">ES</button>
+          <button class="lang-btn" data-lang="fr">FR</button>
+          <button class="lang-btn" data-lang="de">DE</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main>{{ content }}</main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="https://github.com/BlackSquarre/AtomVoice">GitHub</a>
+        <a href="{{ '/privacy' | relative_url }}" data-i18n="footer_privacy">Privacy Policy</a>
+        <a href="https://github.com/BlackSquarre/AtomVoice/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="footer_license">Apache 2.0</a>
+        <a href="https://github.com/BlackSquarre/AtomVoice/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener" data-i18n="footer_notices">Third-Party Notices</a>
+      </div>
+      <p class="footer-copy">© 2024 Lingru Miao &nbsp;·&nbsp; AtomVoice（原子微语）</p>
+    </div>
+  </footer>
+</body>
+</html>

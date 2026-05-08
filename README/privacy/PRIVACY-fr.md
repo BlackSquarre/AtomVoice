@@ -1,6 +1,6 @@
 # Politique de Confidentialité d'AtomVoice
 
-Dernière mise à jour : 5 mai 2026
+Dernière mise à jour : 9 mai 2026
 
 AtomVoice est un outil de saisie vocale dans la barre de menus de macOS. Nous prenons votre vie privée très au sérieux. Cette Politique de Confidentialité explique comment AtomVoice traite les données, utilise les autorisations et interagit avec les services tiers.
 
@@ -44,6 +44,9 @@ AtomVoice prend en charge différents modes de reconnaissance :
 
 3. **Reconnaissance locale Sherpa ONNX**
    Si vous configurez un modèle de reconnaissance local Sherpa ONNX, la reconnaissance audio est entièrement effectuée sur votre appareil sans nécessiter de téléchargement vers un service de reconnaissance cloud.
+
+4. **Reconnaissance cloud en streaming Volcengine (Doubao)**
+   Si vous activez le moteur de reconnaissance cloud en streaming Volcengine (Doubao) et configurez une clé API et un Resource ID, AtomVoice envoie votre audio vocal au service de reconnaissance vocale Volcengine de Bytedance pour une reconnaissance en streaming en temps réel. Vos données audio sont traitées par les serveurs de Volcengine. Le traitement des données associées est régi par les politiques de confidentialité de Bytedance et Volcengine. Cette fonctionnalité nécessite une configuration dans les paramètres Doubao et est désactivée par défaut.
 
 ## 4. Raffinement de Texte LLM
 
@@ -102,9 +105,10 @@ AtomVoice ne vend, ne loue ni n'échange vos données personnelles.
 Les données peuvent être envoyées à des tiers uniquement dans les situations suivantes :
 
 1. Lors de l'utilisation de la reconnaissance vocale Apple, l'audio ou les requêtes de reconnaissance peuvent être traités par Apple
-2. Lorsque le raffinement de texte LLM est activé, le texte reconnu est envoyé au fournisseur LLM choisi
-3. Lors de la vérification des mises à jour, l'application accède à GitHub Releases
-4. Lors de l'utilisation d'un point de terminaison API personnalisé, les données sont envoyées au serveur que vous avez configuré
+2. Lors de l'utilisation du moteur de reconnaissance cloud en streaming Volcengine (Doubao), l'audio vocal est traité par les serveurs de Volcengine
+3. Lorsque le raffinement de texte LLM est activé, le texte reconnu est envoyé au fournisseur LLM choisi
+4. Lors de la vérification des mises à jour, l'application accède à GitHub Releases
+5. Lors de l'utilisation d'un point de terminaison API personnalisé, les données sont envoyées au serveur que vous avez configuré
 
 ## 9. Mesures de Sécurité
 

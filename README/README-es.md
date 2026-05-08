@@ -107,4 +107,4 @@ El system prompt por defecto está afinado para pulir dictado (corregir homófon
 
 ## License
 
-MIT
+Apache License 2.0

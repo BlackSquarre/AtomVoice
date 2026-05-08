@@ -21,6 +21,10 @@ final class SpeechRecognizerController {
         updateLanguage()
     }
 
+    var currentText: String {
+        segmentOffset + currentSegmentText
+    }
+
     func updateLanguage() {
         let langCode = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: langCode))

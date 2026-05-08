@@ -107,4 +107,4 @@ Le system prompt par défaut est ajusté pour le polissage de dictée (homophone
 
 ## License
 
-MIT
+Apache License 2.0

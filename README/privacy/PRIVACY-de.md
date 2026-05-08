@@ -1,6 +1,6 @@
 # AtomVoice Datenschutzrichtlinie
 
-Letzte Aktualisierung: 5. Mai 2026
+Letzte Aktualisierung: 9. Mai 2026
 
 AtomVoice ist ein Spracheingabe-Tool für die macOS-Menüleiste. Wir nehmen Ihre Privatsphäre sehr ernst. Diese Datenschutzrichtlinie erklärt, wie AtomVoice Daten verarbeitet, Berechtigungen nutzt und mit Drittanbietern interagiert.
 
@@ -44,6 +44,9 @@ AtomVoice unterstützt verschiedene Erkennungsmodi:
 
 3. **Sherpa ONNX Lokale Erkennung**
    Wenn Sie ein lokales Sherpa ONNX-Erkennungsmodell konfigurieren, wird die Audioerkennung vollständig auf Ihrem Gerät durchgeführt, ohne dass ein Upload in einen Cloud-Erkennungsdienst erforderlich ist.
+
+4. **Volcengine (Doubao) Streaming-Cloud-Erkennung**
+   Wenn Sie die Volcengine (Doubao) Streaming-Cloud-Erkennungs-Engine aktivieren und einen API-Schlüssel sowie eine Resource ID konfigurieren, sendet AtomVoice Ihre Sprachaudio an den Spracherkennungsdienst von Bytedance's Volcengine zur Echtzeit-Streaming-Erkennung. Ihre Audiodaten werden von Volcengine-Servern verarbeitet. Die zugehörige Datenverarbeitung unterliegt den Datenschutzrichtlinien von Bytedance und Volcengine. Diese Funktion erfordert eine Konfiguration in den Doubao-Einstellungen und ist standardmäßig deaktiviert.
 
 ## 4. LLM-Textverfeinerung
 
@@ -102,9 +105,10 @@ AtomVoice verkauft, vermietet oder handelt nicht mit Ihren persönlichen Daten.
 Daten können nur in folgenden Situationen an Dritte gesendet werden:
 
 1. Bei Verwendung der Apple-Spracherkennung können Audio oder Erkennungsanfragen von Apple verarbeitet werden
-2. Wenn die LLM-Textverfeinerung aktiviert ist, wird der erkannte Text an den gewählten LLM-Anbieter gesendet
-3. Bei der Aktualisierungsprüfung greift die Anwendung auf GitHub Releases zu
-4. Bei Verwendung eines benutzerdefinierten API-Endpunkts werden Daten an den von Ihnen konfigurierten Server gesendet
+2. Bei Verwendung der Volcengine (Doubao) Streaming-Cloud-Erkennungs-Engine wird die Sprachaudio von Volcengine-Servern verarbeitet
+3. Wenn die LLM-Textverfeinerung aktiviert ist, wird der erkannte Text an den gewählten LLM-Anbieter gesendet
+4. Bei der Aktualisierungsprüfung greift die Anwendung auf GitHub Releases zu
+5. Bei Verwendung eines benutzerdefinierten API-Endpunkts werden Daten an den von Ihnen konfigurierten Server gesendet
 
 ## 9. Sicherheitsmaßnahmen
 

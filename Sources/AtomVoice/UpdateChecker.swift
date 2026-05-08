@@ -13,23 +13,51 @@ final class UpdateChecker: NSObject {
 
     private var progressWindow: NSWindow?
     private var progressLabel: NSTextField?
+    private enum UpdateState {
+        case idle
+        case checking
+        case prompting
+        case downloading
+        case readyToRestart
+        case applying
+    }
+    private var state: UpdateState = .idle
+    private var pendingUserVisibleCheck = false
 
     // MARK: - 公开 API
 
     /// 检查更新（Check for updates）
     /// - Parameter silent: true = 无新版时不弹提示，启动时后台静默检查用（true = no alert when up-to-date, for silent background check on launch）
     func checkForUpdates(silent: Bool = false) {
+        guard state == .idle else {
+            if state == .checking, !silent {
+                pendingUserVisibleCheck = true
+            }
+            if !silent {
+                progressWindow?.makeKeyAndOrderFront(nil)
+            }
+            return
+        }
+
+        state = .checking
+        pendingUserVisibleCheck = !silent
+
         let includeBeta = UserDefaults.standard.bool(forKey: "includeBetaUpdates")
         fetchLatestRelease(includeBeta: includeBeta) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self, self.state == .checking else { return }
+                let shouldShowResult = self.pendingUserVisibleCheck
+                self.pendingUserVisibleCheck = false
+
                 switch result {
                 case .failure(let err):
-                    if !silent {
-                        self?.showAlert(title: loc("update.error.title"),
-                                        message: loc("update.error.fetch", err.localizedDescription))
+                    self.state = .idle
+                    if shouldShowResult {
+                        self.showAlert(title: loc("update.error.title"),
+                                       message: loc("update.error.fetch", err.localizedDescription))
                     }
                 case .success(let release):
-                    self?.handleRelease(release, silent: silent)
+                    self.handleRelease(release, silent: !shouldShowResult)
                 }
             }
         }
@@ -103,6 +131,7 @@ final class UpdateChecker: NSObject {
     private func handleRelease(_ release: Release, silent: Bool) {
         let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
         guard isNewer(release.version, than: current) else {
+            state = .idle
             if !silent {
                 showAlert(title: loc("update.upToDate.title"),
                           message: loc("update.upToDate.message", current))
@@ -119,13 +148,19 @@ final class UpdateChecker: NSObject {
         alert.informativeText = loc("update.available.message", displayVersion, current)
         alert.addButton(withTitle: loc("update.install"))
         alert.addButton(withTitle: loc("update.later"))
-        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+        state = .prompting
+        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else {
+            state = .idle
+            return
+        }
         startDownload(release)
     }
 
     // MARK: - 下载
 
     private func startDownload(_ release: Release) {
+        guard state == .prompting else { return }
+        state = .downloading
         showProgress(loc("update.downloading", release.version))
 
         URLSession.shared.downloadTask(with: release.downloadURL) { [weak self] tmpURL, _, error in
@@ -133,11 +168,18 @@ final class UpdateChecker: NSObject {
                 guard let self else { return }
                 if let error {
                     self.closeProgress()
+                    self.state = .idle
                     self.showAlert(title: loc("update.error.title"),
-                                  message: loc("update.error.download", error.localizedDescription))
+                                   message: loc("update.error.download", error.localizedDescription))
                     return
                 }
-                guard let tmpURL else { return }
+                guard let tmpURL else {
+                    self.closeProgress()
+                    self.state = .idle
+                    self.showAlert(title: loc("update.error.title"),
+                                   message: loc("update.error.download", URLError(.badServerResponse).localizedDescription))
+                    return
+                }
 
                 self.updateProgressLabel(loc("update.installing"))
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -145,14 +187,16 @@ final class UpdateChecker: NSObject {
                         let newApp = try self.extractZip(tmpURL)
                         try self.validateDownloadedApp(newApp, expectedVersion: release.version)
                         DispatchQueue.main.async {
+                            guard self.state == .downloading else { return }
                             self.closeProgress()
                             self.promptRestart(version: release.version, newAppURL: newApp)
                         }
                     } catch {
                         DispatchQueue.main.async {
                             self.closeProgress()
+                            self.state = .idle
                             self.showAlert(title: loc("update.error.title"),
-                                          message: loc("update.error.install", error.localizedDescription))
+                                           message: loc("update.error.install", error.localizedDescription))
                         }
                     }
                 }
@@ -281,6 +325,8 @@ final class UpdateChecker: NSObject {
     // MARK: - 安装与重启
 
     private func promptRestart(version: String, newAppURL: URL) {
+        guard state == .downloading else { return }
+        state = .readyToRestart
         let alert = NSAlert()
         alert.messageText = loc("update.done.title")
         alert.informativeText = loc("update.done.message", version)
@@ -288,11 +334,15 @@ final class UpdateChecker: NSObject {
         alert.addButton(withTitle: loc("update.later"))
         if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
             applyAndRelaunch(newAppURL: newAppURL)
+        } else {
+            state = .idle
         }
     }
 
     /// 写一个临时 shell 脚本，等待进程退出后替换 .app 并重启（Write a temporary shell script that waits for process exit, replaces .app, and relaunches）
     private func applyAndRelaunch(newAppURL: URL) {
+        guard state == .readyToRestart else { return }
+        state = .applying
         let currentPath = Bundle.main.bundlePath
         let newPath     = newAppURL.path
         let tmpDir      = newAppURL.deletingLastPathComponent().path
@@ -338,6 +388,7 @@ final class UpdateChecker: NSObject {
             try proc.run()
             NSApp.terminate(nil)
         } catch {
+            state = .readyToRestart
             showAlert(title: loc("update.error.title"),
                       message: loc("update.error.install", error.localizedDescription))
         }

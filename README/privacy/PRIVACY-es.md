@@ -1,6 +1,6 @@
 # Política de Privacidad de AtomVoice
 
-Última actualización: 5 de mayo de 2026
+Última actualización: 9 de mayo de 2026
 
 AtomVoice es una herramienta de entrada de voz en la barra de menú de macOS. Nos tomamos muy en serio su privacidad. Esta Política de Privacidad explica cómo AtomVoice maneja los datos, utiliza los permisos e interactúa con servicios de terceros.
 
@@ -44,6 +44,9 @@ AtomVoice admite diferentes modos de reconocimiento:
 
 3. **Reconocimiento local Sherpa ONNX**
    Si configura un modelo de reconocimiento local Sherpa ONNX, el reconocimiento de audio se realiza completamente en su dispositivo sin necesidad de cargarlo en ningún servicio de reconocimiento en la nube.
+
+4. **Reconocimiento en la nube en streaming de Volcengine (Doubao)**
+   Si habilita el motor de reconocimiento en la nube en streaming de Volcengine (Doubao) y configura una clave API y un Resource ID, AtomVoice envía su audio de voz al servicio de reconocimiento de voz Volcengine de Bytedance para el reconocimiento en streaming en tiempo real. Sus datos de audio son procesados por los servidores de Volcengine. El manejo de datos relacionados está sujeto a las políticas de privacidad de Bytedance y Volcengine. Esta función requiere configuración en los ajustes de Doubao y está deshabilitada de forma predeterminada.
 
 ## 4. Refinamiento de Texto LLM
 
@@ -102,9 +105,10 @@ AtomVoice no vende, alquila ni comercializa sus datos personales.
 Los datos pueden enviarse a terceros solo en las siguientes situaciones:
 
 1. Al usar el reconocimiento de voz de Apple, el audio o las solicitudes de reconocimiento pueden ser procesados por Apple
-2. Cuando el refinamiento de texto LLM está habilitado, el texto reconocido se envía al proveedor LLM elegido
-3. Al verificar actualizaciones, la aplicación accede a GitHub Releases
-4. Al usar un punto final API personalizado, los datos se envían al servidor que configuró
+2. Al usar el motor de reconocimiento en la nube en streaming de Volcengine (Doubao), el audio de voz es procesado por los servidores de Volcengine
+3. Cuando el refinamiento de texto LLM está habilitado, el texto reconocido se envía al proveedor LLM elegido
+4. Al verificar actualizaciones, la aplicación accede a GitHub Releases
+5. Al usar un punto final API personalizado, los datos se envían al servidor que configuró
 
 ## 9. Medidas de Seguridad
 

@@ -19,6 +19,9 @@
 "menu.animation.medium" = "중간";
 "menu.animation.fast" = "빠름";
 "menu.punctuation" = "자동 구두점";
+"menu.textOutput" = "텍스트 출력";
+"menu.textOutput.paste" = "입력란에 붙여넣기";
+"menu.textOutput.streaming" = "스트리밍 직접 입력";
 "menu.llm" = "LLM 텍스트 최적화";
 "menu.llm.enabled" = "활성화됨";
 "menu.llm.disabled" = "비활성화됨";
@@ -69,6 +72,7 @@
 
 /* Capsule */
 "capsule.refining" = "최적화 중...";
+"capsule.streaming.typing" = "입력 중...";
 
 /* About */
 "about.appName" = "아톰보이스";
@@ -99,7 +103,7 @@
 "sherpa.download.message" = "Sherpa 로컬 인식에는 모델 파일 다운로드가 필요합니다(약 149 MB). 지금 다운로드하시겠습니까?";
 "sherpa.download.confirm" = "다운로드";
 "sherpa.downloading.start" = "Sherpa 모델 다운로드 준비 중...";
-"sherpa.loadingModel" = "Sherpa 모델 로드 중...";
+"sherpa.loadingModel" = "Sherpa 모델 로드 중... (지금 말씀하세요)";
 "sherpa.downloading" = "Sherpa 모델 다운로드 중 (%d/%d)...";
 "sherpa.downloading.progress" = "Sherpa 모델 다운로드 중 (%d/%d)... %d%%";
 "sherpa.extracting" = "Sherpa 모델 압축 해제 중 (%d/%d)...";
@@ -133,7 +137,7 @@
 "permissions.close" = "닫기";
 
 "permission.accessibility.title" = "손쉬운 사용";
-"permission.accessibility.desc" = "아톰보이스은 Fn 키를 전역으로 모니터링하기 위해 손쉬운 사용 권한이 필요합니다. 이것은 핵심 기능입니다.";
+"permission.accessibility.desc" = "아톰보이스은 트리거 키를 전역으로 모니터링하기 위해 손쉬운 사용 권한이 필요합니다. 이것은 핵심 기능입니다.";
 "permission.microphone.title" = "마이크";
 "permission.microphone.desc" = "아톰보이스은 음성을 녹음하기 위해 마이크 권한이 필요합니다.";
 "permission.speech.title" = "음성 인식";
@@ -154,10 +158,14 @@
 "menu.triggerKey.fn" = "Fn / Globe (기본값)";
 "menu.triggerKey.rightOption" = "오른쪽 Option ⌥";
 "menu.triggerKey.rightControl" = "오른쪽 Control ^";
+"menu.triggerKey.leftOption" = "왼쪽 Option ⌥";
+"menu.triggerKey.leftControl" = "왼쪽 Control ^";
 "menu.triggerKey.rightCommand" = "오른쪽 Command ⌘";
 "menu.triggerKey.fn.symbol" = "Fn";
 "menu.triggerKey.rightOption.symbol" = "오른쪽 Option ⌥";
 "menu.triggerKey.rightControl.symbol" = "오른쪽 Control ^";
+"menu.triggerKey.leftOption.symbol" = "왼쪽 Option ⌥";
+"menu.triggerKey.leftControl.symbol" = "왼쪽 Control ^";
 "menu.triggerKey.rightCommand.symbol" = "오른쪽 Command ⌘";
 "menu.holdKey" = "%@ 길게 눌러";
 "menu.tapKey" = "%@ 클릭하여";
@@ -395,6 +403,39 @@
 "asrSettings.sherpa.notDownloaded" = "다운로드되지 않음";
 "asrSettings.sherpa.download" = "선택한 모델 다운로드";
 "asrSettings.sherpa.download.confirm" = "선택한 모델을 다운로드하시겠습니까? 몇 분이 소요될 수 있습니다.";
+"asrSettings.sherpa.recognitionLanguage" = "인식 언어:";
+"asrSettings.sherpa.lang.bilingual" = "중국어 + 영어";
+"asrSettings.sherpa.group.downloaded" = "다운로드됨";
+"asrSettings.sherpa.empty" = "이 언어에 대한 내장 모델이 없습니다. 아래 \"모델 가져오기\"를 사용해 서드파티 sherpa-onnx 모델을 불러오세요.";
+"asrSettings.sherpa.group.available" = "다운로드 가능";
+"asrSettings.sherpa.delete" = "삭제";
+"asrSettings.sherpa.delete.title" = "모델 삭제";
+"asrSettings.sherpa.delete.confirm" = "%@ (%dMB)을(를) 삭제하시겠습니까? 나중에 다시 다운로드할 수 있습니다.";
+"asrSettings.sherpa.delete.failed" = "삭제 실패: %@";
+"asrSettings.sherpa.saveUndownloaded.title" = "모델이 아직 다운로드되지 않았습니다";
+"asrSettings.sherpa.saveUndownloaded.message" = "%@ (%dMB)이(가) 아직 다운로드되지 않았습니다. 지금 다운로드하고 활성화하시겠습니까?";
+"asrSettings.sherpa.saveUndownloaded.download" = "다운로드 및 활성화";
+"asrSettings.sherpa.saveUndownloaded.cancelled" = "저장 취소됨 — 모델이 다운로드되지 않았습니다.";
+"asrSettings.sherpa.import" = "모델 패키지 가져오기…";
+"asrSettings.sherpa.import.tooltip" = "sherpa-onnx 모델 아카이브(.tar.bz2 / .tar.gz / .zip) 또는 압축이 풀린 폴더를 선택하세요. 파일 이름은 자동으로 감지됩니다.";
+"asrSettings.sherpa.modelListLink" = "GitHub에서 모델 보기 ↗";
+"sherpa.import.pickerTitle" = "Sherpa 모델 아카이브 또는 폴더 선택";
+"sherpa.import.languageTitle" = "인식 언어 설정";
+"sherpa.import.languageMessage" = "%@ (%dMB)을(를) 가져왔습니다. 어떤 언어로 사용하시겠습니까?";
+"sherpa.import.detected" = "자동 인식됨: %@ (잘못된 경우 수동으로 변경하세요)";
+"sherpa.import.confirm" = "가져오기";
+"sherpa.import.success" = "\"%@\"을(를) 성공적으로 가져왔습니다.";
+"sherpa.import.failedTitle" = "가져오기 실패";
+"sherpa.import.error.unsupported" = "지원하지 않는 아카이브 형식: %@. 지원: .tar.bz2 / .tar.gz / .tgz / .zip / 압축이 풀린 폴더.";
+"sherpa.import.error.extract" = "압축 해제 실패: %@";
+"sherpa.import.error.copy" = "복사 실패: %@";
+"sherpa.import.error.unrecognized" = "%@에서 encoder/decoder/joiner/tokens.txt를 찾을 수 없습니다. sherpa-onnx streaming zipformer 모델인지 확인하세요.";
+"common.ok" = "확인";
+"sherpa.chooser.title" = "Sherpa 모델 선택";
+"sherpa.chooser.header" = "인식 언어와 모델을 선택하세요. 선택한 모델이 다음 단계에서 다운로드됩니다.";
+"sherpa.chooser.confirm" = "계속";
+"sherpa.chooser.note.downloaded" = "%@은(는) 이미 다운로드되었습니다. 다시 다운로드할 필요가 없습니다.";
+"sherpa.chooser.note.toDownload" = "계속하면 약 %dMB를 다운로드합니다.";
 "asrSettings.sherpa.downloading" = "다운로드 중...";
 "asrSettings.apple.desc" = "Apple 음성 인식의 오프라인 모드를 사용합니다. 오디오는 기기에서 처리되며 클라우드로 전송되지 않습니다.";
 "asrSettings.apple.status" = "현재 상태:";

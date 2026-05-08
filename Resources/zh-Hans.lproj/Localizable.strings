@@ -19,6 +19,9 @@
 "menu.animation.medium" = "中";
 "menu.animation.fast" = "快";
 "menu.punctuation" = "自动补全标点";
+"menu.textOutput" = "文本输出方式";
+"menu.textOutput.paste" = "粘贴到输入框";
+"menu.textOutput.streaming" = "流式直接上屏";
 "menu.llm" = "LLM 文本优化";
 "menu.llm.enabled" = "已启用";
 "menu.llm.disabled" = "已禁用";
@@ -69,6 +72,7 @@
 
 /* Capsule */
 "capsule.refining" = "优化中...";
+"capsule.streaming.typing" = "正在输入...";
 
 /* About */
 "about.appName" = "原子微语";
@@ -99,7 +103,7 @@
 "sherpa.download.message" = "Sherpa 本地识别需要下载模型文件（约 149 MB），是否现在下载？";
 "sherpa.download.confirm" = "下载";
 "sherpa.downloading.start" = "正在准备下载 Sherpa 模型...";
-"sherpa.loadingModel" = "正在加载 Sherpa 模型...";
+"sherpa.loadingModel" = "正在加载 Sherpa 模型...（现在可以说话）";
 "sherpa.downloading" = "正在下载 Sherpa 模型 (%d/%d)...";
 "sherpa.downloading.progress" = "正在下载 Sherpa 模型 (%d/%d)... %d%%";
 "sherpa.extracting" = "正在解压 Sherpa 模型 (%d/%d)...";
@@ -133,7 +137,7 @@
 "permissions.close" = "关闭";
 
 "permission.accessibility.title" = "辅助功能";
-"permission.accessibility.desc" = "原子微语需要辅助功能权限来全局监听 Fn 键，这是核心功能。";
+"permission.accessibility.desc" = "原子微语需要辅助功能权限来全局监听触发键，这是核心功能。";
 "permission.microphone.title" = "麦克风";
 "permission.microphone.desc" = "原子微语需要麦克风权限来录制您的语音。";
 "permission.speech.title" = "语音识别";
@@ -155,10 +159,14 @@
 "menu.triggerKey.fn" = "Fn / Globe（默认）";
 "menu.triggerKey.rightOption" = "右 Option ⌥";
 "menu.triggerKey.rightControl" = "右 Control ^";
+"menu.triggerKey.leftOption" = "左 Option ⌥";
+"menu.triggerKey.leftControl" = "左 Control ^";
 "menu.triggerKey.rightCommand" = "右 Command ⌘";
 "menu.triggerKey.fn.symbol" = "Fn";
 "menu.triggerKey.rightOption.symbol" = "右 Option ⌥";
 "menu.triggerKey.rightControl.symbol" = "右 Control ^";
+"menu.triggerKey.leftOption.symbol" = "左 Option ⌥";
+"menu.triggerKey.leftControl.symbol" = "左 Control ^";
 "menu.triggerKey.rightCommand.symbol" = "右 Command ⌘";
 "menu.holdKey" = "按住 %@";
 "menu.tapKey" = "单击 %@";
@@ -396,6 +404,39 @@
 "asrSettings.sherpa.notDownloaded" = "未下载";
 "asrSettings.sherpa.download" = "下载选中模型";
 "asrSettings.sherpa.download.confirm" = "下载选中的模型？这可能需要几分钟时间。";
+"asrSettings.sherpa.recognitionLanguage" = "识别语言:";
+"asrSettings.sherpa.lang.bilingual" = "中英双语";
+"asrSettings.sherpa.group.downloaded" = "已下载";
+"asrSettings.sherpa.empty" = "该语言暂无内置模型，请使用下方「导入模型」加载第三方 sherpa-onnx 模型包。";
+"asrSettings.sherpa.group.available" = "可下载";
+"asrSettings.sherpa.delete" = "删除";
+"asrSettings.sherpa.delete.title" = "删除模型";
+"asrSettings.sherpa.delete.confirm" = "确定删除 %@ (%dMB) 吗？之后可以重新下载。";
+"asrSettings.sherpa.delete.failed" = "删除失败：%@";
+"asrSettings.sherpa.saveUndownloaded.title" = "模型尚未下载";
+"asrSettings.sherpa.saveUndownloaded.message" = "%@ (%dMB) 还未下载，是否立即下载并启用？";
+"asrSettings.sherpa.saveUndownloaded.download" = "下载并启用";
+"asrSettings.sherpa.saveUndownloaded.cancelled" = "已取消保存：模型未下载。";
+"asrSettings.sherpa.import" = "导入模型包…";
+"asrSettings.sherpa.import.tooltip" = "选择 sherpa-onnx 模型压缩包（.tar.bz2 / .tar.gz / .zip）或已解压目录，文件名将自动识别。";
+"asrSettings.sherpa.modelListLink" = "在 GitHub 浏览模型 ↗";
+"sherpa.import.pickerTitle" = "选择 Sherpa 模型压缩包或文件夹";
+"sherpa.import.languageTitle" = "设置识别语言";
+"sherpa.import.languageMessage" = "已导入 %@ (%dMB)。该模型用于哪种识别语言？";
+"sherpa.import.detected" = "已自动识别为：%@（如有误请手动调整）";
+"sherpa.import.confirm" = "导入";
+"sherpa.import.success" = "已成功导入 \"%@\"。";
+"sherpa.import.failedTitle" = "导入失败";
+"sherpa.import.error.unsupported" = "不支持的压缩格式：%@。支持的格式：.tar.bz2 / .tar.gz / .tgz / .zip / 已解压目录。";
+"sherpa.import.error.extract" = "解压失败：%@";
+"sherpa.import.error.copy" = "复制失败：%@";
+"sherpa.import.error.unrecognized" = "在 %@ 中找不到 encoder/decoder/joiner/tokens.txt。请确认它是 sherpa-onnx streaming zipformer 模型。";
+"common.ok" = "好";
+"sherpa.chooser.title" = "选择 Sherpa 模型";
+"sherpa.chooser.header" = "选择识别语言和模型，所选模型将在下一步下载。";
+"sherpa.chooser.confirm" = "继续";
+"sherpa.chooser.note.downloaded" = "%@ 已下载，无需再次下载。";
+"sherpa.chooser.note.toDownload" = "继续后将下载约 %dMB。";
 "asrSettings.sherpa.downloading" = "下载中...";
 "asrSettings.apple.desc" = "使用 Apple 语音识别的离线模式。音频在设备本地处理，不发送到云端。";
 "asrSettings.apple.status" = "当前状态:";

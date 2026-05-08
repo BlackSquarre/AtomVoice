@@ -19,6 +19,9 @@
 "menu.animation.medium" = "中";
 "menu.animation.fast" = "速い";
 "menu.punctuation" = "自動句読点補完";
+"menu.textOutput" = "テキスト出力";
+"menu.textOutput.paste" = "入力欄に貼り付け";
+"menu.textOutput.streaming" = "ストリーミングで直接入力";
 "menu.llm" = "LLM テキスト最適化";
 "menu.llm.enabled" = "有効";
 "menu.llm.disabled" = "無効";
@@ -69,6 +72,7 @@
 
 /* Capsule */
 "capsule.refining" = "最適化中...";
+"capsule.streaming.typing" = "入力中...";
 
 /* About */
 "about.appName" = "原子微声";
@@ -99,7 +103,7 @@
 "sherpa.download.message" = "Sherpa ローカル認識にはモデルファイルのダウンロードが必要です（約149 MB）。ダウンロードしますか？";
 "sherpa.download.confirm" = "ダウンロード";
 "sherpa.downloading.start" = "Sherpa モデルのダウンロードを準備中...";
-"sherpa.loadingModel" = "Sherpa モデルを読み込み中...";
+"sherpa.loadingModel" = "Sherpa モデルを読み込み中...（今すぐ話せます）";
 "sherpa.downloading" = "Sherpa モデルをダウンロード中 (%d/%d)...";
 "sherpa.downloading.progress" = "Sherpa モデルをダウンロード中 (%d/%d)... %d%%";
 "sherpa.extracting" = "Sherpa モデルを解凍中 (%d/%d)...";
@@ -133,7 +137,7 @@
 "permissions.close" = "閉じる";
 
 "permission.accessibility.title" = "アクセシビリティ";
-"permission.accessibility.desc" = "AtomVoice は Fn キーをグローバルに監視するためにアクセシビリティ権限が必要です。これはコア機能です。";
+"permission.accessibility.desc" = "AtomVoice はトリガーキーをグローバルに監視するためにアクセシビリティ権限が必要です。これはコア機能です。";
 "permission.microphone.title" = "マイク";
 "permission.microphone.desc" = "AtomVoice は音声を録音するためにマイク権限が必要です。";
 "permission.speech.title" = "音声認識";
@@ -154,10 +158,14 @@
 "menu.triggerKey.fn" = "Fn / Globe（デフォルト）";
 "menu.triggerKey.rightOption" = "右 Option ⌥";
 "menu.triggerKey.rightControl" = "右 Control ^";
+"menu.triggerKey.leftOption" = "左 Option ⌥";
+"menu.triggerKey.leftControl" = "左 Control ^";
 "menu.triggerKey.rightCommand" = "右 Command ⌘";
 "menu.triggerKey.fn.symbol" = "Fn";
 "menu.triggerKey.rightOption.symbol" = "右 Option ⌥";
 "menu.triggerKey.rightControl.symbol" = "右 Control ^";
+"menu.triggerKey.leftOption.symbol" = "左 Option ⌥";
+"menu.triggerKey.leftControl.symbol" = "左 Control ^";
 "menu.triggerKey.rightCommand.symbol" = "右 Command ⌘";
 "menu.holdKey" = "%@ を長押し";
 "menu.tapKey" = "%@ をクリック";
@@ -395,6 +403,39 @@
 "asrSettings.sherpa.notDownloaded" = "未ダウンロード";
 "asrSettings.sherpa.download" = "選択したモデルをダウンロード";
 "asrSettings.sherpa.download.confirm" = "選択したモデルをダウンロードしますか？数分かかる場合があります。";
+"asrSettings.sherpa.recognitionLanguage" = "認識言語:";
+"asrSettings.sherpa.lang.bilingual" = "中国語 + 英語";
+"asrSettings.sherpa.group.downloaded" = "ダウンロード済み";
+"asrSettings.sherpa.empty" = "この言語には組み込みモデルがありません。下の「モデルをインポート」からサードパーティ製 sherpa-onnx モデルを読み込んでください。";
+"asrSettings.sherpa.group.available" = "ダウンロード可能";
+"asrSettings.sherpa.delete" = "削除";
+"asrSettings.sherpa.delete.title" = "モデルを削除";
+"asrSettings.sherpa.delete.confirm" = "%@ (%dMB) を削除しますか？後で再ダウンロードできます。";
+"asrSettings.sherpa.delete.failed" = "削除に失敗しました: %@";
+"asrSettings.sherpa.saveUndownloaded.title" = "モデルがまだダウンロードされていません";
+"asrSettings.sherpa.saveUndownloaded.message" = "%@ (%dMB) はまだダウンロードされていません。今すぐダウンロードして有効化しますか？";
+"asrSettings.sherpa.saveUndownloaded.download" = "ダウンロードして有効化";
+"asrSettings.sherpa.saveUndownloaded.cancelled" = "保存をキャンセルしました — モデル未ダウンロード。";
+"asrSettings.sherpa.import" = "モデルパッケージをインポート…";
+"asrSettings.sherpa.import.tooltip" = "sherpa-onnx モデルアーカイブ（.tar.bz2 / .tar.gz / .zip）または解凍済みフォルダを選択。ファイル名は自動検出されます。";
+"asrSettings.sherpa.modelListLink" = "GitHub でモデルを見る ↗";
+"sherpa.import.pickerTitle" = "Sherpa モデルアーカイブまたはフォルダを選択";
+"sherpa.import.languageTitle" = "認識言語を設定";
+"sherpa.import.languageMessage" = "%@ (%dMB) をインポートしました。どの言語で使用しますか？";
+"sherpa.import.detected" = "自動判定：%@（誤っていれば手動で変更してください）";
+"sherpa.import.confirm" = "インポート";
+"sherpa.import.success" = "\"%@\" を正常にインポートしました。";
+"sherpa.import.failedTitle" = "インポートに失敗しました";
+"sherpa.import.error.unsupported" = "サポートされていないアーカイブ形式: %@。対応形式: .tar.bz2 / .tar.gz / .tgz / .zip / 解凍済みフォルダ。";
+"sherpa.import.error.extract" = "解凍に失敗しました: %@";
+"sherpa.import.error.copy" = "コピーに失敗しました: %@";
+"sherpa.import.error.unrecognized" = "%@ 内に encoder/decoder/joiner/tokens.txt が見つかりません。sherpa-onnx streaming zipformer モデルか確認してください。";
+"common.ok" = "OK";
+"sherpa.chooser.title" = "Sherpa モデルを選択";
+"sherpa.chooser.header" = "認識言語とモデルを選択してください。選択したモデルは次にダウンロードされます。";
+"sherpa.chooser.confirm" = "続ける";
+"sherpa.chooser.note.downloaded" = "%@ はダウンロード済みです。再ダウンロードは不要です。";
+"sherpa.chooser.note.toDownload" = "続行すると約 %dMB をダウンロードします。";
 "asrSettings.sherpa.downloading" = "ダウンロード中...";
 "asrSettings.apple.desc" = "Apple 音声認識のオフラインモードを使用します。音声はデバイス上で処理され、クラウドに送信されません。";
 "asrSettings.apple.status" = "現在の状態:";

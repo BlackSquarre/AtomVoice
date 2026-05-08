@@ -285,8 +285,10 @@ final class CloudASRRecognizerController: NSObject {
         cloudASRLogger.error("[error] \(message, privacy: .public)")
         if state == .finishing || finishCompletion != nil {
             let audioBytes = sentAudioBytes + chunkBuffer.count
-            let tooShortForRecognition = lastText.isEmpty && audioBytes < minimumUsefulAudioBytes
-            completeStopLocked(text: lastText, error: tooShortForRecognition ? nil : (lastText.isEmpty ? message : nil))
+            let noUsefulRecognition = lastText.isEmpty && (
+                audioBytes < minimumUsefulAudioBytes || isBenignStopError(message)
+            )
+            completeStopLocked(text: lastText, error: noUsefulRecognition ? nil : (lastText.isEmpty ? message : nil))
             return
         }
         let callback = onError
@@ -379,5 +381,17 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
             else { return }
             self.failLocked(error)
         }
+    }
+
+    private func isBenignStopError(_ message: String) -> Bool {
+        // 无语音或极短录音停止时，服务端/系统可能先关闭 WebSocket；这类错误应按空识别处理。
+        // (When stopping silence or very short recordings, the server/system may close the WebSocket first;
+        // treat these as empty recognition rather than user-visible failures.)
+        let lowercased = message.lowercased()
+        return lowercased.contains("socket") && (
+            lowercased.contains("not connected") ||
+            lowercased.contains("未连接") ||
+            lowercased.contains("未能完成")
+        )
     }
 }

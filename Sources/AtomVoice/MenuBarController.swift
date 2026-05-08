@@ -8,6 +8,8 @@ final class MenuBarController {
     private var statusItem: NSStatusItem!
     private let onLanguageChanged: () -> Void
     private let llmRefiner: LLMRefiner
+    private let asrEngineRegistry: ASREngineRegistry
+    private let textOutputSinkRegistry: TextOutputSinkRegistry?
     private var settingsWindow: SettingsWindowController?
     private var doubaoSettingsWindow: DoubaoSettingsWindowController?
     private var asrSettingsWindow: ASRSettingsWindowController?
@@ -27,9 +29,14 @@ final class MenuBarController {
         ("de-DE", "Deutsch"),
     ]
 
-    init(onLanguageChanged: @escaping () -> Void, llmRefiner: LLMRefiner) {
+    init(onLanguageChanged: @escaping () -> Void,
+         llmRefiner: LLMRefiner,
+         asrEngineRegistry: ASREngineRegistry = .shared,
+         textOutputSinkRegistry: TextOutputSinkRegistry? = nil) {
         self.onLanguageChanged = onLanguageChanged
         self.llmRefiner = llmRefiner
+        self.asrEngineRegistry = asrEngineRegistry
+        self.textOutputSinkRegistry = textOutputSinkRegistry
         setupStatusItem()
     }
 
@@ -77,18 +84,13 @@ final class MenuBarController {
         let engineItem = NSMenuItem(title: loc("menu.recognitionEngine"), action: nil, keyEquivalent: "")
         engineItem.image = icon("cpu")
         let engineMenu = NSMenu()
-        let currentEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
-        let engineOptions: [(String, String, String)] = [
-            ("apple", loc("menu.recognitionEngine.apple"), "apple.logo"),
-            ("sherpaOnnx", loc("menu.recognitionEngine.sherpaOnnx"), "mountain.2.fill"),
-            (VolcengineASRSettings.engineCode, loc("menu.recognitionEngine.doubao"), "cloud")
-        ]
-        for (code, title, iconName) in engineOptions {
-            let item = NSMenuItem(title: title, action: #selector(selectRecognitionEngine(_:)), keyEquivalent: "")
-            item.image = icon(iconName)
+        let currentEngine = asrEngineRegistry.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
+        for descriptor in asrEngineRegistry.descriptors {
+            let item = NSMenuItem(title: loc(descriptor.displayNameKey), action: #selector(selectRecognitionEngine(_:)), keyEquivalent: "")
+            item.image = icon(descriptor.iconName)
             item.target = self
-            item.representedObject = code
-            item.state = code == currentEngine ? .on : .off
+            item.representedObject = descriptor.code
+            item.state = descriptor.code == currentEngine ? .on : .off
             engineMenu.addItem(item)
         }
         engineMenu.addItem(.separator())
@@ -160,6 +162,24 @@ final class MenuBarController {
         punctItem.toolTip = loc("tooltip.menu.punctuation")
         menu.addItem(punctItem)
 
+        // 文本输出方式（Text output destination）
+        if let outputRegistry = textOutputSinkRegistry, outputRegistry.descriptors.count > 1 {
+            let outputItem = NSMenuItem(title: loc("menu.textOutput"), action: nil, keyEquivalent: "")
+            outputItem.image = icon("square.and.arrow.up")
+            let outputMenu = NSMenu()
+            let currentOutput = outputRegistry.currentCode()
+            for descriptor in outputRegistry.descriptors {
+                let item = NSMenuItem(title: loc(descriptor.displayNameKey), action: #selector(selectTextOutputSink(_:)), keyEquivalent: "")
+                item.image = icon(descriptor.iconName)
+                item.target = self
+                item.representedObject = descriptor.code
+                item.state = descriptor.code == currentOutput ? .on : .off
+                outputMenu.addItem(item)
+            }
+            outputItem.submenu = outputMenu
+            menu.addItem(outputItem)
+        }
+
         menu.addItem(.separator())
 
         // 输入方式: 单击说话 or 长按说话（Input mode: tap to speak or hold to speak）
@@ -179,7 +199,7 @@ final class MenuBarController {
         let liveInsertionItem = NSMenuItem(title: loc("menu.inputMode.liveInsertion"), action: #selector(toggleAppleLiveInsertion(_:)), keyEquivalent: "")
         liveInsertionItem.target = self
         liveInsertionItem.state = UserDefaults.standard.bool(forKey: "appleLiveInsertionEnabled") ? .on : .off
-        liveInsertionItem.isEnabled = currentEngine == "apple"
+        liveInsertionItem.isEnabled = asrEngineRegistry.isApple(currentEngine)
         liveInsertionItem.toolTip = loc("menu.inputMode.liveInsertion.tooltip")
         inputModeMenu.addItem(liveInsertionItem)
         if isTapMode {
@@ -229,6 +249,29 @@ final class MenuBarController {
             item.target = self
             item.representedObject = NSNumber(value: Int(option.keyCode))
             item.state = option.keyCode == triggerOption.keyCode ? .on : .off
+            // 将菜单标题中的 "Globe" 文字替换为 SF Symbol globe 图片
+            // (Replace "Globe" text in menu title with SF Symbol globe image)
+            if option.keyCode == 63 {
+                let title = loc(option.locKey)
+                if let range = title.range(of: "Globe") {
+                    let attr = NSMutableAttributedString(string: String(title[..<range.lowerBound]), attributes: [
+                        .font: NSFont.menuFont(ofSize: 0)
+                    ])
+                    if let globeImage = NSImage(systemSymbolName: "globe", accessibilityDescription: "Globe") {
+                        let symbolConfig = NSImage.SymbolConfiguration(pointSize: NSFont.menuFont(ofSize: 0).pointSize, weight: .regular)
+                        if let configured = globeImage.withSymbolConfiguration(symbolConfig) {
+                            let attachment = NSTextAttachment()
+                            attachment.image = configured
+                            let imageString = NSAttributedString(attachment: attachment)
+                            attr.append(imageString)
+                        }
+                    }
+                    attr.append(NSAttributedString(string: String(title[range.upperBound...]), attributes: [
+                        .font: NSFont.menuFont(ofSize: 0)
+                    ]))
+                    item.attributedTitle = attr
+                }
+            }
             triggerMenu.addItem(item)
         }
         triggerItem.submenu = triggerMenu
@@ -402,8 +445,8 @@ final class MenuBarController {
     }
 
     private var hasAllPermissions: Bool {
-        let currentEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
-        let speechRequired = currentEngine == "apple"
+        let currentEngine = asrEngineRegistry.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
+        let speechRequired = asrEngineRegistry.isApple(currentEngine)
         return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized &&
         (!speechRequired || SFSpeechRecognizer.authorizationStatus() == .authorized) &&
         AXIsProcessTrusted()
@@ -446,7 +489,7 @@ final class MenuBarController {
     @objc private func selectRecognitionEngine(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
 
-        if code == "sherpaOnnx", !sherpaModelsReadyOrSelfHealed() {
+        if asrEngineRegistry.isSherpa(code), !SherpaModelDownloader.isReady() {
             let alert = NSAlert()
             alert.messageText = loc("sherpa.download.title")
             alert.informativeText = loc("sherpa.download.message")
@@ -483,18 +526,6 @@ final class MenuBarController {
 
         UserDefaults.standard.set(code, forKey: "recognitionEngine")
         rebuildMenu()
-    }
-
-    private func sherpaModelsReadyOrSelfHealed() -> Bool {
-        if UserDefaults.standard.bool(forKey: "sherpaModelsReady") { return true }
-
-        if SherpaModelDownloader.allModelsReady || SherpaModelDownloader.repairExtractedFilesIfNeeded() {
-            UserDefaults.standard.set(true, forKey: "sherpaModelsReady")
-            print("[SherpaOnnx] 菜单选择时检测到完整模型，自动修复 sherpaModelsReady = true")
-            return true
-        }
-
-        return false
     }
 
     @objc private func openSherpaFolder(_ sender: NSMenuItem) {
@@ -807,6 +838,12 @@ final class MenuBarController {
     @objc private func selectSteadyNoiseSensitivity(_ sender: NSMenuItem) {
         guard let sensitivity = sender.representedObject as? Int else { return }
         UserDefaults.standard.set(sensitivity, forKey: "steadyNoiseSensitivity")
+        rebuildMenu()
+    }
+
+    @objc private func selectTextOutputSink(_ sender: NSMenuItem) {
+        guard let code = sender.representedObject as? String else { return }
+        UserDefaults.standard.set(code, forKey: TextOutputSinkRegistry.userDefaultsKey)
         rebuildMenu()
     }
 

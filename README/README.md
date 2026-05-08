@@ -80,4 +80,4 @@ Built-in presets: OpenAI / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq /
 
 ## License
 
-MIT
+Apache License 2.0

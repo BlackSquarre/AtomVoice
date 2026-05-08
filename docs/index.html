@@ -1,0 +1,115 @@
+---
+layout: default
+title: AtomVoice — Privacy-first voice dictation for Mac
+---
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <img src="{{ '/assets/img/AppIcon.png' | relative_url }}" alt="AtomVoice" class="hero-icon">
+    <div class="hero-name">
+      <h1>AtomVoice</h1>
+      <span class="hero-cn">原子微语</span>
+    </div>
+    <p class="hero-sub" data-i18n="hero_subtitle">Privacy-first voice dictation for Mac</p>
+    <p class="hero-tag" data-i18n="hero_tagline">Tap or hold a key, speak naturally, and your words appear.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/BlackSquarre/AtomVoice/releases/latest"
+         class="btn btn-primary" data-i18n="btn_download">Download</a>
+      <a href="https://github.com/BlackSquarre/AtomVoice"
+         class="btn btn-ghost" data-i18n="btn_github">View on GitHub</a>
+    </div>
+    <p class="hero-req" data-i18n="hero_req">macOS 14+ · Free · Open Source</p>
+  </div>
+</section>
+
+<!-- Why AtomVoice -->
+<section class="section section-grey">
+  <div class="container">
+    <div class="highlights">
+      <div class="card highlight-card">
+        <span class="card-icon">🔒</span>
+        <h3 data-i18n="priv_title">Privacy First</h3>
+        <p data-i18n="priv_desc">Speech recognition runs on-device by default. No audio leaves your Mac unless you explicitly choose a cloud engine.</p>
+      </div>
+      <div class="card highlight-card">
+        <span class="card-icon">⚡</span>
+        <h3 data-i18n="light_title">Lightweight</h3>
+        <p data-i18n="light_desc">Small bundle, near-zero CPU when idle. No background daemons, no telemetry, no accounts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Recognition Engines -->
+<section class="section section-white">
+  <div class="container">
+    <h2 class="section-title" data-i18n="sec_engines">Recognition Engines</h2>
+    <div class="engines">
+      <div class="card engine-card">
+        <div class="engine-header">
+          <span class="engine-icon">🍎</span>
+          <span class="engine-name">Apple Speech</span>
+          <span class="badge badge-default">Default</span>
+        </div>
+        <p data-i18n="apple_desc">Built-in, streaming. Optional on-device mode. No time limit thanks to segmented rolling recognition.</p>
+      </div>
+      <div class="card engine-card">
+        <div class="engine-header">
+          <span class="engine-icon">📦</span>
+          <span class="engine-name">Sherpa-ONNX</span>
+          <span class="badge badge-offline">Offline</span>
+        </div>
+        <p data-i18n="sherpa_desc">Fully offline. Models download automatically on first use, released under memory pressure.</p>
+      </div>
+      <div class="card engine-card">
+        <div class="engine-header">
+          <span class="engine-icon">☁️</span>
+          <span class="engine-name">Volcengine</span>
+          <span class="badge badge-cloud">Cloud</span>
+        </div>
+        <p data-i18n="cloud_desc">Volcengine (Doubao) real-time streaming cloud ASR via Bytedance. Requires API key configuration.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- More Features -->
+<section class="section section-grey">
+  <div class="container">
+    <h2 class="section-title" data-i18n="sec_more">More Features</h2>
+    <ul class="features-grid">
+      <li data-i18n="feat_holdtap">Hold-to-talk or tap-to-talk</li>
+      <li data-i18n="feat_nolimit">No recording time limit</li>
+      <li data-i18n="feat_llm">Optional LLM refinement</li>
+      <li data-i18n="feat_8lang">8 recognition languages</li>
+      <li data-i18n="feat_cjk">CJK IME compatible</li>
+      <li data-i18n="feat_waveform">Live waveform animation</li>
+      <li data-i18n="feat_update">Auto-update from GitHub</li>
+      <li data-i18n="feat_login">Launch at login</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Download -->
+<section class="section section-dark">
+  <div class="container">
+    <h2 class="section-title light" data-i18n="sec_dl">Download</h2>
+    <p class="dl-desc" data-i18n="dl_desc">Universal, Apple Silicon, and Intel builds — all on GitHub Releases.</p>
+    <div class="dl-btns">
+      <a href="https://github.com/BlackSquarre/AtomVoice/releases/latest"
+         class="btn btn-primary dl-btn" data-i18n="dl_universal">Universal (recommended)</a>
+      <a href="https://github.com/BlackSquarre/AtomVoice/releases/latest"
+         class="btn btn-outline dl-btn" data-i18n="dl_silicon">Apple Silicon</a>
+      <a href="https://github.com/BlackSquarre/AtomVoice/releases/latest"
+         class="btn btn-outline dl-btn" data-i18n="dl_intel">Intel</a>
+    </div>
+    <div class="dl-alt">
+      <details class="dl-details">
+        <summary data-i18n="dl_brew">Or install via Homebrew</summary>
+        <pre><code>brew tap BlackSquarre/tap
+brew install --cask atomvoice</code></pre>
+      </details>
+    </div>
+  </div>
+</section>

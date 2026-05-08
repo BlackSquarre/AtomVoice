@@ -19,6 +19,9 @@
 "menu.animation.medium" = "Moyenne";
 "menu.animation.fast" = "Rapide";
 "menu.punctuation" = "Ponctuation automatique";
+"menu.textOutput" = "Sortie de texte";
+"menu.textOutput.paste" = "Coller dans le champ de saisie";
+"menu.textOutput.streaming" = "Insérer directement en flux continu";
 "menu.llm" = "Raffinement par LLM";
 "menu.llm.enabled" = "Activé";
 "menu.llm.disabled" = "Désactivé";
@@ -69,6 +72,7 @@
 
 /* Capsule */
 "capsule.refining" = "Raffinement...";
+"capsule.streaming.typing" = "Saisie...";
 
 /* About */
 "about.appName" = "AtomVoice";
@@ -99,7 +103,7 @@
 "sherpa.download.message" = "La reconnaissance locale Sherpa nécessite le téléchargement de fichiers de modèle (~149 Mo). Télécharger maintenant ?";
 "sherpa.download.confirm" = "Télécharger";
 "sherpa.downloading.start" = "Préparation du téléchargement du modèle Sherpa...";
-"sherpa.loadingModel" = "Chargement du modèle Sherpa...";
+"sherpa.loadingModel" = "Chargement du modèle Sherpa... (vous pouvez parler maintenant)";
 "sherpa.downloading" = "Téléchargement du modèle Sherpa (%d/%d)...";
 "sherpa.downloading.progress" = "Téléchargement du modèle Sherpa (%d/%d)... %d%%";
 "sherpa.extracting" = "Extraction du modèle Sherpa (%d/%d)...";
@@ -133,7 +137,7 @@
 "permissions.close" = "Fermer";
 
 "permission.accessibility.title" = "Accessibilité";
-"permission.accessibility.desc" = "AtomVoice nécessite l'autorisation Accessibilité pour surveiller la touche Fn de manière globale. C'est la fonctionnalité principale.";
+"permission.accessibility.desc" = "AtomVoice nécessite l'autorisation Accessibilité pour surveiller la touche déclencheuse de manière globale. C'est la fonctionnalité principale.";
 "permission.microphone.title" = "Microphone";
 "permission.microphone.desc" = "AtomVoice nécessite l'autorisation Microphone pour enregistrer ta voix.";
 "permission.speech.title" = "Reconnaissance vocale";
@@ -154,10 +158,14 @@
 "menu.triggerKey.fn" = "Fn / Globe (par défaut)";
 "menu.triggerKey.rightOption" = "Option droite ⌥";
 "menu.triggerKey.rightControl" = "Contrôle droit ^";
+"menu.triggerKey.leftOption" = "Option gauche ⌥";
+"menu.triggerKey.leftControl" = "Contrôle gauche ^";
 "menu.triggerKey.rightCommand" = "Commande droite ⌘";
 "menu.triggerKey.fn.symbol" = "Fn";
 "menu.triggerKey.rightOption.symbol" = "Option droite ⌥";
 "menu.triggerKey.rightControl.symbol" = "Contrôle droit ^";
+"menu.triggerKey.leftOption.symbol" = "Option gauche ⌥";
+"menu.triggerKey.leftControl.symbol" = "Contrôle gauche ^";
 "menu.triggerKey.rightCommand.symbol" = "Commande droite ⌘";
 "menu.holdKey" = "Maintiens %@";
 "menu.tapKey" = "Appuie sur %@";
@@ -395,6 +403,39 @@
 "asrSettings.sherpa.notDownloaded" = "Non téléchargé";
 "asrSettings.sherpa.download" = "Télécharger le modèle sélectionné";
 "asrSettings.sherpa.download.confirm" = "Télécharger le modèle sélectionné ? Cela peut prendre quelques minutes.";
+"asrSettings.sherpa.recognitionLanguage" = "Langue de reconnaissance :";
+"asrSettings.sherpa.lang.bilingual" = "Chinois + Anglais";
+"asrSettings.sherpa.group.downloaded" = "Téléchargé";
+"asrSettings.sherpa.empty" = "Aucun modèle intégré pour cette langue. Utilisez « Importer un modèle » ci-dessous pour charger un modèle sherpa-onnx tiers.";
+"asrSettings.sherpa.group.available" = "Disponible au téléchargement";
+"asrSettings.sherpa.delete" = "Supprimer";
+"asrSettings.sherpa.delete.title" = "Supprimer le modèle";
+"asrSettings.sherpa.delete.confirm" = "Supprimer %@ (%dMB) ? Vous pourrez le retélécharger plus tard.";
+"asrSettings.sherpa.delete.failed" = "Échec de la suppression : %@";
+"asrSettings.sherpa.saveUndownloaded.title" = "Modèle non téléchargé";
+"asrSettings.sherpa.saveUndownloaded.message" = "%@ (%dMB) n'est pas encore téléchargé. L'activer et le télécharger maintenant ?";
+"asrSettings.sherpa.saveUndownloaded.download" = "Télécharger et activer";
+"asrSettings.sherpa.saveUndownloaded.cancelled" = "Sauvegarde annulée — modèle non téléchargé.";
+"asrSettings.sherpa.import" = "Importer un paquet de modèle…";
+"asrSettings.sherpa.import.tooltip" = "Choisissez une archive de modèle sherpa-onnx (.tar.bz2 / .tar.gz / .zip) ou un dossier extrait. Les noms de fichiers sont détectés automatiquement.";
+"asrSettings.sherpa.modelListLink" = "Parcourir les modèles sur GitHub ↗";
+"sherpa.import.pickerTitle" = "Choisir l'archive ou le dossier du modèle Sherpa";
+"sherpa.import.languageTitle" = "Définir la langue de reconnaissance";
+"sherpa.import.languageMessage" = "Importé %@ (%dMB). Pour quelle langue ce modèle sera-t-il utilisé ?";
+"sherpa.import.detected" = "Détecté automatiquement : %@ (ajustez si incorrect)";
+"sherpa.import.confirm" = "Importer";
+"sherpa.import.success" = "\"%@\" importé avec succès.";
+"sherpa.import.failedTitle" = "Échec de l'importation du modèle";
+"sherpa.import.error.unsupported" = "Format d'archive non pris en charge : %@. Pris en charge : .tar.bz2 / .tar.gz / .tgz / .zip / dossier extrait.";
+"sherpa.import.error.extract" = "Échec de l'extraction : %@";
+"sherpa.import.error.copy" = "Échec de la copie : %@";
+"sherpa.import.error.unrecognized" = "Encoder/decoder/joiner/tokens.txt introuvables dans %@. Assurez-vous qu'il s'agit d'un modèle sherpa-onnx streaming zipformer.";
+"common.ok" = "OK";
+"sherpa.chooser.title" = "Choisir le modèle Sherpa";
+"sherpa.chooser.header" = "Choisissez la langue de reconnaissance et le modèle. Le modèle sélectionné sera téléchargé ensuite.";
+"sherpa.chooser.confirm" = "Continuer";
+"sherpa.chooser.note.downloaded" = "%@ est déjà téléchargé, aucun téléchargement nécessaire.";
+"sherpa.chooser.note.toDownload" = "Environ %dMB seront téléchargés après confirmation.";
 "asrSettings.sherpa.downloading" = "Téléchargement...";
 "asrSettings.apple.desc" = "Utiliser le mode hors ligne d'Apple Speech. L'audio est traité sur l'appareil et n'est pas envoyé au cloud.";
 "asrSettings.apple.status" = "État actuel :";

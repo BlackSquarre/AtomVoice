@@ -191,11 +191,15 @@ static void decode_available(AtomVoiceSherpaContext *context) {
 
 AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
                                               const char *model_dir,
+                                              const char *encoder_name,
+                                              const char *decoder_name,
+                                              const char *joiner_name,
+                                              const char *tokens_name,
                                               char *error_message,
                                               int32_t error_message_size) {
   if (error_message && error_message_size > 0) { error_message[0] = '\0'; }
-  if (!lib_dir || !model_dir) {
-    set_error(error_message, error_message_size, "Missing runtime or model path");
+  if (!lib_dir || !model_dir || !encoder_name || !decoder_name || !joiner_name || !tokens_name) {
+    set_error(error_message, error_message_size, "Missing runtime path, model path, or model file names");
     return NULL;
   }
 
@@ -213,13 +217,15 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
   char decoder[4096];
   char joiner[4096];
   char tokens[4096];
-  make_path(encoder, sizeof(encoder), model_dir, "encoder-epoch-99-avg-1.int8.onnx");
-  make_path(decoder, sizeof(decoder), model_dir, "decoder-epoch-99-avg-1.onnx");
-  make_path(joiner, sizeof(joiner), model_dir, "joiner-epoch-99-avg-1.int8.onnx");
-  make_path(tokens, sizeof(tokens), model_dir, "tokens.txt");
+  make_path(encoder, sizeof(encoder), model_dir, encoder_name);
+  make_path(decoder, sizeof(decoder), model_dir, decoder_name);
+  make_path(joiner, sizeof(joiner), model_dir, joiner_name);
+  make_path(tokens, sizeof(tokens), model_dir, tokens_name);
 
   if (!path_exists(encoder) || !path_exists(decoder) || !path_exists(joiner) || !path_exists(tokens)) {
-    set_error(error_message, error_message_size, "Sherpa model files not found in %s", model_dir);
+    set_error(error_message, error_message_size,
+              "Sherpa model files not found in %s (expected %s / %s / %s / %s)",
+              model_dir, encoder_name, decoder_name, joiner_name, tokens_name);
     return NULL;
   }
 

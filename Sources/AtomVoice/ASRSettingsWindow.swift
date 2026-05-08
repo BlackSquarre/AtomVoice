@@ -19,6 +19,9 @@ final class ASRSettingsWindowController: NSObject {
     private var sherpaButtonModelIDs: [NSButton: String] = [:]
     private var sherpaStatusLabel: NSTextField!
     private var sherpaDownloadButton: NSButton!
+    private var sherpaDeleteButton: NSButton!
+    private var sherpaLanguagePopup: NSPopUpButton!
+    private var sherpaRadioStack: NSStackView!
 
     // Apple 设置（Apple settings）
     private var appleEnableCheckbox: NSButton!
@@ -55,23 +58,23 @@ final class ASRSettingsWindowController: NSObject {
         tabView.translatesAutoresizingMaskIntoConstraints = false
         tabView.delegate = self
 
-        // 标签页 1：豆包云端识别
-        let doubaoTab = NSTabViewItem(identifier: "doubao")
-        doubaoTab.label = loc("asrSettings.tab.doubao")
-        doubaoTab.view = buildDoubaoTab()
-        tabView.addTabViewItem(doubaoTab)
-
-        // 标签页 2：Sherpa 本地识别
+        // 标签页 1：Sherpa 本地识别
         let sherpaTab = NSTabViewItem(identifier: "sherpa")
         sherpaTab.label = loc("asrSettings.tab.sherpa")
         sherpaTab.view = buildSherpaTab()
         tabView.addTabViewItem(sherpaTab)
 
-        // 标签页 3：Apple 离线识别
+        // 标签页 2：Apple 离线识别
         let appleTab = NSTabViewItem(identifier: "apple")
         appleTab.label = loc("asrSettings.tab.apple")
         appleTab.view = buildAppleTab()
         tabView.addTabViewItem(appleTab)
+
+        // 标签页 3：豆包云端识别
+        let doubaoTab = NSTabViewItem(identifier: "doubao")
+        doubaoTab.label = loc("asrSettings.tab.doubao")
+        doubaoTab.view = buildDoubaoTab()
+        tabView.addTabViewItem(doubaoTab)
 
         // 底部按钮
         statusLabel = NSTextField(labelWithString: "")
@@ -108,6 +111,21 @@ final class ASRSettingsWindowController: NSObject {
 
         window = w
         refreshFields()
+
+        // 默认显示当前选中的识别引擎对应的标签页
+        // (Default to the tab matching the currently selected ASR engine)
+        let currentEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
+        let tabIdentifier: String
+        switch currentEngine {
+        case VolcengineASRSettings.engineCode: tabIdentifier = "doubao"
+        case ASREngineRegistry.sherpaCode: tabIdentifier = "sherpa"
+        default: tabIdentifier = "apple"
+        }
+        let tabIndex = tabView.indexOfTabViewItem(withIdentifier: tabIdentifier)
+        if tabIndex != NSNotFound {
+            tabView.selectTabViewItem(at: tabIndex)
+        }
+
         w.center()
         w.recalculateKeyViewLoop()
         AppDelegate.bringToFront(w)
@@ -214,79 +232,188 @@ final class ASRSettingsWindowController: NSObject {
         descLabel.maximumNumberOfLines = 0
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // 当前语言
-        let currentLang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
-        let langLabel = NSTextField(labelWithString: loc("asrSettings.sherpa.currentLang") + " " + languageDisplayName(currentLang))
-        langLabel.font = .systemFont(ofSize: 13)
-        langLabel.translatesAutoresizingMaskIntoConstraints = false
+        // 识别语言下拉（与 UI 语言独立）（Recognition language popup, decoupled from UI language）
+        let langTitle = NSTextField(labelWithString: loc("asrSettings.sherpa.recognitionLanguage"))
+        langTitle.font = .systemFont(ofSize: 13)
+        langTitle.translatesAutoresizingMaskIntoConstraints = false
 
-        // 模型列表
-        let radioStack = NSStackView()
-        radioStack.orientation = .vertical
-        radioStack.spacing = 8
-        radioStack.alignment = .leading
-        radioStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let presets = SherpaModelPreset.presetsForCurrentLanguage()
-        let currentPreset = SherpaModelPreset.current
-
-        sherpaRadioButtons = []
-        sherpaButtonModelIDs = [:]
-        for preset in presets {
-            let radio = NSButton(radioButtonWithTitle: preset.displayName, target: self, action: #selector(sherpaModelSelected(_:)))
-            sherpaButtonModelIDs[radio] = preset.id
-            radio.state = preset.id == currentPreset.id ? .on : .off
-            radio.translatesAutoresizingMaskIntoConstraints = false
-            sherpaRadioButtons.append(radio)
-            radioStack.addArrangedSubview(radio)
+        sherpaLanguagePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        sherpaLanguagePopup.translatesAutoresizingMaskIntoConstraints = false
+        sherpaLanguagePopup.target = self
+        sherpaLanguagePopup.action = #selector(sherpaLanguageChanged(_:))
+        let currentRecLang = SherpaModelPreset.recognitionLanguage
+        for code in SherpaModelPreset.supportedRecognitionLanguages {
+            let item = NSMenuItem(title: recognitionLanguageDisplayName(code), action: nil, keyEquivalent: "")
+            item.representedObject = code
+            sherpaLanguagePopup.menu?.addItem(item)
+            if code == currentRecLang {
+                sherpaLanguagePopup.select(item)
+            }
         }
+
+        let langRow = NSStackView(views: [langTitle, sherpaLanguagePopup])
+        langRow.orientation = .horizontal
+        langRow.spacing = 8
+        langRow.alignment = .centerY
+        langRow.translatesAutoresizingMaskIntoConstraints = false
+
+        // 模型列表（按"已下载/可下载"分组渲染）（Model list, grouped by downloaded/available）
+        sherpaRadioStack = NSStackView()
+        sherpaRadioStack.orientation = .vertical
+        sherpaRadioStack.spacing = 6
+        sherpaRadioStack.alignment = .leading
+        sherpaRadioStack.translatesAutoresizingMaskIntoConstraints = false
+        rebuildSherpaModelList()
 
         // 下载状态
         sherpaStatusLabel = NSTextField(labelWithString: "")
         sherpaStatusLabel.font = .systemFont(ofSize: 12)
         sherpaStatusLabel.textColor = .secondaryLabelColor
+        sherpaStatusLabel.lineBreakMode = .byWordWrapping
+        sherpaStatusLabel.maximumNumberOfLines = 0
         sherpaStatusLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // 下载按钮
+        // 下载 / 删除 / 打开文件夹按钮（Download / Delete / Open folder buttons）
         sherpaDownloadButton = makeButton(loc("asrSettings.sherpa.download"), action: #selector(downloadSherpaModel(_:)))
         sherpaDownloadButton.translatesAutoresizingMaskIntoConstraints = false
 
-        // 打开文件夹按钮
+        sherpaDeleteButton = makeButton(loc("asrSettings.sherpa.delete"), action: #selector(deleteSherpaModel(_:)))
+        sherpaDeleteButton.translatesAutoresizingMaskIntoConstraints = false
+
         let openFolderButton = makeButton(loc("menu.sherpaOpenFolder"), action: #selector(openSherpaFolder(_:)))
         openFolderButton.translatesAutoresizingMaskIntoConstraints = false
 
-        let buttonRow = NSStackView(views: [sherpaDownloadButton, openFolderButton])
+        let buttonRow = NSStackView(views: [sherpaDownloadButton, sherpaDeleteButton, openFolderButton])
         buttonRow.orientation = .horizontal
         buttonRow.spacing = 8
         buttonRow.translatesAutoresizingMaskIntoConstraints = false
 
+        // 第二行：导入模型包 + 指向 sherpa-onnx 模型列表的链接
+        // (Second row: import button + link to sherpa-onnx model list)
+        let importButton = makeButton(loc("asrSettings.sherpa.import"), action: #selector(importSherpaModel(_:)))
+        importButton.translatesAutoresizingMaskIntoConstraints = false
+        importButton.toolTip = loc("asrSettings.sherpa.import.tooltip")
+
+        let githubLink = NSButton(title: loc("asrSettings.sherpa.modelListLink"),
+                                  target: self, action: #selector(openSherpaModelList(_:)))
+        githubLink.bezelStyle = .accessoryBarAction
+        githubLink.isBordered = false
+        githubLink.contentTintColor = .linkColor
+        githubLink.font = .systemFont(ofSize: 12)
+        githubLink.toolTip = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models"
+        githubLink.translatesAutoresizingMaskIntoConstraints = false
+
+        let importRowSpacer = NSView()
+        importRowSpacer.translatesAutoresizingMaskIntoConstraints = false
+        importRowSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let importRow = NSStackView(views: [importButton, importRowSpacer, githubLink])
+        importRow.orientation = .horizontal
+        importRow.spacing = 8
+        importRow.alignment = .centerY
+        importRow.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(descLabel)
-        view.addSubview(langLabel)
-        view.addSubview(radioStack)
+        view.addSubview(langRow)
+        view.addSubview(sherpaRadioStack)
         view.addSubview(sherpaStatusLabel)
         view.addSubview(buttonRow)
+        view.addSubview(importRow)
 
         NSLayoutConstraint.activate([
             descLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
             descLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             descLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
-            langLabel.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
-            langLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            langRow.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
+            langRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
 
-            radioStack.topAnchor.constraint(equalTo: langLabel.bottomAnchor, constant: 12),
-            radioStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            radioStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            sherpaRadioStack.topAnchor.constraint(equalTo: langRow.bottomAnchor, constant: 12),
+            sherpaRadioStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            sherpaRadioStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
-            sherpaStatusLabel.topAnchor.constraint(equalTo: radioStack.bottomAnchor, constant: 12),
+            sherpaStatusLabel.topAnchor.constraint(equalTo: sherpaRadioStack.bottomAnchor, constant: 12),
             sherpaStatusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            sherpaStatusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
             buttonRow.topAnchor.constraint(equalTo: sherpaStatusLabel.bottomAnchor, constant: 12),
             buttonRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+
+            importRow.topAnchor.constraint(equalTo: buttonRow.bottomAnchor, constant: 8),
+            importRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            importRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
         ])
 
         updateSherpaStatus()
         return view
+    }
+
+    /// 按当前识别语言重建模型列表，已下载组在前
+    /// (Rebuild model list under current recognition language, downloaded group first)
+    private func rebuildSherpaModelList() {
+        sherpaRadioStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        sherpaRadioButtons = []
+        sherpaButtonModelIDs = [:]
+
+        let lang = SherpaModelPreset.recognitionLanguage
+        let presets = SherpaModelPreset.presets(forRecognitionLanguage: lang)
+        let downloaded = presets.filter { $0.isDownloaded }
+        let pending = presets.filter { !$0.isDownloaded }
+
+        // 当前选择的 preset id：若已不在当前语言列表中则回退到该语言的默认
+        // (Current preset id; fall back to language default if it's not in this language's list)
+        let savedID = UserDefaults.standard.string(forKey: "sherpaModelPresetID")
+        let validIDs = Set(presets.map { $0.id })
+        let activeID = savedID.flatMap { validIDs.contains($0) ? $0 : nil }
+            ?? SherpaModelPreset.defaultModelID(forRecognitionLanguage: lang)
+
+        if !downloaded.isEmpty {
+            sherpaRadioStack.addArrangedSubview(makeGroupHeader(loc("asrSettings.sherpa.group.downloaded")))
+            for preset in downloaded {
+                sherpaRadioStack.addArrangedSubview(makeModelRadio(preset: preset, isDownloaded: true, activeID: activeID))
+            }
+        }
+        if !pending.isEmpty {
+            if !downloaded.isEmpty {
+                sherpaRadioStack.addArrangedSubview(makeGroupHeader(loc("asrSettings.sherpa.group.available")))
+            }
+            for preset in pending {
+                sherpaRadioStack.addArrangedSubview(makeModelRadio(preset: preset, isDownloaded: false, activeID: activeID))
+            }
+        }
+
+        // 空状态提示：当前语言下无任何内置或导入的预设（Empty state: no built-in or imported presets for this language）
+        if presets.isEmpty {
+            let label = NSTextField(labelWithString: loc("asrSettings.sherpa.empty"))
+            label.font = .systemFont(ofSize: 12)
+            label.textColor = .secondaryLabelColor
+            label.lineBreakMode = .byWordWrapping
+            label.maximumNumberOfLines = 0
+            sherpaRadioStack.addArrangedSubview(label)
+        }
+    }
+
+    private func makeGroupHeader(_ text: String) -> NSView {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .tertiaryLabelColor
+        return label
+    }
+
+    private func makeModelRadio(preset: SherpaModelPreset, isDownloaded: Bool, activeID: String) -> NSButton {
+        let mark = isDownloaded ? "✓ " : ""
+        let title = "\(mark)\(preset.id) (\(preset.sizeMB)MB)"
+        let radio = NSButton(radioButtonWithTitle: title, target: self, action: #selector(sherpaModelSelected(_:)))
+        sherpaButtonModelIDs[radio] = preset.id
+        radio.state = preset.id == activeID ? .on : .off
+        radio.translatesAutoresizingMaskIntoConstraints = false
+        sherpaRadioButtons.append(radio)
+        return radio
+    }
+
+    private func recognitionLanguageDisplayName(_ code: String) -> String {
+        if code == "bilingual" { return loc("asrSettings.sherpa.lang.bilingual") }
+        return languageDisplayName(code)
     }
 
     // MARK: - Apple 标签页（Apple Tab）
@@ -437,15 +564,21 @@ final class ASRSettingsWindowController: NSObject {
     }
 
     private func updateSherpaStatus() {
-        let currentPreset = SherpaModelPreset.current
-        if currentPreset.isDownloaded {
+        let selectedID = sherpaRadioButtons.first(where: { $0.state == .on }).flatMap { sherpaButtonModelIDs[$0] }
+            ?? SherpaModelPreset.current.id
+        let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }) ?? SherpaModelPreset.current
+
+        if preset.isDownloaded {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloadStatus") + " ✓ " + loc("asrSettings.sherpa.downloaded")
             sherpaStatusLabel?.textColor = .systemGreen
             sherpaDownloadButton?.isEnabled = false
+            sherpaDeleteButton?.isEnabled = true
         } else {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloadStatus") + " " + loc("asrSettings.sherpa.notDownloaded")
             sherpaStatusLabel?.textColor = .systemOrange
-            sherpaDownloadButton?.isEnabled = true
+            // 导入预设没有下载源，按钮永远禁用（Imported presets have no source — disable download button）
+            sherpaDownloadButton?.isEnabled = !preset.isImported
+            sherpaDeleteButton?.isEnabled = false
         }
     }
 
@@ -466,22 +599,59 @@ final class ASRSettingsWindowController: NSObject {
 
     @objc private func sherpaModelSelected(_ sender: NSButton) {
         guard let modelID = sherpaButtonModelIDs[sender] else { return }
-        // 更新单选按钮状态
         for radio in sherpaRadioButtons {
             radio.state = sherpaButtonModelIDs[radio] == modelID ? .on : .off
         }
-        // 更新下载状态显示
-        if let preset = SherpaModelPreset.allPresets.first(where: { $0.id == modelID }) {
-            if preset.isDownloaded {
-                sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloadStatus") + " ✓ " + loc("asrSettings.sherpa.downloaded")
-                sherpaStatusLabel?.textColor = .systemGreen
-                sherpaDownloadButton?.isEnabled = false
-            } else {
-                sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloadStatus") + " " + loc("asrSettings.sherpa.notDownloaded")
-                sherpaStatusLabel?.textColor = .systemOrange
-                sherpaDownloadButton?.isEnabled = true
+        updateSherpaStatus()
+    }
+
+    @objc private func sherpaLanguageChanged(_ sender: NSPopUpButton) {
+        guard let item = sender.selectedItem,
+              let code = item.representedObject as? String else { return }
+        UserDefaults.standard.set(code, forKey: SherpaModelPreset.recognitionLanguageKey)
+        // 切换语言后，若当前 preset 不在新语言列表中，自动切到该语言默认模型
+        // (After language switch, if current preset isn't in new list, auto-select language default)
+        let presets = SherpaModelPreset.presets(forRecognitionLanguage: code)
+        let savedID = UserDefaults.standard.string(forKey: "sherpaModelPresetID")
+        if savedID == nil || !presets.contains(where: { $0.id == savedID }) {
+            UserDefaults.standard.set(SherpaModelPreset.defaultModelID(forRecognitionLanguage: code), forKey: "sherpaModelPresetID")
+        }
+        rebuildSherpaModelList()
+        updateSherpaStatus()
+    }
+
+    @objc private func deleteSherpaModel(_ sender: NSButton) {
+        let selectedID = sherpaRadioButtons.first(where: { $0.state == .on }).flatMap { sherpaButtonModelIDs[$0] }
+            ?? SherpaModelPreset.current.id
+        guard let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }),
+              preset.isDownloaded else { return }
+
+        let alert = NSAlert()
+        alert.messageText = loc("asrSettings.sherpa.delete.title")
+        alert.informativeText = loc("asrSettings.sherpa.delete.confirm", preset.id, preset.sizeMB)
+        alert.icon = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
+        alert.addButton(withTitle: loc("asrSettings.sherpa.delete"))
+        alert.addButton(withTitle: loc("common.cancel"))
+        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+
+        do {
+            try FileManager.default.removeItem(at: preset.modelDirectory)
+        } catch {
+            sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.delete.failed", error.localizedDescription)
+            sherpaStatusLabel?.textColor = .systemRed
+            return
+        }
+        // 导入预设：同步从持久化记录中移除（Imported preset: also remove its persisted record）
+        if preset.isImported {
+            SherpaImportedPresetStore.shared.remove(id: preset.id)
+            // 当前正用着这个 preset，则切回该语言的内置默认
+            // (If this was the active preset, fall back to language default)
+            if UserDefaults.standard.string(forKey: "sherpaModelPresetID") == preset.id {
+                UserDefaults.standard.set(SherpaModelPreset.defaultModelID(forRecognitionLanguage: preset.language), forKey: "sherpaModelPresetID")
             }
         }
+        rebuildSherpaModelList()
+        updateSherpaStatus()
     }
 
     @objc private func downloadSherpaModel(_ sender: NSButton) {
@@ -504,32 +674,56 @@ final class ASRSettingsWindowController: NSObject {
             sherpaStatusLabel?.textColor = .systemBlue
 
             let downloader = SherpaModelDownloader.shared
-            downloader.onProgress = { [weak self] current, total, progress, message in
-                DispatchQueue.main.async {
+            downloader.addObserver(
+                progress: { [weak self] _, _, _, message in
                     self?.sherpaStatusLabel?.stringValue = message
-                }
-            }
-            downloader.onComplete = { [weak self] success, error in
-                DispatchQueue.main.async {
+                },
+                complete: { [weak self] success, error in
                     if success {
                         self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.complete")
                         self?.sherpaStatusLabel?.textColor = .systemGreen
                         self?.sherpaDownloadButton?.isEnabled = false
-                        // 保存选中的模型
                         UserDefaults.standard.set(selectedID, forKey: "sherpaModelPresetID")
+                        self?.rebuildSherpaModelList()
+                        self?.updateSherpaStatus()
                     } else {
                         self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.failed", error ?? "Unknown error")
                         self?.sherpaStatusLabel?.textColor = .systemRed
                         self?.sherpaDownloadButton?.isEnabled = true
                     }
                 }
-            }
+            )
             downloader.startDownload(preset: preset)
         }
     }
 
     @objc private func openSherpaFolder(_ sender: NSButton) {
         SherpaOnnxRecognizerController.openSupportDirectory()
+    }
+
+    @objc private func openSherpaModelList(_ sender: NSButton) {
+        if let url = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func importSherpaModel(_ sender: NSButton) {
+        let flow = SherpaModelImportFlow(parentWindow: window)
+        flow.run { [weak self] record in
+            guard let self else { return }
+            guard let record else { return }  // 取消或失败已在 flow 内提示（cancel/failure already alerted）
+            // 导入成功 → 自动选中并刷新（On success, auto-select and refresh）
+            UserDefaults.standard.set(record.language, forKey: SherpaModelPreset.recognitionLanguageKey)
+            UserDefaults.standard.set(record.id, forKey: "sherpaModelPresetID")
+            // 同步语言下拉
+            if let item = self.sherpaLanguagePopup.menu?.items.first(where: { ($0.representedObject as? String) == record.language }) {
+                self.sherpaLanguagePopup.select(item)
+            }
+            self.rebuildSherpaModelList()
+            self.updateSherpaStatus()
+            self.sherpaStatusLabel?.stringValue = loc("sherpa.import.success", record.id)
+            self.sherpaStatusLabel?.textColor = .systemGreen
+        }
     }
 
     @objc private func openAppleSettings(_ sender: NSButton) {
@@ -553,13 +747,32 @@ final class ASRSettingsWindowController: NSObject {
         defaults.set(doubaoDDCCheckbox.state == .on, forKey: "doubaoASREnableDDC")
         defaults.set(doubaoNonstreamCheckbox.state == .on, forKey: "doubaoASREnableNonstream")
 
-        // 保存 Sherpa 模型选择
+        // 保存 Sherpa 模型选择；如果选中的 preset 还没下载，弹窗确认是否立即下载
+        // 不允许把"未下载"的 preset 静默设为 active，否则 C API 会因路径不匹配而加载失败
+        // (Save Sherpa preset; if selected preset isn't downloaded, prompt to download.
+        //  Don't silently activate an undownloaded preset — C API would fail to load it.)
         let selectedSherpaID = sherpaRadioButtons.first(where: { $0.state == .on }).flatMap { sherpaButtonModelIDs[$0] }
-        if let selectedID = selectedSherpaID {
-            defaults.set(selectedID, forKey: "sherpaModelPresetID")
-            if let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }) {
-                let ready = SherpaModelDownloader.allModelsReady(for: preset) || SherpaModelDownloader.repairExtractedFilesIfNeeded(for: preset)
-                defaults.set(ready, forKey: "sherpaModelsReady")
+        if let selectedID = selectedSherpaID,
+           let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }) {
+            if !preset.isDownloaded {
+                let alert = NSAlert()
+                alert.messageText = loc("asrSettings.sherpa.saveUndownloaded.title")
+                alert.informativeText = loc("asrSettings.sherpa.saveUndownloaded.message", preset.id, preset.sizeMB)
+                alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+                alert.addButton(withTitle: loc("asrSettings.sherpa.saveUndownloaded.download"))
+                alert.addButton(withTitle: loc("common.cancel"))
+                let result = AppDelegate.runModalAlert(alert)
+                if result == .alertFirstButtonReturn {
+                    defaults.set(selectedID, forKey: "sherpaModelPresetID")
+                    SherpaModelDownloader.shared.startDownload(preset: preset)
+                } else {
+                    // 取消保存：保留旧 preset 不动（Cancel save: keep old preset unchanged）
+                    statusLabel.stringValue = loc("asrSettings.sherpa.saveUndownloaded.cancelled")
+                    statusLabel.textColor = .systemOrange
+                    return
+                }
+            } else {
+                defaults.set(selectedID, forKey: "sherpaModelPresetID")
             }
         }
 

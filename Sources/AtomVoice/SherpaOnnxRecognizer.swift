@@ -32,6 +32,10 @@ final class SherpaOnnxRecognizerController {
     private(set) var lastStartFailureKind: SherpaOnnxStartFailureKind?
     var isModelLoaded: Bool { context != nil }
 
+    var currentText: String {
+        queue.sync { finalText }
+    }
+
     deinit {
         if let punctuationContext {
             AtomVoiceSherpaPunctuationDestroy(punctuationContext)
@@ -96,11 +100,29 @@ final class SherpaOnnxRecognizerController {
 
         lastStartFailureKind = nil
 
+        let preset = Self.currentPreset
+        guard let manifest = preset.resolveManifest() else {
+            // 找不到 manifest 说明模型目录里没有可识别的 .onnx 文件 → 触发缺失模型路径
+            // (No manifest means the model dir lacks recognizable .onnx files → treat as missing)
+            lastStartFailureKind = .missingModel
+            return loc("error.sherpaModelMissing", preset.modelDirectory.path)
+        }
+        print("[SherpaOnnx] 加载 \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens)")
+
         var errorBuffer = [CChar](repeating: 0, count: 2048)
         let created = Self.runtimeLibDirectory.path.withCString { libDir in
-            Self.modelDirectory.path.withCString { modelDir in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
-                    AtomVoiceSherpaCreate(libDir, modelDir, errorPtr.baseAddress, Int32(errorPtr.count))
+            preset.modelDirectory.path.withCString { modelDir in
+                manifest.encoder.withCString { encoder in
+                    manifest.decoder.withCString { decoder in
+                        manifest.joiner.withCString { joiner in
+                            manifest.tokens.withCString { tokens in
+                                errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
+                                    AtomVoiceSherpaCreate(libDir, modelDir, encoder, decoder, joiner, tokens,
+                                                          errorPtr.baseAddress, Int32(errorPtr.count))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

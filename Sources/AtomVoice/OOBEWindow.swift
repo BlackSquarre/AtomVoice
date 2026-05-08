@@ -24,7 +24,7 @@ final class OOBEWindowController: NSObject {
     private let totalSteps = 5
 
     // 选中状态（Selection state）
-    private var selectedEngine: String = "apple"
+    private var selectedEngine: String = ASREngineRegistry.appleCode
     private var selectedTriggerKeyCode: UInt16 = 63
     private var selectedSilenceAutoStop: Bool = false
     private var engineCardViews: [EngineCardView] = []
@@ -46,7 +46,7 @@ final class OOBEWindowController: NSObject {
             AppDelegate.bringToFront(w)
             return
         }
-        selectedEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
+        selectedEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
         let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
         selectedTriggerKeyCode = (savedKey == 0) ? 63 : savedKey
         selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
@@ -183,11 +183,34 @@ final class OOBEWindowController: NSObject {
     }
 
     @objc private func nextTapped() {
+        // 引擎选择步：选了 Sherpa 时插入模型选择器；其他引擎走原流程
+        // (Engine step: when Sherpa is chosen, present model chooser first; other engines proceed normally)
+        if currentStep == 3 && selectedEngine == ASREngineRegistry.sherpaCode {
+            presentSherpaModelChooser()
+            return
+        }
         if currentStep == totalSteps - 1 {
             finish()
         } else {
             showStep(currentStep + 1)
         }
+    }
+
+    private var pendingSherpaChooser: SherpaModelChooserController?
+
+    private func presentSherpaModelChooser() {
+        let chooser = SherpaModelChooserController()
+        pendingSherpaChooser = chooser
+        chooser.onComplete = { [weak self] result in
+            guard let self else { return }
+            self.pendingSherpaChooser = nil
+            // 取消则停留在引擎选择步；确认则推进到完成步
+            // (Cancel keeps user on engine step; confirm advances to Done)
+            if result != nil {
+                self.showStep(self.currentStep + 1)
+            }
+        }
+        chooser.runModal(over: window)
     }
 
     private func finish() {
@@ -516,7 +539,7 @@ final class OOBEWindowController: NSObject {
         engineCardViews = []
         let entries: [EngineCardModel] = [
             EngineCardModel(
-                code: "sherpaOnnx",
+                code: ASREngineRegistry.sherpaCode,
                 title: loc("oobe.engine.sherpa.title"),
                 tagline: loc("oobe.engine.sherpa.tagline"),
                 iconName: "lock.shield.fill",
@@ -532,7 +555,7 @@ final class OOBEWindowController: NSObject {
                 desc: loc("oobe.engine.sherpa.desc")
             ),
             EngineCardModel(
-                code: "apple",
+                code: ASREngineRegistry.appleCode,
                 title: loc("oobe.engine.apple.title"),
                 tagline: loc("oobe.engine.apple.tagline"),
                 iconName: "apple.logo",
@@ -660,7 +683,7 @@ final class OOBEWindowController: NSObject {
         switch selectedEngine {
         case VolcengineASRSettings.engineCode:
             nextStepText = loc("oobe.done.followup.doubao")
-        case "sherpaOnnx":
+        case ASREngineRegistry.sherpaCode:
             nextStepText = loc("oobe.done.followup.sherpa")
         default:
             nextStepText = loc("oobe.done.followup.apple")
@@ -1077,10 +1100,10 @@ final class KeyboardDiagramView: NSView {
         row.spacing = 4
         row.alignment = .centerY
 
-        // 左侧候选 fn + 装饰修饰键（Left: candidate fn + decorative modifiers）
+        // 左侧候选键（Left: candidate keys — Fn / Control / Option）
         let fn = makeCap(loc("menu.triggerKey.fn.symbol"), keyCode: 63, width: 36)
-        let leftCtrl = KeyCap(label: "⌃", keyCode: nil, width: 36)
-        let leftOpt  = KeyCap(label: "⌥", keyCode: nil, width: 36)
+        let leftCtrl = makeCap("⌃", keyCode: 59, width: 36)
+        let leftOpt  = makeCap("⌥", keyCode: 58, width: 36)
         let leftCmd  = KeyCap(label: "⌘", keyCode: nil, width: 44)
         // Space 装饰（decorative space bar）
         let space    = KeyCap(label: "", keyCode: nil, width: 168)

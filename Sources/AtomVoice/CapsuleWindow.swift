@@ -12,14 +12,13 @@ final class CapsuleWindowController {
     private var shimmerClipLayer: CALayer?  // 裁剪为胶囊形状的容器层（Clipping container layer shaped as capsule）
     private var activeAnimationInset: CGFloat = 0
     private var waveformVisible = true
+    private var presentationID = 0
 
     #if DEBUG_BUILD
     private var timerLabel: NSTextField?
     private var elapsedTimer: Timer?
     private var recordingStartTime: Date?
-    private var debugTimerVisible = false
     private let timerLabelWidth: CGFloat = 34
-    private let timerLabelGap: CGFloat = 8
     #endif
 
     private let capsuleHeight: CGFloat = 42
@@ -30,6 +29,12 @@ final class CapsuleWindowController {
     private let minTextWidth: CGFloat = 144
     private let maxTextWidth: CGFloat = 504
     private let horizontalPadding: CGFloat = 24
+    private let compactMinTextWidth: CGFloat = 56
+
+    /// 紧凑状态模式：流式上屏时启用，胶囊收窄、只显示固定状态文案，updateText 忽略实时文字
+    /// (Compact status mode: enabled during streaming; capsule narrows, shows only a fixed status string,
+    ///  updateText ignores live text)
+    private var compactStatusKey: String?
     private let spotlightAnimationInset: CGFloat = 18
     private let spotlightInBlurRadius: CGFloat = 14
     private let spotlightOutBlurRadius: CGFloat = 10
@@ -58,12 +63,8 @@ final class CapsuleWindowController {
     // MARK: - 布局计算
 
     private func fullWidth(forTextWidth tw: CGFloat) -> CGFloat {
-        let base = tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
-        #if DEBUG_BUILD
-        return debugTimerVisible ? base + timerLabelGap + timerLabelWidth : base
-        #else
-        return base
-        #endif
+        // 计时器以半透明叠层呈现，不占据布局宽度（Timer is rendered as a translucent overlay; no extra width.）
+        return tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
     }
 
     private func targetFrame(width: CGFloat) -> NSRect {
@@ -79,18 +80,32 @@ final class CapsuleWindowController {
 
     func show(showRecordingTimer: Bool = true,
               initialText: String = "",
-              showWaveformInitially: Bool = true) {
+              showWaveformInitially: Bool = true,
+              compactStatusKey: String? = nil) {
         if panel != nil {
             // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板（Previous showError 3s delay hasn't ended when re-recording, clean up old panel first）
             cleanup()
         }
+        presentationID += 1
 
-        #if DEBUG_BUILD
-        debugTimerVisible = showRecordingTimer
-        #endif
         waveformVisible = showWaveformInitially
 
-        let fw = fullWidth(forTextWidth: initialTextWidth(initialText))
+        // 紧凑模式下直接以窄 target 为入场目标，避免入场动画把窄宽度回写为默认宽度
+        // (In compact mode, set the entry target to the narrow frame so the spring animation doesn't overwrite it)
+        self.compactStatusKey = compactStatusKey
+        let labelFont = NSFont.systemFont(ofSize: 13.5, weight: .medium)
+        let resolvedInitialText: String
+        let resolvedTextWidth: CGFloat
+        if let key = compactStatusKey {
+            let displayText = loc(key)
+            resolvedInitialText = displayText
+            let measured = (displayText as NSString).size(withAttributes: [.font: labelFont])
+            resolvedTextWidth = max(measured.width + 14, compactMinTextWidth)
+        } else {
+            resolvedInitialText = initialText
+            resolvedTextWidth = initialTextWidth(initialText)
+        }
+        let fw = fullWidth(forTextWidth: resolvedTextWidth)
         let target = targetFrame(width: fw)
         activeAnimationInset = animationStyle == "dynamicIsland" ? spotlightAnimationInset : 0
 
@@ -126,12 +141,12 @@ final class CapsuleWindowController {
 
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 13.5, weight: .medium)
+        label.font = labelFont
         label.textColor = .labelColor
         label.lineBreakMode = .byTruncatingHead
         label.maximumNumberOfLines = 1
         label.cell?.truncatesLastVisibleLine = true
-        label.stringValue = initialText
+        label.stringValue = resolvedInitialText
         container.addSubview(label)
 
         let refLabel = NSTextField(labelWithString: loc("capsule.refining"))
@@ -213,28 +228,28 @@ final class CapsuleWindowController {
             refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
 
+        label.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+
         #if DEBUG_BUILD
         if showRecordingTimer {
-            // 计时器标签：仅录音调试时显示，下载等状态胶囊不显示（Timer label: only shown during recording debug, not shown for download/status capsule）
+            // 计时器标签：作为底层半透明叠层显示在右侧，不占据布局宽度
+            // (Timer label: shown as a translucent underlay on the right; takes no layout width.)
             let timerLbl = NSTextField(labelWithString: "0s")
             timerLbl.translatesAutoresizingMaskIntoConstraints = false
             timerLbl.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             timerLbl.textColor = .tertiaryLabelColor
+            timerLbl.alphaValue = 0.55
             timerLbl.alignment = .right
-            container.addSubview(timerLbl)
+            // 放在所有子视图最底层，文字变长时会盖住计时器（Place beneath all siblings so long recognized text covers it.）
+            container.addSubview(timerLbl, positioned: .below, relativeTo: nil)
             NSLayoutConstraint.activate([
-                label.trailingAnchor.constraint(equalTo: timerLbl.leadingAnchor, constant: -timerLabelGap),
                 timerLbl.trailingAnchor.constraint(equalTo: container.trailingAnchor),
                 timerLbl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
                 timerLbl.widthAnchor.constraint(equalToConstant: timerLabelWidth),
             ])
             self.timerLabel = timerLbl
             startElapsedTimer()
-        } else {
-            label.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
         }
-        #else
-        label.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
         #endif
 
         self.panel = panel
@@ -507,6 +522,7 @@ final class CapsuleWindowController {
     // MARK: - 简约模式入场
 
     private func animateInMinimal(panel: NSPanel, targetFrame: NSRect) {
+        let currentPresentationID = presentationID
         panel.contentView?.wantsLayer = true
         animationSurfaceView?.wantsLayer = true
         panel.alphaValue = 0
@@ -519,7 +535,10 @@ final class CapsuleWindowController {
 
         // 延迟一帧，让 visual effect view 先采样背景（Delay one frame for visual effect view to sample background）
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+            guard let self,
+                  self.panel === panel,
+                  self.presentationID == currentPresentationID
+            else { return }
             if self.waveformVisible {
                 self.waveformView?.restartAnimating()
             } else {
@@ -559,7 +578,11 @@ final class CapsuleWindowController {
     }
 
     func updateText(_ text: String, completion: (() -> Void)? = nil) {
+        // 紧凑状态模式下不展示实时识别文字，避免胶囊跟着文字变长变短
+        // (In compact status mode skip live text — keeps capsule width fixed and statusy)
+        if compactStatusKey != nil { completion?(); return }
         guard let label = textLabel, let panel = panel else { completion?(); return }
+        let currentPresentationID = presentationID
         // 确保文字颜色恢复为默认（showError 会改为红色）（Ensure text color resets to default — showError changes it to red）
         label.textColor = .labelColor
         label.stringValue = text
@@ -587,7 +610,11 @@ final class CapsuleWindowController {
                     : CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrame(frame, display: true)
             }, completionHandler: { [weak self] in
-                self?.updateShimmerFrame()
+                guard let self,
+                      self.panel === panel,
+                      self.presentationID == currentPresentationID
+                else { return }
+                self.updateShimmerFrame()
                 completion?()
             })
         }
@@ -598,8 +625,14 @@ final class CapsuleWindowController {
             show(showRecordingTimer: false, initialText: text, showWaveformInitially: !hidesWaveform)
             refiningLabel?.isHidden = true
             textLabel?.isHidden = false
+            let currentPanel = panel
+            let currentPresentationID = presentationID
             DispatchQueue.main.async { [weak self] in
-                self?.applyShimmerToCapsule()
+                guard let self,
+                      self.panel === currentPanel,
+                      self.presentationID == currentPresentationID
+                else { return }
+                self.applyShimmerToCapsule()
             }
             return
         }
@@ -616,21 +649,32 @@ final class CapsuleWindowController {
     func showRecording() {
         stopShimmer()
         refiningLabel?.isHidden = true
-        textLabel?.isHidden = true
+        // 紧凑模式下保留状态文案"正在输入"
+        // (In compact mode keep the status text "Typing" visible)
+        textLabel?.isHidden = compactStatusKey == nil
         showWaveform()
     }
 
     /// 显示错误提示，一段时间后自动消失。（Show error message, auto-dismiss after a delay.）
     func showError(_ message: String, dismissAfter delay: TimeInterval = 3) {
+        let currentPanel = panel
+        let currentPresentationID = presentationID
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
+        // 错误展示要看清完整文案，强制退出紧凑模式
+        // (Errors need full visibility — leave compact mode)
+        compactStatusKey = nil
         updateText("⚠️ \(message)")
         // 在 updateText 之后设置红色（updateText 会重置为默认颜色）（Set red color after updateText — updateText resets to default color）
         textLabel?.textColor = .systemRed
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.dismiss()
+            guard let self,
+                  self.panel === currentPanel,
+                  self.presentationID == currentPresentationID
+            else { return }
+            self.dismiss()
         }
     }
 
@@ -638,7 +682,72 @@ final class CapsuleWindowController {
         textLabel?.isHidden = true
         refiningLabel?.isHidden = false
         waveformView?.stopAnimating()
+        if compactStatusKey != nil, let refining = refiningLabel {
+            // 紧凑模式下切到优化提示时也按 refining 文案重新计算窄胶囊宽度
+            // (Re-fit the narrow capsule width to the refining label in compact mode)
+            applyCompactWidth(forText: refining.stringValue, font: refining.font ?? .systemFont(ofSize: 12))
+        }
         applyShimmerToCapsule()
+    }
+
+    // MARK: - 紧凑状态模式（流式上屏专用）
+    // (Compact status mode — for streaming-direct-injection)
+
+    /// 进入紧凑模式：窄胶囊 + 只显示固定状态文案（如"正在输入"）
+    /// (Enter compact mode: narrow capsule + fixed status text such as "Typing")
+    func enterCompactStatusMode(statusKey: String) {
+        compactStatusKey = statusKey
+        guard let label = textLabel else { return }
+        let displayText = loc(statusKey)
+        label.textColor = .labelColor
+        label.stringValue = displayText
+        label.isHidden = false
+        refiningLabel?.isHidden = true
+        applyCompactWidth(forText: displayText, font: label.font ?? .systemFont(ofSize: 13.5, weight: .medium))
+    }
+
+    /// 切换紧凑模式下的状态文案（typing → refining 等场景）
+    /// (Switch the compact mode status text — e.g. typing → refining)
+    func updateCompactStatus(statusKey: String) {
+        compactStatusKey = statusKey
+        guard let label = textLabel else { return }
+        let displayText = loc(statusKey)
+        label.stringValue = displayText
+        label.isHidden = false
+        refiningLabel?.isHidden = true
+        applyCompactWidth(forText: displayText, font: label.font ?? .systemFont(ofSize: 13.5, weight: .medium))
+    }
+
+    func exitCompactStatusMode() {
+        compactStatusKey = nil
+    }
+
+    private func applyCompactWidth(forText text: String, font: NSFont) {
+        guard let panel = panel else { return }
+        let measured = (text as NSString).size(withAttributes: [.font: font])
+        let tw = max(measured.width + 14, compactMinTextWidth)
+        let totalWidth = tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
+
+        let screen = NSScreen.main?.visibleFrame ?? .zero
+        var visualFrameRect = panel.frame.insetBy(dx: activeAnimationInset, dy: activeAnimationInset)
+        visualFrameRect.size.width = totalWidth
+        visualFrameRect.origin.x = screen.midX - totalWidth / 2
+        let frame = panelFrame(forVisualFrame: visualFrameRect)
+
+        if animationStyle == "none" {
+            panel.setFrame(frame, display: false)
+            updateShimmerFrame()
+        } else {
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = animationStyle == "dynamicIsland" ? 0.16 : 0.2
+                ctx.timingFunction = animationStyle == "dynamicIsland"
+                    ? CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
+                    : CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(frame, display: true)
+            }, completionHandler: { [weak self] in
+                self?.updateShimmerFrame()
+            })
+        }
     }
 
     // MARK: - 全胶囊扫光，仿 iOS 滑动解锁（Full-capsule shimmer, iOS slide-to-unlock style）
@@ -794,8 +903,9 @@ final class CapsuleWindowController {
             panel.animator().setFrame(end, display: true)
             animationSurfaceView?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
         }, completionHandler: { [weak self] in
+            guard let self, self.panel === panel else { return }
             panel.orderOut(nil)
-            self?.cleanup()
+            self.cleanup()
             completion?()
         })
     }
@@ -824,6 +934,7 @@ final class CapsuleWindowController {
     private func cleanup() {
         panel?.orderOut(nil)
         stopShimmer()
+        presentationID += 1
         springTimer?.invalidate()
         springTimer = nil
         #if DEBUG_BUILD
@@ -831,7 +942,6 @@ final class CapsuleWindowController {
         elapsedTimer = nil
         timerLabel = nil
         recordingStartTime = nil
-        debugTimerVisible = false
         #endif
         waveformView?.stopAnimating()
         waveformView = nil
@@ -841,6 +951,7 @@ final class CapsuleWindowController {
         animationSurfaceView = nil
         activeAnimationInset = 0
         waveformVisible = true
+        compactStatusKey = nil
         panel = nil
     }
 }

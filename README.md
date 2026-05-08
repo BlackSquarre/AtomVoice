@@ -107,4 +107,6 @@ The default system prompt is tuned for dictation polish (fix homophones, mis-tra
 
 ## License
 
-MIT
+Apache 2.0 — see [LICENSE](LICENSE) for details.
+
+Third-party notices (Sherpa-ONNX / ONNX Runtime) are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

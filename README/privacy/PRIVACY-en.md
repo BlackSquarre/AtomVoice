@@ -1,6 +1,6 @@
 # AtomVoice Privacy Policy
 
-Last updated: May 5, 2026
+Last updated: May 9, 2026
 
 AtomVoice is a macOS menu bar voice input tool. We take your privacy seriously. This Privacy Policy explains how AtomVoice handles data, uses permissions, and interacts with third-party services.
 
@@ -44,6 +44,9 @@ AtomVoice supports different recognition modes:
 
 3. **Sherpa ONNX Local Recognition**
    If you configure a local Sherpa ONNX recognition model, audio recognition is performed entirely on your device without uploading to any cloud recognition service.
+
+4. **Volcengine (Doubao) Streaming Cloud Recognition**
+   If you enable the Volcengine (Doubao) streaming cloud recognition engine and configure an API key and Resource ID, AtomVoice sends your voice audio to Bytedance's Volcengine speech recognition service for real-time streaming recognition. Your audio data is processed by Volcengine's servers. Related data handling is governed by Bytedance's and Volcengine's privacy policies. This feature requires configuration in Doubao settings and is disabled by default.
 
 ## 4. LLM Text Refinement
 
@@ -102,9 +105,10 @@ AtomVoice does not sell, rent, or trade your personal data.
 Data may be sent to third parties only in the following situations:
 
 1. When using Apple speech recognition, audio or recognition requests may be processed by Apple
-2. When LLM text refinement is enabled, recognized text is sent to your chosen LLM provider
-3. When checking for updates, the app accesses GitHub Releases
-4. When using a custom API endpoint, data is sent to the server you configured
+2. When using the Volcengine (Doubao) streaming cloud recognition engine, voice audio is processed by Volcengine's servers
+3. When LLM text refinement is enabled, recognized text is sent to your chosen LLM provider
+4. When checking for updates, the app accesses GitHub Releases
+5. When using a custom API endpoint, data is sent to the server you configured
 
 ## 9. Security Measures
 

@@ -107,4 +107,4 @@ Der Standard-System-Prompt ist auf Diktat-Politur abgestimmt (Homophone, falsch 
 
 ## License
 
-MIT
+Apache License 2.0
