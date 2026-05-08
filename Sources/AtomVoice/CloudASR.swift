@@ -147,8 +147,12 @@ final class CloudASRRecognizerController: NSObject {
 
     func start(onResult: @escaping (String, Bool) -> Void,
                onError: @escaping (String) -> Void) -> String? {
-        if let error = provider.validateCredentials() { return error }
+        if let error = provider.validateCredentials() {
+            DebugLog.error("[CloudASR] 凭据校验失败: \(error)")
+            return error
+        }
         guard let connection = provider.createConnection() else {
+            DebugLog.error("[CloudASR] 无法创建连接")
             return loc("cloudASR.error.noConnection")
         }
 
@@ -168,16 +172,19 @@ final class CloudASRRecognizerController: NSObject {
             self.onError = onError
             self.sentAudioBytes = 0
 
+            DebugLog.info("[CloudASR] 开始连接, sessionID=\(sessionID)")
+
             connection.delegate = self
             connection.resume()
 
             // 连接超时（Connection timeout）
-            self.queue.asyncAfter(deadline: .now() + 10) { [weak self] in
+            self.queue.asyncAfter(deadline: .now() + 2) { [weak self] in
                 guard let self,
                       self.sessionID == sessionID,
                       self.connection === connection,
                       self.state == .connecting
                 else { return }
+                DebugLog.error("[CloudASR] 连接超时 (2s), sessionID=\(sessionID)")
                 self.failLocked(loc("cloudASR.error.connectionFailed", loc("cloudASR.error.timeout")))
             }
         }
@@ -274,6 +281,7 @@ final class CloudASRRecognizerController: NSObject {
     }
 
     private func failLocked(_ message: String) {
+        DebugLog.error("[CloudASR] 识别失败: \(message), state=\(self.state), sentBytes=\(self.sentAudioBytes)")
         cloudASRLogger.error("[error] \(message, privacy: .public)")
         if state == .finishing || finishCompletion != nil {
             let audioBytes = sentAudioBytes + chunkBuffer.count
@@ -289,6 +297,7 @@ final class CloudASRRecognizerController: NSObject {
     }
 
     private func completeStopLocked(text: String, error: String?) {
+        DebugLog.info("[CloudASR] 完成停止: text=\(text.prefix(50)), error=\(error ?? "nil"), sentBytes=\(self.sentAudioBytes)")
         let completion = finishCompletion
         cloudASRLogger.info("[stop] bytes=\(self.sentAudioBytes, privacy: .public)")
         finishCompletion = nil
@@ -331,9 +340,7 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
                   self.state == .connecting
             else { return }
 
-            #if DEBUG_BUILD
-            cloudASRLogger.debug("[connectionDidOpen] bufferedBytes=\(self.chunkBuffer.count, privacy: .public)")
-            #endif
+            DebugLog.info("[CloudASR] 连接成功, bufferedBytes=\(self.chunkBuffer.count)")
 
             self.state = .streaming
 
@@ -365,6 +372,7 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
     }
 
     func connection(_ connection: CloudASRConnection, didFailWithError error: String) {
+        DebugLog.error("[CloudASR] 连接错误回调: \(error)")
         queue.async { [weak self] in
             guard let self,
                   self.connection === connection

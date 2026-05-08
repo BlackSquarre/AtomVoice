@@ -26,14 +26,18 @@ final class OOBEWindowController: NSObject {
     // 选中状态（Selection state）
     private var selectedEngine: String = "apple"
     private var selectedTriggerKeyCode: UInt16 = 63
+    private var selectedSilenceAutoStop: Bool = false
     private var engineCardViews: [EngineCardView] = []
     private var keyboardDiagramView: KeyboardDiagramView?
+    private var triggerSubtitleLabel: NSTextField?
     private var triggerSelectionLabel: NSTextField?
     private var inputModeDescLabel: NSTextField?
 
     // 权限页（Permissions page）
     private var permissionCards: [OOBEPermissionCardView] = []
     private var permissionRefreshTimer: Timer?
+    // 监听窗口外观变化，用于刷新 dots 颜色
+    private var appearanceObservation: NSKeyValueObservation?
 
     // MARK: Public
 
@@ -45,6 +49,7 @@ final class OOBEWindowController: NSObject {
         selectedEngine = UserDefaults.standard.string(forKey: "recognitionEngine") ?? "apple"
         let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
         selectedTriggerKeyCode = (savedKey == 0) ? 63 : savedKey
+        selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
         buildWindow()
     }
 
@@ -52,7 +57,7 @@ final class OOBEWindowController: NSObject {
 
     private func buildWindow() {
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -106,10 +111,7 @@ final class OOBEWindowController: NSObject {
         cv.addSubview(footerRow)
 
         NSLayoutConstraint.activate([
-            dotRow.topAnchor.constraint(equalTo: cv.topAnchor, constant: 18),
-            dotRow.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-
-            contentContainer.topAnchor.constraint(equalTo: dotRow.bottomAnchor, constant: 16),
+            contentContainer.topAnchor.constraint(equalTo: cv.topAnchor, constant: 28),
             contentContainer.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 28),
             contentContainer.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -28),
             contentContainer.bottomAnchor.constraint(equalTo: footerRow.topAnchor, constant: -14),
@@ -117,9 +119,16 @@ final class OOBEWindowController: NSObject {
             footerRow.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 24),
             footerRow.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -24),
             footerRow.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -20),
+
+            dotRow.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+            dotRow.centerYAnchor.constraint(equalTo: footerRow.centerYAnchor),
         ])
 
         self.window = w
+        // 监听外观切换，重新解析 dots 颜色
+        appearanceObservation = w.observe(\.effectiveAppearance, options: []) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.updateDots() }
+        }
         showStep(0)
         w.center()
         AppDelegate.bringToFront(w)
@@ -156,10 +165,16 @@ final class OOBEWindowController: NSObject {
     }
 
     private func updateDots() {
-        let active = NSColor.controlAccentColor.cgColor
-        let inactive = NSColor.tertiaryLabelColor.cgColor
-        for (i, dot) in titleDots.enumerated() {
-            dot.layer?.backgroundColor = (i == currentStep) ? active : inactive
+        // 在当前外观下解析颜色，确保亮暗模均可见
+        // (Resolve colours under the window’s effective appearance for both light & dark)
+        let appearance = window?.effectiveAppearance ?? NSApp.effectiveAppearance
+        appearance.performAsCurrentDrawingAppearance {
+            let active   = NSColor.controlAccentColor.cgColor
+            // tertiaryLabelColor 在亮色模式下透明度过低，改用 systemGray 确保双模均可见
+            let inactive = NSColor.systemGray.withAlphaComponent(0.45).cgColor
+            for (i, dot) in titleDots.enumerated() {
+                dot.layer?.backgroundColor = (i == currentStep) ? active : inactive
+            }
         }
     }
 
@@ -179,6 +194,7 @@ final class OOBEWindowController: NSObject {
         UserDefaults.standard.set(true, forKey: Self.completionDefaultsKey)
         UserDefaults.standard.set(selectedEngine, forKey: "recognitionEngine")
         UserDefaults.standard.set(Int(selectedTriggerKeyCode), forKey: "triggerKeyCode")
+        UserDefaults.standard.set(selectedSilenceAutoStop, forKey: "silenceAutoStopEnabled")
         if selectedEngine == VolcengineASRSettings.engineCode {
             UserDefaults.standard.set(true, forKey: "doubaoASRPrivacyAccepted")
         }
@@ -236,11 +252,11 @@ final class OOBEWindowController: NSObject {
         v.addArrangedSubview(icon)
         v.setCustomSpacing(20, after: icon)
         v.addArrangedSubview(title)
-        v.setCustomSpacing(14, after: title)
+        v.setCustomSpacing(6, after: title)
         v.addArrangedSubview(tagline)
-        v.setCustomSpacing(8, after: tagline)
+        v.setCustomSpacing(64, after: tagline)
         v.addArrangedSubview(subtitle)
-        v.setCustomSpacing(28, after: subtitle)
+        v.setCustomSpacing(8, after: subtitle)
         v.addArrangedSubview(hint)
         v.addArrangedSubview(botSpacer)
         topSpacer.heightAnchor.constraint(equalTo: botSpacer.heightAnchor).isActive = true
@@ -369,7 +385,8 @@ final class OOBEWindowController: NSObject {
         v.addArrangedSubview(heading)
         v.setCustomSpacing(6, after: heading)
 
-        let sub = NSTextField(labelWithString: loc("oobe.trigger.subtitle"))
+        let subLocKey = selectedSilenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
+        let sub = NSTextField(labelWithString: loc(subLocKey))
         sub.font = .systemFont(ofSize: 12.5)
         sub.textColor = .secondaryLabelColor
         sub.lineBreakMode = .byWordWrapping
@@ -403,7 +420,7 @@ final class OOBEWindowController: NSObject {
                                               trackingMode: .selectOne,
                                               target: self,
                                               action: #selector(inputModeChanged(_:)))
-        modeSegment.selectedSegment = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled") ? 1 : 0
+        modeSegment.selectedSegment = selectedSilenceAutoStop ? 1 : 0
         modeSegment.segmentStyle = .rounded
 
         let modeDesc = NSTextField(labelWithString: inputModeDescription())
@@ -443,13 +460,14 @@ final class OOBEWindowController: NSObject {
     }
 
     @objc private func inputModeChanged(_ sender: NSSegmentedControl) {
-        let isTap = sender.selectedSegment == 1
-        UserDefaults.standard.set(isTap, forKey: "silenceAutoStopEnabled")
+        selectedSilenceAutoStop = sender.selectedSegment == 1
         inputModeDescLabel?.stringValue = inputModeDescription()
+        let subLocKey = selectedSilenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
+        triggerSubtitleLabel?.stringValue = loc(subLocKey)
     }
 
     private func inputModeDescription() -> String {
-        UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        selectedSilenceAutoStop
             ? loc("oobe.trigger.mode.tap.desc")
             : loc("oobe.trigger.mode.hold.desc")
     }
@@ -535,7 +553,7 @@ final class OOBEWindowController: NSObject {
                 tagline: loc("oobe.engine.doubao.tagline"),
                 iconName: "cloud.fill",
                 iconColor: NSColor.systemBlue,
-                badge: loc("oobe.engine.recommended"),
+                badge: nil,
                 privacyLevel: .low,
                 privacyText: loc("oobe.engine.privacy.low"),
                 qualityStars: 5,
@@ -589,12 +607,52 @@ final class OOBEWindowController: NSObject {
 
         // 按选中触发键动态生成引导文案（Build body using selected trigger key）
         let opt = TriggerKeyOption.option(for: selectedTriggerKeyCode)
-        let bodyText = String(format: loc("oobe.done.body"), loc(opt.symbolKey))
-        let body = NSTextField(labelWithString: bodyText)
-        body.font = .systemFont(ofSize: 13)
-        body.textColor = .secondaryLabelColor
-        body.alignment = .center
-        body.lineBreakMode = .byWordWrapping
+        let bodyLocKey = selectedSilenceAutoStop ? "oobe.done.body.tap" : "oobe.done.body"
+        let bodyText = String(format: loc(bodyLocKey), loc(opt.symbolKey))
+        
+        let font = NSFont.systemFont(ofSize: 13)
+        let attrString = NSMutableAttributedString(string: bodyText, attributes: [
+            .font: font,
+            .foregroundColor: NSColor.secondaryLabelColor
+        ])
+        
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attrString.length))
+        
+        if let iconRange = bodyText.range(of: "(ICON)") {
+            let nsRange = NSRange(iconRange, in: bodyText)
+            var image: NSImage?
+            if let url = Bundle.main.url(forResource: "atomvoice-status", withExtension: "svg", subdirectory: "Icons") {
+                image = NSImage(contentsOf: url)
+            } else {
+                image = NSImage(systemSymbolName: "waveform", accessibilityDescription: nil)
+            }
+            image?.isTemplate = true
+            
+            let attachment = NSTextAttachment()
+            if let img = image {
+                let size = NSSize(width: 15, height: 15)
+                img.size = size
+                
+                let tintedImg = NSImage(size: size)
+                tintedImg.lockFocus()
+                img.draw(in: NSRect(origin: .zero, size: size))
+                NSColor.secondaryLabelColor.set()
+                NSRect(origin: .zero, size: size).fill(using: .sourceAtop)
+                tintedImg.unlockFocus()
+                
+                attachment.image = tintedImg
+                attachment.bounds = NSRect(x: 0, y: font.descender, width: 15, height: 15)
+            }
+            
+            let attachString = NSMutableAttributedString(attachment: attachment)
+            attachString.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: NSRange(location: 0, length: attachString.length))
+            attrString.replaceCharacters(in: nsRange, with: attachString)
+        }
+        
+        let body = NSTextField(labelWithAttributedString: attrString)
         body.maximumNumberOfLines = 0
         body.preferredMaxLayoutWidth = 540
 
@@ -832,13 +890,24 @@ final class EngineCardView: NSView {
         row.spacing = 8
         row.alignment = .centerY
 
+        // 统一图标容器尺寸，确保每行图标高度一致，使 .centerY 对齐稳定
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        iconContainer.heightAnchor.constraint(equalToConstant: 16).isActive = true
         icon.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+        ])
+
         let label = NSTextField(labelWithString: text)
         label.font = .systemFont(ofSize: 12.5, weight: .medium)
         label.textColor = textColor
         label.lineBreakMode = .byTruncatingTail
 
-        row.addArrangedSubview(icon)
+        row.addArrangedSubview(iconContainer)
         row.addArrangedSubview(label)
 
         if let footnote = footnote, !footnote.isEmpty {
@@ -863,6 +932,7 @@ final class EngineCardView: NSView {
         }
         dot.layer?.backgroundColor = color.cgColor
         dot.translatesAutoresizingMaskIntoConstraints = false
+        // 内圆点 12×12，交给外层容器居中（makeInlineAttrRow 统一包 16×16 容器）
         dot.widthAnchor.constraint(equalToConstant: 12).isActive = true
         dot.heightAnchor.constraint(equalToConstant: 12).isActive = true
         return dot

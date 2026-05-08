@@ -308,10 +308,12 @@
 "cloudASR.error.noConnection" = "Could not create speech recognition connection";
 "cloudASR.error.connectionFailed" = "Speech recognition connection failed: %@";
 "cloudASR.error.timeout" = "Recognition timed out. Please try again.";
+"doubao.fallback.noNetwork" = "No network, switched to Apple Speech.";
+"doubao.fallback.withError" = "%@, switched to Apple Speech";
 
 /* On-Device Model Download */
-"alert.onDeviceModel.title" = "Offline Model Not Downloaded";
-"alert.onDeviceModel.message" = "The offline speech recognition model for the current language has not been downloaded. Please go to System Settings → General → Keyboard → Dictation to download the model.";
+"alert.onDeviceModel.title" = "Apple Offline Model Not Downloaded";
+"alert.onDeviceModel.message" = "The Apple offline speech recognition model for the current language has not been downloaded. Go to System Settings → General → Keyboard → Dictation to download the model.";
 "alert.onDeviceModel.openSettings" = "Open System Settings";
 "menu.debug.testOnDeviceAlert" = "Test On-Device Model Alert";
 
@@ -336,6 +338,7 @@
 
 "oobe.trigger.heading" = "Choose Your Trigger Key";
 "oobe.trigger.subtitle" = "Hold this key to start dictation. You can change it later from the menu bar.";
+"oobe.trigger.subtitle.tap" = "Tap this key to start dictation. You can change it later from the menu bar.";
 
 "oobe.engine.heading" = "Choose a Recognition Engine";
 "oobe.engine.subtitle" = "Cards are sorted left-to-right by privacy, from highest to lowest. You can switch later from the menu bar.";
@@ -354,20 +357,21 @@
 "oobe.engine.cost.paid" = "Paid · API key";
 "oobe.engine.cost.local" = "Free · Model download";
 
-"oobe.engine.sherpa.title" = "Local Offline";
+"oobe.engine.sherpa.title" = "Local Offline Speech";
 "oobe.engine.sherpa.tagline" = "No audio ever leaves your Mac.";
-"oobe.engine.sherpa.desc" = "Runs entirely on-device with Sherpa-ONNX. Slightly lower accuracy on long sentences. Requires a one-time model download.";
+"oobe.engine.sherpa.desc" = "Runs entirely on-device with Sherpa-ONNX. Slightly lower accuracy on long sentences. Requires a one-time model download.\n\nSuitable for privacy-first or completely offline environments.";
 
 "oobe.engine.apple.title" = "Apple Speech";
 "oobe.engine.apple.tagline" = "Built into macOS, free, multilingual.";
-"oobe.engine.apple.desc" = "Apple's speech recognition. Most languages process in the cloud; some support on-device mode for added privacy.";
+"oobe.engine.apple.desc" = "Apple's speech recognition. Most languages process in the cloud; some support on-device mode for added privacy.\n\n\nIdeal for users valuing a balanced experience and privacy, with an optional forced offline mode.";
 
-"oobe.engine.doubao.title" = "Doubao Streaming";
-"oobe.engine.doubao.tagline" = "Top-tier Chinese accuracy, low latency.";
-"oobe.engine.doubao.desc" = "Streams audio to Volcengine servers. Best Mandarin / dialect recognition. Requires an API key — usage is billed.";
+"oobe.engine.doubao.title" = "Doubao Speech";
+"oobe.engine.doubao.tagline" = "Strong Chinese accuracy, low-latency streaming.";
+"oobe.engine.doubao.desc" = "Streams audio to Volcengine servers. Good Mandarin/dialect recognition. Requires an API key — usage is billed.\n\nSuitable for high-frequency and long-text input, offering fast responses and a good overall experience.\n\nRequires constant internet connection; falls back to Apple Speech when offline.";
 
 "oobe.done.title" = "You're all set";
-"oobe.done.body" = "Hold %@ to dictate, release to insert. AtomVoice lives in your menu bar.";
+"oobe.done.body" = "Hold %@ to dictate, release to insert.\nYou can change more settings via the (ICON) menu.";
+"oobe.done.body.tap" = "Tap %@ to dictate, tap again or pause to insert.\nYou can change more settings via the (ICON) menu.";
 "oobe.done.followup.apple" = "Tip: Apple's on-device mode can be enabled from the menu bar for added privacy.";
 "oobe.done.followup.doubao" = "Next: we'll open Doubao settings so you can enter your API key.";
 "oobe.done.followup.sherpa" = "Next: we'll prompt you to download the local recognition model.";

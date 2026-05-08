@@ -42,45 +42,52 @@ final class TextInjector {
     }
 
     private func performInject(text: String, completion: (() -> Void)? = nil) {
-        // 如果光标后方已有标点，则移除注入文本末尾的标点（If punctuation already exists after cursor, remove trailing punctuation from injected text）
-        var finalText = text
-        if let nextChar = getCharacterAfterCursor(),
-           PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
-            finalText = removeTrailingPunctuation(text)
-        }
-
-        // 保存当前剪贴板（Save current clipboard）
-        let pasteboard = NSPasteboard.general
-        let previousContents = savePasteboard(pasteboard)
-
-        // 将文本写入剪贴板（Set text to clipboard）
-        pasteboard.clearContents()
-        pasteboard.setString(finalText, forType: .string)
-
-        // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check if current input source is CJK, switch to ASCII if needed）
-        let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-        let needsSwitch = isCJKInputSource(originalSource)
-        if needsSwitch {
-            switchToASCIIInputSource()
-        }
-
-        // 短暂延迟，等待输入源切换生效（Small delay for input source switch to take effect）
-        let delay = needsSwitch ? 0.05 : 0.02
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [self] in
-            // 模拟 Cmd+V 粘贴（Simulate Cmd+V paste）
-            simulatePaste()
-
-            // 粘贴后恢复输入源（Restore input source after paste）
-            // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴（Paste delay: give target apps including Electron enough time to complete paste）
-            let pasteDelay: Double = 0.25
-            DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) {
-                if needsSwitch {
-                    TISSelectInputSource(originalSource)
+        // 将获取光标后字符的跨进程 IPC 调用移至后台队列，避免目标应用挂起时连带卡死主线程
+        // (Move the cross-process IPC call for getting character after cursor to a background queue to avoid freezing the main thread if target app hangs)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let nextChar = self.getCharacterAfterCursor()
+            
+            DispatchQueue.main.async {
+                var finalText = text
+                if let nextChar, PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
+                    finalText = self.removeTrailingPunctuation(text)
                 }
-                // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard, ensuring input method restoration doesn't affect paste）
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self.restorePasteboard(pasteboard, contents: previousContents)
-                    completion?()
+
+                // 保存当前剪贴板（Save current clipboard）
+                let pasteboard = NSPasteboard.general
+                let previousContents = self.savePasteboard(pasteboard)
+
+                // 将文本写入剪贴板（Set text to clipboard）
+                pasteboard.clearContents()
+                pasteboard.setString(finalText, forType: .string)
+
+                // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check if current input source is CJK, switch to ASCII if needed）
+                let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+                let needsSwitch = self.isCJKInputSource(originalSource)
+                if needsSwitch {
+                    self.switchToASCIIInputSource()
+                }
+
+                // 短暂延迟，等待输入源切换生效（Small delay for input source switch to take effect）
+                let delay = needsSwitch ? 0.05 : 0.02
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    // 模拟 Cmd+V 粘贴（Simulate Cmd+V paste）
+                    self.simulatePaste()
+
+                    // 粘贴后恢复输入源（Restore input source after paste）
+                    // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴（Paste delay: give target apps including Electron enough time to complete paste）
+                    let pasteDelay: Double = 0.25
+                    DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) {
+                        if needsSwitch {
+                            TISSelectInputSource(originalSource)
+                        }
+                        // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard, ensuring input method restoration doesn't affect paste）
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            self.restorePasteboard(pasteboard, contents: previousContents)
+                            completion?()
+                        }
+                    }
                 }
             }
         }
@@ -111,11 +118,13 @@ final class TextInjector {
         guard textResult == .success, let text = value as? String else { return nil }
 
         // 计算光标后方位置（Calculate position after cursor）
+        // AX API 的 CFRange 使用 UTF-16 偏移，需用 UTF16View 索引（AX API's CFRange uses UTF-16 offsets, must use UTF16View indexing）
+        let utf16 = text.utf16
         let nextIndex = rangeValue.location + rangeValue.length
-        guard nextIndex >= 0, nextIndex < text.count else { return nil }
-
-        let index = text.index(text.startIndex, offsetBy: nextIndex)
-        return text[index]
+        guard nextIndex >= 0, nextIndex < utf16.count else { return nil }
+        let utf16Index = utf16.index(utf16.startIndex, offsetBy: nextIndex)
+        guard let charIndex = utf16Index.samePosition(in: text) else { return nil }
+        return text[charIndex]
     }
 
     /// 移除文本末尾的标点符号（Remove trailing punctuation from text）
@@ -171,7 +180,16 @@ final class TextInjector {
             }
         }
 
-        // 回退：选择第一个可用的 ASCII 输入源（Fallback: select first ASCII-capable source）
+        // 回退：选择第一个支持 ASCII 的键盘布局 (Fallback: select first ASCII-capable keyboard layout)
+        if let asciiCapableSource = sources.first(where: { source in
+            guard let capablePtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsASCIICapable) else { return false }
+            return Unmanaged<CFBoolean>.fromOpaque(capablePtr).takeUnretainedValue() == kCFBooleanTrue
+        }) {
+            TISSelectInputSource(asciiCapableSource)
+            return
+        }
+
+        // 最终回退：选择第一个可用的输入源（Fallback: select first available source）
         if let first = sources.first {
             TISSelectInputSource(first)
         }

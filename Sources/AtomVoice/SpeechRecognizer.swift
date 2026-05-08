@@ -231,18 +231,20 @@ final class SpeechRecognizerController {
         guard let recognizer else { return }
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            guard let self, taskID == self.activeTaskID else { return }
+            DispatchQueue.main.async {
+                guard let self, taskID == self.activeTaskID else { return }
 
-            if let result {
-                self.currentSegmentText = result.bestTranscription.formattedString
-                let fullText = self.segmentOffset + self.currentSegmentText
-                self.onResult?(fullText, result.isFinal)
-            }
-            if let error {
-                let nsError = error as NSError
-                // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
-                if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
-                    print("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                if let result {
+                    self.currentSegmentText = result.bestTranscription.formattedString
+                    let fullText = self.segmentOffset + self.currentSegmentText
+                    self.onResult?(fullText, result.isFinal)
+                }
+                if let error {
+                    let nsError = error as NSError
+                    // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
+                    if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
+                        print("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                    }
                 }
             }
         }

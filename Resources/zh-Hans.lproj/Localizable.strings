@@ -309,10 +309,12 @@
 "cloudASR.error.noConnection" = "无法创建语音识别连接";
 "cloudASR.error.connectionFailed" = "语音识别连接失败：%@";
 "cloudASR.error.timeout" = "识别超时，请重试";
+"doubao.fallback.noNetwork" = "无网络，已切换到 Apple 语音识别。";
+"doubao.fallback.withError" = "%@，已切换到 Apple 语音识别";
 
 /* 离线模型下载 */
-"alert.onDeviceModel.title" = "离线模型未下载";
-"alert.onDeviceModel.message" = "当前语言的离线语音识别模型尚未下载。请前往 系统设置 → 通用 → 键盘 → 听写，下载对应语言的模型。";
+"alert.onDeviceModel.title" = "Apple 离线模型未下载";
+"alert.onDeviceModel.message" = "当前语言的 Apple 离线语音识别模型尚未下载。请前往 系统设置 → 通用 → 键盘 → 听写，下载对应语言的模型。";
 "alert.onDeviceModel.openSettings" = "打开系统设置";
 "menu.debug.testOnDeviceAlert" = "测试离线模型下载提示";
 
@@ -337,6 +339,7 @@
 
 "oobe.trigger.heading" = "选择触发按键";
 "oobe.trigger.subtitle" = "按住此键开始语音输入。之后可以在菜单栏随时修改。";
+"oobe.trigger.subtitle.tap" = "单击此键开始语音输入。之后可以在菜单栏随时修改。";
 
 "oobe.engine.heading" = "选择识别引擎";
 "oobe.engine.subtitle" = "卡片从左到右按隐私保护从高到低排列。之后可以随时在菜单栏切换。";
@@ -350,25 +353,26 @@
 "oobe.engine.privacy.low" = "纯云端";
 "oobe.engine.quality.fair" = "中等";
 "oobe.engine.quality.good" = "良好";
-"oobe.engine.quality.best" = "顶级";
+"oobe.engine.quality.best" = "优秀";
 "oobe.engine.cost.free" = "免费";
 "oobe.engine.cost.paid" = "付费 · 需 API Key";
 "oobe.engine.cost.local" = "免费 · 需下载模型";
 
-"oobe.engine.sherpa.title" = "本地离线";
+"oobe.engine.sherpa.title" = "本地离线语音";
 "oobe.engine.sherpa.tagline" = "音频完全不离开本机。";
-"oobe.engine.sherpa.desc" = "基于 Sherpa-ONNX 完全在本机推理。长句准确度略弱。需一次性下载本地模型。";
+"oobe.engine.sherpa.desc" = "基于 Sherpa-ONNX 完全在本机推理。长句准确度略弱。需一次性下载本地模型。\n\n适合隐私优先，或要求完全断网使用的环境。";
 
 "oobe.engine.apple.title" = "Apple 语音";
 "oobe.engine.apple.tagline" = "macOS 内置，免费，多语言。";
-"oobe.engine.apple.desc" = "调用 macOS 内置能力，支持多国语言。日常沟通的均衡选择。";
+"oobe.engine.apple.desc" = "调用 macOS 内置能力，支持多国语言。日常沟通的均衡选择。\n\n\n适合看重综合体验与隐私保护的用户，支持开启强制离线模式。";
 
-"oobe.engine.doubao.title" = "豆包流式";
-"oobe.engine.doubao.tagline" = "中文识别业界顶级，流式低延迟。";
-"oobe.engine.doubao.desc" = "音频上传到火山引擎服务器，普通话/方言识别最佳。需配置 API Key，按量付费。";
+"oobe.engine.doubao.title" = "豆包语音";
+"oobe.engine.doubao.tagline" = "中文识别表现优秀，流式低延迟。";
+"oobe.engine.doubao.desc" = "音频上传到火山引擎服务器，普通话/方言识别表现优良。需配置 API Key，按量付费。\n\n适合高频及长文输入，响应迅速且综合体验较好。\n\n使用需全程联网，无网时将回退到 Apple 语音。";
 
 "oobe.done.title" = "一切就绪";
-"oobe.done.body" = "按住 %@ 即可说话，松开自动上屏。原子微语已停留在菜单栏。";
+"oobe.done.body" = "按住 %@ 即可说话，松开自动上屏。\n可通过菜单栏中 (ICON) 修改更多设置。";
+"oobe.done.body.tap" = "单击 %@ 即可说话，再次单击或停顿后自动上屏。\n可通过菜单栏中 (ICON) 修改更多设置。";
 "oobe.done.followup.apple" = "小贴士：您可以在菜单栏开启「离线模式」，让语音处理仅在本机完成。";
 "oobe.done.followup.doubao" = "接下来将打开豆包设置，请填入 API Key。";
 "oobe.done.followup.sherpa" = "接下来将提示你下载本地识别模型。";

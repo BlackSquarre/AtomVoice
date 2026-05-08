@@ -308,10 +308,12 @@
 "cloudASR.error.noConnection" = "음성 인식 연결을 만들 수 없습니다";
 "cloudASR.error.connectionFailed" = "음성 인식 연결 실패: %@";
 "cloudASR.error.timeout" = "인식 시간이 초과되었습니다. 다시 시도하세요.";
+"doubao.fallback.noNetwork" = "네트워크 없음, Apple 음성 인식으로 전환했습니다.";
+"doubao.fallback.withError" = "%@, Apple 음성 인식으로 전환했습니다";
 
 /* 오프라인 모델 다운로드 */
-"alert.onDeviceModel.title" = "오프라인 모델 미다운로드";
-"alert.onDeviceModel.message" = "현재 언어의 오프라인 음성 인식 모델이 다운로드되지 않았습니다. 시스템 설정 → 일반 → 키보드 → 받아쓰기로 이동하여 모델을 다운로드하세요.";
+"alert.onDeviceModel.title" = "Apple 오프라인 모델 미다운로드";
+"alert.onDeviceModel.message" = "현재 언어의 Apple 오프라인 음성 인식 모델이 다운로드되지 않았습니다. 시스템 설정 → 일반 → 키보드 → 받아쓰기에서 해당 언어 모델을 다운로드하세요.";
 "alert.onDeviceModel.openSettings" = "시스템 설정 열기";
 "menu.debug.testOnDeviceAlert" = "오프라인 모델 알림 테스트";
 
@@ -336,6 +338,7 @@
 
 "oobe.trigger.heading" = "트리거 키 선택";
 "oobe.trigger.subtitle" = "이 키를 누른 채 음성 입력이 시작됩니다. 나중에 메뉴 막대에서 변경할 수 있습니다.";
+"oobe.trigger.subtitle.tap" = "이 키를 한 번 눌러 음성 입력을 시작합니다. 나중에 메뉴 막대에서 변경할 수 있습니다.";
 
 "oobe.engine.heading" = "인식 엔진 선택";
 "oobe.engine.subtitle" = "카드는 왼쪽부터 개인정보 보호가 높은 순으로 정렬되어 있습니다. 나중에 메뉴 막대에서 변경할 수 있습니다.";
@@ -349,25 +352,26 @@
 "oobe.engine.privacy.low" = "클라우드 전용";
 "oobe.engine.quality.fair" = "보통";
 "oobe.engine.quality.good" = "좋음";
-"oobe.engine.quality.best" = "최상";
+"oobe.engine.quality.best" = "우수";
 "oobe.engine.cost.free" = "무료";
 "oobe.engine.cost.paid" = "유료 · API 키";
 "oobe.engine.cost.local" = "무료 · 모델 다운로드";
 
-"oobe.engine.sherpa.title" = "로컬 오프라인";
+"oobe.engine.sherpa.title" = "로컬 오프라인 음성";
 "oobe.engine.sherpa.tagline" = "오디오가 기기를 떠나지 않습니다.";
-"oobe.engine.sherpa.desc" = "Sherpa-ONNX로 전적으로 기기에서 추론. 긴 문장 정확도는 다소 낮음. 모델을 한 번 다운로드해야 합니다.";
+"oobe.engine.sherpa.desc" = "Sherpa-ONNX로 전적으로 기기에서 추론. 긴 문장 정확도는 다소 낮음. 모델을 한 번 다운로드해야 합니다.\n\n개인정보 보호를 우선시하거나 완전한 오프라인 환경이 필요한 경우에 적합합니다.";
 
 "oobe.engine.apple.title" = "Apple 음성";
 "oobe.engine.apple.tagline" = "macOS 내장, 무료, 다국어.";
-"oobe.engine.apple.desc" = "Apple의 음성 인식. 대부분의 언어는 클라우드에서 처리되며, 일부는 온디바이스 모드를 지원합니다.";
+"oobe.engine.apple.desc" = "Apple의 음성 인식. 대부분의 언어는 클라우드에서 처리되며, 일부는 온디바이스 모드를 지원합니다.\n\n\n종합적인 경험과 개인정보 보호를 중시하는 사용자에게 적합하며 강제 오프라인 모드를 지원합니다.";
 
-"oobe.engine.doubao.title" = "Doubao 스트리밍";
-"oobe.engine.doubao.tagline" = "중국어 인식 최고 수준, 저지연.";
-"oobe.engine.doubao.desc" = "오디오를 Volcengine 서버로 전송. 중국어 인식이 최상. API 키 필요, 사용량 과금.";
+"oobe.engine.doubao.title" = "Doubao 음성";
+"oobe.engine.doubao.tagline" = "우수한 중국어 인식 정확도, 저지연 스트리밍.";
+"oobe.engine.doubao.desc" = "오디오를 Volcengine 서버로 전송. 중국어 및 방언 인식이 우수합니다. API 키 필요, 사용량 과금.\n\n빈번하고 긴 문장 입력에 적합하며 빠른 응답으로 전반적으로 좋은 경험을 제공합니다.\n\n지속적인 인터넷 연결이 필요하며, 오프라인 시 Apple 음성 인식으로 대체됩니다.";
 
 "oobe.done.title" = "설정 완료";
-"oobe.done.body" = "%@를 누른 채 말하고 떼면 자동 입력됩니다. AtomVoice는 메뉴 막대에 상주합니다.";
+"oobe.done.body" = "%@를 누른 채 말하고 떼면 자동 입력됩니다.\n메뉴 막대의 (ICON) 에서 더 많은 설정을 변경할 수 있습니다.";
+"oobe.done.body.tap" = "%@를 한 번 눌러 말하고, 다시 누르거나 멈추면 자동 입력됩니다.\n메뉴 막대의 (ICON) 에서 더 많은 설정을 변경할 수 있습니다.";
 "oobe.done.followup.apple" = "팁: 메뉴 막대에서 Apple 온디바이스 모드를 활성화하면 더 나은 개인정보 보호를 얻을 수 있습니다.";
 "oobe.done.followup.doubao" = "다음으로 Doubao 설정을 엽니다. API 키를 입력하세요.";
 "oobe.done.followup.sherpa" = "다음으로 로컬 인식 모델 다운로드를 안내합니다.";

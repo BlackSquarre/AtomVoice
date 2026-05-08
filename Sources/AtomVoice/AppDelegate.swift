@@ -28,6 +28,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let doubaoFallbackAudioQueue = DispatchQueue(label: "com.atomvoice.doubaoFallbackAudio")
     private var doubaoFallbackAudioBuffers: [AVAudioPCMBuffer] = []
     private var doubaoFallbackErrorMessage: String?
+    private var doubaoFallbackAppleLiveActive = false
+    private var doubaoFallbackPrefixText = ""
+    // Sherpa 模型预加载期间的音频缓冲，复用 doubao fallback 的模式（Audio buffer during Sherpa model preloading, reusing doubao fallback pattern）
+    private var sherpaPreloadActive = false
+    private let sherpaPreloadQueue = DispatchQueue(label: "com.atomvoice.sherpaPreload")
+    private var sherpaPreloadBuffers: [AVAudioPCMBuffer] = []
 
     deinit {
         memoryPressureSource?.cancel()
@@ -216,13 +222,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.collectionBehavior.formUnion(behavior)
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
 
         // 菜单收起后一帧再确认一次，避免状态栏菜单焦点覆盖窗口焦点（Re-confirm one frame after menu dismisses, to prevent status bar menu focus from overriding window focus）
         DispatchQueue.main.async {
             window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 
@@ -257,7 +263,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             currentApp.activate(options: [.activateAllWindows])
         }
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func requestPermissions() {
@@ -327,6 +333,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 取消正在进行的 LLM 处理，如果有（Cancel any ongoing LLM processing, if any）
         llmRefiner.cancel()
         doubaoFallbackErrorMessage = nil
+        doubaoFallbackAppleLiveActive = false
+        doubaoFallbackPrefixText = ""
         clearDoubaoFallbackAudioBuffers()
         
         isRecording = true
@@ -358,12 +366,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // 模型已缓存，直接开始录音，不显示加载动画（Model cached, start recording directly without loading animation）
                     startSherpaRecordingAfterModelLoad()
                 } else {
-                    // 首次加载模型，显示扫光加载动画（First-time model load, show shimmer loading animation）
-                    capsuleWindow.showProgress(loc("sherpa.loadingModel"))
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [self] in
-                        guard isRecording, currentRecordingEngine == "sherpaOnnx" else { return }
-                        startSherpaRecordingAfterModelLoad()
-                    }
+                    // 首次加载模型：立即录音 + 后台加载模型 + 加载完成后喂缓存音频（First-time: record immediately + load model in background + feed buffered audio after load）
+                    startSherpaRecordingWithDeferredModel(generation: generation)
                 }
             } else {
                 startAppleRecording(generation: generation)
@@ -446,8 +450,130 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Sherpa 模型未加载时：立即启动录音缓存音频，后台加载模型，加载完成后喂入全部缓存并无缝切换（When Sherpa model is not loaded: start recording immediately and buffer audio, load model in background, feed all buffered audio and switch seamlessly after load）
+    private func startSherpaRecordingWithDeferredModel(generation: Int) {
+        sherpaPreloadActive = true
+        clearSherpaPreloadBuffers()
+
+        capsuleWindow.showProgress(loc("sherpa.loadingModel"))
+
+        // 1. 立即启动 AudioEngine，缓存音频（Start AudioEngine immediately, buffer audio）
+        if !audioEngine.start(
+            bandsHandler: { [weak self] bands in
+                DispatchQueue.main.async {
+                    self?.capsuleWindow.updateBands(bands)
+                }
+            },
+            recognitionRequest: nil,
+            audioBufferHandler: { [weak self] buffer, _ in
+                guard let self else { return }
+                if self.sherpaPreloadActive {
+                    self.appendSherpaPreloadBuffer(buffer)
+                } else {
+                    self.sherpaRecognizer.accept(buffer: buffer)
+                }
+            }
+        ) {
+            sherpaPreloadActive = false
+            clearSherpaPreloadBuffers()
+            handleAudioStartFailure()
+            return
+        }
+
+        // 2. 后台加载模型（Load model in background）
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let error = self.sherpaRecognizer.start(onResult: { [weak self] text, _ in
+                DispatchQueue.main.async {
+                    self?.capsuleWindow.updateText(text)
+                }
+            })
+
+            // 3. 回主线程处理结果（Return to main thread to handle result）
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.isRecording, self.recordingGeneration == generation,
+                      self.currentRecordingEngine == "sherpaOnnx" else {
+                    self.sherpaPreloadActive = false
+                    self.clearSherpaPreloadBuffers()
+                    return
+                }
+
+                if let error {
+                    // 模型加载失败，停止录音（Model load failed, stop recording）
+                    self.sherpaPreloadActive = false
+                    self.clearSherpaPreloadBuffers()
+                    self.audioEngine.stop()
+                    self.isRecording = false
+                    self.fnKeyMonitor.isRecording = false
+                    self.volumeController.restoreVolume()
+                    print("[SherpaOnnx] 模型加载失败: \(error)")
+
+                    if self.sherpaRecognizer.lastStartFailureKind == .missingRuntime ||
+                        self.sherpaRecognizer.lastStartFailureKind == .missingModel ||
+                        self.sherpaRecognizer.lastStartFailureKind == .invalidModel {
+                        UserDefaults.standard.set(false, forKey: "sherpaModelsReady")
+                        SherpaModelDownloader.printMissingRequiredFiles()
+                        self.capsuleWindow.showError(error, dismissAfter: 3)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { [weak self] in
+                            self?.promptSherpaReDownload()
+                        }
+                    } else {
+                        self.capsuleWindow.showError(error, dismissAfter: 6)
+                    }
+                    return
+                }
+
+                // 4. 模型加载成功，在 preloadQueue 上排空缓存后切换到直推模式（Model loaded, drain buffer on preloadQueue then switch to live mode）
+                self.sherpaPreloadQueue.async { [weak self] in
+                    guard let self else { return }
+                    let buffered = self.sherpaPreloadBuffers
+                    self.sherpaPreloadBuffers = []
+                    self.sherpaPreloadActive = false
+
+                    // 按顺序喂入全部缓存音频（Feed all buffered audio in order）
+                    for buf in buffered {
+                        self.sherpaRecognizer.accept(buffer: buf)
+                    }
+
+                    // 二次排空：处理 flag 切换期间积压的零星缓冲（Second drain for stragglers during flag transition）
+                    self.sherpaPreloadQueue.async { [weak self] in
+                        guard let self else { return }
+                        let stragglers = self.sherpaPreloadBuffers
+                        self.sherpaPreloadBuffers = []
+                        for buf in stragglers {
+                            self.sherpaRecognizer.accept(buffer: buf)
+                        }
+
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self, self.isRecording, self.recordingGeneration == generation else { return }
+                            self.capsuleWindow.stopShimmer()
+                            self.capsuleWindow.showRecording()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Sherpa 预加载音频缓冲（复用 copyAudioBuffer）
+
+    private func appendSherpaPreloadBuffer(_ buffer: AVAudioPCMBuffer) {
+        guard let copy = copyAudioBuffer(buffer) else { return }
+        sherpaPreloadQueue.async { [weak self] in
+            self?.sherpaPreloadBuffers.append(copy)
+        }
+    }
+
+    private func clearSherpaPreloadBuffers() {
+        sherpaPreloadQueue.sync {
+            sherpaPreloadBuffers.removeAll(keepingCapacity: false)
+        }
+    }
+
     private func startDoubaoRecording(generation: Int) {
         guard isRecording, recordingGeneration == generation else { return }
+        DebugLog.info("[AppDelegate] 启动豆包录音, generation=\(generation)")
         doubaoWaitingForFirstResult = true
         capsuleWindow.show()
         capsuleWindow.showRecording()
@@ -459,10 +585,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let error = cloudRecognizer.start(onResult: { [weak self] text, _ in
             DispatchQueue.main.async {
                 guard let self, self.recordingGeneration == generation else { return }
+                self.doubaoFallbackPrefixText = text
                 if self.doubaoWaitingForFirstResult {
                     self.doubaoWaitingForFirstResult = false
-                    // 收到第一条结果，停掉连接扫光（Stop connecting shimmer on first result）
+                    // 收到第一条结果，停掉连接扫光并丢弃 fallback 缓冲（Stop connecting shimmer and discard fallback buffers on first result）
                     self.capsuleWindow.stopShimmer()
+                    self.clearDoubaoFallbackAudioBuffers()
                 }
                 self.capsuleWindow.updateText(text)
             }
@@ -501,7 +629,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard currentRecordingEngine == VolcengineASRSettings.engineCode else { return }
         guard doubaoFallbackErrorMessage == nil else { return }
 
+        DebugLog.error("[AppDelegate] 豆包识别错误: \(message), isRecording=\(isRecording)")
+
         doubaoFallbackErrorMessage = message
+        if doubaoFallbackPrefixText.isEmpty {
+            doubaoFallbackPrefixText = cloudRecognizer.currentText
+        }
         cloudRecognizer.cancel()
         liveInsertionActive = false
         doubaoWaitingForFirstResult = false
@@ -510,11 +643,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         liveInsertionPasteInFlight = false
 
         if isRecording {
-            capsuleWindow.stopShimmer()
-            capsuleWindow.updateText(loc("menu.recognitionEngine.apple"))
+            startAppleLiveFallbackAfterDoubaoError(generation: recordingGeneration)
             print("[Doubao] 识别失败，录音结束后将回退到 Apple Speech: \(message)")
         } else {
-            capsuleWindow.showError(message, dismissAfter: 5)
+            capsuleWindow.showError(loc("doubao.fallback.withError", message), dismissAfter: 5)
+        }
+    }
+
+    private func startAppleLiveFallbackAfterDoubaoError(generation: Int) {
+        guard isRecording,
+              recordingGeneration == generation,
+              currentRecordingEngine == VolcengineASRSettings.engineCode,
+              !doubaoFallbackAppleLiveActive
+        else { return }
+
+        DebugLog.info("[AppDelegate] 启动 Apple 实时回退 (豆包错误后)")
+
+        doubaoFallbackAppleLiveActive = true
+        capsuleWindow.stopShimmer()
+        let errorHint = doubaoFallbackErrorMessage ?? ""
+        let fallbackText = errorHint.isEmpty
+            ? loc("menu.recognitionEngine.apple")
+            : loc("doubao.fallback.withError", errorHint)
+        capsuleWindow.updateText(fallbackText)
+
+        let request = speechRecognizer.start(
+            onResult: { [weak self] text, _ in
+                DispatchQueue.main.async {
+                    guard let self,
+                          self.recordingGeneration == generation,
+                          self.doubaoFallbackAppleLiveActive
+                    else { return }
+                    self.capsuleWindow.updateText(text)
+                }
+            },
+            onRequestSwitch: { [weak self] newRequest in
+                self?.audioEngine.switchRequest(newRequest)
+            }
+        )
+
+        if let request {
+            audioEngine.switchRequest(request)
         }
     }
 
@@ -523,6 +692,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.isRecording = false
         volumeController.restoreVolume()
         doubaoFallbackErrorMessage = nil
+        doubaoFallbackAppleLiveActive = false
+        doubaoFallbackPrefixText = ""
         clearDoubaoFallbackAudioBuffers()
         liveInsertionActive = false
         liveInsertionCommittedText = ""
@@ -532,6 +703,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func appendDoubaoFallbackAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        // 豆包已成功返回过数据后不再缓存 fallback 音频（Stop caching fallback audio once Doubao has returned data successfully）
+        guard doubaoWaitingForFirstResult else { return }
         guard let copiedBuffer = copyAudioBuffer(buffer) else { return }
         doubaoFallbackAudioQueue.async { [weak self] in
             self?.doubaoFallbackAudioBuffers.append(copiedBuffer)
@@ -591,11 +764,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             originalError: errorMsg,
                             fallbackTextIfAppleEmpty: recognizedText
                         )
-                    } else {
-                        self.clearDoubaoFallbackAudioBuffers()
-                        self.doubaoFallbackErrorMessage = nil
-                        self.finishRecording(with: recognizedText)
-                    }
+                } else {
+                    self.clearDoubaoFallbackAudioBuffers()
+                    self.doubaoFallbackErrorMessage = nil
+                    self.doubaoFallbackAppleLiveActive = false
+                    self.doubaoFallbackPrefixText = ""
+                    self.finishRecording(with: recognizedText)
+                }
                 }
                 return
             }
@@ -614,11 +789,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         let buffers = snapshotDoubaoFallbackAudioBuffers()
         doubaoFallbackErrorMessage = nil
+        let cloudPrefixText = fallbackTextIfAppleEmpty.isEmpty ? doubaoFallbackPrefixText : fallbackTextIfAppleEmpty
+        doubaoFallbackPrefixText = ""
+        let shouldStopAppleLiveFallback = doubaoFallbackAppleLiveActive
+        doubaoFallbackAppleLiveActive = false
+        let liveFallbackText = shouldStopAppleLiveFallback ? speechRecognizer.stop() : ""
 
         guard !buffers.isEmpty else {
             clearDoubaoFallbackAudioBuffers()
             currentRecordingEngine = "apple"
-            let text = fallbackTextIfAppleEmpty
+            let text = combinedFallbackText(prefix: cloudPrefixText, cachedText: "", liveText: liveFallbackText)
             if punctuation != nil {
                 finishImmediateRecording(with: text, appending: punctuation, errorMsg: text.isEmpty ? originalError : nil)
             } else {
@@ -632,13 +812,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speechRecognizer.recognize(buffers: buffers, onResult: { [weak self] text, _ in
             DispatchQueue.main.async {
                 guard let self, self.recordingGeneration == generation else { return }
-                self.capsuleWindow.updateText(text)
+                self.capsuleWindow.updateText(self.combinedFallbackText(prefix: cloudPrefixText, cachedText: text, liveText: liveFallbackText))
             }
         }) { [weak self] appleText in
             DispatchQueue.main.async {
                 guard let self, self.recordingGeneration == generation else { return }
                 self.clearDoubaoFallbackAudioBuffers()
-                let recognizedText = appleText.isEmpty ? fallbackTextIfAppleEmpty : appleText
+                let recognizedText = self.combinedFallbackText(prefix: cloudPrefixText, cachedText: appleText, liveText: liveFallbackText)
                 let errorMsg = recognizedText.isEmpty ? originalError : nil
 
                 if punctuation != nil {
@@ -648,6 +828,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    private func combinedFallbackText(prefix: String, cachedText: String, liveText: String) -> String {
+        var result = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        result = appendFallbackSegment(cachedText, to: result)
+        result = appendFallbackSegment(liveText, to: result)
+        return result
+    }
+
+    private func appendFallbackSegment(_ segment: String, to base: String) -> String {
+        let segment = segment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !segment.isEmpty else { return base }
+        guard !base.isEmpty else { return segment }
+
+        if segment.hasPrefix(base) { return segment }
+        if base.hasSuffix(segment) { return base }
+
+        let maxOverlap = min(base.count, segment.count)
+        for length in stride(from: maxOverlap, through: 1, by: -1) {
+            if base.suffix(length) == segment.prefix(length) {
+                return base + segment.dropFirst(length)
+            }
+        }
+
+        let separator = shouldInsertSpaceBetweenFallbackSegments(base, segment) ? " " : ""
+        return base + separator + segment
+    }
+
+    private func shouldInsertSpaceBetweenFallbackSegments(_ left: String, _ right: String) -> Bool {
+        guard let last = left.last, let first = right.first else { return false }
+        if last.isWhitespace || first.isWhitespace { return false }
+        if PunctuationProcessor.isSentenceEndingPunctuation(last) { return true }
+        return last.isASCII && first.isASCII && last.isLetter && first.isLetter
     }
 
     private func finishRecording(with recognizedText: String, errorMsg: String? = nil) {
@@ -929,8 +1142,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             llmRefiner.cancel()
             doubaoWaitingForFirstResult = false
             doubaoFallbackErrorMessage = nil
+            let shouldStopAppleLiveFallback = doubaoFallbackAppleLiveActive
+            doubaoFallbackAppleLiveActive = false
+            doubaoFallbackPrefixText = ""
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 cloudRecognizer.cancel()
+                if shouldStopAppleLiveFallback {
+                    _ = speechRecognizer.stop()
+                }
             } else if currentRecordingEngine == "sherpaOnnx" {
                 _ = sherpaRecognizer.stop()
             } else {
@@ -938,6 +1157,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             audioEngine.stop()
             clearDoubaoFallbackAudioBuffers()
+            sherpaPreloadActive = false
+            clearSherpaPreloadBuffers()
             liveInsertionActive = false
             liveInsertionCommittedText = ""
             liveInsertionLatestText = ""
@@ -977,6 +1198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             clearDoubaoFallbackAudioBuffers()
             doubaoFallbackErrorMessage = nil
+            doubaoFallbackAppleLiveActive = false
+            doubaoFallbackPrefixText = ""
             finishImmediateRecording(with: recognizedText, appending: punctuation)
         }
     }

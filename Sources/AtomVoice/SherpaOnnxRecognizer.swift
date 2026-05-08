@@ -40,15 +40,17 @@ final class SherpaOnnxRecognizerController {
 
     /// 释放模型上下文以响应系统内存压力，下次录音时会重新加载（Release model context in response to system memory pressure, will reload on next recording）
     func releaseModels() {
-        if let context {
-            AtomVoiceSherpaDestroy(context)
-            self.context = nil
+        queue.sync {
+            if let context {
+                AtomVoiceSherpaDestroy(context)
+                self.context = nil
+            }
+            if let punctuationContext {
+                AtomVoiceSherpaPunctuationDestroy(punctuationContext)
+                self.punctuationContext = nil
+            }
+            print("[SherpaOnnx] 已释放模型上下文")
         }
-        if let punctuationContext {
-            AtomVoiceSherpaPunctuationDestroy(punctuationContext)
-            self.punctuationContext = nil
-        }
-        print("[SherpaOnnx] 已释放模型上下文")
     }
 
     static var supportDirectory: URL {

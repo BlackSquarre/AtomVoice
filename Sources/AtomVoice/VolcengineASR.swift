@@ -235,6 +235,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession,
                     webSocketTask: URLSessionWebSocketTask,
                     didOpenWithProtocol protocol: String?) {
+        DebugLog.info("[VolcengineASR] WebSocket 已连接, protocol=\(`protocol` ?? "nil")")
         queue.async { [weak self] in
             guard let self else { return }
             guard !self.isCancelled else {
@@ -262,6 +263,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
     }
 
     func cancel() {
+        DebugLog.info("[VolcengineASR] 取消连接")
         queue.async { [weak self] in
             guard let self, !self.isCancelled else { return }
             self.isCancelled = true
@@ -277,9 +279,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
             self.queue.async {
                 guard !self.isCancelled else { return }
                 if let error {
-                    #if DEBUG_BUILD
-                    volcengineLogger.debug("[send] error=\(error.localizedDescription, privacy: .public)")
-                    #endif
+                    DebugLog.error("[VolcengineASR] send error: \(error.localizedDescription)")
                     let nsError = error as NSError
                     if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
                     self.delegate?.connection(self, didFailWithError: loc("doubao.error.sendFailed", error.localizedDescription))
@@ -303,9 +303,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
                         self.receiveLoop()
                     }
                 case .failure(let error):
-                    #if DEBUG_BUILD
-                    volcengineLogger.debug("[receive] error=\(error.localizedDescription, privacy: .public)")
-                    #endif
+                    DebugLog.error("[VolcengineASR] receive error: \(error.localizedDescription)")
                     let nsError = error as NSError
                     if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
                     self.delegate?.connection(self, didFailWithError: loc("doubao.error.connectionFailed", error.localizedDescription))

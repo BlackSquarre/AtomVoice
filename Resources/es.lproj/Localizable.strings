@@ -308,10 +308,12 @@
 "cloudASR.error.noConnection" = "No se pudo crear la conexión de reconocimiento de voz";
 "cloudASR.error.connectionFailed" = "Falló la conexión de reconocimiento de voz: %@";
 "cloudASR.error.timeout" = "El reconocimiento agotó el tiempo. Inténtalo de nuevo.";
+"doubao.fallback.noNetwork" = "Sin red, cambiado a Apple Speech.";
+"doubao.fallback.withError" = "%@, cambiado a Apple Speech";
 
 /* Descarga de modelo sin conexión */
-"alert.onDeviceModel.title" = "Modelo sin conexión no descargado";
-"alert.onDeviceModel.message" = "El modelo de reconocimiento de voz sin conexión para el idioma actual no se ha descargado. Vaya a Ajustes del Sistema → General → Teclado → Dictado para descargar el modelo.";
+"alert.onDeviceModel.title" = "Modelo Apple sin conexión no descargado";
+"alert.onDeviceModel.message" = "El modelo de reconocimiento de voz Apple sin conexión para el idioma actual no se ha descargado. Ve a Ajustes del Sistema → General → Teclado → Dictado para descargarlo.";
 "alert.onDeviceModel.openSettings" = "Abrir Ajustes del Sistema";
 "menu.debug.testOnDeviceAlert" = "Probar alerta de modelo sin conexión";
 
@@ -336,6 +338,7 @@
 
 "oobe.trigger.heading" = "Elige tu tecla de activación";
 "oobe.trigger.subtitle" = "Mantén esta tecla para iniciar el dictado. Puedes cambiarla más tarde desde la barra de menú.";
+"oobe.trigger.subtitle.tap" = "Pulsa esta tecla para iniciar el dictado. Puedes cambiarla más tarde desde la barra de menú.";
 
 "oobe.engine.heading" = "Elige un motor de reconocimiento";
 "oobe.engine.subtitle" = "Las tarjetas se ordenan de izquierda a derecha por privacidad, de mayor a menor. Puedes cambiar más tarde desde la barra de menú.";
@@ -354,20 +357,21 @@
 "oobe.engine.cost.paid" = "De pago · Clave API";
 "oobe.engine.cost.local" = "Gratis · Descarga de modelo";
 
-"oobe.engine.sherpa.title" = "Local sin conexión";
+"oobe.engine.sherpa.title" = "Voz local sin conexión";
 "oobe.engine.sherpa.tagline" = "Tu audio nunca sale del Mac.";
-"oobe.engine.sherpa.desc" = "Inferencia totalmente local con Sherpa-ONNX. Precisión algo menor en frases largas. Requiere descargar el modelo una vez.";
+"oobe.engine.sherpa.desc" = "Inferencia totalmente local con Sherpa-ONNX. Precisión algo menor en frases largas. Requiere descargar el modelo una vez.\n\nAdecuado para entornos donde prima la privacidad o totalmente sin conexión.";
 
 "oobe.engine.apple.title" = "Apple Speech";
 "oobe.engine.apple.tagline" = "Integrado en macOS, gratis, multilingüe.";
-"oobe.engine.apple.desc" = "Reconocimiento de Apple. La mayoría de los idiomas se procesan en la nube; algunos admiten modo en el dispositivo.";
+"oobe.engine.apple.desc" = "Reconocimiento de Apple. La mayoría de los idiomas se procesan en la nube; algunos admiten modo en el dispositivo.\n\n\nIdeal para usuarios que valoran una experiencia equilibrada y la privacidad, con soporte para el modo sin conexión forzado.";
 
-"oobe.engine.doubao.title" = "Doubao Streaming";
-"oobe.engine.doubao.tagline" = "Mejor precisión en chino, baja latencia.";
-"oobe.engine.doubao.desc" = "Envía audio a los servidores de Volcengine. Mejor reconocimiento de chino mandarín. Requiere clave API, uso facturado.";
+"oobe.engine.doubao.title" = "Doubao Voz";
+"oobe.engine.doubao.tagline" = "Buena precisión en chino, streaming de baja latencia.";
+"oobe.engine.doubao.desc" = "Envía audio a los servidores de Volcengine. Buen reconocimiento de chino mandarín y dialectos. Requiere clave API, uso facturado.\n\nAdecuado para entradas largas y frecuentes, con respuestas rápidas y una buena experiencia general.\n\nRequiere conexión a Internet constante; cambia a Apple Speech sin conexión.";
 
 "oobe.done.title" = "Todo listo";
-"oobe.done.body" = "Mantén pulsada %@ para hablar y suéltala para insertar. AtomVoice queda en la barra de menú.";
+"oobe.done.body" = "Mantén pulsada %@ para hablar y suéltala para insertar.\nPuedes cambiar más ajustes desde el menú (ICON).";
+"oobe.done.body.tap" = "Pulsa %@ para hablar, pulsa de nuevo o haz una pausa para insertar.\nPuedes cambiar más ajustes desde el menú (ICON).";
 "oobe.done.followup.apple" = "Consejo: el modo en el dispositivo de Apple se puede activar desde la barra de menú para más privacidad.";
 "oobe.done.followup.doubao" = "A continuación abriremos los ajustes de Doubao para que introduzcas tu clave API.";
 "oobe.done.followup.sherpa" = "A continuación te pediremos descargar el modelo de reconocimiento local.";

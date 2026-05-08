@@ -215,11 +215,15 @@ final class AudioEngineController {
                     self.detectSilence(channelData: channelData[0], frameCount: count, bufferDuration: bufferDuration)
 
                     // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率（Perform FFT when enough samples accumulate, 50% overlap for better time resolution）
-                    while self.sampleBuffer.count >= self.fftSize {
-                        let chunk = Array(self.sampleBuffer.prefix(self.fftSize))
-                        self.sampleBuffer.removeFirst(self.fftSize / 2)
+                    var offset = 0
+                    while self.sampleBuffer.count - offset >= self.fftSize {
+                        let chunk = Array(self.sampleBuffer[offset..<(offset + self.fftSize)])
+                        offset += self.fftSize / 2
                         let bands = self.computeBands(samples: chunk, sampleRate: sampleRate)
                         self.bandsHandler?(bands)
+                    }
+                    if offset > 0 {
+                        self.sampleBuffer.removeSubrange(0..<offset)
                     }
                 }
             }
