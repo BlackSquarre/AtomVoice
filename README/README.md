@@ -4,42 +4,63 @@
 
 <p align="center"><img src="AppIcon-1024.png" width="128"></p>
 
-A lightweight macOS menu bar voice input app. Hold **Fn** to record, release to inject transcribed text into any focused input field.
+<h3 align="center">Press, speak.</h3>
+<p align="center">Lightweight, privacy-first voice dictation that types into any Mac app, with no time limit.</p>
 
 
 
 ---
 
 ### 🔒 Privacy First
-All speech recognition runs **on-device** via Apple's Speech Recognition framework. No audio is ever sent to any server unless you explicitly enable LLM Refinement.
+Speech recognition runs **on-device** by default — either via Apple Speech Recognition or the bundled Sherpa-ONNX local engine. No audio leaves your Mac unless you explicitly enable LLM Refinement.
 
 ### ⚡ Lightweight
-~3 MB app bundle. Near-zero CPU when idle. No background daemons.
+Small app bundle, near-zero CPU when idle, no background daemons. Sherpa models are downloaded on demand and released automatically under memory pressure.
 
 ---
 
 ## Features
 
-- **Hold Fn** to record, release to inject text into any input field
-- **Streaming transcription** — Apple Speech Recognition, default Simplified Chinese
-- **5-band FFT spectrum waveform** — 100–6000 Hz, low→high left→right, driven by Accelerate framework
-- **Auto punctuation** — local rule engine adds sentence-ending marks, no internet required
-- **LLM Refinement** — OpenAI-compatible API corrects mis-transcribed terms (e.g. 配森→Python); 9 preset providers + fully editable custom list
-- **Dynamic Island animation** — real spring physics at 120 Hz with Gaussian blur; shimmer sweep during refinement
-- **Dark/Light mode** — Liquid Glass on macOS 26, Visual Effect blur on older systems
-- **7 UI languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch
-- **CJK IME compatible** — auto-switches to ASCII input source before paste
+### Recording & input
+- **Hold-to-talk or tap-to-talk** — your choice, with optional silence-based auto-stop
+- **Customizable trigger key** — pick whichever modifier fits your keyboard
+- **In-recording shortcuts** — cancel the take, inject immediately and skip LLM polish, or end with a punctuation in one keypress
+- **Auto-cancel on app switch** (hold mode only)
+
+### Recognition engines
+- **Apple Speech Recognition** — streaming, optional on-device mode, **segmented rolling** that breaks the 1-minute SFSpeechRecognizer limit
+- **Sherpa-ONNX** — fully offline local engine, models auto-download on first use; ships with a punctuation model
+- **8 recognition languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch
+
+### Text output
+- **Apple Live Insertion** — completed sentences are injected during recording, no need to wait for release
+- **Smart punctuation** — local heuristic punctuator (per-language); skipped automatically when the cursor is already followed by punctuation
+- **CJK IME compatible** — temporarily switches to ASCII layout before paste, restores after
+- **LLM Refinement** — OpenAI-compatible **and Anthropic** APIs with streaming preview; 10 preset providers + fully editable custom list; multilingual default system prompt or your own
+
+### UI & animation
+- **5-band FFT spectrum waveform** tuned for the human voice (100–4200 Hz), driven by Accelerate
+- **Three animation styles** — Dynamic Island (Spotlight-style spring + Gaussian blur), Minimal, None — three speeds, ProMotion 120 Hz aware
+- **Liquid Glass** on macOS 26, Visual Effect blur on macOS 14/15
+- **8 UI languages**, auto-detected from system
+
+### System integration
+- **Auto update** from GitHub Releases with code-signature verification (optional Beta channel)
+- **Launch at login** (SMAppService)
+- **Audio input device picker** — choose any system microphone
+- **Lower system volume while recording** (optional)
+- **Single-instance protection** — old instance is terminated automatically on launch
 
 ## Requirements
 
-- macOS 13 Ventura or later
-- Permissions required: **Accessibility**, **Microphone**, **Speech Recognition**
+- **macOS 14 Sonoma or later**
+- Permissions: **Accessibility**, **Microphone**, **Speech Recognition**
 
 ## Installation
 
 **From Release (recommended)**
 
-Download from [Releases](https://github.com/BlackSquarre/AtomVoice/releases), unzip, drag to Applications.
+Download from [Releases](https://github.com/BlackSquarre/AtomVoice/releases), unzip, drag to Applications. Three architectures are published per release: Universal / Apple Silicon / Intel.
 
 **Homebrew**
 
@@ -68,16 +89,24 @@ Ad-hoc signed (not notarized). On first open:
 
 | Action | Result |
 |--------|--------|
-| Hold Fn | Start recording |
-| Release Fn | Stop and inject text |
-| Menu bar icon | Switch language / animation / LLM settings |
+| Hold trigger key | Start recording (hold mode) |
+| Release trigger key | Stop and inject text |
+| Tap trigger key | Start / stop recording (tap mode) |
+| `ESC` while recording | Cancel, no text injected |
+| `Space` / `Backspace` while recording | Inject immediately, skip LLM |
+| Type punctuation while recording | Inject + append that punctuation |
+| Menu bar icon | Switch engine / language / mode / animation / LLM |
 
 ## LLM Refinement Setup
 
-Menu bar → **LLM Refinement** → **Settings** — select a provider preset or add your own, enter API key and model name.
+Menu bar → **LLM Refinement** → **Settings** — pick a provider preset or add your own, enter API key and model name. Streaming output is previewed live in the capsule.
 
-Built-in presets: OpenAI / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq / Ollama (local)
+Built-in presets: **OpenAI** / **Anthropic** / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq / **Ollama (local)** / Custom.
+
+The default system prompt is tuned for dictation polish (fix homophones, mis-transcribed product/API names, fillers, punctuation) and switches automatically by recognition language. You can override it with your own prompt.
 
 ## License
 
-Apache License 2.0
+Apache 2.0 — see [../LICENSE](../LICENSE) for details.
+
+Third-party notices (Sherpa-ONNX / ONNX Runtime) are in [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
