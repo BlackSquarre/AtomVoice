@@ -420,6 +420,10 @@
 "asrSettings.sherpa.import" = "导入模型包…";
 "asrSettings.sherpa.import.tooltip" = "选择 sherpa-onnx 模型压缩包（.tar.bz2 / .tar.gz / .zip）或已解压目录，文件名将自动识别。";
 "asrSettings.sherpa.modelListLink" = "在 GitHub 浏览模型 ↗";
+"asrSettings.sherpa.autoUnload" = "空闲时自动卸载本地模型";
+"asrSettings.sherpa.autoUnload.tooltip" = "Sherpa 模型空闲一段时间后自动释放，以降低内存占用。";
+"asrSettings.sherpa.autoUnload.after" = "空闲时长：";
+"asrSettings.sherpa.autoUnload.minutes" = "%d 分钟";
 "sherpa.import.pickerTitle" = "选择 Sherpa 模型压缩包或文件夹";
 "sherpa.import.languageTitle" = "设置识别语言";
 "sherpa.import.languageMessage" = "已导入 %@ (%dMB)。该模型用于哪种识别语言？";
@@ -437,6 +441,9 @@
 "sherpa.chooser.confirm" = "继续";
 "sherpa.chooser.note.downloaded" = "%@ 已下载，无需再次下载。";
 "sherpa.chooser.note.toDownload" = "继续后将下载约 %dMB。";
+"sherpa.chooser.provider" = "计算后端：";
+"sherpa.chooser.provider.cpu" = "CPU";
+"sherpa.chooser.provider.coreml" = "CoreML（推荐）";
 "asrSettings.sherpa.downloading" = "下载中...";
 "asrSettings.apple.desc" = "使用 Apple 语音识别的离线模式。音频在设备本地处理，不发送到云端。";
 "asrSettings.apple.status" = "当前状态:";

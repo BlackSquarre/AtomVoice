@@ -419,6 +419,10 @@
 "asrSettings.sherpa.import" = "Importer un paquet de modèle…";
 "asrSettings.sherpa.import.tooltip" = "Choisissez une archive de modèle sherpa-onnx (.tar.bz2 / .tar.gz / .zip) ou un dossier extrait. Les noms de fichiers sont détectés automatiquement.";
 "asrSettings.sherpa.modelListLink" = "Parcourir les modèles sur GitHub ↗";
+"asrSettings.sherpa.autoUnload" = "Décharger automatiquement le modèle local lorsqu'il est inactif";
+"asrSettings.sherpa.autoUnload.tooltip" = "Libère le modèle Sherpa après une période d'inactivité pour réduire l'utilisation mémoire.";
+"asrSettings.sherpa.autoUnload.after" = "Après :";
+"asrSettings.sherpa.autoUnload.minutes" = "%d minutes";
 "sherpa.import.pickerTitle" = "Choisir l'archive ou le dossier du modèle Sherpa";
 "sherpa.import.languageTitle" = "Définir la langue de reconnaissance";
 "sherpa.import.languageMessage" = "Importé %@ (%dMB). Pour quelle langue ce modèle sera-t-il utilisé ?";
@@ -444,3 +448,6 @@
 "asrSettings.apple.enable" = "Activer Apple hors ligne forcé";
 "asrSettings.apple.note" = "Certaines langues peuvent ne pas prendre en charge la reconnaissance hors ligne. Si le modèle n'est pas téléchargé, cliquez sur le bouton ci-dessous pour accéder aux Réglages Système.";
 "asrSettings.apple.openSettings" = "Ouvrir les Réglages Système pour télécharger le modèle";
+"sherpa.chooser.provider" = "Backend de calcul :";
+"sherpa.chooser.provider.cpu" = "CPU";
+"sherpa.chooser.provider.coreml" = "CoreML (Recommandé)";

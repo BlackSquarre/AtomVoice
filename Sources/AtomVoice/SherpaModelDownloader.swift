@@ -1,7 +1,4 @@
 import Foundation
-import os.log
-
-private let logger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "SherpaDownloader")
 
 /// Sherpa 模型下载管理器（Sherpa Model Download Manager）
 /// 三个组件：Runtime dylib、ASR 模型、标点模型（Three components: Runtime dylib, ASR model, punctuation model）
@@ -136,10 +133,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     try FileManager.default.removeItem(at: target)
                 }
                 try FileManager.default.copyItem(at: source, to: target)
-                print("[SherpaOnnx] 已修复运行库路径: \(target.path)")
+                DebugLog.info("[SherpaOnnx] 已修复运行库路径: \(target.path)")
             }
         } catch {
-            print("[SherpaOnnx] 修复运行库路径失败: \(error)")
+            DebugLog.error("[SherpaOnnx] 修复运行库路径失败: \(error)")
             return false
         }
 
@@ -159,11 +156,11 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             problems.append("标点模型: \(punct.path)")
         }
         if problems.isEmpty {
-            print("[SherpaOnnx] 必需文件都存在，但模型仍无法加载，可能是文件损坏或版本不兼容")
+            DebugLog.info("[SherpaOnnx] 必需文件都存在，但模型仍无法加载，可能是文件损坏或版本不兼容")
             return
         }
-        print("[SherpaOnnx] 必需文件缺失或损坏：")
-        for line in problems { print("[SherpaOnnx] - \(line)") }
+        DebugLog.error("[SherpaOnnx] 必需文件缺失或损坏：")
+        for line in problems { DebugLog.error("[SherpaOnnx] - \(line)") }
     }
 
     /// 开始下载所有缺失的模型（Start downloading all missing models）
@@ -265,7 +262,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private func failCurrentCandidate() {
         if currentCandidateRetry < Self.maxRetriesPerCandidate {
             currentCandidateRetry += 1
-            logger.info("[下载] 第 \(self.currentCandidateRetry) 次重试当前镜像")
+            DebugLog.info("[下载] 第 \(self.currentCandidateRetry) 次重试当前镜像")
         } else {
             currentCandidateIndex += 1
             currentCandidateRetry = 0
@@ -286,7 +283,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             targetPreset = nil
             let success = Self.isReady(for: preset)
             if success {
-                logger.info("[下载] 所有模型验证通过")
+                DebugLog.info("[下载] 所有模型验证通过")
             } else {
                 Self.printMissingRequiredFiles(for: preset)
             }
@@ -304,7 +301,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let url = item.urlCandidates[currentCandidateIndex]
         let num = currentItemIndex + 1
         let host = url.host ?? "unknown"
-        logger.info("[下载] \(item.name, privacy: .public) (\(num)/\(self.totalItems)) 来源 \(host, privacy: .public) 候选 \(self.currentCandidateIndex + 1)/\(item.urlCandidates.count) 重试 \(self.currentCandidateRetry)/\(Self.maxRetriesPerCandidate)")
+        DebugLog.info("[下载] \(item.name) (\(num)/\(self.totalItems)) 来源 \(host) 候选 \(self.currentCandidateIndex + 1)/\(item.urlCandidates.count) 重试 \(self.currentCandidateRetry)/\(Self.maxRetriesPerCandidate)")
 
         let overall = computeOverallProgress(itemProgress: 0)
         let percent = Int(overall * 100)
@@ -327,12 +324,12 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         // 校验响应状态码（Validate response status code）
         if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            logger.error("[下载] \(item.name, privacy: .public) HTTP \(http.statusCode)")
+            DebugLog.error("[下载] \(item.name) HTTP \(http.statusCode)")
             failCurrentCandidate()
             return
         }
 
-        logger.info("[下载] 完成下载 \(item.name, privacy: .public)")
+        DebugLog.info("[下载] 完成下载 \(item.name)")
 
         let tmpDir = tempDir()
         try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -345,7 +342,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             }
             try FileManager.default.moveItem(at: location, to: archiveURL)
         } catch {
-            logger.error("[下载] 移动下载文件失败: \(error.localizedDescription, privacy: .public)")
+            DebugLog.error("[下载] 移动下载文件失败: \(error.localizedDescription)")
             finishWithError("移动下载文件失败: \(error.localizedDescription)")
             return
         }
@@ -363,15 +360,15 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.isDownloading else { return }
                 if extractSuccess {
-                    logger.info("[下载] 解压成功 \(item.name, privacy: .public)")
+                    DebugLog.info("[下载] 解压成功 \(item.name)")
                     // ASR 模型解压后立即扫盘写 manifest，避免后续运行时再扫
                     // (After extracting ASR archive, scan and write manifest immediately)
                     if item.name == "asr", let preset = self.targetPreset {
                         if let manifest = ModelManifest.discover(in: preset.modelDirectory) {
                             try? manifest.save(to: preset.modelDirectory)
-                            logger.info("[下载] manifest 写入: encoder=\(manifest.encoder, privacy: .public) decoder=\(manifest.decoder, privacy: .public) joiner=\(manifest.joiner, privacy: .public)")
+                            DebugLog.info("[下载] manifest 写入: encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner)")
                         } else {
-                            logger.error("[下载] 解压后无法识别模型文件 \(preset.modelDirectory.path, privacy: .public)")
+                            DebugLog.error("[下载] 解压后无法识别模型文件 \(preset.modelDirectory.path)")
                         }
                     }
                     self.advanceToNextItem()
@@ -400,7 +397,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         // 失败：先尝试重试当前镜像，再切下一个（Failed: retry current mirror first, then next）
         let item = itemsToDownload[currentItemIndex]
-        logger.error("[下载] \(item.name, privacy: .public) 失败: \(error.localizedDescription, privacy: .public)")
+        DebugLog.error("[下载] \(item.name) 失败: \(error.localizedDescription)")
         failCurrentCandidate()
     }
 
@@ -428,7 +425,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             process.waitUntilExit()
             return process.terminationStatus == 0
         } catch {
-            logger.error("[下载] 解压进程启动失败: \(error.localizedDescription, privacy: .public)")
+            DebugLog.error("[下载] 解压进程启动失败: \(error.localizedDescription)")
             return false
         }
     }

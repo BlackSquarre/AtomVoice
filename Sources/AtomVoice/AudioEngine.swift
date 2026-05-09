@@ -135,17 +135,17 @@ final class AudioEngineController {
 
     /// 将选中的输入设备应用到 AVAudioEngine（Apply selected input device to AVAudioEngine）
     private func applySelectedInputDevice() {
-        let savedUID = UserDefaults.standard.string(forKey: "audioInputDeviceUID") ?? ""
+        let savedUID = AppSettings.audioInputDeviceUID
         guard !savedUID.isEmpty else { return }  // 空 = 系统默认（Empty = system default）
 
         let devices = AudioEngineController.availableInputDevices()
         guard let device = devices.first(where: { $0.uid == savedUID }) else {
-            print("[AudioEngine] 保存的输入设备 \(savedUID) 不可用，使用系统默认")
+            DebugLog.info("[AudioEngine] 保存的输入设备 \(savedUID) 不可用，使用系统默认")
             return
         }
 
         guard let audioUnit = engine.inputNode.audioUnit else {
-            print("[AudioEngine] 输入节点不可用，无法切换输入设备")
+            DebugLog.error("[AudioEngine] 输入节点不可用，无法切换输入设备")
             return
         }
         var deviceID = device.id
@@ -158,9 +158,9 @@ final class AudioEngineController {
             UInt32(MemoryLayout<AudioDeviceID>.size)
         )
         if status == noErr {
-            print("[AudioEngine] 输入设备已切换为: \(device.name)")
+            DebugLog.info("[AudioEngine] 输入设备已切换为: \(device.name)")
         } else {
-            print("[AudioEngine] 切换输入设备失败: \(status)")
+            DebugLog.error("[AudioEngine] 切换输入设备失败: \(status)")
         }
     }
 
@@ -190,7 +190,7 @@ final class AudioEngineController {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
-            print("[AudioEngine] 输入格式无效: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
+            DebugLog.error("[AudioEngine] 输入格式无效: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
             stop()
             return false
         }
@@ -238,7 +238,7 @@ final class AudioEngineController {
             try engine.start()
             return true
         } catch {
-            print("[AudioEngine] 启动失败: \(error)")
+            DebugLog.error("[AudioEngine] 启动失败: \(error)")
             stop()
             return false
         }
@@ -271,14 +271,13 @@ final class AudioEngineController {
         guard recordingDuration > silenceGuardPeriod else { return }
 
         // 读取用户设置（Read user settings）
-        let enabled = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
-        guard enabled else { return }
+        guard AppSettings.silenceAutoStopEnabled else { return }
 
-        let threshold = UserDefaults.standard.double(forKey: "silenceThreshold")
-        let requiredDuration = UserDefaults.standard.double(forKey: "silenceDuration")
+        let threshold = AppSettings.silenceThreshold
+        let requiredDuration = AppSettings.silenceDuration
 
         // 更新持续噪声灵敏度设置（Update steady noise sensitivity setting）
-        let sensitivity = UserDefaults.standard.integer(forKey: "steadyNoiseSensitivity")
+        let sensitivity = AppSettings.steadyNoiseSensitivity
         switch sensitivity {
         case 0: steadyNoiseThreshold = 0.0005  // 低灵敏度：需要非常稳定的噪声才触发 (Low: needs very steady noise)
         case 2: steadyNoiseThreshold = 0.003   // 高灵敏度：较容易触发 (High: triggers easier)

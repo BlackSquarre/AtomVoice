@@ -1,7 +1,4 @@
 import Foundation
-import os.log
-
-private let logger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "LLMRefiner")
 
 // MARK: - 流式 SSE 接收委托
 
@@ -135,13 +132,13 @@ final class LLMRefiner {
     // MARK: 系统提示词
 
     private var currentSystemPrompt: String {
-        let custom = UserDefaults.standard.string(forKey: "llmSystemPrompt") ?? ""
+        let custom = AppSettings.llmSystemPrompt
         return custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? Self.currentDefaultSystemPrompt : custom
     }
 
     static var currentDefaultSystemPrompt: String {
-        let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        let lang = AppSettings.selectedLanguage
         let base = """
         You are an editor for raw speech-to-text dictation before it is pasted into a text field.
 
@@ -196,15 +193,16 @@ final class LLMRefiner {
     func refine(text: String,
                 onProgress: ((String) -> Void)? = nil,
                 completion: @escaping (String?, String?) -> Void) {
-        let baseURL = UserDefaults.standard.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1"
-        let apiKey  = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
-        let model   = UserDefaults.standard.string(forKey: "llmModel") ?? "gpt-4o-mini"
+        let connection = AppSettings.llmConnection
+        let baseURL = connection.baseURL
+        let apiKey = connection.apiKey
+        let model = connection.model
 
         guard !apiKey.isEmpty else { completion(nil, loc("error.noApiKey")); return }
 
         let isAnthropic = Self.isAnthropicURL(baseURL)
         let urlString   = Self.buildURL(base: baseURL)
-        logger.debug("[refine] \(urlString, privacy: .public)")
+        DebugLog.debug("[LLMRefiner] refine: \(urlString)")
         guard let url = URL(string: urlString) else { completion(nil, loc("error.invalidUrl")); return }
 
         var request = URLRequest(url: url)
@@ -230,7 +228,7 @@ final class LLMRefiner {
         let startTime = Date()
         let delegate = StreamDelegate(isAnthropic: isAnthropic, onProgress: onProgress) { [weak self] result, error in
             let elapsed = String(format: "%.2f", Date().timeIntervalSince(startTime))
-            logger.info("[refine] 完成 \(elapsed, privacy: .public)s")
+            DebugLog.info("[LLMRefiner] 完成 \(elapsed)s")
             self?.streamSession?.finishTasksAndInvalidate()
             completion(result, error)
         }
@@ -243,9 +241,10 @@ final class LLMRefiner {
     // MARK: - 测试连接（非流式）
 
     func testConnection(completion: @escaping (Bool, String) -> Void) {
-        let baseURL = UserDefaults.standard.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1"
-        let apiKey  = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
-        let model   = UserDefaults.standard.string(forKey: "llmModel") ?? "gpt-4o-mini"
+        let connection = AppSettings.llmConnection
+        let baseURL = connection.baseURL
+        let apiKey = connection.apiKey
+        let model = connection.model
 
         guard !apiKey.isEmpty else { completion(false, "API Key is empty"); return }
 

@@ -419,6 +419,10 @@
 "asrSettings.sherpa.import" = "Import model package…";
 "asrSettings.sherpa.import.tooltip" = "Pick a sherpa-onnx model archive (.tar.bz2 / .tar.gz / .zip) or extracted folder. Files names are auto-detected.";
 "asrSettings.sherpa.modelListLink" = "Browse models on GitHub ↗";
+"asrSettings.sherpa.autoUnload" = "Automatically unload local model when idle";
+"asrSettings.sherpa.autoUnload.tooltip" = "Release the loaded Sherpa model after it has been idle for a while to reduce memory usage.";
+"asrSettings.sherpa.autoUnload.after" = "After:";
+"asrSettings.sherpa.autoUnload.minutes" = "%d minutes";
 "sherpa.import.pickerTitle" = "Choose Sherpa model archive or folder";
 "sherpa.import.languageTitle" = "Set recognition language";
 "sherpa.import.languageMessage" = "Imported %@ (%dMB). Which language should this model be used for?";
@@ -436,6 +440,9 @@
 "sherpa.chooser.confirm" = "Continue";
 "sherpa.chooser.note.downloaded" = "%@ is already downloaded — no download needed.";
 "sherpa.chooser.note.toDownload" = "About %dMB will be downloaded after you continue.";
+"sherpa.chooser.provider" = "Compute Backend:";
+"sherpa.chooser.provider.cpu" = "CPU";
+"sherpa.chooser.provider.coreml" = "CoreML (Recommended)";
 "asrSettings.sherpa.downloading" = "Downloading...";
 "asrSettings.apple.desc" = "Use Apple Speech offline mode. Audio is processed on-device and not sent to the cloud.";
 "asrSettings.apple.status" = "Current Status:";

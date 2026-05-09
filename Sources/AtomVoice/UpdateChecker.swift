@@ -29,6 +29,7 @@ final class UpdateChecker: NSObject {
     /// 检查更新（Check for updates）
     /// - Parameter silent: true = 无新版时不弹提示，启动时后台静默检查用（true = no alert when up-to-date, for silent background check on launch）
     func checkForUpdates(silent: Bool = false) {
+        #if !DEBUG_BUILD
         guard state == .idle else {
             if state == .checking, !silent {
                 pendingUserVisibleCheck = true
@@ -42,7 +43,7 @@ final class UpdateChecker: NSObject {
         state = .checking
         pendingUserVisibleCheck = !silent
 
-        let includeBeta = UserDefaults.standard.bool(forKey: "includeBetaUpdates")
+        let includeBeta = AppSettings.includeBetaUpdates
         fetchLatestRelease(includeBeta: includeBeta) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self, self.state == .checking else { return }
@@ -61,6 +62,7 @@ final class UpdateChecker: NSObject {
                 }
             }
         }
+        #endif
     }
 
     // MARK: - 获取最新 Release

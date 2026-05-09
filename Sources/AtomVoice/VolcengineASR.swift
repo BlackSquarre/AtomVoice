@@ -1,8 +1,5 @@
 import AVFoundation
 import Foundation
-import os.log
-
-private let volcengineLogger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "VolcengineASR")
 
 // MARK: - 火山引擎豆包 ASR 设置
 
@@ -42,14 +39,23 @@ struct VolcengineASRSettings {
     static func load() -> VolcengineASRSettings {
         let defaults = UserDefaults.standard
         return VolcengineASRSettings(
-            endpoint: defaults.string(forKey: "doubaoASREndpoint") ?? defaultEndpoint,
+            endpoint: defaults.string(forKey: AppSettings.Keys.doubaoASREndpoint) ?? defaultEndpoint,
             apiKey: savedAPIKey,
-            resourceID: defaults.string(forKey: "doubaoASRResourceID") ?? defaultResourceID,
-            enableITN: defaults.object(forKey: "doubaoASREnableITN") as? Bool ?? true,
-            enableDDC: defaults.object(forKey: "doubaoASREnableDDC") as? Bool ?? false,
-            enableNonstream: defaults.object(forKey: "doubaoASREnableNonstream") as? Bool ?? false,
-            selectedLanguage: defaults.string(forKey: "selectedLanguage") ?? "zh-CN"
+            resourceID: defaults.string(forKey: AppSettings.Keys.doubaoASRResourceID) ?? defaultResourceID,
+            enableITN: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableITN),
+            enableDDC: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableDDC),
+            enableNonstream: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableNonstream),
+            selectedLanguage: AppSettings.selectedLanguage
         )
+    }
+
+    func persistNonSecretFields() {
+        let defaults = UserDefaults.standard
+        defaults.set(trimmedEndpoint, forKey: AppSettings.Keys.doubaoASREndpoint)
+        defaults.set(trimmedResourceID, forKey: AppSettings.Keys.doubaoASRResourceID)
+        defaults.set(enableITN, forKey: AppSettings.Keys.doubaoASREnableITN)
+        defaults.set(enableDDC, forKey: AppSettings.Keys.doubaoASREnableDDC)
+        defaults.set(enableNonstream, forKey: AppSettings.Keys.doubaoASREnableNonstream)
     }
 
     var trimmedEndpoint: String {
@@ -82,13 +88,12 @@ struct VolcengineASRSettings {
     }
 
     var autoPunctuationEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "autoPunctuationEnabled")
+        AppSettings.autoPunctuationEnabled
     }
 
     var endWindowSize: Int {
-        let defaults = UserDefaults.standard
-        guard defaults.bool(forKey: "silenceAutoStopEnabled") else { return 600 }
-        let durationMS = Int(defaults.double(forKey: "silenceDuration") * 1000)
+        guard AppSettings.silenceAutoStopEnabled else { return 600 }
+        let durationMS = Int(AppSettings.silenceDuration * 1000)
         return min(3000, max(200, durationMS))
     }
 
@@ -103,6 +108,13 @@ struct VolcengineASRSettings {
             return loc("doubao.error.invalidEndpoint")
         }
         return nil
+    }
+
+    var globalSummary: String {
+        let language = AppSettings.displayName(forRecognitionLanguage: selectedLanguage)
+        let punctuation = autoPunctuationEnabled ? loc("doubao.settings.globalOn") : loc("doubao.settings.globalOff")
+        let delay = String(format: loc("doubao.settings.globalTimeoutValue"), Double(endWindowSize) / 1000.0)
+        return loc("doubao.settings.globalSummary", language, punctuation, delay)
     }
 
     func requestPayload() -> [String: Any] {
@@ -174,7 +186,7 @@ final class VolcengineASRProvider: CloudASRProvider {
         let session = URLSession(configuration: .default)
         let task = session.webSocketTask(with: request)
 
-        volcengineLogger.info("[create] request=\(requestID, privacy: .public) connect=\(connectID, privacy: .public)")
+        DebugLog.info("[VolcengineASR] create: request=\(requestID) connect=\(connectID)")
 
         return VolcengineASRConnection(session: session, task: task, initialFrame: initialFrame)
     }
@@ -435,7 +447,7 @@ private enum VolcengineASRProtocolCodec {
     #if DEBUG_BUILD
     private static func debugFrame(_ data: Data, context: String) {
         let prefix = data.prefix(32).map { String(format: "%02x", $0) }.joined(separator: " ")
-        volcengineLogger.debug("[protocol] \(context, privacy: .public) bytes=\(data.count, privacy: .public) prefix=\(prefix, privacy: .public)")
+        DebugLog.debug("[VolcengineASR] [protocol] \(context) bytes=\(data.count) prefix=\(prefix)")
     }
 
     private static func debugHeader(_ data: Data, headerSize: Int) {
@@ -445,16 +457,16 @@ private enum VolcengineASRProtocolCodec {
         let flags = data[1] & 0x0f
         let serialization = data[2] >> 4
         let compression = data[2] & 0x0f
-        volcengineLogger.debug("[protocol] header version=\(version, privacy: .public) headerSize=\(headerSize, privacy: .public) type=\(type, privacy: .public) flags=\(flags, privacy: .public) serialization=\(serialization, privacy: .public) compression=\(compression, privacy: .public)")
+        DebugLog.debug("[VolcengineASR] [protocol] header version=\(version) headerSize=\(headerSize) type=\(type) flags=\(flags) serialization=\(serialization) compression=\(compression)")
     }
 
     private static func debugPayload(payloadSize: Int, payloadStart: Int, dataCount: Int, flags: UInt8) {
-        volcengineLogger.debug("[protocol] payload flags=\(flags, privacy: .public) start=\(payloadStart, privacy: .public) size=\(payloadSize, privacy: .public) dataCount=\(dataCount, privacy: .public)")
+        DebugLog.debug("[VolcengineASR] [protocol] payload flags=\(flags) start=\(payloadStart) size=\(payloadSize) dataCount=\(dataCount)")
     }
 
     private static func debugInvalidFrame(_ reason: String, data: Data) {
         let prefix = data.prefix(32).map { String(format: "%02x", $0) }.joined(separator: " ")
-        volcengineLogger.error("[protocol] ignored invalid frame reason=\(reason, privacy: .public) bytes=\(data.count, privacy: .public) prefix=\(prefix, privacy: .public)")
+        DebugLog.error("[VolcengineASR] [protocol] ignored invalid frame reason=\(reason) bytes=\(data.count) prefix=\(prefix)")
     }
     #else
     private static func debugFrame(_ data: Data, context: String) {}

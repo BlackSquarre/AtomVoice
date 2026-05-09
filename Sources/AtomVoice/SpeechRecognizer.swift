@@ -143,7 +143,7 @@ final class SpeechRecognizerController {
                     let nsError = error as NSError
                     // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
                     if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
-                        print("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                        DebugLog.error("[SpeechRecognizer] Error: \(error.localizedDescription)")
                     }
                     if result == nil {
                         finishRecognition()
@@ -225,7 +225,7 @@ final class SpeechRecognizerController {
             if recognizer?.supportsOnDeviceRecognition == true {
                 req.requiresOnDeviceRecognition = true
             } else {
-                print("[SpeechRecognizer] On-device recognition is unavailable for the selected language")
+                DebugLog.info("[SpeechRecognizer] On-device recognition is unavailable for the selected language")
             }
         }
         return req
@@ -247,7 +247,7 @@ final class SpeechRecognizerController {
                     let nsError = error as NSError
                     // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
                     if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
-                        print("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                        DebugLog.error("[SpeechRecognizer] Error: \(error.localizedDescription)")
                     }
                 }
             }

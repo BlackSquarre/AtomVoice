@@ -209,19 +209,18 @@ final class SherpaModelImportFlow {
         // 优先使用从目录名识别到的语言；识别不到则回退到用户当前的识别语言
         // (Prefer language inferred from directory name; fall back to current recognition language)
         let detectedLang = Self.detectLanguage(fromDirName: modelDir.lastPathComponent)
-        let fallbackLang = UserDefaults.standard.string(forKey: SherpaModelPreset.recognitionLanguageKey)
-            ?? UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        let fallbackLang = AppSettings.sherpaRecognitionLanguage
         let presetLang = detectedLang ?? fallbackLang
 
         var info = loc("sherpa.import.languageMessage", modelDir.lastPathComponent, sizeMB)
         if let detected = detectedLang {
-            info += "\n" + loc("sherpa.import.detected", displayName(detected))
+            info += "\n" + loc("sherpa.import.detected", AppSettings.displayName(forRecognitionLanguage: detected))
         }
         alert.informativeText = info
 
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 220, height: 24), pullsDown: false)
         for code in SherpaModelPreset.supportedRecognitionLanguages {
-            let item = NSMenuItem(title: displayName(code), action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: AppSettings.displayName(forRecognitionLanguage: code), action: nil, keyEquivalent: "")
             item.representedObject = code
             popup.menu?.addItem(item)
         }
@@ -284,21 +283,6 @@ final class SherpaModelImportFlow {
         if lower.contains("spanish") || lower.contains("-es-") { return "es-ES" }
         if lower.contains("-en-") || lower.contains("english") { return "en-US" }
         return nil
-    }
-
-    private func displayName(_ code: String) -> String {
-        switch code {
-        case "en-US": return "English"
-        case "zh-CN": return "简体中文"
-        case "zh-TW": return "繁體中文"
-        case "ja-JP": return "日本語"
-        case "ko-KR": return "한국어"
-        case "es-ES": return "Español"
-        case "fr-FR": return "Français"
-        case "de-DE": return "Deutsch"
-        case "bilingual": return loc("asrSettings.sherpa.lang.bilingual")
-        default: return code
-        }
     }
 
     private func showError(_ error: ImportError) {

@@ -40,10 +40,15 @@ enum DebugLog {
         #endif
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     private static func write(level: String, _ message: String) {
-        let timestamp = DateFormatter.localizedString(
-            from: Date(), dateStyle: .none, timeStyle: .medium
-        )
+        let timestamp = dateFormatter.string(from: Date())
         let line = "\(timestamp) [\(level)] \(message)\n"
 
         logger.info("\(line, privacy: .public)")

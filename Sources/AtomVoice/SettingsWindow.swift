@@ -9,7 +9,7 @@ struct LLMProvider: Codable {
 }
 
 final class ProviderStore {
-    static let key = "llmProviders"
+    static let key = AppSettings.Keys.llmProviders
 
     static var defaults: [LLMProvider] {
         [
@@ -314,8 +314,8 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
         ])
 
         // 加载自定义提示词（Load custom prompt）
-        if let custom = UserDefaults.standard.string(forKey: "llmSystemPrompt"), !custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            textView.string = custom
+        if !AppSettings.llmSystemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            textView.string = AppSettings.llmSystemPrompt
         }
         updatePlaceholderVisibility()
         scroll.documentView = textView
@@ -372,7 +372,7 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
     }
 
     @objc private func done() {
-        UserDefaults.standard.set(textView.string, forKey: "llmSystemPrompt")
+        AppSettings.llmSystemPrompt = textView.string
         onDone?()
         sheet.sheetParent?.endSheet(sheet)
     }
@@ -431,7 +431,6 @@ final class SettingsWindowController: NSObject {
         guard let cv = w.contentView else { return }
 
         let pad: CGFloat = 24
-        let labelW: CGFloat = 120
         let gap: CGFloat = 8
 
         // ── 控件 ─────────────────────────────────────────────（Controls）
@@ -442,14 +441,14 @@ final class SettingsWindowController: NSObject {
         providerPopup.toolTip = loc("tooltip.settings.provider")
         providers.forEach { providerPopup.addItem(withTitle: $0.name) }
 
-        let manageBtn = makeButton(loc("settings.manage"), action: #selector(editProviders(_:)))
+        let manageBtn = SettingsUI.makeButton(loc("settings.manage"), target: self, action: #selector(editProviders(_:)))
         manageBtn.toolTip = loc("tooltip.settings.manage")
 
-        apiBaseURLField = makeField(placeholder: "https://api.openai.com/v1")
+        apiBaseURLField = SettingsUI.makeField(placeholder: "https://api.openai.com/v1", delegate: self)
         apiBaseURLField.toolTip = loc("tooltip.settings.baseURL")
-        apiKeyField     = makeSecureField(placeholder: "sk-...")
+        apiKeyField     = SettingsUI.makeSecureField(placeholder: "sk-...", delegate: self)
         apiKeyField.toolTip = loc("tooltip.settings.apiKey")
-        modelField      = makeField(placeholder: "gpt-4o-mini")
+        modelField      = SettingsUI.makeField(placeholder: "gpt-4o-mini", delegate: self)
         modelField.toolTip = loc("tooltip.settings.model")
 
         delayPopup = NSPopUpButton()
@@ -458,17 +457,15 @@ final class SettingsWindowController: NSObject {
             delayPopup.addItem(withTitle: v == 0 ? loc("settings.delay.immediate") : String(format: "%.1fs", v))
         }
 
-        let promptBtn = makeButton(loc("settings.prompt.edit"), action: #selector(editPrompt(_:)))
+        let promptBtn = SettingsUI.makeButton(loc("settings.prompt.edit"), target: self, action: #selector(editPrompt(_:)))
         promptBtn.toolTip = loc("tooltip.settings.prompt")
 
-        statusLabel = NSTextField(labelWithString: "")
-        statusLabel.font = .systemFont(ofSize: 12)
-        statusLabel.textColor = .secondaryLabelColor
+        statusLabel = SettingsUI.makeSecondaryLabel()
 
-        let testBtn   = makeButton(loc("settings.test"),   action: #selector(testConnection(_:)))
+        let testBtn   = SettingsUI.makeButton(loc("settings.test"), target: self, action: #selector(testConnection(_:)))
         testBtn.toolTip = loc("tooltip.settings.test")
-        let cancelBtn = makeButton(loc("settings.cancel"), action: #selector(cancelSettings(_:)))
-        let saveBtn   = makeButton(loc("settings.save"),   action: #selector(saveSettings(_:)), isPrimary: true)
+        let cancelBtn = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
+        let saveBtn   = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
         saveBtn.toolTip = loc("tooltip.settings.save")
         saveBtn.keyEquivalent   = "\r"
         cancelBtn.keyEquivalent = "\u{1b}"
@@ -482,22 +479,6 @@ final class SettingsWindowController: NSObject {
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // ── 辅助：构造单行 HStack（左侧固定宽度标签 + 右侧控件） ─（Helper: build single-row HStack with fixed-width label + control）
-        func makeRow(labelText: String, control: NSView) -> NSView {
-            let label = NSTextField(labelWithString: labelText)
-            label.font = .systemFont(ofSize: 13)
-            label.textColor = .secondaryLabelColor
-            label.alignment = .right
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.widthAnchor.constraint(equalToConstant: labelW).isActive = true
-
-            let row = NSStackView(views: [label, control])
-            row.orientation = .horizontal
-            row.spacing = gap
-            row.alignment = .centerY
-            row.translatesAutoresizingMaskIntoConstraints = false
-            return row
-        }
-
         // 服务商行：popup 自动拉伸，管理按钮紧跟其后（Provider row: popup auto-stretches, manage button follows）
         let providerCtrl = NSStackView(views: [providerPopup, manageBtn])
         providerCtrl.orientation = .horizontal
@@ -526,7 +507,7 @@ final class SettingsWindowController: NSObject {
             (loc("settings.delay"),        delayWrap),
         ]
         for (text, ctrl) in formRows {
-            let row = makeRow(labelText: text, control: ctrl)
+            let row = SettingsUI.makeFormRow(labelText: text, control: ctrl, spacing: gap)
             form.addArrangedSubview(row)
         }
 
@@ -536,14 +517,7 @@ final class SettingsWindowController: NSObject {
         sep.translatesAutoresizingMaskIntoConstraints = false
 
         // 底部：状态标签（左）+ 按钮组（右）（Bottom: status label (left) + button group (right)）
-        let bottomRow = NSStackView(views: [statusLabel, testBtn, cancelBtn, saveBtn])
-        bottomRow.orientation = .horizontal
-        bottomRow.spacing = gap
-        bottomRow.alignment = .centerY
-        // 让 statusLabel 撑开左侧空间，按钮靠右（Let statusLabel fill left space, buttons align right）
-        bottomRow.setCustomSpacing(0, after: statusLabel)
-        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [testBtn, cancelBtn, saveBtn], spacing: gap)
 
         // ── 整体 ─────────────────────────────────────────────（Overall layout）
         let root = NSView()
@@ -588,9 +562,7 @@ final class SettingsWindowController: NSObject {
         ])
 
         // 让 form 内每行右侧控件自动拉满（Let right-side controls in each form row auto-fill width）
-        for sub in form.arrangedSubviews {
-            sub.trailingAnchor.constraint(equalTo: form.trailingAnchor).isActive = true
-        }
+        SettingsUI.pinArrangedSubviewsTrailing(in: form)
 
         self.window = w
         w.delegate = self
@@ -602,37 +574,6 @@ final class SettingsWindowController: NSObject {
 
     // MARK: - Helpers
 
-    private func makeField(placeholder: String) -> NSTextField {
-        let f = NSTextField()
-        f.bezelStyle = .roundedBezel
-        f.font = .systemFont(ofSize: 13)
-        f.placeholderString = placeholder
-        f.translatesAutoresizingMaskIntoConstraints = false
-        f.cell?.wraps = false
-        f.cell?.isScrollable = true
-        f.delegate = self
-        return f
-    }
-
-    private func makeSecureField(placeholder: String) -> NSSecureTextField {
-        let f = NSSecureTextField()
-        f.bezelStyle = .roundedBezel
-        f.font = .systemFont(ofSize: 13)
-        f.placeholderString = placeholder
-        f.translatesAutoresizingMaskIntoConstraints = false
-        f.cell?.wraps = false
-        f.cell?.isScrollable = true
-        f.delegate = self
-        return f
-    }
-
-    private func makeButton(_ title: String, action: Selector, isPrimary: Bool = false) -> NSButton {
-        let b = NSButton(title: title, target: self, action: action)
-        if #available(macOS 26.0, *) { b.bezelStyle = .glass }
-        else { b.bezelStyle = .rounded }
-        return b
-    }
-
     // MARK: - State
 
     private func refreshFields() {
@@ -640,14 +581,15 @@ final class SettingsWindowController: NSObject {
         providerPopup?.removeAllItems()
         providers.forEach { providerPopup?.addItem(withTitle: $0.name) }
 
-        let savedURL = UserDefaults.standard.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1"
+        let connection = AppSettings.llmConnection
+        let savedURL = connection.baseURL
         let matchIdx = providers.firstIndex { $0.baseURL == savedURL } ?? (providers.count - 1)
         providerPopup?.selectItem(at: matchIdx)
 
         apiBaseURLField?.stringValue = savedURL
-        apiKeyField?.stringValue     = UserDefaults.standard.string(forKey: "llmAPIKey") ?? ""
-        modelField?.stringValue      = UserDefaults.standard.string(forKey: "llmModel") ?? "gpt-4o-mini"
-        let delay = UserDefaults.standard.double(forKey: "llmResultDelay")
+        apiKeyField?.stringValue = connection.apiKey
+        modelField?.stringValue = connection.model
+        let delay = AppSettings.llmResultDelay
         // 选中最近的选项（Select closest option）
         let closestIdx = delayOptions.enumerated().min(by: { abs($0.element - delay) < abs($1.element - delay) })?.offset ?? 1
         delayPopup?.selectItem(at: closestIdx)
@@ -684,13 +626,12 @@ final class SettingsWindowController: NSObject {
     }
 
     @objc private func testConnection(_ sender: NSButton) {
-        let origBase  = UserDefaults.standard.string(forKey: "llmAPIBaseURL")
-        let origKey   = UserDefaults.standard.string(forKey: "llmAPIKey")
-        let origModel = UserDefaults.standard.string(forKey: "llmModel")
-
-        UserDefaults.standard.set(apiBaseURLField.stringValue, forKey: "llmAPIBaseURL")
-        UserDefaults.standard.set(apiKeyField.stringValue,     forKey: "llmAPIKey")
-        UserDefaults.standard.set(modelField.stringValue,      forKey: "llmModel")
+        let originalConnection = AppSettings.llmConnection
+        AppSettings.llmConnection = LLMConnectionSettings(
+            baseURL: apiBaseURLField.stringValue,
+            apiKey: apiKeyField.stringValue,
+            model: modelField.stringValue
+        )
 
         statusLabel.stringValue = loc("settings.testing")
         statusLabel.textColor = .secondaryLabelColor
@@ -699,19 +640,19 @@ final class SettingsWindowController: NSObject {
             DispatchQueue.main.async {
                 self?.statusLabel.stringValue = success ? loc("settings.connected") : loc("settings.connectFailed", msg)
                 self?.statusLabel.textColor = success ? .systemGreen : .systemRed
-                if let b = origBase  { UserDefaults.standard.set(b, forKey: "llmAPIBaseURL") }
-                if let k = origKey   { UserDefaults.standard.set(k, forKey: "llmAPIKey") }
-                if let m = origModel { UserDefaults.standard.set(m, forKey: "llmModel") }
+                AppSettings.llmConnection = originalConnection
             }
         }
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        UserDefaults.standard.set(apiBaseURLField.stringValue, forKey: "llmAPIBaseURL")
-        UserDefaults.standard.set(apiKeyField.stringValue,     forKey: "llmAPIKey")
-        UserDefaults.standard.set(modelField.stringValue,      forKey: "llmModel")
+        AppSettings.llmConnection = LLMConnectionSettings(
+            baseURL: apiBaseURLField.stringValue,
+            apiKey: apiKeyField.stringValue,
+            model: modelField.stringValue
+        )
         let selectedDelay = delayOptions[delayPopup.indexOfSelectedItem]
-        UserDefaults.standard.set(selectedDelay, forKey: "llmResultDelay")
+        AppSettings.llmResultDelay = selectedDelay
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
         window?.close()

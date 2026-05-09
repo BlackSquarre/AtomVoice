@@ -419,6 +419,10 @@
 "asrSettings.sherpa.import" = "모델 패키지 가져오기…";
 "asrSettings.sherpa.import.tooltip" = "sherpa-onnx 모델 아카이브(.tar.bz2 / .tar.gz / .zip) 또는 압축이 풀린 폴더를 선택하세요. 파일 이름은 자동으로 감지됩니다.";
 "asrSettings.sherpa.modelListLink" = "GitHub에서 모델 보기 ↗";
+"asrSettings.sherpa.autoUnload" = "유휴 시 로컬 모델 자동 해제";
+"asrSettings.sherpa.autoUnload.tooltip" = "Sherpa 모델이 일정 시간 사용되지 않으면 자동으로 해제하여 메모리 사용량을 줄입니다.";
+"asrSettings.sherpa.autoUnload.after" = "유휴 시간:";
+"asrSettings.sherpa.autoUnload.minutes" = "%d분";
 "sherpa.import.pickerTitle" = "Sherpa 모델 아카이브 또는 폴더 선택";
 "sherpa.import.languageTitle" = "인식 언어 설정";
 "sherpa.import.languageMessage" = "%@ (%dMB)을(를) 가져왔습니다. 어떤 언어로 사용하시겠습니까?";
@@ -444,3 +448,6 @@
 "asrSettings.apple.enable" = "Apple 강제 오프라인 인식 활성화";
 "asrSettings.apple.note" = "일부 언어는 오프라인 인식을 지원하지 않을 수 있습니다. 모델이 다운로드되지 않은 경우 아래 버튼을 클릭하여 시스템 설정으로 이동하세요.";
 "asrSettings.apple.openSettings" = "시스템 설정에서 모델 다운로드";
+"sherpa.chooser.provider" = "컴퓨트 백엔드：";
+"sherpa.chooser.provider.cpu" = "CPU";
+"sherpa.chooser.provider.coreml" = "CoreML（권장）";

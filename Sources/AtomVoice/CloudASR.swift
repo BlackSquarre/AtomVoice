@@ -1,8 +1,5 @@
 import AVFoundation
 import Foundation
-import os.log
-
-private let cloudASRLogger = Logger(subsystem: "com.blacksquarre.AtomVoice", category: "CloudASR")
 
 // MARK: - 通用云端 ASR 协议
 
@@ -86,7 +83,7 @@ final class CloudAudioConverter {
 
         guard error == nil, status != .error, let channelData = outputBuffer.floatChannelData else {
             if let error {
-                cloudASRLogger.error("[audio] convert failed: \(error.localizedDescription, privacy: .public)")
+                DebugLog.error("[CloudASR] audio convert failed: \(error.localizedDescription)")
             }
             return nil
         }
@@ -282,7 +279,7 @@ final class CloudASRRecognizerController: NSObject {
 
     private func failLocked(_ message: String) {
         DebugLog.error("[CloudASR] 识别失败: \(message), state=\(self.state), sentBytes=\(self.sentAudioBytes)")
-        cloudASRLogger.error("[error] \(message, privacy: .public)")
+        DebugLog.error("[CloudASR] error: \(message)")
         if state == .finishing || finishCompletion != nil {
             let audioBytes = sentAudioBytes + chunkBuffer.count
             let noUsefulRecognition = lastText.isEmpty && (
@@ -301,7 +298,7 @@ final class CloudASRRecognizerController: NSObject {
     private func completeStopLocked(text: String, error: String?) {
         DebugLog.info("[CloudASR] 完成停止: text=\(text.prefix(50)), error=\(error ?? "nil"), sentBytes=\(self.sentAudioBytes)")
         let completion = finishCompletion
-        cloudASRLogger.info("[stop] bytes=\(self.sentAudioBytes, privacy: .public)")
+        DebugLog.info("[CloudASR] stop: bytes=\(self.sentAudioBytes)")
         finishCompletion = nil
         connection?.cancel()
         connection = nil

@@ -33,7 +33,6 @@ final class DoubaoSettingsWindowController: NSObject {
 
         guard let cv = w.contentView else { return }
         let pad: CGFloat = 24
-        let labelW: CGFloat = 120
         let gap: CGFloat = 8
 
         let descLabel = NSTextField(labelWithString: loc("doubao.settings.desc"))
@@ -43,16 +42,16 @@ final class DoubaoSettingsWindowController: NSObject {
         descLabel.maximumNumberOfLines = 0
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        apiKeyField = makeSecureField(placeholder: "volc-...")
+        apiKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
         apiKeyField.toolTip = loc("tooltip.doubao.apiKey")
-        resourceIDField = makeField(placeholder: VolcengineASRSettings.defaultResourceID)
+        resourceIDField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultResourceID, delegate: self)
         resourceIDField.toolTip = loc("tooltip.doubao.resourceID")
-        endpointField = makeField(placeholder: VolcengineASRSettings.defaultEndpoint)
+        endpointField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultEndpoint, delegate: self)
         endpointField.toolTip = loc("tooltip.doubao.endpoint")
 
-        itnCheckbox = makeCheckbox(title: loc("doubao.settings.enableITN"), tooltip: loc("tooltip.doubao.enableITN"))
-        ddcCheckbox = makeCheckbox(title: loc("doubao.settings.enableDDC"), tooltip: loc("tooltip.doubao.enableDDC"))
-        nonstreamCheckbox = makeCheckbox(title: loc("doubao.settings.enableNonstream"), tooltip: loc("tooltip.doubao.enableNonstream"))
+        itnCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableITN"), tooltip: loc("tooltip.doubao.enableITN"))
+        ddcCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableDDC"), tooltip: loc("tooltip.doubao.enableDDC"))
+        nonstreamCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableNonstream"), tooltip: loc("tooltip.doubao.enableNonstream"))
 
         let effectsStack = NSStackView(views: [itnCheckbox, ddcCheckbox, nonstreamCheckbox])
         effectsStack.orientation = .vertical
@@ -65,22 +64,6 @@ final class DoubaoSettingsWindowController: NSObject {
         globalInfoLabel.lineBreakMode = .byWordWrapping
         globalInfoLabel.maximumNumberOfLines = 0
         globalInfoLabel.toolTip = loc("tooltip.doubao.globalInfo")
-
-        func makeRow(labelText: String, control: NSView) -> NSView {
-            let label = NSTextField(labelWithString: labelText)
-            label.font = .systemFont(ofSize: 13)
-            label.textColor = .secondaryLabelColor
-            label.alignment = .right
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.widthAnchor.constraint(equalToConstant: labelW).isActive = true
-
-            let row = NSStackView(views: [label, control])
-            row.orientation = .horizontal
-            row.spacing = gap
-            row.alignment = .centerY
-            row.translatesAutoresizingMaskIntoConstraints = false
-            return row
-        }
 
         let form = NSStackView()
         form.orientation = .vertical
@@ -96,29 +79,21 @@ final class DoubaoSettingsWindowController: NSObject {
             (loc("doubao.settings.globalFollow"), globalInfoLabel),
         ]
         for row in rows {
-            form.addArrangedSubview(makeRow(labelText: row.0, control: row.1))
+            form.addArrangedSubview(SettingsUI.makeFormRow(labelText: row.0, control: row.1, spacing: gap))
         }
 
         let sep = NSBox()
         sep.boxType = .separator
         sep.translatesAutoresizingMaskIntoConstraints = false
 
-        statusLabel = NSTextField(labelWithString: "")
-        statusLabel.font = .systemFont(ofSize: 12)
-        statusLabel.textColor = .secondaryLabelColor
+        statusLabel = SettingsUI.makeSecondaryLabel()
 
-        let cancelBtn = makeButton(loc("settings.cancel"), action: #selector(cancelSettings(_:)))
-        let saveBtn = makeButton(loc("settings.save"), action: #selector(saveSettings(_:)))
+        let cancelBtn = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
+        let saveBtn = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
         saveBtn.keyEquivalent = "\r"
         cancelBtn.keyEquivalent = "\u{1b}"
 
-        let bottomRow = NSStackView(views: [statusLabel, cancelBtn, saveBtn])
-        bottomRow.orientation = .horizontal
-        bottomRow.spacing = gap
-        bottomRow.alignment = .centerY
-        bottomRow.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [cancelBtn, saveBtn], spacing: gap)
 
         let root = NSView()
         root.translatesAutoresizingMaskIntoConstraints = false
@@ -152,50 +127,13 @@ final class DoubaoSettingsWindowController: NSObject {
             bottomRow.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
 
-        for subview in form.arrangedSubviews {
-            subview.trailingAnchor.constraint(equalTo: form.trailingAnchor).isActive = true
-        }
+        SettingsUI.pinArrangedSubviewsTrailing(in: form)
 
         window = w
         refreshFields()
         w.center()
         w.recalculateKeyViewLoop()
         AppDelegate.bringToFront(w)
-    }
-
-    private func makeField(placeholder: String) -> NSTextField {
-        let field = NSTextField()
-        field.bezelStyle = .roundedBezel
-        field.font = .systemFont(ofSize: 13)
-        field.placeholderString = placeholder
-        field.cell?.wraps = false
-        field.cell?.isScrollable = true
-        field.delegate = self
-        return field
-    }
-
-    private func makeSecureField(placeholder: String) -> NSSecureTextField {
-        let field = NSSecureTextField()
-        field.bezelStyle = .roundedBezel
-        field.font = .systemFont(ofSize: 13)
-        field.placeholderString = placeholder
-        field.cell?.wraps = false
-        field.cell?.isScrollable = true
-        field.delegate = self
-        return field
-    }
-
-    private func makeCheckbox(title: String, tooltip: String) -> NSButton {
-        let button = NSButton(checkboxWithTitle: title, target: nil, action: nil)
-        button.toolTip = tooltip
-        return button
-    }
-
-    private func makeButton(_ title: String, action: Selector) -> NSButton {
-        let button = NSButton(title: title, target: self, action: action)
-        if #available(macOS 26.0, *) { button.bezelStyle = .glass }
-        else { button.bezelStyle = .rounded }
-        return button
     }
 
     private func refreshFields() {
@@ -206,29 +144,8 @@ final class DoubaoSettingsWindowController: NSObject {
         itnCheckbox?.state = settings.enableITN ? .on : .off
         ddcCheckbox?.state = settings.enableDDC ? .on : .off
         nonstreamCheckbox?.state = settings.enableNonstream ? .on : .off
-        globalInfoLabel?.stringValue = globalInfo(settings: settings)
+        globalInfoLabel?.stringValue = settings.globalSummary
         statusLabel?.stringValue = ""
-    }
-
-    private func globalInfo(settings: VolcengineASRSettings) -> String {
-        let language = languageDisplayName(UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN")
-        let punctuation = UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") ? loc("doubao.settings.globalOn") : loc("doubao.settings.globalOff")
-        let delay = String(format: loc("doubao.settings.globalTimeoutValue"), Double(settings.endWindowSize) / 1000.0)
-        return loc("doubao.settings.globalSummary", language, punctuation, delay)
-    }
-
-    private func languageDisplayName(_ code: String) -> String {
-        switch code {
-        case "en-US": return "English"
-        case "zh-CN": return "简体中文"
-        case "zh-TW": return "繁體中文"
-        case "ja-JP": return "日本語"
-        case "ko-KR": return "한국어"
-        case "es-ES": return "Español"
-        case "fr-FR": return "Français"
-        case "de-DE": return "Deutsch"
-        default: return code
-        }
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
@@ -238,12 +155,15 @@ final class DoubaoSettingsWindowController: NSObject {
             return
         }
 
-        let defaults = UserDefaults.standard
-        defaults.set(endpointField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "doubaoASREndpoint")
-        defaults.set(resourceIDField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "doubaoASRResourceID")
-        defaults.set(itnCheckbox.state == .on, forKey: "doubaoASREnableITN")
-        defaults.set(ddcCheckbox.state == .on, forKey: "doubaoASREnableDDC")
-        defaults.set(nonstreamCheckbox.state == .on, forKey: "doubaoASREnableNonstream")
+        VolcengineASRSettings(
+            endpoint: endpointField.stringValue,
+            apiKey: apiKeyField.stringValue,
+            resourceID: resourceIDField.stringValue,
+            enableITN: itnCheckbox.state == .on,
+            enableDDC: ddcCheckbox.state == .on,
+            enableNonstream: nonstreamCheckbox.state == .on,
+            selectedLanguage: AppSettings.selectedLanguage
+        ).persistNonSecretFields()
 
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen

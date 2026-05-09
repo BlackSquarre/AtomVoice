@@ -75,7 +75,7 @@ struct SherpaModelPreset {
         if let lang = UserDefaults.standard.string(forKey: recognitionLanguageKey), !lang.isEmpty {
             return lang
         }
-        return UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        return AppSettings.selectedLanguage
     }
 
     /// 支持作为识别语言的代码列表（按 UI 显示顺序）（Supported recognition language codes, in UI display order）
@@ -104,7 +104,7 @@ struct SherpaModelPreset {
 
     /// 当前选中的预设（Currently selected preset）
     static var current: SherpaModelPreset {
-        let currentID = UserDefaults.standard.string(forKey: "sherpaModelPresetID") ?? defaultModelID
+        let currentID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID) ?? defaultModelID
         return allPresets.first(where: { $0.id == currentID }) ?? defaultPreset
     }
 

@@ -9,6 +9,7 @@ final class SherpaModelChooserController: NSObject {
 
     private var window: NSWindow?
     private var languagePopup: NSPopUpButton!
+    private var providerPopup: NSPopUpButton!
     private var radioStack: NSStackView!
     private var radios: [NSButton] = []
     private var radioModelIDs: [NSButton: String] = [:]
@@ -16,7 +17,7 @@ final class SherpaModelChooserController: NSObject {
 
     func runModal(over parentWindow: NSWindow?) {
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 360),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
             styleMask: [.titled],
             backing: .buffered,
             defer: false
@@ -43,7 +44,7 @@ final class SherpaModelChooserController: NSObject {
         languagePopup.action = #selector(languageChanged)
         let currentLang = SherpaModelPreset.recognitionLanguage
         for code in SherpaModelPreset.supportedRecognitionLanguages {
-            let item = NSMenuItem(title: displayName(code), action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: AppSettings.displayName(forRecognitionLanguage: code), action: nil, keyEquivalent: "")
             item.representedObject = code
             languagePopup.menu?.addItem(item)
             if code == currentLang { languagePopup.select(item) }
@@ -54,6 +55,31 @@ final class SherpaModelChooserController: NSObject {
         langRow.spacing = 8
         langRow.alignment = .centerY
         langRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let providerLabel = NSTextField(labelWithString: loc("sherpa.chooser.provider"))
+        providerLabel.font = .systemFont(ofSize: 12)
+        providerLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        providerPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        providerPopup.translatesAutoresizingMaskIntoConstraints = false
+        let cpuItem = NSMenuItem(title: loc("sherpa.chooser.provider.cpu"), action: nil, keyEquivalent: "")
+        cpuItem.representedObject = "cpu"
+        providerPopup.menu?.addItem(cpuItem)
+        let coremlItem = NSMenuItem(title: loc("sherpa.chooser.provider.coreml"), action: nil, keyEquivalent: "")
+        coremlItem.representedObject = "coreml"
+        providerPopup.menu?.addItem(coremlItem)
+        let currentProvider = AppSettings.sherpaProvider
+        if currentProvider == "coreml" {
+            providerPopup.select(coremlItem)
+        } else {
+            providerPopup.select(cpuItem)
+        }
+
+        let providerRow = NSStackView(views: [providerLabel, providerPopup])
+        providerRow.orientation = .horizontal
+        providerRow.spacing = 8
+        providerRow.alignment = .centerY
+        providerRow.translatesAutoresizingMaskIntoConstraints = false
 
         radioStack = NSStackView()
         radioStack.orientation = .vertical
@@ -87,6 +113,7 @@ final class SherpaModelChooserController: NSObject {
 
         cv.addSubview(header)
         cv.addSubview(langRow)
+        cv.addSubview(providerRow)
         cv.addSubview(radioStack)
         cv.addSubview(sizeNote)
         cv.addSubview(btnRow)
@@ -99,7 +126,10 @@ final class SherpaModelChooserController: NSObject {
             langRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 14),
             langRow.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: pad),
 
-            radioStack.topAnchor.constraint(equalTo: langRow.bottomAnchor, constant: 14),
+            providerRow.topAnchor.constraint(equalTo: langRow.bottomAnchor, constant: 10),
+            providerRow.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: pad),
+
+            radioStack.topAnchor.constraint(equalTo: providerRow.bottomAnchor, constant: 14),
             radioStack.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: pad + 10),
             radioStack.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -pad),
 
@@ -134,7 +164,7 @@ final class SherpaModelChooserController: NSObject {
 
         let lang = (languagePopup.selectedItem?.representedObject as? String) ?? SherpaModelPreset.recognitionLanguage
         let presets = SherpaModelPreset.presets(forRecognitionLanguage: lang)
-        let savedID = UserDefaults.standard.string(forKey: "sherpaModelPresetID")
+        let savedID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID)
         let presetIDs = Set(presets.map { $0.id })
         let activeID: String = (savedID.flatMap { presetIDs.contains($0) ? $0 : nil })
             ?? SherpaModelPreset.defaultModelID(forRecognitionLanguage: lang)
@@ -169,21 +199,6 @@ final class SherpaModelChooserController: NSObject {
         return SherpaModelPreset.allPresets.first(where: { $0.id == id })
     }
 
-    private func displayName(_ code: String) -> String {
-        switch code {
-        case "en-US": return "English"
-        case "zh-CN": return "简体中文"
-        case "zh-TW": return "繁體中文"
-        case "ja-JP": return "日本語"
-        case "ko-KR": return "한국어"
-        case "es-ES": return "Español"
-        case "fr-FR": return "Français"
-        case "de-DE": return "Deutsch"
-        case "bilingual": return loc("asrSettings.sherpa.lang.bilingual")
-        default: return code
-        }
-    }
-
     // MARK: - Actions
 
     @objc private func languageChanged() {
@@ -199,8 +214,11 @@ final class SherpaModelChooserController: NSObject {
     @objc private func confirmTapped() {
         guard let lang = languagePopup.selectedItem?.representedObject as? String,
               let preset = currentSelectedPreset() else { return }
-        UserDefaults.standard.set(lang, forKey: SherpaModelPreset.recognitionLanguageKey)
-        UserDefaults.standard.set(preset.id, forKey: "sherpaModelPresetID")
+        AppSettings.sherpaRecognitionLanguage = lang
+        AppSettings.sherpaModelPresetID = preset.id
+        if let provider = providerPopup.selectedItem?.representedObject as? String {
+            AppSettings.sherpaProvider = provider
+        }
         let result: (String, String)? = (lang, preset.id)
         endModal(result: result)
     }

@@ -419,6 +419,10 @@
 "asrSettings.sherpa.import" = "匯入模型包…";
 "asrSettings.sherpa.import.tooltip" = "選擇 sherpa-onnx 模型壓縮包（.tar.bz2 / .tar.gz / .zip）或已解壓目錄，檔名將自動辨識。";
 "asrSettings.sherpa.modelListLink" = "在 GitHub 瀏覽模型 ↗";
+"asrSettings.sherpa.autoUnload" = "閒置時自動卸載本地模型";
+"asrSettings.sherpa.autoUnload.tooltip" = "Sherpa 模型閒置一段時間後自動釋放，以降低記憶體占用。";
+"asrSettings.sherpa.autoUnload.after" = "閒置時長：";
+"asrSettings.sherpa.autoUnload.minutes" = "%d 分鐘";
 "sherpa.import.pickerTitle" = "選擇 Sherpa 模型壓縮包或資料夾";
 "sherpa.import.languageTitle" = "設定識別語言";
 "sherpa.import.languageMessage" = "已匯入 %@ (%dMB)。該模型用於哪種識別語言？";
@@ -444,3 +448,6 @@
 "asrSettings.apple.enable" = "啟用 Apple 強制離線識別";
 "asrSettings.apple.note" = "部分語言可能不支援離線識別。如果模型未下載，請點擊下方按鈕前往系統設定下載。";
 "asrSettings.apple.openSettings" = "開啟系統設定下載模型";
+"sherpa.chooser.provider" = "計算後端：";
+"sherpa.chooser.provider.cpu" = "CPU";
+"sherpa.chooser.provider.coreml" = "CoreML（推薦）";
