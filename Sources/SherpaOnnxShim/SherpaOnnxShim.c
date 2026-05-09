@@ -190,13 +190,14 @@ static void decode_available(AtomVoiceSherpaContext *context) {
 }
 
 AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
-                                              const char *model_dir,
-                                              const char *encoder_name,
-                                              const char *decoder_name,
-                                              const char *joiner_name,
-                                              const char *tokens_name,
-                                              char *error_message,
-                                              int32_t error_message_size) {
+                                               const char *model_dir,
+                                               const char *encoder_name,
+                                               const char *decoder_name,
+                                               const char *joiner_name,
+                                               const char *tokens_name,
+                                               const char *provider,
+                                               char *error_message,
+                                               int32_t error_message_size) {
   if (error_message && error_message_size > 0) { error_message[0] = '\0'; }
   if (!lib_dir || !model_dir || !encoder_name || !decoder_name || !joiner_name || !tokens_name) {
     set_error(error_message, error_message_size, "Missing runtime path, model path, or model file names");
@@ -277,7 +278,7 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
   config.model_config.transducer.joiner = joiner;
   config.model_config.tokens = tokens;
   config.model_config.num_threads = 1;
-  config.model_config.provider = "cpu";
+  config.model_config.provider = provider ? provider : "cpu";
   config.decoding_method = "greedy_search";
 
   context->recognizer = context->create_recognizer(&config);
@@ -360,9 +361,10 @@ void AtomVoiceSherpaFreeString(char *text) {
 }
 
 AtomVoiceSherpaPunctuationContext *AtomVoiceSherpaPunctuationCreate(const char *lib_dir,
-                                                                    const char *model_dir,
-                                                                    char *error_message,
-                                                                    int32_t error_message_size) {
+                                                                     const char *model_dir,
+                                                                     const char *provider,
+                                                                     char *error_message,
+                                                                     int32_t error_message_size) {
   if (error_message && error_message_size > 0) { error_message[0] = '\0'; }
   if (!lib_dir || !model_dir) {
     set_error(error_message, error_message_size, "Missing runtime or punctuation model path");
@@ -419,7 +421,7 @@ AtomVoiceSherpaPunctuationContext *AtomVoiceSherpaPunctuationCreate(const char *
   memset(&config, 0, sizeof(config));
   config.model.ct_transformer = model_path;
   config.model.num_threads = 1;
-  config.model.provider = "cpu";
+  config.model.provider = provider ? provider : "cpu";
 
   context->punctuation = create_punctuation(&config);
   if (!context->punctuation) {

@@ -18,6 +18,11 @@ final class SherpaOnnxRecognizerController {
         SherpaModelPreset.current
     }
 
+    /// 当前选择的计算后端（Current compute provider）
+    static var provider: String {
+        AppSettings.sherpaProvider
+    }
+
     /// 当前模型目录名（Current model directory name）
     static var modelName: String {
         currentPreset.extractedDirName
@@ -53,7 +58,7 @@ final class SherpaOnnxRecognizerController {
                 AtomVoiceSherpaPunctuationDestroy(punctuationContext)
                 self.punctuationContext = nil
             }
-            print("[SherpaOnnx] 已释放模型上下文")
+            DebugLog.info("[SherpaOnnx] 已释放模型上下文")
         }
     }
 
@@ -85,7 +90,7 @@ final class SherpaOnnxRecognizerController {
 
     static func openSupportDirectory() {
         do { try createSupportDirectories() }
-        catch { print("[SherpaOnnx] 创建目录失败: \(error)") }
+        catch { DebugLog.error("[SherpaOnnx] 创建目录失败: \(error)") }
         NSWorkspace.shared.open(supportDirectory)
     }
 
@@ -107,18 +112,21 @@ final class SherpaOnnxRecognizerController {
             lastStartFailureKind = .missingModel
             return loc("error.sherpaModelMissing", preset.modelDirectory.path)
         }
-        print("[SherpaOnnx] 加载 \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens)")
+        DebugLog.info("[SherpaOnnx] 加载 \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens) provider=\(Self.provider)")
 
         var errorBuffer = [CChar](repeating: 0, count: 2048)
+        let providerStr = Self.provider
         let created = Self.runtimeLibDirectory.path.withCString { libDir in
             preset.modelDirectory.path.withCString { modelDir in
                 manifest.encoder.withCString { encoder in
                     manifest.decoder.withCString { decoder in
                         manifest.joiner.withCString { joiner in
                             manifest.tokens.withCString { tokens in
-                                errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
-                                    AtomVoiceSherpaCreate(libDir, modelDir, encoder, decoder, joiner, tokens,
-                                                          errorPtr.baseAddress, Int32(errorPtr.count))
+                                providerStr.withCString { provider in
+                                    errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
+                                        AtomVoiceSherpaCreate(libDir, modelDir, encoder, decoder, joiner, tokens,
+                                                              provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                                    }
                                 }
                             }
                         }
@@ -199,7 +207,7 @@ final class SherpaOnnxRecognizerController {
             }
             // 重置 stream 以备下次录音，但保留识别器上下文避免重复加载模型（Reset stream for next recording, but keep recognizer context to avoid reloading model）
             if AtomVoiceSherpaResetStream(context) == 0 {
-                print("[SherpaOnnx] 重置 stream 失败，销毁上下文下次重建")
+                DebugLog.error("[SherpaOnnx] 重置 stream 失败，销毁上下文下次重建")
                 AtomVoiceSherpaDestroy(context)
                 self.context = nil
             }
@@ -235,22 +243,25 @@ final class SherpaOnnxRecognizerController {
               FileManager.default.fileExists(atPath: Self.runtimeLibDirectory.appendingPathComponent("libonnxruntime.1.24.4.dylib").path),
               FileManager.default.fileExists(atPath: Self.punctuationModelDirectory.appendingPathComponent("model.int8.onnx").path)
         else {
-            print("[SherpaOnnx] 标点模型或运行库不存在，跳过本地标点")
+            DebugLog.info("[SherpaOnnx] 标点模型或运行库不存在，跳过本地标点")
             return false
         }
 
         var errorBuffer = [CChar](repeating: 0, count: 2048)
+        let providerStr = Self.provider
         let created = Self.runtimeLibDirectory.path.withCString { libDir in
             Self.punctuationModelDirectory.path.withCString { modelDir in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
-                    AtomVoiceSherpaPunctuationCreate(libDir, modelDir, errorPtr.baseAddress, Int32(errorPtr.count))
+                providerStr.withCString { provider in
+                    errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
+                        AtomVoiceSherpaPunctuationCreate(libDir, modelDir, provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                    }
                 }
             }
         }
 
         guard let created else {
             let detail = String(cString: errorBuffer)
-            print("[SherpaOnnx] 标点模型加载失败: \(detail.isEmpty ? "Unknown error" : detail)")
+            DebugLog.error("[SherpaOnnx] 标点模型加载失败: \(detail.isEmpty ? "Unknown error" : detail)")
             return false
         }
 

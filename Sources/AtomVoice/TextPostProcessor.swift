@@ -54,7 +54,12 @@ final class SherpaPunctuationProcessor: TextPostProcessor {
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
         guard UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") else { return nil }
         guard registry.isSherpa(context.engineCode) else { return nil }
+        guard Self.supportsLanguage(context.language) else { return nil }
         return punctuator(text)
+    }
+
+    private static func supportsLanguage(_ language: String) -> Bool {
+        language.hasPrefix("zh") || language.hasPrefix("en")
     }
 }
 

@@ -13,13 +13,14 @@ typedef struct AtomVoiceSherpaPunctuationContext AtomVoiceSherpaPunctuationConte
 /// 由 Swift 层传入具体文件名；不同 Sherpa 模型 zip 包的 encoder/decoder/joiner 命名差异很大
 /// (Swift passes the exact filenames; encoder/decoder/joiner naming varies across Sherpa model archives)
 AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
-                                              const char *model_dir,
-                                              const char *encoder_name,
-                                              const char *decoder_name,
-                                              const char *joiner_name,
-                                              const char *tokens_name,
-                                              char *error_message,
-                                              int32_t error_message_size);
+                                               const char *model_dir,
+                                               const char *encoder_name,
+                                               const char *decoder_name,
+                                               const char *joiner_name,
+                                               const char *tokens_name,
+                                               const char *provider,
+                                               char *error_message,
+                                               int32_t error_message_size);
 
 int32_t AtomVoiceSherpaAcceptWaveform(AtomVoiceSherpaContext *context,
                                       int32_t sample_rate,
@@ -37,9 +38,10 @@ int32_t AtomVoiceSherpaResetStream(AtomVoiceSherpaContext *context);
 void AtomVoiceSherpaFreeString(char *text);
 
 AtomVoiceSherpaPunctuationContext *AtomVoiceSherpaPunctuationCreate(const char *lib_dir,
-                                                                    const char *model_dir,
-                                                                    char *error_message,
-                                                                    int32_t error_message_size);
+                                                                     const char *model_dir,
+                                                                     const char *provider,
+                                                                     char *error_message,
+                                                                     int32_t error_message_size);
 
 char *AtomVoiceSherpaPunctuationAddPunct(AtomVoiceSherpaPunctuationContext *context,
                                          const char *text);
