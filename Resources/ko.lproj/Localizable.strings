@@ -94,6 +94,7 @@
 "error.badFormat" = "응답 형식이 올바르지 않습니다";
 "error.jsonParse" = "JSON 파싱 오류";
 "error.noInputDevice" = "마이크 또는 입력 장치를 찾을 수 없습니다";
+"error.audioTapFailed" = "오디오 탭 설치에 실패했습니다. 앱을 다시 시작하거나 다른 입력 장치를 사용해 주세요.";
 "error.sherpaRuntimeMissing" = "Sherpa 런타임을 찾을 수 없습니다. dylib 파일을 다음 위치에 넣어 주세요:\n%@";
 "error.sherpaModelMissing" = "Sherpa 모델을 찾을 수 없습니다. 모델 파일을 다음 위치에 넣어 주세요:\n%@";
 "error.sherpaLoadFailed" = "Sherpa 시작 실패: %@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "실시간 입력(실험)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple 음성 인식에서만 사용할 수 있습니다. 녹음 중 완료된 문장을 바로 입력하며, 실시간 입력된 텍스트는 LLM 최적화를 건너뜁니다.";
 "menu.silence.duration" = "정지 딜레이";
+"menu.silence.manualStop" = "수동 정지";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "소음 감도";
-"menu.steadyNoise.low" = "낮음 (에어컨/선풍기 환경)";
-"menu.steadyNoise.medium" = "중간 (기본)";
-"menu.steadyNoise.high" = "높음 (조용한 환경)";
-"tooltip.menu.steadyNoise" = "지속적 소음(에어컨, 선풍기 등)을 감지하여 녹음을 자동 중지";
-"tooltip.steadyNoise.low" = "매우 안정적인 소음이 아니면 중지되지 않습니다. 에어컨/선풍기 환경에 적합";
-"tooltip.steadyNoise.medium" = "기본 감도";
-"tooltip.steadyNoise.high" = "중지되기 쉽습니다. 비교적 조용한 환경에 적합";
+"menu.steadyNoise.sensitivity" = "녹음 환경";
+"menu.steadyNoise.low" = "시끄러움 (에어컨/선풍기)";
+"menu.steadyNoise.medium" = "기본";
+"menu.steadyNoise.high" = "조용함";
+"tooltip.menu.steadyNoise" = "탭하여 말하기 모드에서 환경 소음에 따라 자동 중지 여부를 판단합니다. 실제 녹음 환경에 맞는 옵션을 선택하세요.";
+"tooltip.steadyNoise.low" = "에어컨, 선풍기, 스피커, 거리 소음 등 지속적인 배경 소음이 있는 환경에 적합합니다.";
+"tooltip.steadyNoise.medium" = "대부분의 일상 환경(집, 사무실, 카페 등)에 적합합니다.";
+"tooltip.steadyNoise.high" = "매우 조용한 환경(심야, 침실, 조용한 서재 등)에 적합하며 정지 반응이 더 빠릅니다.";
 
 /* Custom Prompt */
 "settings.prompt.label" = "시스템 프롬프트:";
@@ -445,9 +447,16 @@
 "asrSettings.apple.status" = "현재 상태:";
 "asrSettings.apple.modelDownloaded" = "오프라인 모델 다운로드됨";
 "asrSettings.apple.modelNotDownloaded" = "오프라인 모델 미다운로드";
-"asrSettings.apple.enable" = "Apple 강제 오프라인 인식 활성화";
+"asrSettings.apple.enable" = "Apple 음성 인식 활성화";
 "asrSettings.apple.note" = "일부 언어는 오프라인 인식을 지원하지 않을 수 있습니다. 모델이 다운로드되지 않은 경우 아래 버튼을 클릭하여 시스템 설정으로 이동하세요.";
 "asrSettings.apple.openSettings" = "시스템 설정에서 모델 다운로드";
 "sherpa.chooser.provider" = "컴퓨트 백엔드：";
 "sherpa.chooser.provider.cpu" = "CPU";
 "sherpa.chooser.provider.coreml" = "CoreML（권장）";
+"asrSettings.sherpa.updateRuntime" = "런타임 업데이트";
+
+"asrSettings.sherpa.checkingVersion" = "버전 확인 중...";
+"asrSettings.sherpa.updatingRuntime" = "런타임 업데이트 중...";
+"sherpa.update.title" = "Sherpa 런타임 업데이트";
+"sherpa.update.message.same" = "설치된 버전 (%@)이 이미 최신입니다. 다시 설치하시겠습니까?";
+"sherpa.update.message.new" = "새 버전을 사용할 수 있습니다: %@ (현재: %@). 업데이트하시겠습니까?";

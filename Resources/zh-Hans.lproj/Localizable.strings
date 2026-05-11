@@ -94,6 +94,7 @@
 "error.badFormat" = "响应格式异常";
 "error.jsonParse" = "JSON 解析失败";
 "error.noInputDevice" = "未找到麦克风或输入设备";
+"error.audioTapFailed" = "音频 tap 安装失败，请重启应用或尝试其他输入设备";
 "error.sherpaRuntimeMissing" = "未找到 Sherpa 运行库，请将 dylib 文件放到：\n%@";
 "error.sherpaModelMissing" = "未找到 Sherpa 模型，请将模型文件放到：\n%@";
 "error.sherpaLoadFailed" = "Sherpa 启动失败：%@";
@@ -186,16 +187,17 @@
 "menu.inputMode.liveInsertion" = "实时上屏（实验）";
 "menu.inputMode.liveInsertion.tooltip" = "仅 Apple 语音识别可用。录音过程中会把已完成句子直接上屏，实时上屏部分不会再走 LLM 优化。";
 "menu.silence.duration" = "停录延迟";
+"menu.silence.manualStop" = "手动停止";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "噪声灵敏度";
-"menu.steadyNoise.low" = "低（空调/风扇环境）";
-"menu.steadyNoise.medium" = "中（默认）";
-"menu.steadyNoise.high" = "高（安静环境）";
-"tooltip.menu.steadyNoise" = "检测持续噪声（如空调、风扇）并自动停止录音";
-"tooltip.steadyNoise.low" = "需要非常稳定的噪声才触发停止，适合有空调/风扇的环境";
-"tooltip.steadyNoise.medium" = "默认灵敏度";
-"tooltip.steadyNoise.high" = "较容易触发停止，适合相对安静的环境";
+"menu.steadyNoise.sensitivity" = "录音环境";
+"menu.steadyNoise.low" = "嘈杂（空调/风扇）";
+"menu.steadyNoise.medium" = "默认";
+"menu.steadyNoise.high" = "安静";
+"tooltip.menu.steadyNoise" = "用于在「单击说话」模式下，根据环境噪声自动判断该不该结束录音。请按你录音时的真实环境选择档位。";
+"tooltip.steadyNoise.low" = "适合有空调、风扇、外放声音、街边等持续背景噪声的环境。";
+"tooltip.steadyNoise.medium" = "适合大多数日常环境（家中、办公室、咖啡馆等）。";
+"tooltip.steadyNoise.high" = "适合非常安静的环境（深夜、卧室、安静的书房等），停录响应更快。";
 
 /* Custom Prompt */
 "settings.prompt.label" = "系统提示词:";
@@ -449,6 +451,13 @@
 "asrSettings.apple.status" = "当前状态:";
 "asrSettings.apple.modelDownloaded" = "已下载离线模型";
 "asrSettings.apple.modelNotDownloaded" = "离线模型未下载";
-"asrSettings.apple.enable" = "启用 Apple 强制离线识别";
+"asrSettings.apple.enable" = "启用 Apple 语音识别";
 "asrSettings.apple.note" = "部分语言可能不支持离线识别。如果模型未下载，请点击下方按钮前往系统设置下载。";
 "asrSettings.apple.openSettings" = "打开系统设置下载模型";
+"asrSettings.sherpa.updateRuntime" = "更新运行时";
+
+"asrSettings.sherpa.checkingVersion" = "正在检查版本...";
+"asrSettings.sherpa.updatingRuntime" = "正在更新运行时...";
+"sherpa.update.title" = "更新 Sherpa 运行时";
+"sherpa.update.message.same" = "当前版本 (%@) 已经是最新，是否重新安装？";
+"sherpa.update.message.new" = "发现新版本: %@ (当前: %@)，是否更新？";

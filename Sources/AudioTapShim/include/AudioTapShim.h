@@ -3,7 +3,14 @@
 #import <AVFoundation/AVFoundation.h>
 
 BOOL AtomVoiceInstallAudioTap(AVAudioNode *node,
-                              AVAudioNodeBus bus,
-                              AVAudioFrameCount bufferSize,
-                              AVAudioFormat *format,
-                              AVAudioNodeTapBlock block);
+                               AVAudioNodeBus bus,
+                               AVAudioFrameCount bufferSize,
+                               AVAudioFormat *format,
+                               AVAudioNodeTapBlock block);
+
+BOOL AtomVoiceInstallAudioTapWithError(AVAudioNode *node,
+                                        AVAudioNodeBus bus,
+                                        AVAudioFrameCount bufferSize,
+                                        AVAudioFormat *format,
+                                        AVAudioNodeTapBlock block,
+                                        NSString **outError);

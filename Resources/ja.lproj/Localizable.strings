@@ -94,6 +94,7 @@
 "error.badFormat" = "レスポンス形式が異常です";
 "error.jsonParse" = "JSON 解析エラー";
 "error.noInputDevice" = "マイクまたは入力デバイスが見つかりません";
+"error.audioTapFailed" = "オーディオタップのインストールに失敗しました。アプリを再起動するか、別の入力デバイスをお試しください。";
 "error.sherpaRuntimeMissing" = "Sherpa ランタイムが見つかりません。dylib ファイルを次の場所に置いてください：\n%@";
 "error.sherpaModelMissing" = "Sherpa モデルが見つかりません。モデルファイルを次の場所に置いてください：\n%@";
 "error.sherpaLoadFailed" = "Sherpa の起動に失敗しました：%@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "ライブ入力（実験）";
 "menu.inputMode.liveInsertion.tooltip" = "Apple 音声認識のみ。録音中に完了した文を直接入力します。ライブ入力済みの文は LLM 最適化をスキップします。";
 "menu.silence.duration" = "停止ディレイ";
+"menu.silence.manualStop" = "手動停止";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "ノイズ感度";
-"menu.steadyNoise.low" = "低（エアコン/扇風機環境）";
-"menu.steadyNoise.medium" = "中（デフォルト）";
-"menu.steadyNoise.high" = "高（静かな環境）";
-"tooltip.menu.steadyNoise" = "持続的なノイズ（エアコン、扇風機など）を検出して録音を自動停止";
-"tooltip.steadyNoise.low" = "非常に安定したノイズでないと停止しません。エアコン/扇風機のある環境に適しています";
-"tooltip.steadyNoise.medium" = "デフォルト感度";
-"tooltip.steadyNoise.high" = "停止しやすく、比較的静かな環境に適しています";
+"menu.steadyNoise.sensitivity" = "録音環境";
+"menu.steadyNoise.low" = "騒がしい（エアコン/扇風機）";
+"menu.steadyNoise.medium" = "デフォルト";
+"menu.steadyNoise.high" = "静か";
+"tooltip.menu.steadyNoise" = "「タップして話す」モードで、環境ノイズに基づいて録音を自動停止するかを判断します。実際の録音環境に合わせて選択してください。";
+"tooltip.steadyNoise.low" = "エアコン、扇風機、スピーカー、街中など持続的な背景ノイズがある環境に適しています。";
+"tooltip.steadyNoise.medium" = "ほとんどの日常環境（自宅、オフィス、カフェなど）に適しています。";
+"tooltip.steadyNoise.high" = "非常に静かな環境（深夜、寝室、静かな書斎など）に適しており、停止反応がより速くなります。";
 
 /* Custom Prompt */
 "settings.prompt.label" = "システムプロンプト:";
@@ -445,9 +447,16 @@
 "asrSettings.apple.status" = "現在の状態:";
 "asrSettings.apple.modelDownloaded" = "オフラインモデル ダウンロード済み";
 "asrSettings.apple.modelNotDownloaded" = "オフラインモデル 未ダウンロード";
-"asrSettings.apple.enable" = "Apple 強制オフライン認識を有効にする";
+"asrSettings.apple.enable" = "Apple 音声認識を有効にする";
 "asrSettings.apple.note" = "一部の言語はオフライン認識をサポートしていない場合があります。モデルがダウンロードされていない場合は、下のボタンをクリックしてシステム設定に移動してください。";
 "asrSettings.apple.openSettings" = "システム設定を開いてモデルをダウンロード";
 "sherpa.chooser.provider" = "コンピュートバックエンド：";
 "sherpa.chooser.provider.cpu" = "CPU";
 "sherpa.chooser.provider.coreml" = "CoreML（推奨）";
+"asrSettings.sherpa.updateRuntime" = "ランタイムを更新";
+
+"asrSettings.sherpa.checkingVersion" = "バージョンを確認中...";
+"asrSettings.sherpa.updatingRuntime" = "ランタイムを更新中...";
+"sherpa.update.title" = "Sherpa ランタイムの更新";
+"sherpa.update.message.same" = "インストール済みのバージョン (%@) はすでに最新です。再インストールしますか？";
+"sherpa.update.message.new" = "新しいバージョンが利用可能です: %@ (現在: %@)。更新しますか？";

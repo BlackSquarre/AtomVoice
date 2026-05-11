@@ -13,6 +13,7 @@ final class CapsuleWindowController {
     private var activeAnimationInset: CGFloat = 0
     private var waveformVisible = true
     private var presentationID = 0
+    private(set) var isShowingError = false
 
     #if DEBUG_BUILD
     private var timerLabel: NSTextField?
@@ -86,6 +87,7 @@ final class CapsuleWindowController {
             // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板（Previous showError 3s delay hasn't ended when re-recording, clean up old panel first）
             cleanup()
         }
+        isShowingError = false
         presentationID += 1
 
         waveformVisible = showWaveformInitially
@@ -659,6 +661,7 @@ final class CapsuleWindowController {
     func showError(_ message: String, dismissAfter delay: TimeInterval = 3) {
         let currentPanel = panel
         let currentPresentationID = presentationID
+        isShowingError = true
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
@@ -824,6 +827,7 @@ final class CapsuleWindowController {
 
     func dismiss(completion: (() -> Void)? = nil) {
         guard let panel = panel else { completion?(); return }
+        isShowingError = false
         springTimer?.invalidate()
         springTimer = nil
         switch animationStyle {
@@ -934,6 +938,7 @@ final class CapsuleWindowController {
     private func cleanup() {
         panel?.orderOut(nil)
         stopShimmer()
+        isShowingError = false
         presentationID += 1
         springTimer?.invalidate()
         springTimer = nil

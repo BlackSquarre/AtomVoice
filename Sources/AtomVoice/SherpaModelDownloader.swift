@@ -4,11 +4,36 @@ import Foundation
 /// 三个组件：Runtime dylib、ASR 模型、标点模型（Three components: Runtime dylib, ASR model, punctuation model）
 /// 下载 → 解压 → 清理临时文件（Download → Extract → Clean up temp files）
 final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
-    private static let runtimeArchiveRootName = "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib"
-    private static let runtimeArchiveGitHubURL = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2")!
     private static let punctArchiveGitHubURL = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")!
     private static let punctArchiveName = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2"
-    private static let runtimeArchiveName = "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts-lib.tar.bz2"
+
+    static func runtimeArchiveRootName(for version: String) -> String {
+        return "sherpa-onnx-\(version)-osx-universal2-shared-no-tts-lib"
+    }
+
+    static func runtimeArchiveGitHubURL(for version: String) -> URL {
+        return URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/\(version)/\(runtimeArchiveRootName(for: version)).tar.bz2")!
+    }
+
+    /// 获取最新版本号，失败回退到已知稳定版（Fetch latest version tag, fallback to known stable version on failure）
+    static func fetchLatestRuntimeVersion(completion: @escaping (String) -> Void) {
+        let fallbackVersion = "v1.13.1"
+        let apiURL = URL(string: "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/latest")!
+        var request = URLRequest(url: apiURL)
+        request.timeoutInterval = 10
+        // Set User-Agent to avoid API rejection
+        request.setValue("AtomVoice-SherpaDownloader", forHTTPHeaderField: "User-Agent")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tagName = json["tag_name"] as? String else {
+                completion(fallbackVersion)
+                return
+            }
+            completion(tagName)
+        }.resume()
+    }
 
     private static let requiredRuntimeLibs = [
         "libsherpa-onnx-c-api.dylib",
@@ -79,6 +104,27 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private(set) var isDownloading = false
     /// 当前下载会话锁定的目标 preset，用于完成时正确校验（Target preset locked for this session, used for correct readiness check on completion）
     private var targetPreset: SherpaModelPreset?
+    /// 当前下载会话锁定的目标运行时版本（Target runtime version locked for this session）
+    private var targetVersion: String?
+
+    static var runtimeVersionFileURL: URL {
+        SherpaOnnxRecognizerController.supportDirectory
+            .appendingPathComponent("runtime", isDirectory: true)
+            .appendingPathComponent("version.txt")
+    }
+
+    /// 获取本地已安装的运行时版本（Get locally installed runtime version）
+    static func getLocalRuntimeVersion() -> String {
+        if let version = try? String(contentsOf: runtimeVersionFileURL, encoding: .utf8) {
+            return version.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        // 回退逻辑：如果文件不存在，且库文件已下载，视为旧版 v1.13.0
+        // (Fallback: if version.txt missing but libs exist, treat as old v1.13.0)
+        let libsExist = requiredRuntimeLibs.allSatisfy {
+            FileManager.default.fileExists(atPath: SherpaOnnxRecognizerController.runtimeLibDirectory.appendingPathComponent($0).path)
+        }
+        return libsExist ? "v1.13.0" : "n/a"
+    }
 
     /// 计算总体进度：已完成 item 各算 1.0，当前 item 取实时（Compute overall progress: completed items count as 1.0, current item uses live progress）
     private func computeOverallProgress(itemProgress: Double) -> Double {
@@ -118,15 +164,25 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
     @discardableResult
     static func repairExtractedFilesIfNeeded(for preset: SherpaModelPreset = SherpaModelPreset.current) -> Bool {
-        let sourceLibDirectory = SherpaOnnxRecognizerController.supportDirectory
-            .appendingPathComponent(runtimeArchiveRootName, isDirectory: true)
-            .appendingPathComponent("lib", isDirectory: true)
+        let supportDir = SherpaOnnxRecognizerController.supportDirectory
+        var sourceLibDirectory: URL?
+        
+        if let contents = try? FileManager.default.contentsOfDirectory(at: supportDir, includingPropertiesForKeys: nil) {
+            for dir in contents {
+                if dir.lastPathComponent.contains("-osx-universal2-shared-no-tts-lib") {
+                    sourceLibDirectory = dir.appendingPathComponent("lib", isDirectory: true)
+                    break
+                }
+            }
+        }
+        
+        guard let sourceLibDir = sourceLibDirectory else { return false }
         let targetLibDirectory = SherpaOnnxRecognizerController.runtimeLibDirectory
 
         do {
             try FileManager.default.createDirectory(at: targetLibDirectory, withIntermediateDirectories: true)
             for libName in requiredRuntimeLibs {
-                let source = sourceLibDirectory.appendingPathComponent(libName)
+                let source = sourceLibDir.appendingPathComponent(libName)
                 let target = targetLibDirectory.appendingPathComponent(libName)
                 guard SherpaModelPreset.isUsableFile(source), !SherpaModelPreset.isUsableFile(target) else { continue }
                 if FileManager.default.fileExists(atPath: target.path) {
@@ -164,25 +220,35 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     /// 开始下载所有缺失的模型（Start downloading all missing models）
-    func startDownload() {
-        startDownload(preset: SherpaModelPreset.current)
+    func startDownload(forceUpdateRuntime: Bool = false) {
+        startDownload(preset: SherpaModelPreset.current, forceUpdateRuntime: forceUpdateRuntime)
     }
 
     /// 开始下载指定预设模型（Start downloading specified preset model）
-    func startDownload(preset: SherpaModelPreset) {
+    func startDownload(preset: SherpaModelPreset, forceUpdateRuntime: Bool = false) {
         guard !isDownloading else { return }
         isDownloading = true
         targetPreset = preset
 
+        Self.fetchLatestRuntimeVersion { [weak self] version in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.setupAndStartDownload(preset: preset, version: version, forceUpdateRuntime: forceUpdateRuntime)
+            }
+        }
+    }
+
+    private func setupAndStartDownload(preset: SherpaModelPreset, version: String, forceUpdateRuntime: Bool) {
         // 创建目录（Create directories）
         try? SherpaOnnxRecognizerController.createSupportDirectories()
+        self.targetVersion = version
 
         // 构建下载列表：运行库 + 指定模型 + 标点模型
         let runtimeItem = DownloadItem(
             name: "runtime",
-            urlCandidates: SherpaModelPreset.candidateURLs(for: Self.runtimeArchiveGitHubURL),
+            urlCandidates: SherpaModelPreset.candidateURLs(for: Self.runtimeArchiveGitHubURL(for: version)),
             extractDir: SherpaOnnxRecognizerController.supportDirectory,
-            archiveName: Self.runtimeArchiveName
+            archiveName: "\(Self.runtimeArchiveRootName(for: version)).tar.bz2"
         )
 
         // 导入预设没有 archiveURL/archiveName；上层不应把它送进 startDownload
@@ -209,7 +275,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let runtimeMissing = Self.requiredRuntimeLibs.contains {
             !SherpaModelPreset.isUsableFile(SherpaOnnxRecognizerController.runtimeLibDirectory.appendingPathComponent($0))
         }
-        if runtimeMissing {
+        if runtimeMissing || forceUpdateRuntime {
             itemsToDownload.append(runtimeItem)
         }
         if !preset.isDownloaded, let asrItem {
@@ -370,6 +436,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                         } else {
                             DebugLog.error("[下载] 解压后无法识别模型文件 \(preset.modelDirectory.path)")
                         }
+                    } else if item.name == "runtime", let version = self.targetVersion {
+                        // 写入版本文件 (Write version.txt)
+                        try? version.write(to: Self.runtimeVersionFileURL, atomically: true, encoding: .utf8)
+                        DebugLog.info("[下载] 运行时版本已保存: \(version)")
                     }
                     self.advanceToNextItem()
                 } else {
@@ -406,6 +476,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         session?.invalidateAndCancel()
         session = nil
         targetPreset = nil
+        targetVersion = nil
         notifyComplete(false, message)
     }
 

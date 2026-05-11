@@ -56,7 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (Cleanup deprecated sherpaModelsReady flag + heal sherpaModelPresetID pointing to undownloaded preset)
         Self.migrateSherpaPresetIfNeeded()
 
-        requestPermissions()
+        // 全新安装：首次启动跳过权限请求，交给 OOBE 引导用户按需授权
+        // (Fresh install: skip permission prompts on first launch — OOBE will guide the user.)
+        if AppSettings.hasCompletedOOBE {
+            requestPermissions()
+        }
 
         llmRefiner = LLMRefiner()
         textInjector = TextInjector()
@@ -106,6 +110,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor = FnKeyMonitor(
             onFnDown: { [weak self] in
                 guard let self else { return }
+                // 错误胶囊显示中：按触发键关闭错误，不重试录音（Error capsule visible: dismiss it without retrying）
+                if self.session.isShowingError {
+                    self.session.dismissError()
+                    return
+                }
                 let silenceMode = AppSettings.silenceAutoStopEnabled
                 if silenceMode {
                     // 切换模式：按一次开始，再按一次手动停止（Toggle mode: press once to start, press again to stop manually）
@@ -146,7 +155,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.onImmediateStop = { [weak self] punctuation in
             self?.session.stopImmediate(appending: punctuation)
         }
-        fnKeyMonitor.start()
+        // 全新安装：等 OOBE 完成再启动 tap，避免立刻弹辅助功能权限对话框
+        // (Fresh install: defer event tap until OOBE finishes to avoid the early Accessibility prompt.)
+        if AppSettings.hasCompletedOOBE {
+            fnKeyMonitor.start()
+        }
 
         // 启动 5 秒后静默检查更新，不阻塞启动流程（Silently check for updates 5s after launch, non-blocking）
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
@@ -489,6 +502,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 // 同步触发键到 FnKeyMonitor（Sync trigger key to FnKeyMonitor）
                 self.fnKeyMonitor.triggerKeyCode = triggerKey
+                // OOBE 完成后再启动 tap 与权限请求；start 是幂等的
+                // (Start tap & request perms now; start() is idempotent so repeated OOBE runs are safe.)
+                self.fnKeyMonitor.start()
+                self.requestPermissions()
                 // 完成后按选中引擎触发后续配置（After finish, trigger follow-up by chosen engine）
                 self.menuBarController.rebuildMenuPublic()
                 switch engine {

@@ -94,6 +94,7 @@
 "error.badFormat" = "Format de réponse inattendu";
 "error.jsonParse" = "Erreur d'analyse JSON";
 "error.noInputDevice" = "Aucun microphone ni périphérique d'entrée détecté";
+"error.audioTapFailed" = "Échec de l'installation du tap audio. Veuillez redémarrer l'application ou essayer un autre périphérique d'entrée.";
 "error.sherpaRuntimeMissing" = "Runtime Sherpa introuvable. Place les fichiers dylib dans :\n%@";
 "error.sherpaModelMissing" = "Modèle Sherpa introuvable. Place les fichiers du modèle dans :\n%@";
 "error.sherpaLoadFailed" = "Échec du démarrage de Sherpa : %@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "Insertion en direct (expérimental)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple Speech uniquement. Les phrases terminées sont insérées pendant l'enregistrement ; le raffinement par LLM est ignoré pour le texte inséré en direct.";
 "menu.silence.duration" = "Délai d'arrêt";
+"menu.silence.manualStop" = "Arrêt manuel";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "Sensibilité au bruit";
-"menu.steadyNoise.low" = "Faible (environnement AC/ventilateur)";
-"menu.steadyNoise.medium" = "Moyenne (Par défaut)";
-"menu.steadyNoise.high" = "Élevée (environnement calme)";
-"tooltip.menu.steadyNoise" = "Détecter le bruit constant (comme AC, ventilateur) et arrêter l'enregistrement automatiquement";
-"tooltip.steadyNoise.low" = "Nécessite un bruit très stable pour arrêter, idéal pour les environnements avec AC/ventilateur";
-"tooltip.steadyNoise.medium" = "Sensibilité par défaut";
-"tooltip.steadyNoise.high" = "Arrête plus facilement, idéal pour les environnements relativement calmes";
+"menu.steadyNoise.sensitivity" = "Environnement d'enregistrement";
+"menu.steadyNoise.low" = "Bruyant (clim/ventilateur)";
+"menu.steadyNoise.medium" = "Par défaut";
+"menu.steadyNoise.high" = "Calme";
+"tooltip.menu.steadyNoise" = "En mode appuyer pour parler, décide d'arrêter automatiquement l'enregistrement selon le bruit ambiant. Choisissez l'option qui correspond à votre environnement réel.";
+"tooltip.steadyNoise.low" = "Pour les environnements avec un bruit de fond constant comme la clim, les ventilateurs, les haut-parleurs ou les bruits de rue.";
+"tooltip.steadyNoise.medium" = "Convient à la plupart des environnements quotidiens (maison, bureau, café, etc.).";
+"tooltip.steadyNoise.high" = "Pour les environnements très calmes (nuit, chambre, bureau silencieux) — l'arrêt automatique répond plus vite.";
 
 /* Custom Prompt */
 "settings.prompt.label" = "Prompt système :";
@@ -445,9 +447,16 @@
 "asrSettings.apple.status" = "État actuel :";
 "asrSettings.apple.modelDownloaded" = "Modèle hors ligne téléchargé";
 "asrSettings.apple.modelNotDownloaded" = "Modèle hors ligne non téléchargé";
-"asrSettings.apple.enable" = "Activer Apple hors ligne forcé";
+"asrSettings.apple.enable" = "Activer la reconnaissance vocale Apple";
 "asrSettings.apple.note" = "Certaines langues peuvent ne pas prendre en charge la reconnaissance hors ligne. Si le modèle n'est pas téléchargé, cliquez sur le bouton ci-dessous pour accéder aux Réglages Système.";
 "asrSettings.apple.openSettings" = "Ouvrir les Réglages Système pour télécharger le modèle";
 "sherpa.chooser.provider" = "Backend de calcul :";
 "sherpa.chooser.provider.cpu" = "CPU";
 "sherpa.chooser.provider.coreml" = "CoreML (Recommandé)";
+"asrSettings.sherpa.updateRuntime" = "Mettre à jour le runtime";
+
+"asrSettings.sherpa.checkingVersion" = "Vérification de la version...";
+"asrSettings.sherpa.updatingRuntime" = "Mise à jour du runtime...";
+"sherpa.update.title" = "Mettre à jour le runtime Sherpa";
+"sherpa.update.message.same" = "La version installée (%@) est déjà la plus récente. Réinstaller quand même ?";
+"sherpa.update.message.new" = "Une nouvelle version est disponible : %@ (Actuelle : %@). Mettre à jour maintenant ?";

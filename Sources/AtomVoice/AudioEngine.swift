@@ -133,6 +133,88 @@ final class AudioEngineController {
         return result
     }
 
+    /// 异步等待输入路径就绪（设备列表非空 + inputNode 输入格式有效）。
+    /// 在 AirPods 等热插拔造成的音频路由过渡期里，500ms 内通常可以稳定下来；不阻塞主线程。
+    /// (Async-wait until input path is ready: non-empty device list + valid inputNode format.
+    ///  Tolerates audio-route transitions from AirPods hot-plug without blocking the main thread.)
+    func waitForInputReady(timeout: TimeInterval, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            let started = Date()
+            let pollInterval: TimeInterval = 0.05
+            let deadline = started.addingTimeInterval(timeout)
+            var attempts = 0
+            while Date() < deadline {
+                attempts += 1
+                if self.isInputReady() {
+                    let elapsed = Date().timeIntervalSince(started) * 1000
+                    DebugLog.info("[AudioEngine] waitForInputReady ✓ ready after \(Int(elapsed))ms (attempts=\(attempts))")
+                    DispatchQueue.main.async { completion(true) }
+                    return
+                }
+                Thread.sleep(forTimeInterval: pollInterval)
+            }
+            attempts += 1
+            let ok = self.isInputReady()
+            let elapsed = Date().timeIntervalSince(started) * 1000
+            DebugLog.info("[AudioEngine] waitForInputReady \(ok ? "✓" : "✗") final after \(Int(elapsed))ms (attempts=\(attempts))")
+            DispatchQueue.main.async { completion(ok) }
+        }
+    }
+
+    /// 单次检查输入路径是否就绪（Single-shot check that input path is ready）
+    private func isInputReady() -> Bool {
+        let devices = AudioEngineController.availableInputDevices()
+        guard !devices.isEmpty else {
+            DebugLog.info("[AudioEngine] isInputReady: 设备列表为空")
+            return false
+        }
+        applySelectedInputDevice()
+        var format = engine.inputNode.outputFormat(forBus: 0)
+        if format.sampleRate <= 0 || format.channelCount <= 0 {
+            let names = devices.map { $0.name }.joined(separator: ",")
+            DebugLog.info("[AudioEngine] isInputReady: format 无效 sr=\(format.sampleRate) ch=\(format.channelCount), 设备数=\(devices.count) 名单=\(names)，尝试 forceRebind")
+            forceRebindDefaultInputDevice()
+            format = engine.inputNode.outputFormat(forBus: 0)
+            DebugLog.info("[AudioEngine] isInputReady: forceRebind 后 format sr=\(format.sampleRate) ch=\(format.channelCount)")
+        }
+        return format.sampleRate > 0 && format.channelCount > 0
+    }
+
+    /// 把系统默认输入设备显式写回 audio unit，强制 AVAudioEngine 解除对失效设备的绑定。
+    /// (Force-rebind AVAudioEngine input to the current default input device.)
+    private func forceRebindDefaultInputDevice() {
+        guard let audioUnit = engine.inputNode.audioUnit else { return }
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &addr, 0, nil, &size, &deviceID
+        ) == noErr, deviceID != 0 else { return }
+
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceID,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        if status != noErr {
+            DebugLog.error("[AudioEngine] 强制重绑默认输入设备失败 status=\(status) deviceID=\(deviceID)")
+        } else {
+            DebugLog.info("[AudioEngine] 强制重绑默认输入设备成功 deviceID=\(deviceID)")
+        }
+    }
+
     /// 将选中的输入设备应用到 AVAudioEngine（Apply selected input device to AVAudioEngine）
     private func applySelectedInputDevice() {
         let savedUID = AppSettings.audioInputDeviceUID
@@ -189,14 +271,16 @@ final class AudioEngineController {
 
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        DebugLog.info("[AudioEngine] start: format sr=\(format.sampleRate) ch=\(format.channelCount)")
         guard format.sampleRate > 0, format.channelCount > 0 else {
-            DebugLog.error("[AudioEngine] 输入格式无效: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
+            DebugLog.error("[AudioEngine] start: 输入格式无效")
             stop()
             return false
         }
         let sampleRate = Float(format.sampleRate)
 
-        let installed = AtomVoiceInstallAudioTap(inputNode, 0, 1024, format) { [weak self] buffer, time in
+        var tapError: NSString?
+        let installed = AtomVoiceInstallAudioTapWithError(inputNode, 0, 1024, format, { [weak self] buffer, time in
             guard let self else { return }
             self.recognitionRequest?.append(buffer)
             self.audioBufferHandler?(buffer, time)
@@ -227,8 +311,10 @@ final class AudioEngineController {
                     }
                 }
             }
-        }
+        }, &tapError)
         guard installed else {
+            let errorDetail = tapError as String? ?? "unknown"
+            DebugLog.error("[AudioEngine] start: 装 tap 失败: \(errorDetail)")
             stop()
             return false
         }
@@ -236,9 +322,10 @@ final class AudioEngineController {
 
         do {
             try engine.start()
+            DebugLog.info("[AudioEngine] start: engine.start 成功")
             return true
         } catch {
-            DebugLog.error("[AudioEngine] 启动失败: \(error)")
+            DebugLog.error("[AudioEngine] start: engine.start 抛异常 \(error)")
             stop()
             return false
         }
@@ -272,6 +359,8 @@ final class AudioEngineController {
 
         // 读取用户设置（Read user settings）
         guard AppSettings.silenceAutoStopEnabled else { return }
+        // 单击模式下若选择了"手动停止"，跳过静音自动停止（Tap mode w/ manual-stop: skip silence auto-stop）
+        guard !AppSettings.tapModeManualStop else { return }
 
         let threshold = AppSettings.silenceThreshold
         let requiredDuration = AppSettings.silenceDuration

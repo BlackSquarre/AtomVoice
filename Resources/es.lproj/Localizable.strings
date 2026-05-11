@@ -94,6 +94,7 @@
 "error.badFormat" = "Formato de respuesta inesperado";
 "error.jsonParse" = "Error al analizar JSON";
 "error.noInputDevice" = "No se ha encontrado micrófono ni dispositivo de entrada";
+"error.audioTapFailed" = "Error al instalar el tap de audio. Reinicie la aplicación o pruebe con otro dispositivo de entrada.";
 "error.sherpaRuntimeMissing" = "No se encontró el runtime de Sherpa. Coloca los archivos dylib en:\n%@";
 "error.sherpaModelMissing" = "No se encontró el modelo de Sherpa. Coloca los archivos del modelo en:\n%@";
 "error.sherpaLoadFailed" = "Sherpa no se pudo iniciar: %@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "Inserción en vivo (experimental)";
 "menu.inputMode.liveInsertion.tooltip" = "Solo Apple Speech. Las frases completas se insertan durante la grabación; el refinado con LLM se omite para el texto insertado en vivo.";
 "menu.silence.duration" = "Retraso de parada";
+"menu.silence.manualStop" = "Detener manualmente";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "Sensibilidad al ruido";
-"menu.steadyNoise.low" = "Baja (ambiente con AC/ventilador)";
-"menu.steadyNoise.medium" = "Media (Por defecto)";
-"menu.steadyNoise.high" = "Alta (ambiente tranquilo)";
-"tooltip.menu.steadyNoise" = "Detectar ruido constante (como AC, ventilador) y detener grabación automáticamente";
-"tooltip.steadyNoise.low" = "Necesita ruido muy estable para detener, bueno para ambientes con AC/ventilador";
-"tooltip.steadyNoise.medium" = "Sensibilidad por defecto";
-"tooltip.steadyNoise.high" = "Detiene más fácilmente, bueno para ambientes relativamente tranquilos";
+"menu.steadyNoise.sensitivity" = "Entorno de grabación";
+"menu.steadyNoise.low" = "Ruidoso (AC/ventilador)";
+"menu.steadyNoise.medium" = "Predeterminado";
+"menu.steadyNoise.high" = "Tranquilo";
+"tooltip.menu.steadyNoise" = "En modo pulsar para hablar, decide si detener la grabación automáticamente según el ruido del entorno. Elige la opción que coincida con tu entorno real.";
+"tooltip.steadyNoise.low" = "Para entornos con ruido de fondo constante como AC, ventiladores, altavoces o ruido de la calle.";
+"tooltip.steadyNoise.medium" = "Adecuado para la mayoría de entornos cotidianos (casa, oficina, cafetería, etc.).";
+"tooltip.steadyNoise.high" = "Para entornos muy tranquilos (noche, dormitorio, estudio silencioso) — la parada automática responde más rápido.";
 
 /* Custom Prompt */
 "settings.prompt.label" = "Prompt del sistema:";
@@ -445,9 +447,16 @@
 "asrSettings.apple.status" = "Estado actual:";
 "asrSettings.apple.modelDownloaded" = "Modelo sin conexión descargado";
 "asrSettings.apple.modelNotDownloaded" = "Modelo sin conexión no descargado";
-"asrSettings.apple.enable" = "Activar Apple sin conexión forzado";
+"asrSettings.apple.enable" = "Activar el reconocimiento de voz de Apple";
 "asrSettings.apple.note" = "Algunos idiomas pueden no soportar reconocimiento sin conexión. Si el modelo no está descargado, haga clic en el botón de abajo para ir a Configuración del Sistema.";
 "asrSettings.apple.openSettings" = "Abrir Configuración del Sistema para descargar modelo";
 "sherpa.chooser.provider" = "Backend de cálculo:";
 "sherpa.chooser.provider.cpu" = "CPU";
 "sherpa.chooser.provider.coreml" = "CoreML (Recomendado)";
+"asrSettings.sherpa.updateRuntime" = "Actualizar entorno de ejecución";
+
+"asrSettings.sherpa.checkingVersion" = "Comprobando versión...";
+"asrSettings.sherpa.updatingRuntime" = "Actualizando entorno de ejecución...";
+"sherpa.update.title" = "Actualizar entorno de ejecución de Sherpa";
+"sherpa.update.message.same" = "La versión instalada (%@) ya es la más reciente. ¿Reinstalar de todos modos?";
+"sherpa.update.message.new" = "Hay una nueva versión disponible: %@ (Actual: %@). ¿Actualizar ahora?";

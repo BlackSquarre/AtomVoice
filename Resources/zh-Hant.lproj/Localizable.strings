@@ -94,6 +94,7 @@
 "error.badFormat" = "回應格式異常";
 "error.jsonParse" = "JSON 解析失敗";
 "error.noInputDevice" = "找不到麥克風或輸入裝置";
+"error.audioTapFailed" = "音訊 tap 安裝失敗，請重新啟動應用程式或嘗試其他輸入裝置";
 "error.sherpaRuntimeMissing" = "找不到 Sherpa 執行庫，請將 dylib 檔案放到：\n%@";
 "error.sherpaModelMissing" = "找不到 Sherpa 模型，請將模型檔案放到：\n%@";
 "error.sherpaLoadFailed" = "Sherpa 啟動失敗：%@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "即時上屏（實驗）";
 "menu.inputMode.liveInsertion.tooltip" = "僅 Apple 語音辨識可用。錄音過程中會將已完成句子直接上屏，即時上屏部分不會再經過 LLM 優化。";
 "menu.silence.duration" = "停錄延遲";
+"menu.silence.manualStop" = "手動停止";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "噪聲靈敏度";
-"menu.steadyNoise.low" = "低（冷氣/風扇環境）";
-"menu.steadyNoise.medium" = "中（預設）";
-"menu.steadyNoise.high" = "高（安靜環境）";
-"tooltip.menu.steadyNoise" = "偵測持續噪聲（如冷氣、風扇）並自動停止錄音";
-"tooltip.steadyNoise.low" = "需要非常穩定的噪聲才觸發停止，適合有冷氣/風扇的環境";
-"tooltip.steadyNoise.medium" = "預設靈敏度";
-"tooltip.steadyNoise.high" = "較容易觸發停止，適合相對安靜的環境";
+"menu.steadyNoise.sensitivity" = "錄音環境";
+"menu.steadyNoise.low" = "嘈雜（冷氣/風扇）";
+"menu.steadyNoise.medium" = "預設";
+"menu.steadyNoise.high" = "安靜";
+"tooltip.menu.steadyNoise" = "用於在「單擊說話」模式下，根據環境噪聲自動判斷該不該結束錄音。請按你錄音時的真實環境選擇檔位。";
+"tooltip.steadyNoise.low" = "適合有冷氣、風扇、外放聲音、街邊等持續背景噪聲的環境。";
+"tooltip.steadyNoise.medium" = "適合大多數日常環境（家中、辦公室、咖啡館等）。";
+"tooltip.steadyNoise.high" = "適合非常安靜的環境（深夜、臥室、安靜的書房等），停錄響應更快。";
 
 /* Custom Prompt */
 "settings.prompt.label" = "系統提示詞:";
@@ -445,9 +447,16 @@
 "asrSettings.apple.status" = "目前狀態:";
 "asrSettings.apple.modelDownloaded" = "已下載離線模型";
 "asrSettings.apple.modelNotDownloaded" = "離線模型未下載";
-"asrSettings.apple.enable" = "啟用 Apple 強制離線識別";
+"asrSettings.apple.enable" = "啟用 Apple 語音識別";
 "asrSettings.apple.note" = "部分語言可能不支援離線識別。如果模型未下載，請點擊下方按鈕前往系統設定下載。";
 "asrSettings.apple.openSettings" = "開啟系統設定下載模型";
 "sherpa.chooser.provider" = "計算後端：";
 "sherpa.chooser.provider.cpu" = "CPU";
 "sherpa.chooser.provider.coreml" = "CoreML（推薦）";
+"asrSettings.sherpa.updateRuntime" = "更新執行階段";
+
+"asrSettings.sherpa.checkingVersion" = "正在檢查版本...";
+"asrSettings.sherpa.updatingRuntime" = "正在更新執行階段...";
+"sherpa.update.title" = "更新 Sherpa 執行階段";
+"sherpa.update.message.same" = "目前版本 (%@) 已經是最新，是否重新安裝？";
+"sherpa.update.message.new" = "發現新版本: %@ (目前: %@)，是否更新？";

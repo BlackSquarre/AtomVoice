@@ -77,7 +77,14 @@ final class VolumeController {
         }
     }
 
-    private func startFade(from startVol: Float, to targetVol: Float, duration: TimeInterval) {
+    /// 启动一段渐变；只有自然跑完到 progress=1.0 才会触发 onComplete，
+    /// 中途被 stopFade 打断时 onComplete 不会触发。
+    /// (Run a fade; onComplete fires only if the fade reaches progress=1.0 naturally.
+    /// If interrupted by stopFade, onComplete is dropped.)
+    private func startFade(from startVol: Float,
+                           to targetVol: Float,
+                           duration: TimeInterval,
+                           onComplete: (() -> Void)? = nil) {
         stopFade()
 
         let isDecreasing = startVol > targetVol
@@ -113,6 +120,7 @@ final class VolumeController {
                     timer.invalidate()
                     self?.fadeTimer = nil
                     self?.setSystemVolume(targetVol)
+                    onComplete?()
                 }
             }
         }
@@ -124,19 +132,37 @@ final class VolumeController {
         }
     }
 
+    /// 保存原始音量并平滑降低。
+    /// 关键修复：快速按键时若上一轮恢复 fade 还没跑完，`savedVolume` 仍持有"真正的"原始音量；
+    /// 此时不要 re-capture 当前（中间值）音量，否则原始基准会被几何衰减。
+    /// (Crucial fix: during rapid presses, if the previous restore fade hasn't completed,
+    /// `savedVolume` still holds the true baseline. Do NOT re-capture the current
+    /// (mid-fade) reading, otherwise the baseline drifts down geometrically.)
     func saveAndDecreaseVolume() {
-        guard savedVolume == nil else { return } // 已经在降低/已降低状态，跳过重复调用
-        guard let current = getSystemVolume() else { return }
-        savedVolume = current
-        let target = current * decreaseRatio
-        startFade(from: current, to: target, duration: fadeDownDuration)
+        let baseline: Float
+        if let existing = savedVolume {
+            baseline = existing
+        } else {
+            guard let current = getSystemVolume() else { return }
+            baseline = current
+            savedVolume = current
+        }
+        let target = baseline * decreaseRatio
+        let from = getSystemVolume() ?? baseline
+        startFade(from: from, to: target, duration: fadeDownDuration)
     }
 
+    /// 恢复到原始音量。
+    /// 关键修复：在 fade *完成* 后才清空 `savedVolume`；如果在恢复中又被
+    /// `saveAndDecreaseVolume` 打断，本次 onComplete 不会触发，原始基准得以保留。
+    /// (Clear `savedVolume` only when the restore fade fully completes; if interrupted
+    /// by another decrease, the baseline is preserved for the next restore.)
     func restoreVolume() {
         guard let saved = savedVolume else { return }
-        savedVolume = nil
         let current = getSystemVolume() ?? saved
-        startFade(from: current, to: saved, duration: fadeUpDuration)
+        startFade(from: current, to: saved, duration: fadeUpDuration) { [weak self] in
+            self?.savedVolume = nil
+        }
     }
 
     deinit {

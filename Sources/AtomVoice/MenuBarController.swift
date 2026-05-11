@@ -183,13 +183,24 @@ final class MenuBarController {
         if isTapMode {
             inputModeMenu.addItem(.separator())
             inputModeMenu.addItem(makeSectionLabel(loc("menu.silence.duration")))
+            let manualStop = AppSettings.tapModeManualStop
             let currentDuration = AppSettings.silenceDuration
+            // "手动停止"：选中后不自动停录，必须再点一次触发键（Manual stop: disables auto-stop, requires a second trigger tap）
+            inputModeMenu.addItem(
+                makeMenuItem(
+                    title: loc("menu.silence.manualStop"),
+                    action: #selector(selectManualStop(_:)),
+                    state: manualStop ? .on : .off,
+                    indentationLevel: 1
+                )
+            )
             for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
+                let isSelected = !manualStop && abs(currentDuration - value) < 0.01
                 inputModeMenu.addItem(
                     makeMenuItem(
                         title: title,
                         action: #selector(selectSilenceDuration(_:)),
-                        state: abs(currentDuration - value) < 0.01 ? .on : .off,
+                        state: isSelected ? .on : .off,
                         representedObject: value,
                         indentationLevel: 1
                     )
@@ -412,6 +423,29 @@ final class MenuBarController {
         testOnDeviceAlertItem.image = icon("ladybug")
         testOnDeviceAlertItem.target = self
         m.addItem(testOnDeviceAlertItem)
+
+        // Debug: 粘贴延迟可调（Debug: tunable paste delay）
+        let pasteDelayItem = NSMenuItem(
+            title: String(format: "Paste Delay: %.0f ms", AppSettings.pasteDelay * 1000),
+            action: nil,
+            keyEquivalent: ""
+        )
+        pasteDelayItem.image = icon("timer")
+        let pasteDelaySubmenu = NSMenu()
+        let current = AppSettings.pasteDelay
+        for option in AppSettings.pasteDelayOptions {
+            let sub = NSMenuItem(
+                title: String(format: "%.0f ms", option * 1000),
+                action: #selector(debugSelectPasteDelay(_:)),
+                keyEquivalent: ""
+            )
+            sub.target = self
+            sub.representedObject = option
+            sub.state = abs(option - current) < 0.001 ? .on : .off
+            pasteDelaySubmenu.addItem(sub)
+        }
+        pasteDelayItem.submenu = pasteDelaySubmenu
+        m.addItem(pasteDelayItem)
         #endif
 
         return m
@@ -621,6 +655,12 @@ final class MenuBarController {
     #if DEBUG_BUILD
     @objc private func debugTestOnDeviceAlert(_ sender: NSMenuItem) {
         showOnDeviceModelDownloadAlert()
+    }
+
+    @objc private func debugSelectPasteDelay(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? Double else { return }
+        AppSettings.pasteDelay = value
+        DebugLog.info("[Debug] Paste delay 调整为 \(value)s")
     }
     #endif
 
@@ -854,6 +894,12 @@ final class MenuBarController {
     @objc private func selectSilenceDuration(_ sender: NSMenuItem) {
         guard let duration = sender.representedObject as? Double else { return }
         AppSettings.silenceDuration = duration
+        AppSettings.tapModeManualStop = false
+        rebuildMenu()
+    }
+
+    @objc private func selectManualStop(_ sender: NSMenuItem) {
+        AppSettings.tapModeManualStop = true
         rebuildMenu()
     }
 

@@ -1,3 +1,4 @@
+import Accelerate
 import AVFoundation
 import Foundation
 
@@ -90,13 +91,24 @@ final class CloudAudioConverter {
 
         let frameCount = Int(outputBuffer.frameLength)
         guard frameCount > 0 else { return nil }
-        let samples = UnsafeBufferPointer(start: channelData[0], count: frameCount)
-        var data = Data(capacity: frameCount * MemoryLayout<Int16>.size)
-        for sample in samples {
-            let clamped = max(-1.0, min(1.0, sample))
-            let intSample = Int16(clamped * Float(Int16.max))
-            data.append(UInt8(truncatingIfNeeded: intSample))
-            data.append(UInt8(truncatingIfNeeded: intSample >> 8))
+
+        // 用 vDSP 做 Float32 → Int16 的向量化转换：
+        //   1. clip 到 [-1, 1] 防止过载样本溢出 Int16 范围
+        //   2. 乘以 Int16.max 缩放到整型范围
+        //   3. vDSP_vfix16 一次性写入小端 Int16（macOS 是 little-endian，与火山协议要求一致）
+        // (Vectorize Float32 → Int16 PCM via Accelerate; replaces a per-sample loop.)
+        let floatPtr = channelData[0]
+        var lower: Float = -1.0
+        var upper: Float = 1.0
+        vDSP_vclip(floatPtr, 1, &lower, &upper, floatPtr, 1, vDSP_Length(frameCount))
+
+        var scale: Float = Float(Int16.max)
+        vDSP_vsmul(floatPtr, 1, &scale, floatPtr, 1, vDSP_Length(frameCount))
+
+        var data = Data(count: frameCount * MemoryLayout<Int16>.size)
+        data.withUnsafeMutableBytes { raw in
+            guard let dst = raw.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            vDSP_vfix16(floatPtr, 1, dst, 1, vDSP_Length(frameCount))
         }
         return data
     }

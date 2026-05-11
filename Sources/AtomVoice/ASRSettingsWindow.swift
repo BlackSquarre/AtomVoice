@@ -303,6 +303,9 @@ final class ASRSettingsWindowController: NSObject {
         importButton.translatesAutoresizingMaskIntoConstraints = false
         importButton.toolTip = loc("asrSettings.sherpa.import.tooltip")
 
+        let updateRuntimeButton = SettingsUI.makeButton(loc("asrSettings.sherpa.updateRuntime"), target: self, action: #selector(updateSherpaRuntime(_:)))
+        updateRuntimeButton.translatesAutoresizingMaskIntoConstraints = false
+
         let githubLink = NSButton(title: loc("asrSettings.sherpa.modelListLink"),
                                   target: self, action: #selector(openSherpaModelList(_:)))
         githubLink.bezelStyle = .accessoryBarAction
@@ -316,7 +319,7 @@ final class ASRSettingsWindowController: NSObject {
         importRowSpacer.translatesAutoresizingMaskIntoConstraints = false
         importRowSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let importRow = NSStackView(views: [importButton, importRowSpacer, githubLink])
+        let importRow = NSStackView(views: [importButton, updateRuntimeButton, importRowSpacer, githubLink])
         importRow.orientation = .horizontal
         importRow.spacing = 8
         importRow.alignment = .centerY
@@ -708,6 +711,71 @@ final class ASRSettingsWindowController: NSObject {
             )
             downloader.startDownload(preset: preset)
         }
+    }
+
+    @objc private func updateSherpaRuntime(_ sender: NSButton) {
+        guard !SherpaModelDownloader.shared.isDownloading else { return }
+        
+        sender.isEnabled = false
+        sherpaDownloadButton?.isEnabled = false
+        sherpaDeleteButton?.isEnabled = false
+        
+        // 1. 检查版本 (Check version)
+        sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.checkingVersion")
+        sherpaStatusLabel?.textColor = .systemBlue
+        
+        SherpaModelDownloader.fetchLatestRuntimeVersion { [weak self] latestVersion in
+            guard let self = self else { return }
+            let currentVersion = SherpaModelDownloader.getLocalRuntimeVersion()
+            
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = loc("sherpa.update.title")
+                if latestVersion == currentVersion {
+                    alert.informativeText = loc("sherpa.update.message.same", currentVersion)
+                } else {
+                    alert.informativeText = loc("sherpa.update.message.new", latestVersion, currentVersion)
+                }
+                alert.icon = NSImage(systemSymbolName: "arrow.up.circle", accessibilityDescription: nil)
+                alert.addButton(withTitle: loc("common.ok"))
+                alert.addButton(withTitle: loc("common.cancel"))
+                
+                if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+                    self.performRuntimeUpdate(sender: sender)
+                } else {
+                    sender.isEnabled = true
+                    self.updateSherpaStatus()
+                    self.rebuildSherpaModelList()
+                }
+            }
+        }
+    }
+
+    private func performRuntimeUpdate(sender: NSButton) {
+        sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.updatingRuntime")
+        sherpaStatusLabel?.textColor = .systemBlue
+        
+        let downloader = SherpaModelDownloader.shared
+        downloader.addObserver(
+            progress: { [weak self] _, _, _, message in
+                self?.sherpaStatusLabel?.stringValue = message
+            },
+            complete: { [weak self] success, error in
+                sender.isEnabled = true
+                self?.updateSherpaStatus()
+                self?.rebuildSherpaModelList()
+                
+                if success {
+                    self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.complete")
+                    self?.sherpaStatusLabel?.textColor = .systemGreen
+                } else {
+                    self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.failed", error ?? "Unknown error")
+                    self?.sherpaStatusLabel?.textColor = .systemRed
+                    self?.sherpaDownloadButton?.isEnabled = true
+                }
+            }
+        )
+        downloader.startDownload(forceUpdateRuntime: true)
     }
 
     @objc private func openSherpaFolder(_ sender: NSButton) {

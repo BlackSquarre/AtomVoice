@@ -25,7 +25,7 @@ final class OOBEWindowController: NSObject {
 
     // 选中状态（Selection state）
     private var selectedEngine: String = ASREngineRegistry.appleCode
-    private var selectedTriggerKeyCode: UInt16 = 63
+    private var selectedTriggerKeyCode: UInt16 = 61
     private var selectedSilenceAutoStop: Bool = false
     private var engineCardViews: [EngineCardView] = []
     private var keyboardDiagramView: KeyboardDiagramView?
@@ -48,7 +48,7 @@ final class OOBEWindowController: NSObject {
         }
         selectedEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
         let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
-        selectedTriggerKeyCode = (savedKey == 0) ? 63 : savedKey
+        selectedTriggerKeyCode = (savedKey == 0) ? 61 : savedKey
         selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
         buildWindow()
     }
@@ -1024,7 +1024,7 @@ final class EngineCardView: NSView {
 final class KeyboardDiagramView: NSView {
     var onSelect: ((UInt16) -> Void)?
     private var keyCaps: [KeyCap] = []
-    private var selectedCode: UInt16 = 63
+    private var selectedCode: UInt16 = 61
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)

@@ -48,15 +48,20 @@ enum AppSettings {
         static let doubaoASREnableNonstream = "doubaoASREnableNonstream"
         static let doubaoASRPrivacyAccepted = "doubaoASRPrivacyAccepted"
         static let doubaoASRLowLatencyDefaultApplied = "doubaoASRLowLatencyDefaultApplied"
+        static let pasteDelay = "pasteDelay"
+        static let tapModeManualStop = "tapModeManualStop"
     }
+
+    static let defaultPasteDelay: Double = 0.25
+    static let pasteDelayOptions: [Double] = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40]
 
     static let defaultLanguageCode = "zh-CN"
     static let defaultLLMBaseURL = "https://api.openai.com/v1"
     static let defaultLLMModel = "gpt-4o-mini"
     static let defaultAnimationStyle = "dynamicIsland"
     static let defaultAnimationSpeed = "medium"
-    static let defaultSherpaProvider = "cpu"
-    static let defaultTriggerKeyCode: UInt16 = 63
+    static let defaultSherpaProvider = "coreml"
+    static let defaultTriggerKeyCode: UInt16 = 61
     static let sherpaAutoUnloadMinuteOptions = [5, 10, 15, 30, 60]
 
     static let appLanguageOptions: [AppLanguageOption] = [
@@ -70,9 +75,27 @@ enum AppSettings {
         AppLanguageOption(code: "de-DE", displayName: "Deutsch"),
     ]
 
+    /// 根据系统语言推断初始识别语言，没匹配上回退到英文。
+    /// (Infer initial recognition language from system locale; fall back to English if unsupported.)
+    static var systemDefaultLanguage: String {
+        let lang = Locale.current.language
+        let code = lang.languageCode?.identifier ?? "en"
+        let region = lang.region?.identifier ?? ""
+        switch code {
+        case "zh":
+            return ["TW", "HK", "MO"].contains(region) ? "zh-TW" : "zh-CN"
+        case "ja": return "ja-JP"
+        case "ko": return "ko-KR"
+        case "es": return "es-ES"
+        case "fr": return "fr-FR"
+        case "de": return "de-DE"
+        default:   return "en-US"
+        }
+    }
+
     static func registerDefaults() {
         defaults.register(defaults: [
-            Keys.selectedLanguage: defaultLanguageCode,
+            Keys.selectedLanguage: systemDefaultLanguage,
             Keys.recognitionEngine: ASREngineRegistry.appleCode,
             Keys.appleLiveInsertionEnabled: false,
             Keys.llmEnabled: false,
@@ -88,7 +111,7 @@ enum AppSettings {
             Keys.silenceThreshold: -40.0,
             Keys.steadyNoiseSensitivity: 1,
             Keys.triggerKeyCode: Int(defaultTriggerKeyCode),
-            Keys.lowerVolumeOnRecording: false,
+            Keys.lowerVolumeOnRecording: true,
             Keys.includeBetaUpdates: false,
             Keys.sherpaAutoUnloadEnabled: true,
             Keys.sherpaAutoUnloadIdleMinutes: 15,
@@ -99,6 +122,7 @@ enum AppSettings {
             Keys.doubaoASREnableDDC: false,
             Keys.doubaoASREnableNonstream: false,
             Keys.doubaoASRPrivacyAccepted: false,
+            Keys.pasteDelay: defaultPasteDelay,
             OOBEWindowController.completionDefaultsKey: false,
         ])
     }
@@ -113,7 +137,7 @@ enum AppSettings {
     }
 
     static var selectedLanguage: String {
-        get { defaults.string(forKey: Keys.selectedLanguage) ?? defaultLanguageCode }
+        get { defaults.string(forKey: Keys.selectedLanguage) ?? systemDefaultLanguage }
         set { defaults.set(newValue, forKey: Keys.selectedLanguage) }
     }
 
@@ -269,6 +293,23 @@ enum AppSettings {
     static var doubaoASRLowLatencyDefaultApplied: Bool {
         get { defaults.bool(forKey: Keys.doubaoASRLowLatencyDefaultApplied) }
         set { defaults.set(newValue, forKey: Keys.doubaoASRLowLatencyDefaultApplied) }
+    }
+
+    /// 粘贴后等待目标 App 真正读取剪贴板的延迟，调过 0.15s→0.25s 修复 Electron。
+    /// (Post-paste delay so the target app finishes reading the clipboard. Bumped from 0.15s to 0.25s for Electron.)
+    static var pasteDelay: Double {
+        get {
+            let v = defaults.double(forKey: Keys.pasteDelay)
+            return v > 0 ? v : defaultPasteDelay
+        }
+        set { defaults.set(newValue, forKey: Keys.pasteDelay) }
+    }
+
+    /// 单击说话模式下：true 表示禁用静音自动停止，必须再点一次触发键才结束。
+    /// (Tap-to-talk mode: when true, silence auto-stop is disabled — only a 2nd trigger-key tap stops recording.)
+    static var tapModeManualStop: Bool {
+        get { defaults.bool(forKey: Keys.tapModeManualStop) }
+        set { defaults.set(newValue, forKey: Keys.tapModeManualStop) }
     }
 
     static var hasCompletedOOBE: Bool {

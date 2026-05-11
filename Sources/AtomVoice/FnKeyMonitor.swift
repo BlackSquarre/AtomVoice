@@ -35,7 +35,7 @@ final class FnKeyMonitor {
     var isRecording = false                  // 由 AppDelegate 设置（Set by AppDelegate）
 
     // 当前触发键，可运行时修改，修改后自动重置按下状态（Current trigger key, can be changed at runtime, auto-resets pressed state on change）
-    var triggerKeyCode: UInt16 = 63 {
+    var triggerKeyCode: UInt16 = 61 {
         didSet { triggerIsDown = false }
     }
 
@@ -54,6 +54,9 @@ final class FnKeyMonitor {
     }
 
     func start() {
+        // 已启动则跳过，避免重复创建 tap（Idempotent: skip if already running, avoid duplicate taps）
+        guard eventTap == nil else { return }
+
         // 监听按键 + 修饰键 + 系统定义事件（NX_SYSDEFINED = 14，Globe 键行为通过此事件触发）
         // (Listen for key events + modifier flags + system-defined events; NX_SYSDEFINED = 14 is how the Globe key behaves)
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)

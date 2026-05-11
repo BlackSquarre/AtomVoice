@@ -29,6 +29,9 @@ final class SherpaOnnxRecognizerController {
     }
 
     private let queue = DispatchQueue(label: "com.atomvoice.sherpaOnnx")
+    /// 串行化模型加载，防止快速点按 Fn 期间并发触发多次 AtomVoiceSherpaCreate 导致重复加载模型
+    /// (Serializes model loading to prevent rapid Fn taps from triggering concurrent AtomVoiceSherpaCreate calls)
+    private let loadingLock = NSLock()
     private var context: OpaquePointer?
     private var punctuationContext: OpaquePointer?
     private var onResult: ((String, Bool) -> Void)?
@@ -96,6 +99,18 @@ final class SherpaOnnxRecognizerController {
 
     func start(onResult: @escaping (String, Bool) -> Void) -> String? {
         // 已有识别器上下文时直接复用，不重新加载模型（Reuse existing recognizer context, don't reload model）
+        if context != nil {
+            self.onResult = onResult
+            lastText = ""
+            finalText = ""
+            return nil
+        }
+
+        // 串行化加载：若另一线程正在 Create，本调用阻塞等待；拿到锁后双重检查，命中即复用
+        // (Serialize loading: block while another thread is creating; double-check after acquiring the lock)
+        loadingLock.lock()
+        defer { loadingLock.unlock() }
+
         if context != nil {
             self.onResult = onResult
             lastText = ""

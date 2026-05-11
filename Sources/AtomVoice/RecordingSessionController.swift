@@ -95,19 +95,39 @@ final class RecordingSessionController {
     func stopImmediate(appending punctuation: String?) { stopRecordingImmediate(appending: punctuation) }
     func cancel() { cancelRecording() }
 
+    /// 当前是否正在显示错误胶囊（Whether the error capsule is currently showing）
+    var isShowingError: Bool { capsuleWindow.isShowingError }
+
+    /// 关闭错误胶囊（Dismiss the error capsule）
+    func dismissError() { capsuleWindow.dismiss() }
+
     // MARK: - 录音启动（Recording start）
 
     private func startRecording() {
         guard !isRecording else { return }
 
-        guard !AudioEngineController.availableInputDevices().isEmpty else {
-            DispatchQueue.main.async { [self] in
-                capsuleWindow.show()
-                capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
+        // 输入设备/格式未就绪时（如 AirPods 热插拔造成的音频路由过渡），
+        // 后台异步等待最多 500ms 再继续；主线程不阻塞。
+        // (When input path isn't ready - e.g. AirPods hot-plug routing transition -
+        //  wait asynchronously up to 500ms before continuing; main thread is never blocked.)
+        // 始终走异步 preflight：仅检查设备列表非空不够，
+        // AirPods 切换后 inputNode.outputFormat 可能仍是 0/0，需要强制刷新设备绑定。
+        // (Always run async preflight: a non-empty device list isn't enough -
+        //  inputNode.outputFormat may still be 0/0 after an AirPods route swap.)
+        audioEngine.waitForInputReady(timeout: 0.5) { [weak self] ready in
+            guard let self else { return }
+            guard !self.isRecording else { return }
+            guard ready else {
+                DebugLog.error("[Session] startRecording: preflight 失败，显示错误胶囊")
+                self.capsuleWindow.show()
+                self.capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
+                return
             }
-            return
+            self.continueStartRecording()
         }
+    }
 
+    private func continueStartRecording() {
         // Sherpa 引擎：直接按当前 preset 实读磁盘判断；isReady 内部含一次轻量自愈
         // (Sherpa engine: read disk for current preset; isReady includes one lightweight self-heal pass)
         let engine = AppSettings.normalizedRecognitionEngine
@@ -429,10 +449,11 @@ final class RecordingSessionController {
     // MARK: - 启动失败处理（Start-failure handlers）
 
     private func handleAudioStartFailure() {
+        DebugLog.error("[Session] handleAudioStartFailure: audioEngine.start 返回 false")
         markRecordingStopped()
         doubaoFallback.reset()
         resetLiveInsertionState()
-        capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
+        capsuleWindow.showError(loc("error.audioTapFailed"), dismissAfter: 5)
     }
 
     private func handleRecognitionStartFailure(_ message: String) {

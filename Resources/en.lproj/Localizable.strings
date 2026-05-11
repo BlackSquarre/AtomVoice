@@ -94,6 +94,7 @@
 "error.badFormat" = "Unexpected response format";
 "error.jsonParse" = "JSON parse error";
 "error.noInputDevice" = "No microphone or input device found";
+"error.audioTapFailed" = "Audio tap installation failed. Please restart the app or try a different input device.";
 "error.sherpaRuntimeMissing" = "Sherpa runtime not found. Put the dylib files in:\n%@";
 "error.sherpaModelMissing" = "Sherpa model not found. Put the model files in:\n%@";
 "error.sherpaLoadFailed" = "Sherpa failed to start: %@";
@@ -185,16 +186,17 @@
 "menu.inputMode.liveInsertion" = "Live Insert (Experimental)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple Speech only. Completed sentences are inserted while recording; LLM refinement is skipped for live-inserted text.";
 "menu.silence.duration" = "Stop Delay";
+"menu.silence.manualStop" = "Manual Stop";
 
 /* Steady Noise */
-"menu.steadyNoise.sensitivity" = "Noise Sensitivity";
-"menu.steadyNoise.low" = "Low (AC/Fan environment)";
-"menu.steadyNoise.medium" = "Medium (Default)";
-"menu.steadyNoise.high" = "High (Quiet environment)";
-"tooltip.menu.steadyNoise" = "Detect steady noise (like AC, fan) and auto-stop recording";
-"tooltip.steadyNoise.low" = "Needs very steady noise to trigger stop, good for environments with AC/fan";
-"tooltip.steadyNoise.medium" = "Default sensitivity";
-"tooltip.steadyNoise.high" = "Triggers stop more easily, good for relatively quiet environments";
+"menu.steadyNoise.sensitivity" = "Recording Environment";
+"menu.steadyNoise.low" = "Noisy (AC/Fan)";
+"menu.steadyNoise.medium" = "Default";
+"menu.steadyNoise.high" = "Quiet";
+"tooltip.menu.steadyNoise" = "In Tap-to-Talk mode, decides whether to auto-stop recording based on background noise. Pick the option that matches where you're actually recording.";
+"tooltip.steadyNoise.low" = "For environments with constant background noise like AC, fans, speakers, or street sounds.";
+"tooltip.steadyNoise.medium" = "Works for most everyday environments (home, office, café, etc.).";
+"tooltip.steadyNoise.high" = "For very quiet environments (late night, bedroom, quiet study) — auto-stop responds faster.";
 
 /* Custom Prompt */
 "settings.prompt.label" = "System Prompt:";
@@ -448,6 +450,13 @@
 "asrSettings.apple.status" = "Current Status:";
 "asrSettings.apple.modelDownloaded" = "Offline model downloaded";
 "asrSettings.apple.modelNotDownloaded" = "Offline model not downloaded";
-"asrSettings.apple.enable" = "Enable Apple Force Offline";
+"asrSettings.apple.enable" = "Enable Apple Speech Recognition";
 "asrSettings.apple.note" = "Some languages may not support offline recognition. Click the button below to go to System Settings to download the model.";
 "asrSettings.apple.openSettings" = "Open System Settings to Download Model";
+"asrSettings.sherpa.updateRuntime" = "Update Runtime";
+
+"asrSettings.sherpa.checkingVersion" = "Checking version...";
+"asrSettings.sherpa.updatingRuntime" = "Updating runtime...";
+"sherpa.update.title" = "Update Sherpa Runtime";
+"sherpa.update.message.same" = "Installed version (%@) is already the latest. Reinstall anyway?";
+"sherpa.update.message.new" = "A new version is available: %@ (Current: %@). Update now?";

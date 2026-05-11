@@ -76,8 +76,9 @@ final class TextInjector {
                     self.simulatePaste()
 
                     // 粘贴后恢复输入源（Restore input source after paste）
-                    // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴（Paste delay: give target apps including Electron enough time to complete paste）
-                    let pasteDelay: Double = 0.25
+                    // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴；debug build 可在菜单调节
+                    // (Paste delay: enough time for target apps incl. Electron; tunable via debug menu)
+                    let pasteDelay: Double = AppSettings.pasteDelay
                     DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) {
                         if needsSwitch {
                             TISSelectInputSource(originalSource)

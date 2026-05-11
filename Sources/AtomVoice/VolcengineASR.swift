@@ -161,6 +161,15 @@ final class VolcengineASRProvider: CloudASRProvider {
     let engineCode = VolcengineASRSettings.engineCode
     let displayName = "豆包云端 ASR"
 
+    /// 长生命周期的共享 URLSession：复用同一个 session 让 URLSession 内部可以做 TLS session
+    /// resumption 与连接池缓存，第二次以后的 WebSocket 握手能省掉一次完整 TLS handshake。
+    /// (Long-lived shared URLSession enables TLS session resumption + connection caching across
+    /// successive WebSocket connections.)
+    private let sharedSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        return URLSession(configuration: config)
+    }()
+
     func validateCredentials() -> String? {
         VolcengineASRSettings.load().validationError
     }
@@ -183,12 +192,9 @@ final class VolcengineASRProvider: CloudASRProvider {
             return nil
         }
 
-        let session = URLSession(configuration: .default)
-        let task = session.webSocketTask(with: request)
-
         DebugLog.info("[VolcengineASR] create: request=\(requestID) connect=\(connectID)")
 
-        return VolcengineASRConnection(session: session, task: task, initialFrame: initialFrame)
+        return VolcengineASRConnection(session: sharedSession, request: request, initialFrame: initialFrame)
     }
 
     func showSettings() {
@@ -204,41 +210,30 @@ final class VolcengineASRProvider: CloudASRProvider {
 
 private final class VolcengineASRConnection: NSObject, CloudASRConnection {
     weak var delegate: CloudASRConnectionDelegate?
-    private var session: URLSession
-    private var task: URLSessionWebSocketTask
+    private let session: URLSession
+    private let request: URLRequest
+    private var task: URLSessionWebSocketTask?
     private let initialFrame: Data
     private let queue = DispatchQueue(label: "com.atomvoice.volcengineASR.connection")
     private var isCancelled = false
 
-    init(session: URLSession, task: URLSessionWebSocketTask, initialFrame: Data) {
+    init(session: URLSession, request: URLRequest, initialFrame: Data) {
         self.session = session
-        self.task = task
+        self.request = request
         self.initialFrame = initialFrame
         super.init()
     }
 
     func resume() {
-        let originalRequest = task.originalRequest!
-        let oldSession = session
-        let oldTask = task
-
-        // 创建带 delegate 的新 session/task，用于监听 didOpen
-        let delegateSession = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        let delegateTask = delegateSession.webSocketTask(with: originalRequest)
-
         queue.async { [weak self] in
-            guard let self else { return }
-            guard !self.isCancelled else {
-                delegateTask.cancel(with: .goingAway, reason: nil)
-                delegateSession.invalidateAndCancel()
-                return
-            }
-            // 替换为带 delegate 的版本，后续 send/receive 都走新 task
-            oldTask.cancel(with: .goingAway, reason: nil)
-            oldSession.invalidateAndCancel()
-            self.session = delegateSession
-            self.task = delegateTask
-            delegateTask.resume()
+            guard let self, !self.isCancelled else { return }
+            // 在共享 session 上创建新 WebSocket task；通过 per-task delegate 监听 didOpen，
+            // 不需要也不应该 invalidate 共享 session。
+            // (Create a new task on the shared session; per-task delegate is supported on macOS 12+.)
+            let task = self.session.webSocketTask(with: self.request)
+            task.delegate = self
+            self.task = task
+            task.resume()
         }
     }
 }
@@ -252,7 +247,6 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
             guard let self else { return }
             guard !self.isCancelled else {
                 webSocketTask.cancel(with: .goingAway, reason: nil)
-                session.invalidateAndCancel()
                 return
             }
             // 发送初始帧，然后通知 delegate 已就绪
@@ -279,13 +273,15 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
         queue.async { [weak self] in
             guard let self, !self.isCancelled else { return }
             self.isCancelled = true
-            self.task.cancel(with: .goingAway, reason: nil)
-            self.session.invalidateAndCancel()
+            // 只取消当前 task；session 由 provider 长期持有以复用 TLS。
+            // (Only cancel the task; the session is owned by the provider for TLS reuse.)
+            self.task?.cancel(with: .goingAway, reason: nil)
+            self.task = nil
         }
     }
 
     private func send(_ data: Data, completion: (() -> Void)? = nil) {
-        guard !isCancelled else { return }
+        guard !isCancelled, let task else { return }
         task.send(.data(data)) { [weak self] error in
             guard let self else { return }
             self.queue.async {
@@ -303,7 +299,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
     }
 
     private func receiveLoop() {
-        guard !isCancelled else { return }
+        guard !isCancelled, let task else { return }
         task.receive { [weak self] result in
             guard let self else { return }
             self.queue.async {
