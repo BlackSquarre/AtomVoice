@@ -107,6 +107,7 @@
 "sherpa.loadingModel" = "Sherpa 모델 로드 중... (지금 말씀하세요)";
 "sherpa.downloading" = "Sherpa 모델 다운로드 중 (%d/%d)...";
 "sherpa.downloading.progress" = "Sherpa 모델 다운로드 중 (%d/%d)... %d%%";
+"sherpa.downloading.progressWithSize" = "Sherpa 모델 다운로드 중 (%d/%d)... %d%%(%@/%@ MB)";
 "sherpa.extracting" = "Sherpa 모델 압축 해제 중 (%d/%d)...";
 "sherpa.download.complete" = "Sherpa 모델 다운로드 완료 ✓";
 "sherpa.download.failed" = "Sherpa 모델 다운로드 실패: %@";

@@ -4,6 +4,11 @@ import PackageDescription
 let package = Package(
     name: "AtomVoice",
     platforms: [.macOS(.v14)],
+    products: [
+        .executable(name: "AtomVoice", targets: ["AtomVoice"]),
+        .executable(name: "SherpaMemoryProbe", targets: ["SherpaMemoryProbe"]),
+        .executable(name: "SherpaMemoryBenchmark", targets: ["SherpaMemoryBenchmark"]),
+    ],
     targets: [
         .executableTarget(
             name: "AtomVoice",
@@ -25,6 +30,16 @@ let package = Package(
                     "-Xlinker", "Sources/AtomVoice/Info.plist",
                 ]),
             ]
+        ),
+        .executableTarget(
+            name: "SherpaMemoryProbe",
+            dependencies: ["SherpaOnnxShim"],
+            path: "Sources/SherpaMemoryProbe"
+        ),
+        .executableTarget(
+            name: "SherpaMemoryBenchmark",
+            dependencies: [],
+            path: "Sources/SherpaMemoryBenchmark"
         ),
         .target(
             name: "SherpaOnnxShim",

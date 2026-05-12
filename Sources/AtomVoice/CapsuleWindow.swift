@@ -1,12 +1,18 @@
 import Cocoa
 
 final class CapsuleWindowController {
+    enum DisplayMode {
+        case normal
+        case download
+    }
+
     private var panel: NSPanel?
     private var waveformView: WaveformView?
     private var textLabel: NSTextField?
     private var refiningLabel: NSTextField?
     private var contentView: NSView?
     private var animationSurfaceView: NSView?
+    private var downloadTintLayer: CALayer?
     private var springTimer: Timer?
     private var shimmerLayer: CAGradientLayer?
     private var shimmerClipLayer: CALayer?  // 裁剪为胶囊形状的容器层（Clipping container layer shaped as capsule）
@@ -14,6 +20,7 @@ final class CapsuleWindowController {
     private var waveformVisible = true
     private var presentationID = 0
     private(set) var isShowingError = false
+    private var displayMode: DisplayMode = .normal
 
     #if DEBUG_BUILD
     private var timerLabel: NSTextField?
@@ -29,6 +36,7 @@ final class CapsuleWindowController {
     private let waveformTextGap: CGFloat = 12
     private let minTextWidth: CGFloat = 144
     private let maxTextWidth: CGFloat = 504
+    private let downloadTextWidth: CGFloat = 320
     private let horizontalPadding: CGFloat = 24
     private let compactMinTextWidth: CGFloat = 56
 
@@ -82,13 +90,15 @@ final class CapsuleWindowController {
     func show(showRecordingTimer: Bool = true,
               initialText: String = "",
               showWaveformInitially: Bool = true,
-              compactStatusKey: String? = nil) {
+              compactStatusKey: String? = nil,
+              displayMode: DisplayMode = .normal) {
         if panel != nil {
             // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板（Previous showError 3s delay hasn't ended when re-recording, clean up old panel first）
             cleanup()
         }
         isShowingError = false
         presentationID += 1
+        self.displayMode = displayMode
 
         waveformVisible = showWaveformInitially
 
@@ -98,7 +108,10 @@ final class CapsuleWindowController {
         let labelFont = NSFont.systemFont(ofSize: 13.5, weight: .medium)
         let resolvedInitialText: String
         let resolvedTextWidth: CGFloat
-        if let key = compactStatusKey {
+        if displayMode == .download {
+            resolvedInitialText = initialText
+            resolvedTextWidth = downloadTextWidth
+        } else if let key = compactStatusKey {
             let displayText = loc(key)
             resolvedInitialText = displayText
             let measured = (displayText as NSString).size(withAttributes: [.font: labelFont])
@@ -260,6 +273,9 @@ final class CapsuleWindowController {
         self.refiningLabel = refLabel
         self.contentView = container
         self.animationSurfaceView = surface
+        if displayMode == .download {
+            applyDownloadAppearance()
+        }
 
         switch animationStyle {
         case "none":    animateInNone(panel: panel, targetFrame: target)
@@ -648,7 +664,47 @@ final class CapsuleWindowController {
         }
     }
 
+    func showDownloadProgress(_ text: String) {
+        guard panel != nil, displayMode == .download else {
+            show(showRecordingTimer: false, initialText: text, showWaveformInitially: false, displayMode: .download)
+            refiningLabel?.isHidden = true
+            textLabel?.isHidden = false
+            DispatchQueue.main.async { [weak self] in
+                self?.applyShimmerToCapsule()
+            }
+            return
+        }
+
+        guard let label = textLabel else { return }
+        label.textColor = .labelColor
+        label.stringValue = text
+        label.isHidden = false
+        refiningLabel?.isHidden = true
+        hideWaveform()
+    }
+
+    private func applyDownloadAppearance() {
+        guard let surface = animationSurfaceView else { return }
+        surface.wantsLayer = true
+        guard let rootLayer = surface.layer else { return }
+
+        let tint = CALayer()
+        tint.frame = surface.bounds
+        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        tint.cornerRadius = cornerRadius
+        tint.cornerCurve = .continuous
+        tint.masksToBounds = true
+        tint.backgroundColor = NSColor.systemBlue.withAlphaComponent(0.22).cgColor
+        tint.borderWidth = 0.75
+        tint.borderColor = NSColor.systemBlue.withAlphaComponent(0.45).cgColor
+        rootLayer.insertSublayer(tint, at: 0)
+        downloadTintLayer = tint
+    }
+
     func showRecording() {
+        displayMode = .normal
+        downloadTintLayer?.removeFromSuperlayer()
+        downloadTintLayer = nil
         stopShimmer()
         refiningLabel?.isHidden = true
         // 紧凑模式下保留状态文案"正在输入"
@@ -938,6 +994,8 @@ final class CapsuleWindowController {
     private func cleanup() {
         panel?.orderOut(nil)
         stopShimmer()
+        downloadTintLayer?.removeFromSuperlayer()
+        downloadTintLayer = nil
         isShowingError = false
         presentationID += 1
         springTimer?.invalidate()
@@ -957,6 +1015,7 @@ final class CapsuleWindowController {
         activeAnimationInset = 0
         waveformVisible = true
         compactStatusKey = nil
+        displayMode = .normal
         panel = nil
     }
 }
