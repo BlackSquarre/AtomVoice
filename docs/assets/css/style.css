@@ -106,10 +106,6 @@ body {
   letter-spacing: -1px; color: #ffffff;
   line-height: 1;
 }
-.hero-cn {
-  font-size: 18px; color: rgba(255,255,255,0.32);
-  letter-spacing: 0.04em;
-}
 .hero-sub {
   font-size: 22px; font-weight: 500;
   color: rgba(255,255,255,0.82);

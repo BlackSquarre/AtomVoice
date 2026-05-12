@@ -1,4 +1,5 @@
 en:
+  brand_name: "AtomVoice"
   btn_download: "Download"
   btn_github: "View on GitHub"
   hero_subtitle: "Privacy-first voice dictation for Mac"
@@ -34,6 +35,7 @@ en:
   footer_notices: "Third-Party Notices"
 
 zh_hans:
+  brand_name: "原子微语"
   btn_download: "下载"
   btn_github: "查看 GitHub"
   hero_subtitle: "隐私优先的 Mac 语音输入工具"
@@ -69,6 +71,7 @@ zh_hans:
   footer_notices: "第三方声明"
 
 zh_hant:
+  brand_name: "原子微語"
   btn_download: "下載"
   btn_github: "查看 GitHub"
   hero_subtitle: "隱私優先的 Mac 語音輸入工具"
@@ -104,6 +107,7 @@ zh_hant:
   footer_notices: "第三方聲明"
 
 ja:
+  brand_name: "AtomVoice"
   btn_download: "ダウンロード"
   btn_github: "GitHubで見る"
   hero_subtitle: "Mac 向けプライバシー重視の音声入力"
@@ -139,6 +143,7 @@ ja:
   footer_notices: "サードパーティ通知"
 
 ko:
+  brand_name: "AtomVoice"
   btn_download: "다운로드"
   btn_github: "GitHub에서 보기"
   hero_subtitle: "Mac용 개인정보 보호 중심 음성 입력"
@@ -174,6 +179,7 @@ ko:
   footer_notices: "타사 고지"
 
 es:
+  brand_name: "AtomVoice"
   btn_download: "Descargar"
   btn_github: "Ver en GitHub"
   hero_subtitle: "Dictado de voz para Mac centrado en la privacidad"
@@ -209,6 +215,7 @@ es:
   footer_notices: "Avisos de terceros"
 
 fr:
+  brand_name: "AtomVoice"
   btn_download: "Télécharger"
   btn_github: "Voir sur GitHub"
   hero_subtitle: "Dictée vocale pour Mac axée sur la confidentialité"
@@ -244,6 +251,7 @@ fr:
   footer_notices: "Mentions tierces"
 
 de:
+  brand_name: "AtomVoice"
   btn_download: "Herunterladen"
   btn_github: "Auf GitHub ansehen"
   hero_subtitle: "Datenschutzorientierte Spracheingabe für Mac"
