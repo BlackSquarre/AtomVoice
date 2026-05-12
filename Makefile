@@ -1,22 +1,24 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.10.2-Beta-1
+VERSION     = 0.10.2-Beta-2
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
+SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
+SHERPA_MEMORY_RUNS ?= 3
 
-.PHONY: build dev run install clean release
+.PHONY: build dev run install clean release sherpa-memory
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
-	swift build -c release -Xswiftc -DDEBUG_BUILD
+	swift build -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(DIST_DIR)/Test/$(APP_NAME).app)
 	@echo "Dev build: $(DIST_DIR)/Test/$(APP_NAME).app"
 
 # ── 默认构建（当前机器原生架构，含 DEBUG_BUILD 标记）────────────────
 build:
-	swift build -c release -Xswiftc -DDEBUG_BUILD
+	swift build -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(APP_BUNDLE))
 	@echo "Built: $(APP_BUNDLE)"
 
@@ -31,6 +33,13 @@ clean:
 	swift package clean
 	rm -rf .build $(DIST_DIR)
 
+# ── Debug-only Sherpa model memory benchmark ────────────────────────────────
+sherpa-memory:
+	mkdir -p $(DIST_DIR)
+	swift build -c release --product SherpaMemoryProbe -Xswiftc -DDEBUG_BUILD
+	swift build -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
+	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
+
 # ── Release：构建三个架构并打包 zip ──────────────────────────────────
 release: clean-dist build-arm64 build-x86_64 build-universal
 	@echo "\n✓ Release artifacts in $(DIST_DIR)/"
@@ -42,7 +51,7 @@ clean-dist:
 
 build-arm64:
 	@echo "→ Building Apple Silicon (arm64)..."
-	swift build -c release --arch arm64
+	swift build -c release --product $(APP_NAME) --arch arm64
 	$(call bundle_app,.build/arm64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-AppleSilicon.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
@@ -50,7 +59,7 @@ build-arm64:
 
 build-x86_64:
 	@echo "→ Building Intel (x86_64)..."
-	swift build -c release --arch x86_64
+	swift build -c release --product $(APP_NAME) --arch x86_64
 	$(call bundle_app,.build/x86_64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-Intel.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app

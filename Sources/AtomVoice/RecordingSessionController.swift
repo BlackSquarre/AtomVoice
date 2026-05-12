@@ -194,9 +194,9 @@ final class RecordingSessionController {
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 startDoubaoRecording(generation: generation)
             } else if asrEngineRegistry.isSherpa(currentRecordingEngine) {
-                capsuleWindow.show(compactStatusKey: streamingCompactKey)
                 if sherpaEngine().isModelLoaded {
                     // 模型已缓存，直接开始录音，不显示加载动画（Model cached, start recording directly without loading animation）
+                    capsuleWindow.show(compactStatusKey: streamingCompactKey)
                     startSherpaRecordingAfterModelLoad(generation: generation)
                 } else {
                     // 首次加载模型：立即录音 + 后台加载模型 + 加载完成后喂缓存音频（First-time: record immediately + load model in background + feed buffered audio after load）

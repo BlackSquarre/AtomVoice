@@ -107,6 +107,7 @@
 "sherpa.loadingModel" = "Chargement du modèle Sherpa... (vous pouvez parler maintenant)";
 "sherpa.downloading" = "Téléchargement du modèle Sherpa (%d/%d)...";
 "sherpa.downloading.progress" = "Téléchargement du modèle Sherpa (%d/%d)... %d%%";
+"sherpa.downloading.progressWithSize" = "Téléchargement du modèle Sherpa (%d/%d)... %d%% (%@/%@ Mo)";
 "sherpa.extracting" = "Extraction du modèle Sherpa (%d/%d)...";
 "sherpa.download.complete" = "Téléchargement du modèle Sherpa terminé ✓";
 "sherpa.download.failed" = "Échec du téléchargement du modèle Sherpa : %@";

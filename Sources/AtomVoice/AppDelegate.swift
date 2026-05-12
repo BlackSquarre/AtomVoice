@@ -28,6 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var selectedSherpaProvider = ""
     private var pendingSherpaModelRelease = false
     private var sherpaAutoUnloadWorkItem: DispatchWorkItem?
+    private var sherpaDownloadCapsuleActive = false
+    private var sherpaDownloadCapsuleMessage: String?
+    private var sherpaDownloadCapsuleLastUpdate = Date.distantPast
     private var session: RecordingSessionController!
 
     deinit {
@@ -144,7 +147,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // session 通知 fnKeyMonitor 录音状态（Session notifies fnKeyMonitor of recording state）
         session.onRecordingStateChanged = { [weak self] active in
-            self?.fnKeyMonitor.isRecording = active
+            guard let self else { return }
+            self.fnKeyMonitor.isRecording = active
+            self.handleRecordingStateChangedForDownloadCapsule(active: active)
         }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in
             self?.fnKeyMonitor.triggerKeyCode = keyCode
@@ -439,6 +444,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return response
     }
 
+    static func showSherpaDownloadCapsule(_ message: String) {
+        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+        appDelegate.updateSherpaDownloadCapsule(message, force: false)
+    }
+
+    static func finishSherpaDownloadCapsule(success: Bool, error: String?) {
+        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+        appDelegate.sherpaDownloadCapsuleActive = false
+        appDelegate.sherpaDownloadCapsuleMessage = nil
+        if appDelegate.session.isRecording { return }
+        if success {
+            appDelegate.capsuleWindow.updateText(loc("sherpa.download.complete"))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak appDelegate] in
+                appDelegate?.capsuleWindow.dismiss()
+            }
+        } else {
+            appDelegate.capsuleWindow.showError(loc("sherpa.download.failed", error ?? "Unknown error"), dismissAfter: 6)
+        }
+    }
+
+    private func updateSherpaDownloadCapsule(_ message: String, force: Bool) {
+        sherpaDownloadCapsuleActive = true
+        sherpaDownloadCapsuleMessage = message
+        guard !session.isRecording else { return }
+
+        let now = Date()
+        guard force || now.timeIntervalSince(sherpaDownloadCapsuleLastUpdate) >= 0.25 else { return }
+        sherpaDownloadCapsuleLastUpdate = now
+        capsuleWindow.showDownloadProgress(message)
+    }
+
+    private func handleRecordingStateChangedForDownloadCapsule(active: Bool) {
+        guard sherpaDownloadCapsuleActive else { return }
+        if active {
+            capsuleWindow.dismiss()
+        } else if let message = sherpaDownloadCapsuleMessage {
+            updateSherpaDownloadCapsule(message, force: true)
+        }
+    }
+
     /// 窗口关闭时调用：若已无其他普通窗口可见，恢复 accessory 策略。
     /// (Called when a window closes: if no other regular windows are visible, restore accessory activation policy.)
     static func resetActivationIfNeeded(closing: NSWindow? = nil) {
@@ -531,33 +576,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startSherpaDownload() {
-        guard !SherpaModelDownloader.shared.isDownloading else { return }
         if SherpaModelDownloader.isReady() { return }
 
         let downloader = SherpaModelDownloader.shared
 
-        // 显示胶囊，不显示波形（Show capsule without waveform）
-        capsuleWindow.show(showRecordingTimer: false)
-        capsuleWindow.showProgress(loc("sherpa.downloading.start"))
+        AppDelegate.showSherpaDownloadCapsule(loc("sherpa.downloading.start"))
 
         downloader.addObserver(
             progress: { [weak self] _, _, _, message in
-                self?.capsuleWindow.updateText(message)
+                guard self != nil else { return }
+                AppDelegate.showSherpaDownloadCapsule(message)
             },
             complete: { [weak self] success, error in
-                guard let self else { return }
-                if success {
-                    self.capsuleWindow.updateText(loc("sherpa.download.complete"))
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.capsuleWindow.dismiss()
-                    }
-                } else {
-                    self.capsuleWindow.showError(loc("sherpa.download.failed", error ?? "Unknown error"), dismissAfter: 6)
-                }
+                guard self != nil else { return }
+                AppDelegate.finishSherpaDownloadCapsule(success: success, error: error)
             }
         )
 
-        downloader.startDownload()
+        _ = downloader.startDownload()
     }
 
     private func promptSherpaDownload() {

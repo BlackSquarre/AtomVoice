@@ -107,6 +107,7 @@
 "sherpa.loadingModel" = "正在加载 Sherpa 模型...（现在可以说话）";
 "sherpa.downloading" = "正在下载 Sherpa 模型 (%d/%d)...";
 "sherpa.downloading.progress" = "正在下载 Sherpa 模型 (%d/%d)... %d%%";
+"sherpa.downloading.progressWithSize" = "正在下载 Sherpa 模型 (%d/%d)... %d%%（%@/%@ MB）";
 "sherpa.extracting" = "正在解压 Sherpa 模型 (%d/%d)...";
 "sherpa.download.complete" = "Sherpa 模型下载完成 ✓";
 "sherpa.download.failed" = "Sherpa 模型下载失败：%@";

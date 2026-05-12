@@ -4,6 +4,11 @@ import Foundation
 /// 三个组件：Runtime dylib、ASR 模型、标点模型（Three components: Runtime dylib, ASR model, punctuation model）
 /// 下载 → 解压 → 清理临时文件（Download → Extract → Clean up temp files）
 final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
+    enum StartResult: Equatable {
+        case started
+        case alreadyDownloading
+    }
+
     private static let punctArchiveGitHubURL = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")!
     private static let punctArchiveName = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2"
 
@@ -106,6 +111,8 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private var targetPreset: SherpaModelPreset?
     /// 当前下载会话锁定的目标运行时版本（Target runtime version locked for this session）
     private var targetVersion: String?
+    /// 当前会话是否只处理运行时（Whether current session only handles runtime）
+    private var runtimeOnlySession = false
 
     static var runtimeVersionFileURL: URL {
         SherpaOnnxRecognizerController.supportDirectory
@@ -130,6 +137,15 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private func computeOverallProgress(itemProgress: Double) -> Double {
         guard totalItems > 0 else { return 0 }
         return (Double(currentItemIndex) + itemProgress) / Double(totalItems)
+    }
+
+    private func downloadProgressMessage(num: Int, percent: Int, totalBytesWritten: Int64, totalBytesExpected: Int64) -> String {
+        guard totalBytesExpected > 0 else {
+            return loc("sherpa.downloading.progressWithSize", num, totalItems, percent, "--", "--")
+        }
+        let downloadedMB = String(format: "%.1f", Double(totalBytesWritten) / 1_048_576.0)
+        let totalMB = String(format: "%.1f", Double(totalBytesExpected) / 1_048_576.0)
+        return loc("sherpa.downloading.progressWithSize", num, totalItems, percent, downloadedMB, totalMB)
     }
 
     /// 简单的运行库文件清单（Simple runtime file list）
@@ -220,25 +236,29 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     /// 开始下载所有缺失的模型（Start downloading all missing models）
-    func startDownload(forceUpdateRuntime: Bool = false) {
-        startDownload(preset: SherpaModelPreset.current, forceUpdateRuntime: forceUpdateRuntime)
+    @discardableResult
+    func startDownload(forceUpdateRuntime: Bool = false, runtimeOnly: Bool = false) -> StartResult {
+        startDownload(preset: SherpaModelPreset.current, forceUpdateRuntime: forceUpdateRuntime, runtimeOnly: runtimeOnly)
     }
 
     /// 开始下载指定预设模型（Start downloading specified preset model）
-    func startDownload(preset: SherpaModelPreset, forceUpdateRuntime: Bool = false) {
-        guard !isDownloading else { return }
+    @discardableResult
+    func startDownload(preset: SherpaModelPreset, forceUpdateRuntime: Bool = false, runtimeOnly: Bool = false) -> StartResult {
+        guard !isDownloading else { return .alreadyDownloading }
         isDownloading = true
         targetPreset = preset
+        runtimeOnlySession = runtimeOnly
 
         Self.fetchLatestRuntimeVersion { [weak self] version in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                self.setupAndStartDownload(preset: preset, version: version, forceUpdateRuntime: forceUpdateRuntime)
+                self.setupAndStartDownload(preset: preset, version: version, forceUpdateRuntime: forceUpdateRuntime, runtimeOnly: runtimeOnly)
             }
         }
+        return .started
     }
 
-    private func setupAndStartDownload(preset: SherpaModelPreset, version: String, forceUpdateRuntime: Bool) {
+    private func setupAndStartDownload(preset: SherpaModelPreset, version: String, forceUpdateRuntime: Bool, runtimeOnly: Bool) {
         // 创建目录（Create directories）
         try? SherpaOnnxRecognizerController.createSupportDirectories()
         self.targetVersion = version
@@ -278,17 +298,21 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         if runtimeMissing || forceUpdateRuntime {
             itemsToDownload.append(runtimeItem)
         }
-        if !preset.isDownloaded, let asrItem {
+        if !runtimeOnly, !preset.isDownloaded, let asrItem {
             itemsToDownload.append(asrItem)
         }
-        if !SherpaModelPreset.isUsableFile(SherpaOnnxRecognizerController.punctuationModelDirectory.appendingPathComponent("model.int8.onnx")) {
+        if !runtimeOnly,
+           !SherpaModelPreset.isUsableFile(SherpaOnnxRecognizerController.punctuationModelDirectory.appendingPathComponent("model.int8.onnx")) {
             itemsToDownload.append(punctItem)
         }
 
         guard !itemsToDownload.isEmpty else {
             isDownloading = false
-            let success = Self.isReady(for: preset)
+            let success = runtimeOnly || Self.isReady(for: preset)
             if !success { Self.printMissingRequiredFiles(for: preset) }
+            targetPreset = nil
+            targetVersion = nil
+            runtimeOnlySession = false
             notifyComplete(success, success ? nil : "Extracted files not found")
             return
         }
@@ -313,6 +337,8 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         session = nil
         isDownloading = false
         targetPreset = nil
+        targetVersion = nil
+        runtimeOnlySession = false
     }
 
     // MARK: - Private
@@ -347,7 +373,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             // (Verify against the preset locked for this session, not whatever sherpaModelPresetID is now)
             let preset = targetPreset ?? SherpaModelPreset.current
             targetPreset = nil
-            let success = Self.isReady(for: preset)
+            let runtimeOnly = runtimeOnlySession
+            runtimeOnlySession = false
+            targetVersion = nil
+            let success = runtimeOnly || Self.isReady(for: preset)
             if success {
                 DebugLog.info("[下载] 所有模型验证通过")
             } else {
@@ -371,7 +400,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         let overall = computeOverallProgress(itemProgress: 0)
         let percent = Int(overall * 100)
-        notifyProgress(num, totalItems, overall, loc("sherpa.downloading.progress", num, totalItems, percent))
+        notifyProgress(num, totalItems, overall, downloadProgressMessage(num: num, percent: percent, totalBytesWritten: 0, totalBytesExpected: 0))
 
         currentTask = session?.downloadTask(with: url)
         currentTask?.resume()
@@ -418,7 +447,12 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
-            let extractSuccess = self.extractArchive(at: archiveURL, to: item.extractDir)
+            let extractSuccess: Bool
+            if item.name == "asr", let preset = self.targetPreset {
+                extractSuccess = self.extractASRArchive(at: archiveURL, for: preset)
+            } else {
+                extractSuccess = self.extractArchive(at: archiveURL, to: item.extractDir)
+            }
 
             // 清理压缩包（Clean up archive）
             try? FileManager.default.removeItem(at: archiveURL)
@@ -458,7 +492,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let num = currentItemIndex + 1
         let overall = computeOverallProgress(itemProgress: itemProgress)
         let percent = Int(overall * 100)
-        notifyProgress(num, totalItems, overall, loc("sherpa.downloading.progress", num, totalItems, percent))
+        notifyProgress(num, totalItems, overall, downloadProgressMessage(num: num, percent: percent, totalBytesWritten: totalBytesWritten, totalBytesExpected: totalBytesExpectedToWrite))
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -477,10 +511,63 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         session = nil
         targetPreset = nil
         targetVersion = nil
+        runtimeOnlySession = false
         notifyComplete(false, message)
     }
 
     // MARK: - 解压
+
+    /// ASR 模型包的顶层目录不总是等于压缩包名；先解到临时目录，再定位真正的模型根并移动到 preset 目录。
+    /// (ASR archive root isn't always archiveName without suffix; extract to temp, locate model root, then move to preset dir.)
+    private func extractASRArchive(at archiveURL: URL, for preset: SherpaModelPreset) -> Bool {
+        let tempRoot = tempDir().appendingPathComponent("Extract-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        guard extractArchive(at: archiveURL, to: tempRoot),
+              let modelRoot = locateModelRoot(in: tempRoot) else {
+            DebugLog.error("[下载] ASR 解压后未找到可识别模型根: \(archiveURL.lastPathComponent)")
+            return false
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: preset.modelDirectory.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if FileManager.default.fileExists(atPath: preset.modelDirectory.path) {
+                try FileManager.default.removeItem(at: preset.modelDirectory)
+            }
+            do {
+                try FileManager.default.moveItem(at: modelRoot, to: preset.modelDirectory)
+            } catch {
+                try FileManager.default.copyItem(at: modelRoot, to: preset.modelDirectory)
+            }
+            return true
+        } catch {
+            DebugLog.error("[下载] ASR 模型归位失败: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// 在解压结果中定位模型根目录。优先返回自身，其次返回第一个能解析出 manifest 的子目录。
+    /// (Locate model root in extracted contents. Prefer self, then first subdirectory with a valid manifest.)
+    private func locateModelRoot(in directory: URL) -> URL? {
+        if ModelManifest.discover(in: directory) != nil { return directory }
+
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        for item in enumerator {
+            guard let url = item as? URL,
+                  (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+                continue
+            }
+            if ModelManifest.discover(in: url) != nil {
+                return url
+            }
+        }
+        return nil
+    }
 
     private func extractArchive(at archiveURL: URL, to targetDir: URL) -> Bool {
         try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)

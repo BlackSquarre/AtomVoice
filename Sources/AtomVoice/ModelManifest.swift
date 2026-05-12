@@ -7,8 +7,8 @@ import Foundation
 ///  Sherpa archives use very different naming conventions, so we
 ///  discover by scanning the disk rather than hardcoding.)
 struct ModelManifest: Codable, Equatable {
-    /// 相对于模型目录的文件名（仅 basename，不带路径）
-    /// (Filenames relative to the model directory — basename only)
+    /// 相对于模型目录的文件路径（多数模型为 basename，部分 icefall 包含 exp/ 与 data/lang_char/ 子目录）
+    /// (Paths relative to the model directory — usually basenames; some icefall archives use subdirectories.)
     let encoder: String
     let decoder: String
     let joiner: String
@@ -44,33 +44,47 @@ struct ModelManifest: Codable, Equatable {
 
     /// 扫描目录推断 manifest（Scan directory and infer manifest）
     /// 规则（Rules）：
+    /// - 递归扫描模型目录，支持 icefall 包中 exp/*.onnx + data/lang_char/tokens.txt 的布局
     /// - tokens：精确文件名 tokens.txt（exact filename）
     /// - encoder/joiner：取名字含 "encoder"/"joiner" 的 .onnx 文件，多个候选时偏好 int8 量化版（smaller, common pairing）
     /// - decoder：取名字含 "decoder" 的 .onnx 文件，多个候选时偏好非 int8 版本（保留精度）
     static func discover(in directory: URL) -> ModelManifest? {
-        guard let entries = try? FileManager.default.contentsOfDirectory(
+        guard let enumerator = FileManager.default.enumerator(
             at: directory,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else { return nil }
 
-        let regular = entries.filter { url in
-            (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
+        let regular = enumerator.compactMap { item -> URL? in
+            guard let url = item as? URL,
+                  (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+                return nil
+            }
+            return url
         }
         let onnx = regular.filter { $0.pathExtension.lowercased() == "onnx" && SherpaModelPreset.isUsableFile($0) }
+
+        func relativePath(_ url: URL) -> String {
+            let base = directory.standardizedFileURL.path
+            let path = url.standardizedFileURL.path
+            guard path.hasPrefix(base + "/") else { return url.lastPathComponent }
+            return String(path.dropFirst(base.count + 1))
+        }
 
         func pick(component: String, preferInt8: Bool) -> String? {
             let candidates = onnx.filter { $0.lastPathComponent.lowercased().contains(component) }
             guard !candidates.isEmpty else { return nil }
-            if candidates.count == 1 { return candidates[0].lastPathComponent }
+            if candidates.count == 1 { return relativePath(candidates[0]) }
             let isInt8: (URL) -> Bool = { $0.lastPathComponent.lowercased().contains("int8") }
             let int8Hits = candidates.filter(isInt8)
             let nonInt8 = candidates.filter { !isInt8($0) }
+            let selected: URL
             if preferInt8 {
-                return (int8Hits.first ?? nonInt8.first ?? candidates[0]).lastPathComponent
+                selected = int8Hits.first ?? nonInt8.first ?? candidates[0]
             } else {
-                return (nonInt8.first ?? int8Hits.first ?? candidates[0]).lastPathComponent
+                selected = nonInt8.first ?? int8Hits.first ?? candidates[0]
             }
+            return relativePath(selected)
         }
 
         guard let encoder = pick(component: "encoder", preferInt8: true),
@@ -79,7 +93,7 @@ struct ModelManifest: Codable, Equatable {
         else { return nil }
 
         let tokens = regular.first { $0.lastPathComponent == "tokens.txt" && SherpaModelPreset.isUsableFile($0) }
-        guard let tokensName = tokens?.lastPathComponent else { return nil }
+        guard let tokensName = tokens.map(relativePath) else { return nil }
 
         return ModelManifest(encoder: encoder, decoder: decoder, joiner: joiner, tokens: tokensName)
     }

@@ -546,6 +546,7 @@ final class ASRSettingsWindowController: NSObject {
         doubaoGlobalInfoLabel?.stringValue = doubaoSettings.globalSummary
 
         // Sherpa 设置
+        rebuildSherpaModelList()
         updateSherpaAutoUnloadControls()
         updateSherpaStatus()
 
@@ -598,6 +599,74 @@ final class ASRSettingsWindowController: NSObject {
         } else {
             appleStatusLabel?.stringValue = loc("asrSettings.apple.status") + " " + loc("asrSettings.apple.modelNotDownloaded")
             appleStatusLabel?.textColor = .systemOrange
+        }
+    }
+
+    private func persistSherpaAutoUnloadSettings() {
+        AppSettings.sherpaAutoUnloadEnabled = sherpaAutoUnloadCheckbox.state == .on
+        let selectedUnloadMinutes = (sherpaAutoUnloadPopup.selectedItem?.representedObject as? Int) ?? 15
+        AppSettings.sherpaAutoUnloadIdleMinutes = selectedUnloadMinutes
+    }
+
+    private func persistAppleSettings() {
+        let appleEnabled = appleEnableCheckbox.state == .on
+        let currentLang = AppSettings.selectedLanguage
+        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
+        if appleEnabled && !isSupported {
+            // 不支持时强制关闭（Force off when unsupported）
+            AppSettings.appleOnDeviceRecognitionEnabled = false
+        } else {
+            AppSettings.appleOnDeviceRecognitionEnabled = appleEnabled
+        }
+    }
+
+    private func startSherpaSettingsDownload(
+        preset: SherpaModelPreset,
+        activateOnSuccess: Bool,
+        runtimeOnly: Bool = false,
+        completion: ((Bool) -> Void)? = nil
+    ) {
+        sherpaDownloadButton?.isEnabled = false
+        sherpaDeleteButton?.isEnabled = false
+        sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
+        sherpaStatusLabel?.textColor = .systemBlue
+        AppDelegate.showSherpaDownloadCapsule(sherpaStatusLabel.stringValue)
+
+        let downloader = SherpaModelDownloader.shared
+        downloader.addObserver(
+            progress: { [weak self] _, _, _, message in
+                self?.sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
+                AppDelegate.showSherpaDownloadCapsule(message)
+            },
+            complete: { [weak self] success, error in
+                guard let self else { return }
+                let targetReady = runtimeOnly || preset.isDownloaded
+                AppDelegate.finishSherpaDownloadCapsule(success: success && targetReady, error: error)
+                if success && targetReady {
+                    if activateOnSuccess {
+                        AppSettings.sherpaModelPresetID = preset.id
+                    }
+                    self.rebuildSherpaModelList()
+                    self.updateSherpaStatus()
+                    self.sherpaStatusLabel?.stringValue = loc("sherpa.download.complete")
+                    self.sherpaStatusLabel?.textColor = .systemGreen
+                } else if success {
+                    self.rebuildSherpaModelList()
+                    self.updateSherpaStatus()
+                } else {
+                    self.rebuildSherpaModelList()
+                    self.updateSherpaStatus()
+                    self.sherpaStatusLabel?.stringValue = loc("sherpa.download.failed", error ?? "Unknown error")
+                    self.sherpaStatusLabel?.textColor = .systemRed
+                }
+                completion?(success && targetReady)
+            }
+        )
+
+        let result = downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly)
+        if result == .alreadyDownloading {
+            sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
+            AppDelegate.showSherpaDownloadCapsule(sherpaStatusLabel.stringValue)
         }
     }
 
@@ -684,32 +753,7 @@ final class ASRSettingsWindowController: NSObject {
         alert.addButton(withTitle: loc("common.cancel"))
 
         if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
-            // 开始下载
-            sherpaDownloadButton?.isEnabled = false
-            sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
-            sherpaStatusLabel?.textColor = .systemBlue
-
-            let downloader = SherpaModelDownloader.shared
-            downloader.addObserver(
-                progress: { [weak self] _, _, _, message in
-                    self?.sherpaStatusLabel?.stringValue = message
-                },
-                complete: { [weak self] success, error in
-                    if success {
-                        self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.complete")
-                        self?.sherpaStatusLabel?.textColor = .systemGreen
-                        self?.sherpaDownloadButton?.isEnabled = false
-                        AppSettings.sherpaModelPresetID = selectedID
-                        self?.rebuildSherpaModelList()
-                        self?.updateSherpaStatus()
-                    } else {
-                        self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.failed", error ?? "Unknown error")
-                        self?.sherpaStatusLabel?.textColor = .systemRed
-                        self?.sherpaDownloadButton?.isEnabled = true
-                    }
-                }
-            )
-            downloader.startDownload(preset: preset)
+            startSherpaSettingsDownload(preset: preset, activateOnSuccess: true)
         }
     }
 
@@ -752,30 +796,12 @@ final class ASRSettingsWindowController: NSObject {
     }
 
     private func performRuntimeUpdate(sender: NSButton) {
-        sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.updatingRuntime")
-        sherpaStatusLabel?.textColor = .systemBlue
-        
-        let downloader = SherpaModelDownloader.shared
-        downloader.addObserver(
-            progress: { [weak self] _, _, _, message in
-                self?.sherpaStatusLabel?.stringValue = message
-            },
-            complete: { [weak self] success, error in
-                sender.isEnabled = true
-                self?.updateSherpaStatus()
-                self?.rebuildSherpaModelList()
-                
-                if success {
-                    self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.complete")
-                    self?.sherpaStatusLabel?.textColor = .systemGreen
-                } else {
-                    self?.sherpaStatusLabel?.stringValue = loc("sherpa.download.failed", error ?? "Unknown error")
-                    self?.sherpaStatusLabel?.textColor = .systemRed
-                    self?.sherpaDownloadButton?.isEnabled = true
-                }
-            }
-        )
-        downloader.startDownload(forceUpdateRuntime: true)
+        let selectedID = sherpaRadioButtons.first(where: { $0.state == .on }).flatMap { sherpaButtonModelIDs[$0] }
+            ?? SherpaModelPreset.current.id
+        let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }) ?? SherpaModelPreset.current
+        startSherpaSettingsDownload(preset: preset, activateOnSuccess: false, runtimeOnly: true) { [weak sender] _ in
+            sender?.isEnabled = true
+        }
     }
 
     @objc private func openSherpaFolder(_ sender: NSButton) {
@@ -847,8 +873,17 @@ final class ASRSettingsWindowController: NSObject {
                 alert.addButton(withTitle: loc("common.cancel"))
                 let result = AppDelegate.runModalAlert(alert)
                 if result == .alertFirstButtonReturn {
-                    AppSettings.sherpaModelPresetID = selectedID
-                    SherpaModelDownloader.shared.startDownload(preset: preset)
+                    persistSherpaAutoUnloadSettings()
+                    persistAppleSettings()
+                    startSherpaSettingsDownload(preset: preset, activateOnSuccess: true) { [weak self] success in
+                        if success {
+                            self?.statusLabel.stringValue = loc("settings.saved")
+                            self?.statusLabel.textColor = .systemGreen
+                        }
+                    }
+                    statusLabel.stringValue = loc("asrSettings.sherpa.downloading")
+                    statusLabel.textColor = .systemBlue
+                    return
                 } else {
                     // 取消保存：保留旧 preset 不动（Cancel save: keep old preset unchanged）
                     statusLabel.stringValue = loc("asrSettings.sherpa.saveUndownloaded.cancelled")
@@ -859,20 +894,10 @@ final class ASRSettingsWindowController: NSObject {
                 AppSettings.sherpaModelPresetID = selectedID
             }
         }
-        AppSettings.sherpaAutoUnloadEnabled = sherpaAutoUnloadCheckbox.state == .on
-        let selectedUnloadMinutes = (sherpaAutoUnloadPopup.selectedItem?.representedObject as? Int) ?? 15
-        AppSettings.sherpaAutoUnloadIdleMinutes = selectedUnloadMinutes
+        persistSherpaAutoUnloadSettings()
 
         // 保存 Apple 设置
-        let appleEnabled = appleEnableCheckbox.state == .on
-        let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
-        if appleEnabled && !isSupported {
-            // 不支持时强制关闭
-            AppSettings.appleOnDeviceRecognitionEnabled = false
-        } else {
-            AppSettings.appleOnDeviceRecognitionEnabled = appleEnabled
-        }
+        persistAppleSettings()
 
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
