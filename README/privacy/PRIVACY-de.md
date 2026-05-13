@@ -1,6 +1,6 @@
 # AtomVoice Datenschutzrichtlinie
 
-Letzte Aktualisierung: 9. Mai 2026
+Letzte Aktualisierung: 13. Mai 2026
 
 AtomVoice ist ein Spracheingabe-Tool für die macOS-Menüleiste. Wir nehmen Ihre Privatsphäre sehr ernst. Diese Datenschutzrichtlinie erklärt, wie AtomVoice Daten verarbeitet, Berechtigungen nutzt und mit Drittanbietern interagiert.
 
@@ -27,10 +27,13 @@ AtomVoice kann während des Betriebs die folgenden Daten verarbeiten:
    AtomVoice verwendet macOS-Barrierefreiheitsberechtigungen, um die Auswahltaste zu erkennen, die aktuelle Eingabeposition zu identifizieren und Einfügevorgänge zu simulieren. Die Anwendung protokolliert keine Tastatureingaben und liest nicht kontinuierlich Text aus anderen Anwendungen. Sie liest nur Informationen in der Nähe des Cursors im aktuell fokussierten Eingabefeld, wenn es notwendig ist, beispielsweise zur Vermeidung von doppelter Zeichensetzung.
 
 5. **Lokale Einstellungen**
-   AtomVoice speichert Anwendungseinstellungen lokal, wie Sprache, Erkennungsmotor, Auswahltaste, Eingabegerät, Animationsstil, Stille-Automatikstopp-Einstellungen, LLM-Anbieter-URL, Modellname, benutzerdefinierte Aufforderungen usw. Diese Einstellungen werden in den lokalen macOS-Einstellungen gespeichert.
+   AtomVoice speichert Anwendungseinstellungen lokal, wie Sprache, Erkennungsmotor, Auswahltaste, Eingabegeräte-UID, Animationsstil, Stille-Automatikstopp-Einstellungen, LLM-Anbieter-URL, Modellname, benutzerdefinierte Aufforderungen, Aufzeichnungen importierter Sherpa-Modelle usw. Diese Einstellungen werden in den lokalen macOS-Einstellungen gespeichert.
 
 6. **LLM API-Schlüssel**
    Wenn Sie die LLM-Textverfeinerung aktivieren und einen API-Schlüssel eingeben, speichert AtomVoice den API-Schlüssel in den lokalen Einstellungen und verwendet ihn ausschließlich für Anfragen an den gewählten LLM-Anbieter. AtomVoice lädt Ihren API-Schlüssel nicht auf einen AtomVoice-Server hoch.
+
+7. **Doubao ASR API-Schlüssel**
+   Wenn Sie die Volcengine (Doubao) Streaming-Cloud-Erkennung konfigurieren, speichert AtomVoice den Doubao ASR API-Schlüssel im macOS-Schlüsselbund und verwendet ihn nur zur Authentifizierung von Anfragen an Volcengine/Doubao.
 
 ## 3. Wie die Spracherkennung Funktioniert
 
@@ -65,9 +68,11 @@ Wie diese Daten verarbeitet werden, hängt von dem gewählten LLM-Anbieter ab. B
 
 Wenn Sie die LLM-Textverfeinerung nicht aktivieren, sendet AtomVoice keinen erkannten Text an einen LLM-Anbieter.
 
-## 5. Automatische Aktualisierungsprüfung
+## 5. Automatische Aktualisierungsprüfung und Modell-Downloads
 
 AtomVoice prüft auf neue Versionen über GitHub Releases. Bei der Aktualisierungsprüfung sendet die Anwendung eine Anfrage an GitHub, um die neueste Versionsinformationen zu erhalten. GitHub kann gemäß seinen eigenen Richtlinien Netzwerkanfrage-Informationen wie IP-Adresse, Gerätenetzwerkinformationen und User-Agent empfangen.
+
+Wenn Sie Sherpa ONNX-Laufzeitdateien, Spracherkennungsmodelle oder Interpunktionsmodelle herunterladen, lädt AtomVoice diese Dateien von GitHub Releases oder konfigurierten Spiegel-URLs herunter. Der Download-Host kann normale Netzwerkanfrage-Informationen wie IP-Adresse und User-Agent empfangen. Manuell importierte lokale Sherpa-Modelle werden in das lokale Support-Verzeichnis von AtomVoice kopiert und von AtomVoice nicht hochgeladen.
 
 AtomVoice sendet bei der Aktualisierungsprüfung keine Aufnahmen, erkannten Text, Zwischenablage-Inhalte oder LLM API-Schlüssel.
 
@@ -84,11 +89,15 @@ AtomVoice benötigt die folgenden macOS-Berechtigungen:
 3. **Barrierefreiheitsberechtigung**
    Wird verwendet, um Auswahltasten zu erkennen, Eingabepositionen zu identifizieren und erkannten Text in die aktuelle Anwendung zu injizieren.
 
+AtomVoice kann außerdem die Namen und UIDs verfügbarer Audioeingabegeräte lesen, damit Sie ein Mikrofon auswählen können. Wenn „Lautstärke während der Aufnahme verringern“ aktiviert ist, liest AtomVoice die aktuelle Systemausgabelautstärke, verringert sie während der Aufnahme vorübergehend und stellt sie danach wieder her.
+
 Sie können diese Berechtigungen jederzeit in den macOS-Systemeinstellungen widerrufen. Der Widerruf von Berechtigungen kann dazu führen, dass zugehörige Funktionen nicht mehr ordnungsgemäß funktionieren.
 
 ## 7. Datenspeicherung und -löschung
 
 AtomVoice speichert keine Audioaufnahmen, keinen Spracherkennungsverlauf und erstellt keine Benutzerkonten.
+
+Debug-Builds können lokale Diagnoseprotokolle nach `~/Library/Logs/AtomVoice/debug.log` schreiben. Diese Protokolle dienen der Fehlerbehebung während der Entwicklung, bleiben auf Ihrem Gerät und werden auf keinen AtomVoice-Server hochgeladen. Release-Builds schreiben dieses Debug-Protokoll nicht.
 
 Lokal gespeicherte Daten bestehen hauptsächlich aus Anwendungseinstellungen. Sie können zugehörige Daten löschen durch:
 

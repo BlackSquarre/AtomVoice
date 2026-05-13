@@ -1,6 +1,6 @@
 # Política de Privacidad de AtomVoice
 
-Última actualización: 9 de mayo de 2026
+Última actualización: 13 de mayo de 2026
 
 AtomVoice es una herramienta de entrada de voz en la barra de menú de macOS. Nos tomamos muy en serio su privacidad. Esta Política de Privacidad explica cómo AtomVoice maneja los datos, utiliza los permisos e interactúa con servicios de terceros.
 
@@ -27,10 +27,13 @@ AtomVoice puede procesar los siguientes datos durante su funcionamiento:
    AtomVoice utiliza los permisos de accesibilidad de macOS para detectar la tecla de activación, identificar la posición de entrada actual y simular operaciones de pegado. La aplicación no registra sus pulsaciones de teclas ni lee continuamente el texto de otras aplicaciones. Solo lee la información cerca del cursor en el campo de entrada enfocado cuando es necesario, para funciones como la evitación de puntuación duplicada.
 
 5. **Configuración local**
-   AtomVoice almacena la configuración de la aplicación localmente, como idioma, motor de reconocimiento, tecla de activación, dispositivo de entrada, estilo de animación, configuración de parada automática por silencio, URL del proveedor LLM, nombre del modelo, indicaciones personalizadas, etc. Estos ajustes se almacenan en las preferencias locales de macOS.
+   AtomVoice almacena la configuración de la aplicación localmente, como idioma, motor de reconocimiento, tecla de activación, UID del dispositivo de entrada, estilo de animación, configuración de parada automática por silencio, URL del proveedor LLM, nombre del modelo, indicaciones personalizadas, registros de modelos Sherpa importados, etc. Estos ajustes se almacenan en las preferencias locales de macOS.
 
 6. **Clave API de LLM**
-   Si habilita el refinamiento de texto LLM e ingresa una clave API, AtomVoice almacena la clave API en la configuración local y la utiliza únicamente para realizar solicitudes al proveedor LLM elegido. AtomVoice no carga su clave API en ningún servidor de AtomVoice.
+   Si habilita el refinamiento de texto LLM e ingresa una clave API, AtomVoice almacena la clave API en las preferencias locales y la utiliza únicamente para realizar solicitudes al proveedor LLM elegido. AtomVoice no carga su clave API en ningún servidor de AtomVoice.
+
+7. **Clave API de Doubao ASR**
+   Si configura el reconocimiento en la nube en streaming de Volcengine (Doubao), AtomVoice almacena la clave API de Doubao ASR en el llavero de macOS y la utiliza únicamente para autenticar solicitudes a Volcengine/Doubao.
 
 ## 3. Cómo Funciona el Reconocimiento de Voz
 
@@ -65,9 +68,11 @@ Cómo se manejan estos datos depende del proveedor LLM que elija. Revise la pol�
 
 Si no habilita el refinamiento de texto LLM, AtomVoice no enviará texto reconocido a ningún proveedor LLM.
 
-## 5. Verificación Automática de Actualizaciones
+## 5. Verificación Automática de Actualizaciones y Descargas de Modelos
 
 AtomVoice verifica nuevas versiones a través de GitHub Releases. Al verificar actualizaciones, la aplicación envía una solicitud a GitHub para obtener la información de la última versión. GitHub puede recibir información de solicitud de red, como dirección IP, información de red del dispositivo y User-Agent, de acuerdo con sus propias políticas.
+
+Si decide descargar archivos de runtime Sherpa ONNX, modelos de reconocimiento de voz o modelos de puntuación, AtomVoice descarga esos archivos desde GitHub Releases o desde URL espejo configuradas. El servidor de descarga puede recibir información normal de solicitud de red, como dirección IP y User-Agent. Los modelos Sherpa locales importados manualmente se copian al directorio de soporte local de AtomVoice y AtomVoice no los sube.
 
 AtomVoice no envía sus grabaciones, texto reconocido, contenido del portapapeles ni claves API LLM durante las verificaciones de actualización.
 
@@ -84,11 +89,15 @@ AtomVoice requiere los siguientes permisos de macOS:
 3. **Permiso de accesibilidad**
    Se utiliza para detectar la tecla de activación, identificar posiciones de entrada e inyectar texto reconocido en la aplicación actual.
 
+AtomVoice también puede leer los nombres y UID de los dispositivos de entrada de audio disponibles para que pueda elegir un micrófono. Si "Bajar volumen mientras se graba" está activado, AtomVoice lee el volumen de salida actual del sistema, lo reduce temporalmente durante la grabación y lo restaura después.
+
 Puede revocar estos permisos en cualquier momento en Configuración del Sistema de macOS. Revocar los permisos puede impedir que las funciones relacionadas funcionen correctamente.
 
 ## 7. Almacenamiento y Eliminación de Datos
 
 AtomVoice no guarda grabaciones de audio, historial de reconocimiento de voz ni crea cuentas de usuario.
+
+Las compilaciones de depuración pueden escribir registros de diagnóstico locales en `~/Library/Logs/AtomVoice/debug.log`. Estos registros se usan para solucionar problemas durante el desarrollo, permanecen en su dispositivo y no se cargan en ningún servidor de AtomVoice. Las compilaciones de lanzamiento no escriben este registro de depuración.
 
 Los datos almacenados localmente consisten principalmente en la configuración de la aplicación. Puede eliminar los datos relacionados mediante:
 

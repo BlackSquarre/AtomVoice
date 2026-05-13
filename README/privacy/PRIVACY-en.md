@@ -1,6 +1,6 @@
 # AtomVoice Privacy Policy
 
-Last updated: May 9, 2026
+Last updated: May 13, 2026
 
 AtomVoice is a macOS menu bar voice input tool. We take your privacy seriously. This Privacy Policy explains how AtomVoice handles data, uses permissions, and interacts with third-party services.
 
@@ -27,10 +27,13 @@ AtomVoice may process the following data during operation:
    AtomVoice uses macOS accessibility permissions to listen for trigger key events, detect the current input position, and simulate paste operations. The app does not log your keystrokes or continuously read text from other applications. It only reads information near the cursor in the currently focused input field when necessary, for features like duplicate punctuation avoidance.
 
 5. **Local Settings**
-   AtomVoice stores app settings locally, such as language, recognition engine, trigger key, input device, animation style, silence auto-stop settings, LLM provider URL, model name, custom prompts, and more. These settings are stored in macOS local preferences.
+   AtomVoice stores app settings locally, such as language, recognition engine, trigger key, input device UID, animation style, silence auto-stop settings, LLM provider URL, model name, custom prompts, imported Sherpa model records, and more. These settings are stored in macOS local preferences.
 
 6. **LLM API Key**
-   If you enable LLM text refinement and enter an API key, AtomVoice stores the API key in local settings and uses it solely to make requests to your chosen LLM provider. AtomVoice does not upload your API key to any AtomVoice server.
+   If you enable LLM text refinement and enter an API key, AtomVoice stores the API key in local preferences and uses it solely to make requests to your chosen LLM provider. AtomVoice does not upload your API key to any AtomVoice server.
+
+7. **Doubao ASR API Key**
+   If you configure Volcengine (Doubao) streaming cloud recognition, AtomVoice stores the Doubao ASR API key in the macOS Keychain and uses it only to authenticate requests to Volcengine/Doubao.
 
 ## 3. How Speech Recognition Works
 
@@ -65,9 +68,11 @@ How this data is handled depends on the LLM provider you choose. Please review t
 
 If you do not enable LLM text refinement, AtomVoice will not send recognized text to any LLM provider.
 
-## 5. Automatic Update Check
+## 5. Automatic Update Check and Model Downloads
 
 AtomVoice checks for new versions via GitHub Releases. When checking for updates, the app sends a request to GitHub for the latest version information. GitHub may receive network request information, such as IP address, device network information, and User-Agent, in accordance with its own policies.
+
+If you choose to download Sherpa ONNX runtime files, speech recognition models, or punctuation models, AtomVoice downloads those files from GitHub releases or configured mirror URLs. The download host may receive normal network request information, such as IP address and User-Agent. Imported local Sherpa models are copied to AtomVoice's local support directory and are not uploaded by AtomVoice.
 
 AtomVoice does not send your recordings, recognized text, clipboard content, or LLM API keys during update checks.
 
@@ -84,11 +89,15 @@ AtomVoice requires the following macOS permissions:
 3. **Accessibility Permission**
    Used to listen for trigger key events, detect input positions, and inject recognized text into the current application.
 
+AtomVoice may also read available audio input device names and UIDs so you can choose a microphone. If "Lower Volume While Recording" is enabled, AtomVoice reads the current system output volume, temporarily lowers it during recording, and restores it afterward.
+
 You can revoke these permissions at any time in macOS System Settings. Revoking permissions may prevent related features from functioning.
 
 ## 7. Data Storage and Deletion
 
 AtomVoice does not save audio recordings, speech recognition history, or create user accounts.
+
+Debug builds may write local diagnostic logs to `~/Library/Logs/AtomVoice/debug.log`. These logs are used for development troubleshooting, stay on your device, and are not uploaded to any AtomVoice server. Release builds do not write this debug log.
 
 Locally stored data consists mainly of app settings. You can delete related data by:
 
