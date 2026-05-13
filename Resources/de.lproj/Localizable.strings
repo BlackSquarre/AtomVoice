@@ -81,6 +81,12 @@
 "about.bilibili" = "Bilibili";
 "about.github" = "GitHub";
 "about.copyright" = "© 2026 Miao Lingru. Alle Rechte vorbehalten.";
+"about.thirdParty.link" = "Drittanbieter-Hinweise";
+"about.thirdParty.title" = "Drittanbieter-Hinweise";
+"about.thirdParty.intro" = "AtomVoice verwendet die folgenden Drittanbieter-Projekte und Modellquellen.";
+"about.thirdParty.license" = "Lizenz: %@";
+"about.thirdParty.project" = "Projekt";
+"about.thirdParty.licenseLink" = "Lizenz";
 
 /* LLM How-to */
 "llm.howto.message" = "Die LLM-Verfeinerung wird nach der Spracherkennung ausgeführt. Das ausgewählte Modell überprüft den erkannten Text und korrigiert falsch gehörte Wörter, Homophone, falsche Eigennamen und Zeichensetzung, sodass der endgültige Text dem entspricht, was Sie sagen wollten.\n\nZum Beispiel: Es kann \"pirson\" in \"Python\" korrigieren, fehlende Zeichensetzung hinzufügen und offensichtlich falsche Sätze korrigieren.\n\nSo verwenden Sie es:\n1. Wählen Sie einen Anbieter (OpenAI, Anthropic, DeepSeek oder benutzerdefiniert).\n2. Geben Sie Ihren API-Schlüssel ein.\n3. Wählen Sie ein Modell und speichern Sie.\n4. Aktivieren Sie \"LLM-Verfeinerung\" im Menü.\n\nWenn aktiviert, wird nach jeder Aufnahme der erkannte Text an den ausgewählten LLM-Anbieter zur Korrektur gesendet; die Audiodatei selbst wird nicht gesendet. Drücken Sie während der Aufnahme Leertaste oder Rücktaste, um LLM zu überspringen und sofort einzugeben.";

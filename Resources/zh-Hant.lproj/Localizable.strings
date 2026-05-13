@@ -81,6 +81,12 @@
 "about.bilibili" = "Bilibili 主頁";
 "about.github" = "GitHub 專案";
 "about.copyright" = "© 2026 缪凌儒. 保留所有權利。";
+"about.thirdParty.link" = "第三方引用與版權";
+"about.thirdParty.title" = "第三方引用與版權";
+"about.thirdParty.intro" = "原子微語使用了以下第三方專案和模型來源。";
+"about.thirdParty.license" = "授權條款：%@";
+"about.thirdParty.project" = "專案連結";
+"about.thirdParty.licenseLink" = "授權條款";
 
 /* LLM How-to */
 "llm.howto.message" = "LLM 優化會在語音辨識完成後，再讓大型語言模型檢查一遍辨識文字，協助修正聽錯的詞、同音誤辨、專有名詞錯誤和標點問題，讓最後輸入的內容更接近你原本想說的話。\n\n例如：把「配森」修正為「Python」，補上漏掉的標點，整理明顯不通順的句子。\n\n使用方法：\n1. 選擇服務商（OpenAI、Anthropic、DeepSeek 或自訂）。\n2. 填寫 API 金鑰。\n3. 選擇模型並儲存。\n4. 在選單中啟用「LLM 文字優化」。\n\n開啟後，每次錄音結束，辨識出的文字會傳送給你選擇的 LLM 服務商進行修正；音訊本身不會傳送。錄音期間按空白鍵或退格鍵，可以略過 LLM 直接上屏。";

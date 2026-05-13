@@ -81,6 +81,12 @@
 "about.bilibili" = "Bilibili";
 "about.github" = "GitHub";
 "about.copyright" = "© 2026 Miao Lingru. All rights reserved.";
+"about.thirdParty.link" = "Third-Party Notices";
+"about.thirdParty.title" = "Third-Party Notices";
+"about.thirdParty.intro" = "AtomVoice uses the following third-party projects and model sources.";
+"about.thirdParty.license" = "License: %@";
+"about.thirdParty.project" = "Project";
+"about.thirdParty.licenseLink" = "License";
 
 /* LLM How-to */
 "llm.howto.message" = "LLM Refinement runs after speech recognition finishes. It asks your selected model to review the recognized text and fix misheard words, homophones, incorrect proper nouns, and punctuation, so the text that gets typed is closer to what you meant to say.\n\nFor example: it can correct \"配森\" to \"Python\", add missing punctuation, and clean up sentences that are obviously awkward.\n\nHow to use it:\n1. Choose a provider (OpenAI, Anthropic, DeepSeek, or custom).\n2. Enter your API key.\n3. Select a model and save.\n4. Enable \"LLM Refinement\" in the menu.\n\nWhen enabled, after each recording, the recognized text is sent to your selected LLM provider for correction; the audio itself is not sent. Press Space or Backspace during recording to skip LLM and type immediately.";

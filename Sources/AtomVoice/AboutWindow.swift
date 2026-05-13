@@ -2,6 +2,47 @@ import Cocoa
 
 final class AboutWindowController: NSObject {
     private var window: NSWindow?
+    private var thirdPartyWindow: NSWindow?
+
+    private struct ThirdPartyNotice {
+        let name: String
+        let license: String
+        let projectURL: String
+        let licenseURL: String
+    }
+
+    private let thirdPartyNotices: [ThirdPartyNotice] = [
+        ThirdPartyNotice(
+            name: "sherpa-onnx",
+            license: "Apache License 2.0",
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx",
+            licenseURL: "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE"
+        ),
+        ThirdPartyNotice(
+            name: "ONNX Runtime",
+            license: "MIT License",
+            projectURL: "https://github.com/microsoft/onnxruntime",
+            licenseURL: "https://github.com/microsoft/onnxruntime/blob/main/LICENSE"
+        ),
+        ThirdPartyNotice(
+            name: "k2-fsa Sherpa ONNX ASR models",
+            license: "See model repository",
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
+            licenseURL: "https://github.com/k2-fsa/sherpa-onnx"
+        ),
+        ThirdPartyNotice(
+            name: "k2-fsa Sherpa ONNX punctuation model",
+            license: "See model repository",
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/punctuation-models",
+            licenseURL: "https://github.com/k2-fsa/sherpa-onnx"
+        ),
+        ThirdPartyNotice(
+            name: "ReazonSpeech",
+            license: "Apache License 2.0",
+            projectURL: "https://github.com/reazon-research/ReazonSpeech",
+            licenseURL: "https://github.com/reazon-research/ReazonSpeech/blob/master/LICENSE"
+        ),
+    ]
 
     func showWindow() {
         if let w = window {
@@ -13,7 +54,7 @@ final class AboutWindowController: NSObject {
 
     private func buildWindow() {
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 280),
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 316),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -115,6 +156,15 @@ final class AboutWindowController: NSObject {
         vStack.addArrangedSubview(linksRow)
         vStack.setCustomSpacing(20, after: linksRow)
 
+        let thirdPartyButton = makeTextButton(
+            title: loc("about.thirdParty.link"),
+            action: #selector(showThirdPartyNotices(_:))
+        )
+        thirdPartyButton.font = .systemFont(ofSize: 10.5)
+        thirdPartyButton.contentTintColor = .tertiaryLabelColor
+        vStack.addArrangedSubview(thirdPartyButton)
+        vStack.setCustomSpacing(8, after: thirdPartyButton)
+
         // ── 版权（Copyright）────────────────────────────────────────────
         let copyright = NSTextField(labelWithString: loc("about.copyright"))
         copyright.font = .systemFont(ofSize: 10.5)
@@ -172,10 +222,142 @@ final class AboutWindowController: NSObject {
         return btn
     }
 
+    private func makeTextButton(title: String, action: Selector) -> NSButton {
+        let btn = NSButton(title: title, target: self, action: action)
+        btn.isBordered = false
+        btn.bezelStyle = .inline
+        btn.setButtonType(.momentaryChange)
+        btn.alignment = .center
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }
+
+    private func makeExternalLinkButton(title: String, url: String) -> NSButton {
+        let btn = makeTextButton(title: title, action: #selector(openLink(_:)))
+        btn.identifier = NSUserInterfaceItemIdentifier(url)
+        btn.font = .systemFont(ofSize: 12)
+        btn.contentTintColor = .linkColor
+        return btn
+    }
+
     @objc private func openLink(_ sender: NSButton) {
         guard let urlStr = sender.identifier?.rawValue,
               let url = URL(string: urlStr) else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    @objc private func showThirdPartyNotices(_ sender: NSButton) {
+        if let w = thirdPartyWindow {
+            WindowPresenter.shared.bringToFrontInCurrentSpace(w)
+            return
+        }
+
+        let w = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 380),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        w.title = loc("about.thirdParty.title")
+        w.isReleasedWhenClosed = false
+        w.titlebarAppearsTransparent = true
+        w.titleVisibility = .visible
+        w.isMovableByWindowBackground = true
+        w.level = .floating
+        w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
+
+        guard let cv = w.contentView else { return }
+
+        let root = NSStackView()
+        root.orientation = .vertical
+        root.alignment = .leading
+        root.spacing = 12
+        root.translatesAutoresizingMaskIntoConstraints = false
+        cv.addSubview(root)
+
+        NSLayoutConstraint.activate([
+            root.topAnchor.constraint(equalTo: cv.topAnchor, constant: 46),
+            root.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 24),
+            root.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -24),
+            root.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -20),
+        ])
+
+        let title = NSTextField(labelWithString: loc("about.thirdParty.title"))
+        title.font = .boldSystemFont(ofSize: 18)
+        title.textColor = .labelColor
+        root.addArrangedSubview(title)
+
+        let intro = NSTextField(labelWithString: loc("about.thirdParty.intro"))
+        intro.font = .systemFont(ofSize: 12.5)
+        intro.textColor = .secondaryLabelColor
+        intro.lineBreakMode = .byWordWrapping
+        intro.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        root.addArrangedSubview(intro)
+        intro.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
+
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .noBorder
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        let list = NSStackView()
+        list.orientation = .vertical
+        list.alignment = .leading
+        list.spacing = 12
+        list.translatesAutoresizingMaskIntoConstraints = false
+
+        let documentView = NSView()
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        documentView.addSubview(list)
+        scrollView.documentView = documentView
+        root.addArrangedSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            scrollView.widthAnchor.constraint(equalTo: root.widthAnchor),
+            list.topAnchor.constraint(equalTo: documentView.topAnchor),
+            list.leadingAnchor.constraint(equalTo: documentView.leadingAnchor),
+            list.trailingAnchor.constraint(equalTo: documentView.trailingAnchor),
+            list.bottomAnchor.constraint(equalTo: documentView.bottomAnchor),
+            list.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+            documentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+        ])
+
+        for notice in thirdPartyNotices {
+            list.addArrangedSubview(makeNoticeView(notice))
+        }
+
+        self.thirdPartyWindow = w
+        w.delegate = self
+        w.center()
+        WindowPresenter.shared.bringToFrontInCurrentSpace(w)
+    }
+
+    private func makeNoticeView(_ notice: ThirdPartyNotice) -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 3
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let name = NSTextField(labelWithString: notice.name)
+        name.font = .boldSystemFont(ofSize: 13.5)
+        name.textColor = .labelColor
+        stack.addArrangedSubview(name)
+
+        let license = NSTextField(labelWithString: loc("about.thirdParty.license", notice.license))
+        license.font = .systemFont(ofSize: 12)
+        license.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(license)
+
+        let links = NSStackView()
+        links.orientation = .horizontal
+        links.alignment = .centerY
+        links.spacing = 12
+        links.addArrangedSubview(makeExternalLinkButton(title: loc("about.thirdParty.project"), url: notice.projectURL))
+        links.addArrangedSubview(makeExternalLinkButton(title: loc("about.thirdParty.licenseLink"), url: notice.licenseURL))
+        stack.addArrangedSubview(links)
+
+        return stack
     }
 }
 
