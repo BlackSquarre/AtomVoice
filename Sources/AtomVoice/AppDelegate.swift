@@ -1,19 +1,11 @@
 import Cocoa
-import AVFoundation
-import Speech
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+public final class AppDelegate: NSObject, NSApplicationDelegate {
     private let asrEngineRegistry = ASREngineRegistry.shared
+    private let asrEngineProvider = ASREngineProvider()
     private var menuBarController: MenuBarController!
     private var fnKeyMonitor: FnKeyMonitor!
     private var audioEngine: AudioEngineController!
-    private var speechRecognizer: SpeechRecognizerController?
-    private var sherpaRecognizer: SherpaOnnxRecognizerController?
-    private var volcengineProvider: VolcengineASRProvider?
-    private var cloudRecognizer: CloudASRRecognizerController?
-    private var appleASREngine: AppleSpeechASREngine?
-    private var sherpaASREngine: SherpaOnnxASREngine?
-    private var volcengineASREngine: VolcengineASREngine?
     private var capsuleWindow: CapsuleWindowController!
     private var textInjector: TextInjector!
     private var llmRefiner: LLMRefiner!
@@ -33,13 +25,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sherpaDownloadCapsuleLastUpdate = Date.distantPast
     private var session: RecordingSessionController!
 
+    public override init() {
+        super.init()
+    }
+
     deinit {
         memoryPressureSource?.cancel()
         sherpaAutoUnloadWorkItem?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    public func applicationDidFinishLaunching(_ notification: Notification) {
         terminateOtherRunningInstances()
 
         AppSettings.registerDefaults()
@@ -71,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         audioEngine = AudioEngineController()
         textPostProcessorRegistry = TextPostProcessorRegistry(processors: [
             SherpaPunctuationProcessor(registry: asrEngineRegistry) { [weak self] text in
-                self?.ensureSherpaASREngine().punctuate(text)
+                self?.asrEngineProvider.sherpaEngine().punctuate(text)
             },
             HeuristicPunctuationProcessor(),
         ])
@@ -92,13 +88,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             textPostProcessorRegistry: textPostProcessorRegistry,
             textOutputSinkRegistry: textOutputSinkRegistry,
             volumeController: volumeController,
-            asrEngineRegistry: asrEngineRegistry
+            asrEngineRegistry: asrEngineRegistry,
+            asrEngineProvider: asrEngineProvider
         )
         session.delegate = self
 
         menuBarController = MenuBarController(
             onLanguageChanged: { [weak self] in
-                self?.ensureAppleASREngine().updateLanguage()
+                self?.asrEngineProvider.appleEngine().updateLanguage()
             },
             llmRefiner: llmRefiner,
             asrEngineRegistry: asrEngineRegistry,
@@ -273,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleSherpaSelectionChange() {
-        guard sherpaASREngine != nil else { return }
+        guard asrEngineProvider.hasSherpaEngine else { return }
 
         if session.isRecording && asrEngineRegistry.isSherpa(session.currentRecordingEngine) {
             pendingSherpaModelRelease = true
@@ -283,55 +280,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         DebugLog.info("[AppDelegate] Sherpa 预设已切换，释放旧模型")
         releaseSherpaModelsIfNeeded()
-    }
-
-    private func ensureSpeechRecognizer() -> SpeechRecognizerController {
-        if let speechRecognizer { return speechRecognizer }
-        let recognizer = SpeechRecognizerController()
-        speechRecognizer = recognizer
-        return recognizer
-    }
-
-    private func ensureSherpaRecognizer() -> SherpaOnnxRecognizerController {
-        if let sherpaRecognizer { return sherpaRecognizer }
-        let recognizer = SherpaOnnxRecognizerController()
-        sherpaRecognizer = recognizer
-        return recognizer
-    }
-
-    private func ensureVolcengineProvider() -> VolcengineASRProvider {
-        if let volcengineProvider { return volcengineProvider }
-        let provider = VolcengineASRProvider()
-        volcengineProvider = provider
-        return provider
-    }
-
-    private func ensureCloudRecognizer() -> CloudASRRecognizerController {
-        if let cloudRecognizer { return cloudRecognizer }
-        let recognizer = CloudASRRecognizerController(provider: ensureVolcengineProvider())
-        cloudRecognizer = recognizer
-        return recognizer
-    }
-
-    private func ensureAppleASREngine() -> AppleSpeechASREngine {
-        if let appleASREngine { return appleASREngine }
-        let engine = AppleSpeechASREngine(recognizer: ensureSpeechRecognizer())
-        appleASREngine = engine
-        return engine
-    }
-
-    private func ensureSherpaASREngine() -> SherpaOnnxASREngine {
-        if let sherpaASREngine { return sherpaASREngine }
-        let engine = SherpaOnnxASREngine(recognizer: ensureSherpaRecognizer())
-        sherpaASREngine = engine
-        return engine
-    }
-
-    private func ensureVolcengineASREngine() -> VolcengineASREngine {
-        if let volcengineASREngine { return volcengineASREngine }
-        let engine = VolcengineASREngine(provider: ensureVolcengineProvider(), recognizer: ensureCloudRecognizer())
-        volcengineASREngine = engine
-        return engine
     }
 
     private func sherpaAutoUnloadEnabled() -> Bool {
@@ -352,14 +300,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard sherpaAutoUnloadEnabled(),
               !session.isRecording,
               selectedRecognitionEngineCode == ASREngineRegistry.sherpaCode,
-              sherpaASREngine?.isModelLoaded == true else { return }
+              asrEngineProvider.isSherpaModelLoaded else { return }
 
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.sherpaAutoUnloadWorkItem = nil
             guard !self.session.isRecording,
                   self.selectedRecognitionEngineCode == ASREngineRegistry.sherpaCode,
-                  self.sherpaASREngine?.isModelLoaded == true else { return }
+                  self.asrEngineProvider.isSherpaModelLoaded else { return }
             DebugLog.info("[AppDelegate] Sherpa 模型空闲超时，自动释放本地模型")
             self.releaseSherpaModelsIfNeeded()
         }
@@ -377,14 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func releaseSherpaModelsIfNeeded() {
         cancelSherpaAutoUnloadTask()
         pendingSherpaModelRelease = false
-        guard let sherpaASREngine else { return }
-        if sherpaASREngine.isModelLoaded {
-            DebugLog.info("[AppDelegate] 释放 Sherpa 本地模型")
-            sherpaASREngine.releaseModels()
-        }
-        self.sherpaASREngine = nil
-        self.sherpaRecognizer = nil
-        DebugLog.info("[AppDelegate] 已释放 Sherpa 引擎实例")
+        asrEngineProvider.releaseSherpaEngine()
     }
 
     private func releaseSherpaModelsAfterRecordingIfNeeded() {
@@ -399,50 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scheduleSherpaAutoUnloadIfNeeded()
     }
 
-    // MARK: - Window activation helpers
-
-    /// 在 LSUIElement=true 的菜单栏应用里，先把窗口移动到当前 Space，
-    /// 再显示和激活，避免在全屏 app 中打开窗口时跳回桌面。
-    /// (In a LSUIElement=true menu bar app, move the window to the current Space first,
-    /// then show and activate it, to avoid jumping back to the desktop when opening from a fullscreen app.)
-    static func bringToFront(_ window: NSWindow) {
-        bringToFront(window, transient: false)
-    }
-
-    /// 从状态栏菜单打开的辅助窗口应留在当前 Space，包括其他 app 的全屏 Space。
-    /// (Auxiliary windows opened from the status bar menu should stay in the current Space, including fullscreen Spaces of other apps.)
-    static func bringToFrontInCurrentSpace(_ window: NSWindow) {
-        bringToFront(window, transient: true)
-    }
-
-    private static func bringToFront(_ window: NSWindow, transient: Bool) {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.unhide(nil)
-        var behavior: NSWindow.CollectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-        if transient { behavior.insert(.transient) }
-        window.collectionBehavior.formUnion(behavior)
-        window.orderFrontRegardless()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-
-        // 菜单收起后一帧再确认一次，避免状态栏菜单焦点覆盖窗口焦点（Re-confirm one frame after menu dismisses, to prevent status bar menu focus from overriding window focus）
-        DispatchQueue.main.async {
-            window.orderFrontRegardless()
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-        }
-    }
-
-    @discardableResult
-    static func runModalAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.unhide(nil)
-        alert.window.level = .modalPanel
-        alert.window.collectionBehavior.formUnion([.moveToActiveSpace, .fullScreenAuxiliary, .transient])
-        let response = alert.runModal()
-        resetActivationIfNeeded()
-        return response
-    }
+    // MARK: - Sherpa download capsule
 
     static func showSherpaDownloadCapsule(_ message: String) {
         guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
@@ -484,37 +382,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// 窗口关闭时调用：若已无其他普通窗口可见，恢复 accessory 策略。
-    /// (Called when a window closes: if no other regular windows are visible, restore accessory activation policy.)
-    static func resetActivationIfNeeded(closing: NSWindow? = nil) {
-        let hasOther = NSApp.windows.contains { window in
-            if let closing, window === closing { return false }
-            return window.isVisible && window.styleMask.contains(.titled)
-        }
-        if !hasOther { NSApp.setActivationPolicy(.accessory) }
-    }
-
     private func requestPermissions() {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            if !granted {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = loc("permission.mic.title")
-                    alert.informativeText = loc("permission.mic.message")
-                    AppDelegate.runModalAlert(alert)
-                }
-            }
-        }
-        SFSpeechRecognizer.requestAuthorization { status in
-            if status != .authorized {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = loc("permission.speech.title")
-                    alert.informativeText = loc("permission.speech.message")
-                    AppDelegate.runModalAlert(alert)
-                }
-            }
-        }
+        PermissionService.shared.requestStartupPermissions()
     }
 
     // MARK: - Sherpa 模型下载
@@ -603,7 +472,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
         alert.addButton(withTitle: loc("sherpa.download.confirm"))
         alert.addButton(withTitle: loc("common.cancel"))
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
             startSherpaDownload()
         }
     }
@@ -615,7 +484,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
         alert.addButton(withTitle: loc("sherpa.download.confirm"))
         alert.addButton(withTitle: loc("common.cancel"))
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
             startSherpaDownload()
         }
     }
@@ -624,22 +493,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - RecordingSessionDelegate
 
 extension AppDelegate: RecordingSessionDelegate {
-    func sessionRequiresAppleASREngine() -> AppleSpeechASREngine {
-        ensureAppleASREngine()
-    }
-
-    func sessionRequiresSherpaASREngine() -> SherpaOnnxASREngine {
-        ensureSherpaASREngine()
-    }
-
-    func sessionRequiresVolcengineASREngine() -> VolcengineASREngine {
-        ensureVolcengineASREngine()
-    }
-
-    func sessionRequiresSpeechRecognizer() -> SpeechRecognizerController {
-        ensureSpeechRecognizer()
-    }
-
     func sessionRequiresSherpaModelDownload(redownload: Bool) {
         if redownload {
             promptSherpaReDownload()

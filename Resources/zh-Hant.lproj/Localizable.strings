@@ -22,7 +22,7 @@
 "menu.textOutput" = "文字輸出方式";
 "menu.textOutput.paste" = "貼上至輸入框";
 "menu.textOutput.streaming" = "串流即時上屏";
-"menu.llm" = "LLM 文字優化";
+"menu.llm" = "LLM 文字優化 (Beta)";
 "menu.llm.enabled" = "已啟用";
 "menu.llm.disabled" = "已停用";
 "menu.llm.howto" = "如何使用 LLM 優化";
@@ -157,8 +157,8 @@
 
 /* Trigger Key */
 "menu.triggerKey" = "觸發按鍵";
-"menu.triggerKey.fn" = "Fn / Globe（預設）";
-"menu.triggerKey.rightOption" = "右 Option ⌥";
+"menu.triggerKey.fn" = "Fn / Globe";
+"menu.triggerKey.rightOption" = "右 Option ⌥（預設）";
 "menu.triggerKey.rightControl" = "右 Control ^";
 "menu.triggerKey.leftOption" = "左 Option ⌥";
 "menu.triggerKey.leftControl" = "左 Control ^";

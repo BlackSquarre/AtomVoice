@@ -22,7 +22,7 @@
 "menu.textOutput" = "텍스트 출력";
 "menu.textOutput.paste" = "입력란에 붙여넣기";
 "menu.textOutput.streaming" = "스트리밍 직접 입력";
-"menu.llm" = "LLM 텍스트 최적화";
+"menu.llm" = "LLM 텍스트 최적화 (Beta)";
 "menu.llm.enabled" = "활성화됨";
 "menu.llm.disabled" = "비활성화됨";
 "menu.llm.howto" = "LLM 최적화 사용 방법";
@@ -157,8 +157,8 @@
 
 /* Trigger Key */
 "menu.triggerKey" = "트리거 키";
-"menu.triggerKey.fn" = "Fn / Globe (기본값)";
-"menu.triggerKey.rightOption" = "오른쪽 Option ⌥";
+"menu.triggerKey.fn" = "Fn / Globe";
+"menu.triggerKey.rightOption" = "오른쪽 Option ⌥ (기본값)";
 "menu.triggerKey.rightControl" = "오른쪽 Control ^";
 "menu.triggerKey.leftOption" = "왼쪽 Option ⌥";
 "menu.triggerKey.leftControl" = "왼쪽 Control ^";

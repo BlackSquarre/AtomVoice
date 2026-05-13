@@ -5,7 +5,7 @@ final class AboutWindowController: NSObject {
 
     func showWindow() {
         if let w = window {
-            AppDelegate.bringToFrontInCurrentSpace(w)
+            WindowPresenter.shared.bringToFrontInCurrentSpace(w)
             return
         }
         buildWindow()
@@ -128,7 +128,7 @@ final class AboutWindowController: NSObject {
         self.window = w
         w.delegate = self
         w.center()
-        AppDelegate.bringToFrontInCurrentSpace(w)
+        WindowPresenter.shared.bringToFrontInCurrentSpace(w)
     }
 
     // MARK: - Icon-only link button
@@ -184,7 +184,7 @@ final class AboutWindowController: NSObject {
 extension AboutWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
 }

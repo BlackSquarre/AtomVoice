@@ -22,7 +22,7 @@
 "menu.textOutput" = "Salida de texto";
 "menu.textOutput.paste" = "Pegar en el campo de texto";
 "menu.textOutput.streaming" = "Insertar directamente en streaming";
-"menu.llm" = "Refinado con LLM";
+"menu.llm" = "Refinado con LLM (Beta)";
 "menu.llm.enabled" = "Activado";
 "menu.llm.disabled" = "Desactivado";
 "menu.llm.howto" = "Cómo usar el refinado con LLM";
@@ -157,8 +157,8 @@
 
 /* Trigger Key */
 "menu.triggerKey" = "Tecla activadora";
-"menu.triggerKey.fn" = "Fn / Globo (predeterminada)";
-"menu.triggerKey.rightOption" = "Opción derecha ⌥";
+"menu.triggerKey.fn" = "Fn / Globo";
+"menu.triggerKey.rightOption" = "Opción derecha ⌥ (predeterminada)";
 "menu.triggerKey.rightControl" = "Control derecho ^";
 "menu.triggerKey.leftOption" = "Opción izquierda ⌥";
 "menu.triggerKey.leftControl" = "Control izquierdo ^";

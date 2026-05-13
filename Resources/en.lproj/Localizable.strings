@@ -22,7 +22,7 @@
 "menu.textOutput" = "Text Output";
 "menu.textOutput.paste" = "Paste into Text Field";
 "menu.textOutput.streaming" = "Stream Directly Into Field";
-"menu.llm" = "LLM Refinement";
+"menu.llm" = "LLM Refinement (Beta)";
 "menu.llm.enabled" = "Enabled";
 "menu.llm.disabled" = "Disabled";
 "menu.llm.howto" = "How to use LLM Refinement";
@@ -157,8 +157,8 @@
 
 /* Trigger Key */
 "menu.triggerKey" = "Trigger Key";
-"menu.triggerKey.fn" = "Fn / Globe (Default)";
-"menu.triggerKey.rightOption" = "Right Option ⌥";
+"menu.triggerKey.fn" = "Fn / Globe";
+"menu.triggerKey.rightOption" = "Right Option ⌥ (Default)";
 "menu.triggerKey.rightControl" = "Right Control ^";
 "menu.triggerKey.leftOption" = "Left Option ⌥";
 "menu.triggerKey.leftControl" = "Left Control ^";

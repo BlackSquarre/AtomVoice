@@ -1,13 +1,9 @@
 import Cocoa
 import AVFoundation
 
-/// 录音会话委托：Session 通过它访问 AppDelegate 持有的引擎工厂与 Sherpa 模型流程。
-/// (Recording session delegate: Session uses it to access engine factories and Sherpa flows owned by AppDelegate.)
+/// 录音会话委托：Session 通过它触发外部 Sherpa 下载流程，并通知录音结束。
+/// (Recording session delegate: Session uses it to trigger external Sherpa download flow and notify recording end.)
 protocol RecordingSessionDelegate: AnyObject {
-    func sessionRequiresAppleASREngine() -> AppleSpeechASREngine
-    func sessionRequiresSherpaASREngine() -> SherpaOnnxASREngine
-    func sessionRequiresVolcengineASREngine() -> VolcengineASREngine
-    func sessionRequiresSpeechRecognizer() -> SpeechRecognizerController
     func sessionRequiresSherpaModelDownload(redownload: Bool)
     func sessionDidEnd()
 }
@@ -23,6 +19,7 @@ final class RecordingSessionController {
     private let textOutputSinkRegistry: TextOutputSinkRegistry
     private let volumeController: VolumeController
     private let asrEngineRegistry: ASREngineRegistry
+    private let asrEngineProvider: ASREngineProviding
     weak var delegate: RecordingSessionDelegate?
 
     /// 录音中状态变化回调：true=进入录音，false=结束（用于同步外部组件如 FnKeyMonitor.isRecording）。
@@ -46,7 +43,7 @@ final class RecordingSessionController {
         audioEngine: audioEngine,
         fallback: doubaoFallback,
         speechRecognizerProvider: { [unowned self] in
-            self.delegate!.sessionRequiresSpeechRecognizer()
+            self.asrEngineProvider.speechRecognizer()
         }
     )
 
@@ -55,10 +52,10 @@ final class RecordingSessionController {
     private var streamingCompactKey: String? {
         streamSession != nil ? "capsule.streaming.typing" : nil
     }
-    private func appleEngine() -> AppleSpeechASREngine { delegate!.sessionRequiresAppleASREngine() }
-    private func sherpaEngine() -> SherpaOnnxASREngine { delegate!.sessionRequiresSherpaASREngine() }
-    private func volcengineEngine() -> VolcengineASREngine { delegate!.sessionRequiresVolcengineASREngine() }
-    private func speechRecognizer() -> SpeechRecognizerController { delegate!.sessionRequiresSpeechRecognizer() }
+    private func appleEngine() -> AppleSpeechASREngine { asrEngineProvider.appleEngine() }
+    private func sherpaEngine() -> SherpaOnnxASREngine { asrEngineProvider.sherpaEngine() }
+    private func volcengineEngine() -> VolcengineASREngine { asrEngineProvider.volcengineEngine() }
+    private func speechRecognizer() -> SpeechRecognizerController { asrEngineProvider.speechRecognizer() }
     private func asrEngine(for code: String) -> ASREngine {
         switch code {
         case VolcengineASRSettings.engineCode:
@@ -77,7 +74,8 @@ final class RecordingSessionController {
         textPostProcessorRegistry: TextPostProcessorRegistry,
         textOutputSinkRegistry: TextOutputSinkRegistry,
         volumeController: VolumeController,
-        asrEngineRegistry: ASREngineRegistry
+        asrEngineRegistry: ASREngineRegistry,
+        asrEngineProvider: ASREngineProviding
     ) {
         self.audioEngine = audioEngine
         self.capsuleWindow = capsuleWindow
@@ -86,6 +84,7 @@ final class RecordingSessionController {
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.volumeController = volumeController
         self.asrEngineRegistry = asrEngineRegistry
+        self.asrEngineProvider = asrEngineProvider
     }
 
     // MARK: - 公开 API（Public API）

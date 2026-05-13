@@ -1,7 +1,4 @@
 import Cocoa
-import AVFoundation
-import Speech
-import ApplicationServices
 
 // MARK: - OOBE Window Controller
 // 首次启动引导窗口（First-launch onboarding window）
@@ -10,6 +7,8 @@ import ApplicationServices
 
 final class OOBEWindowController: NSObject {
     static let completionDefaultsKey = "hasCompletedOOBE"
+
+    private let permissionService = PermissionService.shared
 
     /// OOBE 完成回调（Called when user finishes OOBE）
     var onFinish: ((_ engineCode: String, _ triggerKeyCode: UInt16) -> Void)?
@@ -43,7 +42,7 @@ final class OOBEWindowController: NSObject {
 
     func showWindow() {
         if let w = window {
-            AppDelegate.bringToFront(w)
+            WindowPresenter.shared.bringToFront(w)
             return
         }
         selectedEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
@@ -131,7 +130,7 @@ final class OOBEWindowController: NSObject {
         }
         showStep(0)
         w.center()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     // MARK: Step Navigation
@@ -352,46 +351,15 @@ final class OOBEWindowController: NSObject {
     }
     private func refreshPermissions() {
         guard permissionCards.count >= 3 else { return }
-        permissionCards[0].update(status: AXIsProcessTrusted() ? .granted : .denied)
-        permissionCards[1].update(status: micStatus())
-        permissionCards[2].update(status: speechStatus())
-    }
-    private func micStatus() -> PermissionStatus {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        default: return .notDetermined
-        }
-    }
-    private func speechStatus() -> PermissionStatus {
-        switch SFSpeechRecognizer.authorizationStatus() {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        default: return .notDetermined
-        }
+        permissionCards[0].update(status: permissionService.status(for: .accessibility))
+        permissionCards[1].update(status: permissionService.status(for: .microphone))
+        permissionCards[2].update(status: permissionService.status(for: .speechRecognition))
     }
 
     @objc private func permTapped(_ sender: NSButton) {
-        switch sender.tag {
-        case 0:
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-        case 1:
-            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-                AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
-                    DispatchQueue.main.async { self?.refreshPermissions() }
-                }
-            } else {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
-            }
-        case 2:
-            if SFSpeechRecognizer.authorizationStatus() == .notDetermined {
-                SFSpeechRecognizer.requestAuthorization { [weak self] _ in
-                    DispatchQueue.main.async { self?.refreshPermissions() }
-                }
-            } else {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")!)
-            }
-        default: break
+        guard let kind = PermissionKind(permissionCardTag: sender.tag) else { return }
+        permissionService.requestOrOpenSettings(for: kind) { [weak self] in
+            self?.refreshPermissions()
         }
     }
 
@@ -719,7 +687,7 @@ extension OOBEWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         stopPermissionRefresh()
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
 }

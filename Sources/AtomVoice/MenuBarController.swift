@@ -1,7 +1,5 @@
 import Cocoa
-import AVFoundation
 import Speech
-import ApplicationServices
 import ServiceManagement
 
 final class MenuBarController {
@@ -10,6 +8,7 @@ final class MenuBarController {
     private let llmRefiner: LLMRefiner
     private let asrEngineRegistry: ASREngineRegistry
     private let textOutputSinkRegistry: TextOutputSinkRegistry?
+    private let permissionService = PermissionService.shared
     private var settingsWindow: SettingsWindowController?
     private var doubaoSettingsWindow: DoubaoSettingsWindowController?
     private var asrSettingsWindow: ASRSettingsWindowController?
@@ -83,17 +82,8 @@ final class MenuBarController {
         }
         engineMenu.addItem(.separator())
 
-        // Apple 本地识别（设备端处理）（Apple on-device recognition (local processing)）
-        let onDeviceSupported = Self.supportsOnDeviceRecognition(for: currentLang)
-        let onDeviceEnabled = AppSettings.appleOnDeviceRecognitionEnabled && onDeviceSupported
-        let onDeviceItem = makeMenuItem(
-            title: loc(onDeviceSupported ? "menu.appleOnDeviceSpeech" : "menu.appleOnDeviceSpeech.unavailable"),
-            action: #selector(toggleAppleOnDeviceSpeech(_:)),
-            imageName: "lock.shield",
-            state: onDeviceEnabled ? .on : .off,
-            isEnabled: onDeviceSupported
-        )
-        engineMenu.addItem(onDeviceItem)
+        // 识别引擎设置（Recognition engine settings）
+        engineMenu.addItem(makeMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), imageName: "gear"))
 
         engineMenu.addItem(
             makeMenuItem(
@@ -102,11 +92,6 @@ final class MenuBarController {
                 imageName: "questionmark.circle"
             )
         )
-
-        engineMenu.addItem(.separator())
-
-        // 识别引擎设置（Recognition engine settings）
-        engineMenu.addItem(makeMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), imageName: "gear"))
 
         engineMenu.addItem(.separator())
 
@@ -463,9 +448,7 @@ final class MenuBarController {
     private var hasAllPermissions: Bool {
         let currentEngine = AppSettings.normalizedRecognitionEngine
         let speechRequired = asrEngineRegistry.isApple(currentEngine)
-        return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized &&
-        (!speechRequired || SFSpeechRecognizer.authorizationStatus() == .authorized) &&
-        AXIsProcessTrusted()
+        return permissionService.hasRequiredPermissions(speechRequired: speechRequired)
     }
 
     private static func supportsOnDeviceRecognition(for languageCode: String) -> Bool {
@@ -552,7 +535,7 @@ final class MenuBarController {
             alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
             alert.addButton(withTitle: loc("sherpa.download.confirm"))
             alert.addButton(withTitle: loc("common.cancel"))
-            if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+            if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
                 AppSettings.recognitionEngine = code
                 rebuildMenu()
                 onSherpaDownloadRequested?()
@@ -568,7 +551,7 @@ final class MenuBarController {
                 alert.icon = NSImage(systemSymbolName: "cloud", accessibilityDescription: nil)
                 alert.addButton(withTitle: loc("doubao.privacy.continue"))
                 alert.addButton(withTitle: loc("common.cancel"))
-                guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+                guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else { return }
                 AppSettings.doubaoASRPrivacyAccepted = true
             }
 
@@ -645,7 +628,7 @@ final class MenuBarController {
         alert.addButton(withTitle: loc("alert.onDeviceModel.openSettings"))
         alert.addButton(withTitle: loc("common.cancel"))
 
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Dictation") {
                 NSWorkspace.shared.open(url)
             }
@@ -670,7 +653,7 @@ final class MenuBarController {
         alert.icon = NSImage(systemSymbolName: "cpu", accessibilityDescription: nil)
         alert.accessoryView = makeEngineHowtoTextView()
         alert.addButton(withTitle: loc("common.ok"))
-        AppDelegate.runModalAlert(alert)
+        AlertPresenter.shared.runModalAlert(alert)
     }
 
     private func makeEngineHowtoTextView() -> NSView {
@@ -1000,7 +983,7 @@ final class MenuBarController {
         alert.icon = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
         alert.accessoryView = makeLLMHowtoTextView()
         alert.addButton(withTitle: loc("common.ok"))
-        AppDelegate.runModalAlert(alert)
+        AlertPresenter.shared.runModalAlert(alert)
     }
 
     private func makeLLMHowtoTextView() -> NSView {
@@ -1052,8 +1035,8 @@ final class MenuBarController {
         alert.informativeText = loc("accessibility.warning.message")
         alert.addButton(withTitle: loc("accessibility.openSettings"))
         alert.addButton(withTitle: loc("accessibility.ignore"))
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
+            permissionService.openSettings(for: .accessibility)
         }
         statusItem.button?.image = Self.statusBarIcon(accessibilityDescription: loc("app.title"))
     }

@@ -38,7 +38,9 @@ final class SherpaOnnxRecognizerController {
     private var lastText = ""
     private var finalText = ""
     private(set) var lastStartFailureKind: SherpaOnnxStartFailureKind?
-    var isModelLoaded: Bool { context != nil }
+    var isModelLoaded: Bool {
+        queue.sync { context != nil }
+    }
 
     var currentText: String {
         queue.sync { finalText }
@@ -99,10 +101,12 @@ final class SherpaOnnxRecognizerController {
 
     func start(onResult: @escaping (String, Bool) -> Void) -> String? {
         // 已有识别器上下文时直接复用，不重新加载模型（Reuse existing recognizer context, don't reload model）
-        if context != nil {
-            self.onResult = onResult
-            lastText = ""
-            finalText = ""
+        if queue.sync(execute: { context != nil }) {
+            queue.sync {
+                self.onResult = onResult
+                lastText = ""
+                finalText = ""
+            }
             return nil
         }
 
@@ -111,10 +115,12 @@ final class SherpaOnnxRecognizerController {
         loadingLock.lock()
         defer { loadingLock.unlock() }
 
-        if context != nil {
-            self.onResult = onResult
-            lastText = ""
-            finalText = ""
+        if queue.sync(execute: { context != nil }) {
+            queue.sync {
+                self.onResult = onResult
+                lastText = ""
+                finalText = ""
+            }
             return nil
         }
 
@@ -167,10 +173,12 @@ final class SherpaOnnxRecognizerController {
             }
         }
 
-        context = created
-        self.onResult = onResult
-        lastText = ""
-        finalText = ""
+        queue.sync {
+            context = created
+            self.onResult = onResult
+            lastText = ""
+            finalText = ""
+        }
         return nil
     }
 

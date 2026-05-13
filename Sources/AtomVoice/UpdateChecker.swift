@@ -151,7 +151,7 @@ final class UpdateChecker: NSObject {
         alert.addButton(withTitle: loc("update.install"))
         alert.addButton(withTitle: loc("update.later"))
         state = .prompting
-        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else {
+        guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else {
             state = .idle
             return
         }
@@ -334,7 +334,7 @@ final class UpdateChecker: NSObject {
         alert.informativeText = loc("update.done.message", version)
         alert.addButton(withTitle: loc("update.restart"))
         alert.addButton(withTitle: loc("update.later"))
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
             applyAndRelaunch(newAppURL: newAppURL)
         } else {
             state = .idle
@@ -436,7 +436,7 @@ final class UpdateChecker: NSObject {
 
         progressWindow = w
         w.center()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     private func updateProgressLabel(_ message: String) {
@@ -446,7 +446,7 @@ final class UpdateChecker: NSObject {
     private func closeProgress() {
         if let w = progressWindow {
             w.close()
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
         progressWindow = nil
         progressLabel = nil
@@ -459,7 +459,7 @@ final class UpdateChecker: NSObject {
         alert.messageText = title
         alert.informativeText = message
         alert.addButton(withTitle: loc("common.ok"))
-        AppDelegate.runModalAlert(alert)
+        AlertPresenter.shared.runModalAlert(alert)
     }
 
     private struct ParsedVersion {

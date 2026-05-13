@@ -10,12 +10,14 @@ import AVFoundation
 final class SherpaPreloadCoordinator {
     private let queue = DispatchQueue(label: "com.atomvoice.sherpaPreload")
     private var buffers: [AVAudioPCMBuffer] = []
-    private(set) var isActive = false
+    private var isActive = false
 
     /// 标记预加载开始，清空残留缓冲（Mark preload as active and clear any residual buffers）
     func begin() {
-        isActive = true
-        clearBuffers()
+        queue.sync {
+            isActive = true
+            buffers.removeAll(keepingCapacity: false)
+        }
     }
 
     /// 处于预加载阶段时缓存音频；返回 true 表示已被本协调器接管，调用方应 *不* 再直推识别器。
@@ -23,12 +25,12 @@ final class SherpaPreloadCoordinator {
     @discardableResult
     func appendIfActive(_ buffer: AVAudioPCMBuffer,
                         copyBuffer: (AVAudioPCMBuffer) -> AVAudioPCMBuffer?) -> Bool {
-        guard isActive else { return false }
-        guard let copy = copyBuffer(buffer) else { return true }
-        queue.async { [weak self] in
-            self?.buffers.append(copy)
+        queue.sync {
+            guard isActive else { return false }
+            guard let copy = copyBuffer(buffer) else { return true }
+            buffers.append(copy)
+            return true
         }
-        return true
     }
 
     /// 模型加载成功后排空全部缓冲；含二次排空。`onComplete` 在二次排空完成后回调（在内部 queue 上下文，调用方自行切回主线程）。
@@ -60,12 +62,8 @@ final class SherpaPreloadCoordinator {
 
     /// 取消预加载并清空缓冲（Cancel preload and clear buffers）
     func cancel() {
-        isActive = false
-        clearBuffers()
-    }
-
-    private func clearBuffers() {
         queue.sync {
+            isActive = false
             buffers.removeAll(keepingCapacity: false)
         }
     }

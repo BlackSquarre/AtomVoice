@@ -22,7 +22,7 @@
 "menu.textOutput" = "テキスト出力";
 "menu.textOutput.paste" = "入力欄に貼り付け";
 "menu.textOutput.streaming" = "ストリーミングで直接入力";
-"menu.llm" = "LLM テキスト最適化";
+"menu.llm" = "LLM テキスト最適化 (Beta)";
 "menu.llm.enabled" = "有効";
 "menu.llm.disabled" = "無効";
 "menu.llm.howto" = "LLM最適化の使い方";
@@ -157,8 +157,8 @@
 
 /* Trigger Key */
 "menu.triggerKey" = "トリガーキー";
-"menu.triggerKey.fn" = "Fn / Globe（デフォルト）";
-"menu.triggerKey.rightOption" = "右 Option ⌥";
+"menu.triggerKey.fn" = "Fn / Globe";
+"menu.triggerKey.rightOption" = "右 Option ⌥（デフォルト）";
 "menu.triggerKey.rightControl" = "右 Control ^";
 "menu.triggerKey.leftOption" = "左 Option ⌥";
 "menu.triggerKey.leftControl" = "左 Control ^";

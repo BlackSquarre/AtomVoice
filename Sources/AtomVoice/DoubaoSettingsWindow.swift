@@ -14,7 +14,7 @@ final class DoubaoSettingsWindowController: NSObject {
     func showWindow() {
         if let window {
             refreshFields()
-            AppDelegate.bringToFront(window)
+            WindowPresenter.shared.bringToFront(window)
             return
         }
         buildWindow()
@@ -133,7 +133,7 @@ final class DoubaoSettingsWindowController: NSObject {
         refreshFields()
         w.center()
         w.recalculateKeyViewLoop()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     private func refreshFields() {
@@ -178,7 +178,7 @@ final class DoubaoSettingsWindowController: NSObject {
 extension DoubaoSettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
 }

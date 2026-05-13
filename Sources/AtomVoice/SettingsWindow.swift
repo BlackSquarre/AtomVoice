@@ -410,7 +410,7 @@ final class SettingsWindowController: NSObject {
     func showWindow() {
         if let w = window {
             refreshFields()
-            AppDelegate.bringToFront(w)
+            WindowPresenter.shared.bringToFront(w)
             return
         }
         buildWindow()
@@ -569,7 +569,7 @@ final class SettingsWindowController: NSObject {
         refreshFields()
         w.center()
         w.recalculateKeyViewLoop()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     // MARK: - Helpers
@@ -666,7 +666,7 @@ final class SettingsWindowController: NSObject {
 extension SettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
 }

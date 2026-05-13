@@ -232,7 +232,7 @@ final class SherpaModelImportFlow {
         alert.addButton(withTitle: loc("sherpa.import.confirm"))
         alert.addButton(withTitle: loc("common.cancel"))
 
-        let response = AppDelegate.runModalAlert(alert)
+        let response = AlertPresenter.shared.runModalAlert(alert)
         guard response == .alertFirstButtonReturn,
               let lang = popup.selectedItem?.representedObject as? String else {
             completion(nil)
@@ -292,7 +292,7 @@ final class SherpaModelImportFlow {
         alert.alertStyle = .warning
         alert.icon = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         alert.addButton(withTitle: loc("common.ok"))
-        _ = AppDelegate.runModalAlert(alert)
+        _ = AlertPresenter.shared.runModalAlert(alert)
     }
 }
 

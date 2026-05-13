@@ -35,7 +35,7 @@ final class ASRSettingsWindowController: NSObject {
     func showWindow() {
         if let window {
             refreshFields()
-            AppDelegate.bringToFront(window)
+            WindowPresenter.shared.bringToFront(window)
             return
         }
         buildWindow()
@@ -123,7 +123,7 @@ final class ASRSettingsWindowController: NSObject {
 
         w.center()
         w.recalculateKeyViewLoop()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     // MARK: - 豆包标签页（Doubao Tab）
@@ -717,7 +717,7 @@ final class ASRSettingsWindowController: NSObject {
         alert.icon = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
         alert.addButton(withTitle: loc("asrSettings.sherpa.delete"))
         alert.addButton(withTitle: loc("common.cancel"))
-        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+        guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else { return }
 
         do {
             try FileManager.default.removeItem(at: preset.modelDirectory)
@@ -752,7 +752,7 @@ final class ASRSettingsWindowController: NSObject {
         alert.addButton(withTitle: loc("sherpa.download.confirm"))
         alert.addButton(withTitle: loc("common.cancel"))
 
-        if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
             startSherpaSettingsDownload(preset: preset, activateOnSuccess: true)
         }
     }
@@ -784,7 +784,7 @@ final class ASRSettingsWindowController: NSObject {
                 alert.addButton(withTitle: loc("common.ok"))
                 alert.addButton(withTitle: loc("common.cancel"))
                 
-                if AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn {
+                if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
                     self.performRuntimeUpdate(sender: sender)
                 } else {
                     sender.isEnabled = true
@@ -871,7 +871,7 @@ final class ASRSettingsWindowController: NSObject {
                 alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
                 alert.addButton(withTitle: loc("asrSettings.sherpa.saveUndownloaded.download"))
                 alert.addButton(withTitle: loc("common.cancel"))
-                let result = AppDelegate.runModalAlert(alert)
+                let result = AlertPresenter.shared.runModalAlert(alert)
                 if result == .alertFirstButtonReturn {
                     persistSherpaAutoUnloadSettings()
                     persistAppleSettings()
@@ -923,7 +923,7 @@ extension ASRSettingsWindowController: NSTabViewDelegate {
 extension ASRSettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
 }

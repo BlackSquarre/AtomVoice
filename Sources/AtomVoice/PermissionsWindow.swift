@@ -1,7 +1,4 @@
 import Cocoa
-import AVFoundation
-import Speech
-import ApplicationServices
 
 // MARK: - Dynamic Colors (macOS 26 adaptive)
 
@@ -20,30 +17,10 @@ private extension NSColor {
     }
 }
 
-// MARK: - Permission Status
-
-enum PermissionStatus: Equatable {
-    case granted, denied, notDetermined
-
-    var color: NSColor {
-        switch self {
-        case .granted:       return NSColor(red: 0.15, green: 0.78, blue: 0.33, alpha: 1)
-        case .denied:        return .systemRed
-        case .notDetermined: return .systemOrange
-        }
-    }
-    var label: String {
-        switch self {
-        case .granted:       return loc("permission.status.granted")
-        case .denied:        return loc("permission.status.denied")
-        case .notDetermined: return loc("permission.status.notDetermined")
-        }
-    }
-}
-
 // MARK: - PermissionsWindowController
 
 final class PermissionsWindowController: NSObject {
+    private let permissionService = PermissionService.shared
     private var window: NSWindow?
     private var rowViews: [PermissionRowView] = []
     private var refreshTimer: Timer?
@@ -51,7 +28,7 @@ final class PermissionsWindowController: NSObject {
     func showWindow() {
         if let w = window {
             refresh()
-            AppDelegate.bringToFront(w)
+            WindowPresenter.shared.bringToFront(w)
             return
         }
         buildWindow()
@@ -107,7 +84,7 @@ final class PermissionsWindowController: NSObject {
         self.window = w
         refresh()
         w.center()
-        AppDelegate.bringToFront(w)
+        WindowPresenter.shared.bringToFront(w)
     }
 
     // MARK: - Left Guide Panel
@@ -277,55 +254,17 @@ final class PermissionsWindowController: NSObject {
 
     func refresh() {
         guard rowViews.count >= 3 else { return }
-        rowViews[0].update(status: accessibilityStatus())
-        rowViews[1].update(status: microphoneStatus())
-        rowViews[2].update(status: speechStatus())
-    }
-
-    private func accessibilityStatus() -> PermissionStatus {
-        AXIsProcessTrusted() ? .granted : .denied
-    }
-    private func microphoneStatus() -> PermissionStatus {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        default: return .notDetermined
-        }
-    }
-    private func speechStatus() -> PermissionStatus {
-        switch SFSpeechRecognizer.authorizationStatus() {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        default: return .notDetermined
-        }
+        rowViews[0].update(status: permissionService.status(for: .accessibility))
+        rowViews[1].update(status: permissionService.status(for: .microphone))
+        rowViews[2].update(status: permissionService.status(for: .speechRecognition))
     }
 
     // MARK: - Actions
 
     @objc private func handleAction(_ sender: NSButton) {
-        switch sender.tag {
-        case 0:
-            NSWorkspace.shared.open(
-                URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-        case 1:
-            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-                AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
-                    DispatchQueue.main.async { self?.refresh() }
-                }
-            } else {
-                NSWorkspace.shared.open(
-                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
-            }
-        case 2:
-            if SFSpeechRecognizer.authorizationStatus() == .notDetermined {
-                SFSpeechRecognizer.requestAuthorization { [weak self] _ in
-                    DispatchQueue.main.async { self?.refresh() }
-                }
-            } else {
-                NSWorkspace.shared.open(
-                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")!)
-            }
-        default: break
+        guard let kind = PermissionKind(permissionCardTag: sender.tag) else { return }
+        permissionService.requestOrOpenSettings(for: kind) { [weak self] in
+            self?.refresh()
         }
     }
 
@@ -335,7 +274,7 @@ final class PermissionsWindowController: NSObject {
         alert.informativeText = loc("permissions.reset.confirm.message")
         alert.addButton(withTitle: loc("permissions.reset.confirm.ok"))
         alert.addButton(withTitle: loc("settings.cancel"))
-        guard AppDelegate.runModalAlert(alert) == .alertFirstButtonReturn else { return }
+        guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else { return }
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         task.arguments = ["-a", "Terminal", "--args", "-e",
@@ -359,7 +298,7 @@ extension PermissionsWindowController: NSWindowDelegate {
         refreshTimer?.invalidate()
         refreshTimer = nil
         if let w = notification.object as? NSWindow {
-            AppDelegate.resetActivationIfNeeded(closing: w)
+            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
     }
     func windowDidBecomeKey(_ notification: Notification) { refresh() }

@@ -6,12 +6,26 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "AtomVoice", targets: ["AtomVoice"]),
+        .executable(name: "AtomVoiceArchitectureTests", targets: ["AtomVoiceArchitectureTests"]),
         .executable(name: "SherpaMemoryProbe", targets: ["SherpaMemoryProbe"]),
         .executable(name: "SherpaMemoryBenchmark", targets: ["SherpaMemoryBenchmark"]),
     ],
     targets: [
         .executableTarget(
             name: "AtomVoice",
+            dependencies: ["AtomVoiceCore"],
+            path: "Sources/AtomVoiceApp",
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/AtomVoice/Info.plist",
+                ]),
+            ]
+        ),
+        .target(
+            name: "AtomVoiceCore",
             dependencies: ["SherpaOnnxShim", "AudioTapShim"],
             path: "Sources/AtomVoice",
             exclude: [
@@ -22,14 +36,11 @@ let package = Package(
                 "AppIcon-source-chromakey.png",
                 "AppIcon.iconset",
             ],
-            linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "-sectcreate",
-                    "-Xlinker", "__TEXT",
-                    "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/AtomVoice/Info.plist",
-                ]),
-            ]
+        ),
+        .executableTarget(
+            name: "AtomVoiceArchitectureTests",
+            dependencies: ["AtomVoiceCore"],
+            path: "Tests/AtomVoiceArchitectureTests"
         ),
         .executableTarget(
             name: "SherpaMemoryProbe",

@@ -1,6 +1,6 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.10.2-Beta-2
+VERSION     = 0.10.2-Beta-3
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
@@ -8,7 +8,7 @@ INSTALL_DIR = /Applications
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
-.PHONY: build dev run install clean release sherpa-memory
+.PHONY: build dev run install clean release sherpa-memory test
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
@@ -32,6 +32,9 @@ install: build
 clean:
 	swift package clean
 	rm -rf .build $(DIST_DIR)
+
+test:
+	swift run -Xswiftc -enable-testing AtomVoiceArchitectureTests
 
 # ── Debug-only Sherpa model memory benchmark ────────────────────────────────
 sherpa-memory:
