@@ -8,39 +8,33 @@ final class AboutWindowController: NSObject {
         let name: String
         let license: String
         let projectURL: String
-        let licenseURL: String
     }
 
     private let thirdPartyNotices: [ThirdPartyNotice] = [
         ThirdPartyNotice(
             name: "sherpa-onnx",
             license: "Apache License 2.0",
-            projectURL: "https://github.com/k2-fsa/sherpa-onnx",
-            licenseURL: "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE"
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx"
         ),
         ThirdPartyNotice(
             name: "ONNX Runtime",
             license: "MIT License",
-            projectURL: "https://github.com/microsoft/onnxruntime",
-            licenseURL: "https://github.com/microsoft/onnxruntime/blob/main/LICENSE"
+            projectURL: "https://github.com/microsoft/onnxruntime"
         ),
         ThirdPartyNotice(
             name: "k2-fsa Sherpa ONNX ASR models",
             license: "See model repository",
-            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
-            licenseURL: "https://github.com/k2-fsa/sherpa-onnx"
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models"
         ),
         ThirdPartyNotice(
             name: "k2-fsa Sherpa ONNX punctuation model",
             license: "See model repository",
-            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/punctuation-models",
-            licenseURL: "https://github.com/k2-fsa/sherpa-onnx"
+            projectURL: "https://github.com/k2-fsa/sherpa-onnx/releases/tag/punctuation-models"
         ),
         ThirdPartyNotice(
             name: "ReazonSpeech",
             license: "Apache License 2.0",
-            projectURL: "https://github.com/reazon-research/ReazonSpeech",
-            licenseURL: "https://github.com/reazon-research/ReazonSpeech/blob/master/LICENSE"
+            projectURL: "https://github.com/reazon-research/ReazonSpeech"
         ),
     ]
 
@@ -232,14 +226,6 @@ final class AboutWindowController: NSObject {
         return btn
     }
 
-    private func makeExternalLinkButton(title: String, url: String) -> NSButton {
-        let btn = makeTextButton(title: title, action: #selector(openLink(_:)))
-        btn.identifier = NSUserInterfaceItemIdentifier(url)
-        btn.font = .systemFont(ofSize: 12)
-        btn.contentTintColor = .linkColor
-        return btn
-    }
-
     @objc private func openLink(_ sender: NSButton) {
         guard let urlStr = sender.identifier?.rawValue,
               let url = URL(string: urlStr) else { return }
@@ -253,7 +239,7 @@ final class AboutWindowController: NSObject {
         }
 
         let w = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 380),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 360),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -295,32 +281,13 @@ final class AboutWindowController: NSObject {
         root.addArrangedSubview(intro)
         intro.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
 
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .noBorder
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-
         let list = NSStackView()
         list.orientation = .vertical
         list.alignment = .leading
-        list.spacing = 12
+        list.spacing = 13
         list.translatesAutoresizingMaskIntoConstraints = false
-
-        let documentView = NSView()
-        documentView.translatesAutoresizingMaskIntoConstraints = false
-        documentView.addSubview(list)
-        scrollView.documentView = documentView
-        root.addArrangedSubview(scrollView)
-
-        NSLayoutConstraint.activate([
-            scrollView.widthAnchor.constraint(equalTo: root.widthAnchor),
-            list.topAnchor.constraint(equalTo: documentView.topAnchor),
-            list.leadingAnchor.constraint(equalTo: documentView.leadingAnchor),
-            list.trailingAnchor.constraint(equalTo: documentView.trailingAnchor),
-            list.bottomAnchor.constraint(equalTo: documentView.bottomAnchor),
-            list.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
-            documentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
-        ])
+        root.addArrangedSubview(list)
+        list.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
 
         for notice in thirdPartyNotices {
             list.addArrangedSubview(makeNoticeView(notice))
@@ -336,12 +303,13 @@ final class AboutWindowController: NSObject {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 3
+        stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let name = NSTextField(labelWithString: notice.name)
+        let name = LinkTextButton(title: notice.name, target: self, action: #selector(openLink(_:)))
+        name.identifier = NSUserInterfaceItemIdentifier(notice.projectURL)
         name.font = .boldSystemFont(ofSize: 13.5)
-        name.textColor = .labelColor
+        name.contentTintColor = .labelColor
         stack.addArrangedSubview(name)
 
         let license = NSTextField(labelWithString: loc("about.thirdParty.license", notice.license))
@@ -349,15 +317,29 @@ final class AboutWindowController: NSObject {
         license.textColor = .secondaryLabelColor
         stack.addArrangedSubview(license)
 
-        let links = NSStackView()
-        links.orientation = .horizontal
-        links.alignment = .centerY
-        links.spacing = 12
-        links.addArrangedSubview(makeExternalLinkButton(title: loc("about.thirdParty.project"), url: notice.projectURL))
-        links.addArrangedSubview(makeExternalLinkButton(title: loc("about.thirdParty.licenseLink"), url: notice.licenseURL))
-        stack.addArrangedSubview(links)
-
         return stack
+    }
+}
+
+private final class LinkTextButton: NSButton {
+    init(title: String, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        self.title = title
+        self.target = target
+        self.action = action
+        isBordered = false
+        bezelStyle = .inline
+        setButtonType(.momentaryChange)
+        alignment = .left
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
     }
 }
 

@@ -85,8 +85,6 @@
 "about.thirdParty.title" = "Avisos de terceros";
 "about.thirdParty.intro" = "AtomVoice usa los siguientes proyectos de terceros y fuentes de modelos.";
 "about.thirdParty.license" = "Licencia: %@";
-"about.thirdParty.project" = "Proyecto";
-"about.thirdParty.licenseLink" = "Licencia";
 
 /* LLM How-to */
 "llm.howto.message" = "El refinado con LLM se ejecuta tras finalizar el reconocimiento de voz. Pide al modelo elegido que revise el texto reconocido y corrija palabras mal entendidas, homófonos, nombres propios incorrectos y la puntuación, de modo que el texto que se escribe quede más cerca de lo que querías decir.\n\nPor ejemplo: puede corregir \"piton\" a \"Python\", añadir signos de puntuación que falten y limpiar frases torpes.\n\nCómo usarlo:\n1. Elige un proveedor (OpenAI, Anthropic, DeepSeek o personalizado).\n2. Introduce tu clave API.\n3. Selecciona un modelo y guarda.\n4. Activa \"Refinado con LLM\" en el menú.\n\nCuando está activado, tras cada grabación se envía el texto reconocido al proveedor LLM elegido para corregirlo; el audio en sí no se envía. Pulsa Espacio o Retroceso durante la grabación para omitir el LLM y escribir de inmediato.";

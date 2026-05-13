@@ -5,15 +5,10 @@ import ServiceManagement
 final class MenuBarController {
     private var statusItem: NSStatusItem!
     private let onLanguageChanged: () -> Void
-    private let llmRefiner: LLMRefiner
     private let asrEngineRegistry: ASREngineRegistry
     private let textOutputSinkRegistry: TextOutputSinkRegistry?
+    private let windowRouter: MenuWindowRouter
     private let permissionService = PermissionService.shared
-    private var settingsWindow: SettingsWindowController?
-    private var doubaoSettingsWindow: DoubaoSettingsWindowController?
-    private var asrSettingsWindow: ASRSettingsWindowController?
-    private var aboutWindow: AboutWindowController?
-    private var permissionsWindow: PermissionsWindowController?
     var onTriggerKeyChanged: ((UInt16) -> Void)?
     var onSherpaDownloadRequested: (() -> Void)?
 
@@ -22,9 +17,9 @@ final class MenuBarController {
          asrEngineRegistry: ASREngineRegistry = .shared,
          textOutputSinkRegistry: TextOutputSinkRegistry? = nil) {
         self.onLanguageChanged = onLanguageChanged
-        self.llmRefiner = llmRefiner
         self.asrEngineRegistry = asrEngineRegistry
         self.textOutputSinkRegistry = textOutputSinkRegistry
+        self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner)
         setupStatusItem()
     }
 
@@ -576,10 +571,7 @@ final class MenuBarController {
     }
 
     @objc private func openASRSettings(_ sender: NSMenuItem) {
-        if asrSettingsWindow == nil {
-            asrSettingsWindow = ASRSettingsWindowController()
-        }
-        asrSettingsWindow?.showWindow()
+        windowRouter.openASRSettings()
     }
 
     /// 公开方法：从 AppDelegate / OOBE 完成时调用（Public: called from AppDelegate / OOBE finish）
@@ -600,10 +592,7 @@ final class MenuBarController {
     }
 
     private func openDoubaoSettingsWindow() {
-        if doubaoSettingsWindow == nil {
-            doubaoSettingsWindow = DoubaoSettingsWindowController()
-        }
-        doubaoSettingsWindow?.showWindow()
+        windowRouter.openDoubaoSettings()
     }
 
     @objc private func toggleAppleOnDeviceSpeech(_ sender: NSMenuItem) {
@@ -648,188 +637,7 @@ final class MenuBarController {
     #endif
 
     @objc private func openEngineHowto(_ sender: NSMenuItem) {
-        let alert = NSAlert()
-        alert.messageText = loc("menu.engine.howto")
-        alert.icon = NSImage(systemSymbolName: "cpu", accessibilityDescription: nil)
-        alert.accessoryView = makeEngineHowtoTextView()
-        alert.addButton(withTitle: loc("common.ok"))
-        AlertPresenter.shared.runModalAlert(alert)
-    }
-
-    private func makeEngineHowtoTextView() -> NSView {
-        let text = loc("engine.howto.message")
-        let width: CGFloat = 660
-        let height: CGFloat = 430
-
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 14)
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: width - 32, height: .greatestFiniteMagnitude)
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.autoresizingMask = [.width]
-        textView.textStorage?.setAttributedString(makeEngineHowtoAttributedString(text))
-
-        if let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
-            layoutManager.ensureLayout(for: textContainer)
-            let usedHeight = layoutManager.usedRect(for: textContainer).height + textView.textContainerInset.height * 2
-            textView.frame = NSRect(x: 0, y: 0, width: width, height: max(height, ceil(usedHeight)))
-        }
-
-        scrollView.documentView = textView
-        return scrollView
-    }
-
-    private func makeEngineHowtoAttributedString(_ text: String) -> NSAttributedString {
-        let result = NSMutableAttributedString(string: "")
-        let lines = text.components(separatedBy: .newlines)
-
-        let headingParagraph = NSMutableParagraphStyle()
-        headingParagraph.lineSpacing = 2
-        headingParagraph.paragraphSpacing = 6
-        headingParagraph.lineBreakMode = .byWordWrapping
-
-        let bodyParagraph = NSMutableParagraphStyle()
-        bodyParagraph.lineSpacing = 3
-        bodyParagraph.paragraphSpacing = 7
-        bodyParagraph.lineBreakMode = .byWordWrapping
-
-        let summaryParagraph = NSMutableParagraphStyle()
-        summaryParagraph.lineSpacing = 3
-        summaryParagraph.paragraphSpacing = 0
-        summaryParagraph.lineBreakMode = .byWordWrapping
-
-        let headingAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: headingParagraph,
-        ]
-        let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12.5),
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .paragraphStyle: bodyParagraph,
-        ]
-        let summaryAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: summaryParagraph,
-        ]
-
-        let summaryPrefixes = ["建议", "建議", "Recommendation", "おすすめ", "추천", "Recomendación", "Recommandation", "Empfehlung"]
-        var previousLineWasBlank = false
-
-        for rawLine in lines {
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            if line.isEmpty {
-                if !previousLineWasBlank, result.length > 0 {
-                    result.append(NSAttributedString(string: "\n"))
-                }
-                previousLineWasBlank = true
-                continue
-            }
-
-            let attributes: [NSAttributedString.Key: Any]
-            if line.hasPrefix("• ") {
-                attributes = headingAttributes
-            } else if summaryPrefixes.contains(where: { line.hasPrefix($0) }) {
-                attributes = summaryAttributes
-            } else {
-                attributes = bodyAttributes
-            }
-
-            result.append(NSAttributedString(string: line + "\n", attributes: attributes))
-            previousLineWasBlank = false
-        }
-
-        return result
-    }
-
-    private func makeLLMHowtoAttributedString(_ text: String) -> NSAttributedString {
-        let result = NSMutableAttributedString(string: "")
-        let lines = text.components(separatedBy: .newlines)
-
-        let headingParagraph = NSMutableParagraphStyle()
-        headingParagraph.lineSpacing = 2
-        headingParagraph.paragraphSpacing = 6
-        headingParagraph.lineBreakMode = .byWordWrapping
-
-        let bodyParagraph = NSMutableParagraphStyle()
-        bodyParagraph.lineSpacing = 3
-        bodyParagraph.paragraphSpacing = 7
-        bodyParagraph.lineBreakMode = .byWordWrapping
-
-        let listParagraph = NSMutableParagraphStyle()
-        listParagraph.lineSpacing = 3
-        listParagraph.paragraphSpacing = 4
-        listParagraph.lineBreakMode = .byWordWrapping
-        listParagraph.headIndent = 20
-        listParagraph.firstLineHeadIndent = 0
-
-        let noteParagraph = NSMutableParagraphStyle()
-        noteParagraph.lineSpacing = 3
-        noteParagraph.paragraphSpacing = 0
-        noteParagraph.lineBreakMode = .byWordWrapping
-
-        let headingAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: headingParagraph,
-        ]
-        let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12.5),
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .paragraphStyle: bodyParagraph,
-        ]
-        let listAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12.5),
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .paragraphStyle: listParagraph,
-        ]
-        let noteAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: noteParagraph,
-        ]
-
-        let headingPrefixes = ["LLM", "例如", "使用方法", "For example", "How to use", "例", "使い方", "예", "사용 방법"]
-        let notePrefixes = ["开启后", "When enabled", "有効にすると", "활성화하면"]
-        var previousLineWasBlank = false
-
-        for rawLine in lines {
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            if line.isEmpty {
-                if !previousLineWasBlank, result.length > 0 {
-                    result.append(NSAttributedString(string: "\n"))
-                }
-                previousLineWasBlank = true
-                continue
-            }
-
-            let attributes: [NSAttributedString.Key: Any]
-            if headingPrefixes.contains(where: { line.hasPrefix($0) }) {
-                attributes = headingAttributes
-            } else if notePrefixes.contains(where: { line.hasPrefix($0) }) {
-                attributes = noteAttributes
-            } else if line.hasPrefix("1.") || line.hasPrefix("2.") || line.hasPrefix("3.") || line.hasPrefix("4.") {
-                attributes = listAttributes
-            } else {
-                attributes = bodyAttributes
-            }
-
-            result.append(NSAttributedString(string: line + "\n", attributes: attributes))
-            previousLineWasBlank = false
-        }
-
-        return result
+        HelpAlertPresenter.showEngineHowto()
     }
 
     @objc private func selectTriggerKey(_ sender: NSMenuItem) {
@@ -911,10 +719,7 @@ final class MenuBarController {
     }
 
     @objc private func openSettings(_ sender: NSMenuItem) {
-        if settingsWindow == nil {
-            settingsWindow = SettingsWindowController(llmRefiner: llmRefiner)
-        }
-        settingsWindow?.showWindow()
+        windowRouter.openSettings()
     }
 
     @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
@@ -939,32 +744,11 @@ final class MenuBarController {
     }
 
     @objc private func openPermissions(_ sender: NSMenuItem) {
-        if permissionsWindow == nil { permissionsWindow = PermissionsWindowController() }
-        permissionsWindow?.showWindow()
+        windowRouter.openPermissions()
     }
 
     @objc private func openPrivacyPolicy(_ sender: NSMenuItem) {
-        let lang = Locale.preferredLanguages.first ?? "en"
-        let file: String
-        if lang.hasPrefix("zh-Hant") || lang.hasPrefix("zh-TW") || lang.hasPrefix("zh-HK") {
-            file = "PRIVACY-zh-Hant.md"
-        } else if lang.hasPrefix("zh") {
-            file = "PRIVACY-zh-Hans.md"
-        } else if lang.hasPrefix("ja") {
-            file = "PRIVACY-ja.md"
-        } else if lang.hasPrefix("ko") {
-            file = "PRIVACY-ko.md"
-        } else if lang.hasPrefix("es") {
-            file = "PRIVACY-es.md"
-        } else if lang.hasPrefix("fr") {
-            file = "PRIVACY-fr.md"
-        } else if lang.hasPrefix("de") {
-            file = "PRIVACY-de.md"
-        } else {
-            file = "PRIVACY-en.md"
-        }
-        let url = URL(string: "https://github.com/BlackSquarre/AtomVoice/blob/main/README/privacy/\(file)")!
-        NSWorkspace.shared.open(url)
+        NSWorkspace.shared.open(PrivacyPolicyURLProvider.currentURL())
     }
 
     @objc private func toggleBetaUpdates(_ sender: NSMenuItem) {
@@ -978,50 +762,11 @@ final class MenuBarController {
     }
 
     @objc private func openLLMHowto(_ sender: NSMenuItem) {
-        let alert = NSAlert()
-        alert.messageText = loc("menu.llm.howto")
-        alert.icon = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
-        alert.accessoryView = makeLLMHowtoTextView()
-        alert.addButton(withTitle: loc("common.ok"))
-        AlertPresenter.shared.runModalAlert(alert)
-    }
-
-    private func makeLLMHowtoTextView() -> NSView {
-        let text = loc("llm.howto.message")
-        let width: CGFloat = 560
-        let height: CGFloat = 380
-
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 14)
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: width - 32, height: .greatestFiniteMagnitude)
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.autoresizingMask = [.width]
-        textView.textStorage?.setAttributedString(makeLLMHowtoAttributedString(text))
-
-        if let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
-            layoutManager.ensureLayout(for: textContainer)
-            let usedHeight = layoutManager.usedRect(for: textContainer).height + textView.textContainerInset.height * 2
-            textView.frame = NSRect(x: 0, y: 0, width: width, height: max(height, ceil(usedHeight)))
-        }
-
-        scrollView.documentView = textView
-        return scrollView
+        HelpAlertPresenter.showLLMHowto()
     }
 
     @objc private func openAbout(_ sender: NSMenuItem) {
-        if aboutWindow == nil { aboutWindow = AboutWindowController() }
-        aboutWindow?.showWindow()
+        windowRouter.openAbout()
     }
 
     @objc private func quit(_ sender: NSMenuItem) {

@@ -85,8 +85,6 @@
 "about.thirdParty.title" = "Mentions tierces";
 "about.thirdParty.intro" = "AtomVoice utilise les projets tiers et sources de modèles suivants.";
 "about.thirdParty.license" = "Licence : %@";
-"about.thirdParty.project" = "Projet";
-"about.thirdParty.licenseLink" = "Licence";
 
 /* LLM How-to */
 "llm.howto.message" = "Le raffinement par LLM s'exécute après la fin de la reconnaissance vocale. Il demande au modèle choisi de relire le texte reconnu et de corriger les mots mal entendus, les homophones, les noms propres erronés et la ponctuation, afin que le texte saisi soit plus proche de ce que tu voulais dire.\n\nPar exemple : il peut corriger « pi-tonne » en « Python », ajouter la ponctuation manquante et nettoyer les phrases manifestement maladroites.\n\nComment l'utiliser :\n1. Choisis un fournisseur (OpenAI, Anthropic, DeepSeek ou personnalisé).\n2. Saisis ta clé API.\n3. Sélectionne un modèle et enregistre.\n4. Active « Raffinement par LLM » dans le menu.\n\nLorsque c'est activé, après chaque enregistrement, le texte reconnu est envoyé au fournisseur LLM choisi pour correction ; l'audio lui-même n'est pas envoyé. Appuie sur Espace ou Retour pendant l'enregistrement pour ignorer le LLM et taper immédiatement.";
