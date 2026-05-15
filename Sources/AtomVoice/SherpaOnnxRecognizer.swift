@@ -178,6 +178,10 @@ final class SherpaOnnxRecognizerController {
             self.onResult = onResult
             lastText = ""
             finalText = ""
+            // 标点模型与主识别器生命周期对齐：主模型加载完同步加载标点，避免 stop 后再触发 +200MB 的内存 spike。
+            // 失败不致命（用户可能没下载标点模型），会回退到启发式标点。
+            // (Load punctuation alongside main recognizer to avoid a +200MB spike at stop. Failure is OK — heuristic fallback kicks in.)
+            _ = ensurePunctuationContext()
         }
         return nil
     }

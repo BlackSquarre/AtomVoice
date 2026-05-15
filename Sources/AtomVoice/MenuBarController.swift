@@ -426,6 +426,16 @@ final class MenuBarController {
         }
         pasteDelayItem.submenu = pasteDelaySubmenu
         m.addItem(pasteDelayItem)
+
+        // Debug: 当前进程内存快照（写入 ~/Library/Logs/AtomVoice/debug.log）
+        let memProbeItem = NSMenuItem(
+            title: String(format: "Memory: %.1f MB (click to log)", MemoryProbe.currentMB()),
+            action: #selector(debugDumpMemorySnapshot(_:)),
+            keyEquivalent: ""
+        )
+        memProbeItem.image = icon("memorychip")
+        memProbeItem.target = self
+        m.addItem(memProbeItem)
         #endif
 
         return m
@@ -522,6 +532,12 @@ final class MenuBarController {
 
     @objc private func selectRecognitionEngine(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
+        #if DEBUG_BUILD
+        MemoryProbe.log("engine-switch-before \(AppSettings.normalizedRecognitionEngine) -> \(code)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            MemoryProbe.log("engine-switch-after \(AppSettings.normalizedRecognitionEngine)")
+        }
+        #endif
 
         if asrEngineRegistry.isSherpa(code), !SherpaModelDownloader.isReady() {
             let alert = NSAlert()
@@ -633,6 +649,11 @@ final class MenuBarController {
         guard let value = sender.representedObject as? Double else { return }
         AppSettings.pasteDelay = value
         DebugLog.info("[Debug] Paste delay 调整为 \(value)s")
+    }
+
+    @objc private func debugDumpMemorySnapshot(_ sender: NSMenuItem) {
+        MemoryProbe.log("manual-dump")
+        rebuildMenu()
     }
     #endif
 

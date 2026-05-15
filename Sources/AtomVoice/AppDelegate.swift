@@ -152,6 +152,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             self.fnKeyMonitor.isRecording = active
             self.capsuleWindow.recordingClickEnabled = active
             self.handleRecordingStateChangedForDownloadCapsule(active: active)
+            #if DEBUG_BUILD
+            MemoryProbe.log(active ? "recording-start" : "recording-stop")
+            if !active {
+                // 录音结束 3s 后再探一次，看 fallback / coordinator / 临时缓冲是否已释放
+                // (Probe again 3s after recording ends to see whether fallback / coordinators / temporary buffers released.)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    MemoryProbe.log("recording-idle-3s")
+                }
+            }
+            #endif
         }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in
             self?.fnKeyMonitor.triggerKeyCode = keyCode
@@ -172,6 +182,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             UpdateChecker.shared.checkForUpdates(silent: true)
         }
+
+        #if DEBUG_BUILD
+        // 内存优化基线测量：启动瞬间 / 启动 5s 后（异步初始化结束）
+        // (Memory baseline: at launch / 5s after launch when async init has settled.)
+        MemoryProbe.log("launch")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            MemoryProbe.log("idle-5s-after-launch")
+        }
+        #endif
 
         // 监听系统内存压力，仅在内存严重不足时释放模型（Monitor system memory pressure, release model only on critical shortage）
         memoryPressureSource = DispatchSource.makeMemoryPressureSource(eventMask: [.critical], queue: .main)
