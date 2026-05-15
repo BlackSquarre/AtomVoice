@@ -33,6 +33,11 @@
 - 不要硬编码 UI 文案；缺本地化会回退显示 key。
 - Commit 标题、tag、release 相关提交默认用英文。
 
+## localdoc 文档命名约定
+- 时间锚定的设计 / 排查 / 重构记录：`YYYY-MM-DD-<kebab-case-topic>.md`（如 `2026-05-16-memory-optimization.md`）。
+- 长青参考资料（与日期无关、长期维护）：`<topic>.md`（如 `volcengine-asr-hld.md`、`sherpa-model-download.md`）。
+- 特例：`RELEASE_NOTES_DRAFT.md` 保持全大写。
+
 ## 解耦边界
 - 窗口/弹窗激活集中在 `WindowPresenter` / `AlertPresenter`；不要新增 `AppDelegate` 静态呈现 helper。
 - 权限逻辑集中在 `PermissionService`；不要在窗口或菜单里直接散落 `AVCaptureDevice`、`SFSpeechRecognizer.authorizationStatus()`、`AXIsProcessTrusted()`。
