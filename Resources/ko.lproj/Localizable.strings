@@ -469,3 +469,15 @@
 "doubao.model.v2" = "Doubao 스트리밍 2.0 (기본)";
 
 "doubao.model.v1" = "Doubao 스트리밍 1.0";
+
+/* Edit menu */
+"menu.app.quit" = "%@ 종료";
+"menu.edit" = "편집";
+"menu.edit.undo" = "실행 취소";
+"menu.edit.redo" = "다시 실행";
+"menu.edit.cut" = "오려두기";
+"menu.edit.copy" = "복사하기";
+"menu.edit.paste" = "붙여넣기";
+"menu.edit.pasteAndMatchStyle" = "붙여넣고 스타일 일치";
+"menu.edit.delete" = "삭제";
+"menu.edit.selectAll" = "전체 선택";

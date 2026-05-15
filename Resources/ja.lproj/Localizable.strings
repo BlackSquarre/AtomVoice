@@ -469,3 +469,15 @@
 "doubao.model.v2" = "Doubao ストリーミング 2.0（デフォルト）";
 
 "doubao.model.v1" = "Doubao ストリーミング 1.0";
+
+/* Edit menu */
+"menu.app.quit" = "%@ を終了";
+"menu.edit" = "編集";
+"menu.edit.undo" = "取り消す";
+"menu.edit.redo" = "やり直す";
+"menu.edit.cut" = "カット";
+"menu.edit.copy" = "コピー";
+"menu.edit.paste" = "ペースト";
+"menu.edit.pasteAndMatchStyle" = "ペーストしてスタイルを合わせる";
+"menu.edit.delete" = "削除";
+"menu.edit.selectAll" = "すべてを選択";

@@ -600,6 +600,12 @@ final class MenuBarController {
         rebuildMenu()
     }
 
+    /// 公开方法：让 AppDelegate 把 OOBE 也走 MenuWindowRouter 的统一生命周期
+    /// (Public: route OOBE through MenuWindowRouter so its lifetime sits with the other windows.)
+    func presentOOBE(configure: (OOBEWindowController) -> Void) {
+        windowRouter.openOOBE(configure: configure)
+    }
+
     @objc private func rerunOOBE(_ sender: NSMenuItem) {
         // 重置完成标志并交给 AppDelegate 展示窗口
         // (Reset completion flag and let AppDelegate present the window)

@@ -13,6 +13,10 @@ final class OOBEWindowController: NSObject {
     /// OOBE 完成回调（Called when user finishes OOBE）
     var onFinish: ((_ engineCode: String, _ triggerKeyCode: UInt16) -> Void)?
 
+    /// 窗口关闭回调（无论是 Finish 还是点红色关闭按钮都会触发，用于释放控制器实例）
+    /// (Window-close callback — fires for Finish or for the red close button, used to release this controller.)
+    var onClose: (() -> Void)?
+
     private var window: NSWindow?
     private var contentContainer: NSView!
     private var titleDots: [NSView] = []
@@ -689,6 +693,7 @@ extension OOBEWindowController: NSWindowDelegate {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
+        onClose?()
     }
 }
 

@@ -470,3 +470,15 @@
 "doubao.model.v2" = "豆包流式 2.0（默认）";
 
 "doubao.model.v1" = "豆包流式 1.0";
+
+/* Edit menu */
+"menu.app.quit" = "退出 %@";
+"menu.edit" = "编辑";
+"menu.edit.undo" = "撤销";
+"menu.edit.redo" = "重做";
+"menu.edit.cut" = "剪切";
+"menu.edit.copy" = "拷贝";
+"menu.edit.paste" = "粘贴";
+"menu.edit.pasteAndMatchStyle" = "粘贴并匹配样式";
+"menu.edit.delete" = "删除";
+"menu.edit.selectAll" = "全选";

@@ -51,10 +51,10 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
     private var providers: [LLMProvider] = []
     var onDone: (([LLMProvider]) -> Void)?
 
-    func show(in parent: NSWindow) {
+    func show(in parent: NSWindow, onDismiss: (() -> Void)? = nil) {
         providers = ProviderStore.load()
         buildSheet()
-        parent.beginSheet(sheet, completionHandler: nil)
+        parent.beginSheet(sheet) { _ in onDismiss?() }
     }
 
     private func buildSheet() {
@@ -261,9 +261,9 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
     private var placeholderLabel: NSTextField!
     var onDone: (() -> Void)?
 
-    func show(in parent: NSWindow) {
+    func show(in parent: NSWindow, onDismiss: (() -> Void)? = nil) {
         buildSheet()
-        parent.beginSheet(sheet, completionHandler: nil)
+        parent.beginSheet(sheet) { _ in onDismiss?() }
     }
 
     private func buildSheet() {
@@ -616,14 +616,20 @@ final class SettingsWindowController: NSObject {
         let editor = ProviderEditorController()
         editor.onDone = { [weak self] _ in self?.refreshFields() }
         providerEditor = editor
-        editor.show(in: w)
+        editor.show(in: w) { [weak self] in
+            // sheet 关闭后立即释放 editor 实例，回收内存
+            // (Release editor instance right after the sheet closes to reclaim memory.)
+            self?.providerEditor = nil
+        }
     }
 
     @objc private func editPrompt(_ sender: NSButton) {
         guard let w = window else { return }
         let editor = PromptEditorController()
         promptEditor = editor
-        editor.show(in: w)
+        editor.show(in: w) { [weak self] in
+            self?.promptEditor = nil
+        }
     }
 
     @objc private func testConnection(_ sender: NSButton) {

@@ -1,7 +1,15 @@
 import Cocoa
 
 /// 菜单窗口路由：按需懒加载窗口控制器，窗口关闭后释放对应实例以回收内存。
-/// (Menu window router: lazy-create controllers on demand, release them when the window closes to reclaim memory.)
+///
+/// 所有 open* 方法遵守同一份模板：
+///   1. 槽位为空 → 用工厂构造控制器；
+///   2. 绑定 onClose，下一轮 runloop 把槽位置 nil（避免在 windowWillClose 中销毁 delegate）；
+///   3. showWindow()。
+/// 不抽成共享辅助函数——6 个调用点就在文件里前后排列，模式扫一眼就能看清。
+///
+/// (Menu window router: lazy-create controllers on demand, release on close.
+///  All open* methods follow the same template; kept inline for at-a-glance consistency.)
 final class MenuWindowRouter {
     private let llmRefiner: LLMRefiner
     private var settingsWindow: SettingsWindowController?
@@ -9,6 +17,7 @@ final class MenuWindowRouter {
     private var asrSettingsWindow: ASRSettingsWindowController?
     private var aboutWindow: AboutWindowController?
     private var permissionsWindow: PermissionsWindowController?
+    private var oobeWindow: OOBEWindowController?
 
     init(llmRefiner: LLMRefiner) {
         self.llmRefiner = llmRefiner
@@ -16,58 +25,58 @@ final class MenuWindowRouter {
 
     func openSettings() {
         if settingsWindow == nil {
-            let controller = SettingsWindowController(llmRefiner: llmRefiner)
-            // 关闭后下个 runloop 释放，避免在 windowWillClose 回调途中销毁 delegate
-            // (Release on next runloop to avoid tearing down the delegate mid-callback)
-            controller.onClose = { [weak self] in
-                DispatchQueue.main.async { self?.settingsWindow = nil }
-            }
-            settingsWindow = controller
+            let c = SettingsWindowController(llmRefiner: llmRefiner)
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.settingsWindow = nil } }
+            settingsWindow = c
         }
         settingsWindow?.showWindow()
     }
 
     func openDoubaoSettings() {
         if doubaoSettingsWindow == nil {
-            let controller = DoubaoSettingsWindowController()
-            controller.onClose = { [weak self] in
-                DispatchQueue.main.async { self?.doubaoSettingsWindow = nil }
-            }
-            doubaoSettingsWindow = controller
+            let c = DoubaoSettingsWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.doubaoSettingsWindow = nil } }
+            doubaoSettingsWindow = c
         }
         doubaoSettingsWindow?.showWindow()
     }
 
     func openASRSettings() {
         if asrSettingsWindow == nil {
-            let controller = ASRSettingsWindowController()
-            controller.onClose = { [weak self] in
-                DispatchQueue.main.async { self?.asrSettingsWindow = nil }
-            }
-            asrSettingsWindow = controller
+            let c = ASRSettingsWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
+            asrSettingsWindow = c
         }
         asrSettingsWindow?.showWindow()
     }
 
     func openAbout() {
         if aboutWindow == nil {
-            let controller = AboutWindowController()
-            controller.onClose = { [weak self] in
-                DispatchQueue.main.async { self?.aboutWindow = nil }
-            }
-            aboutWindow = controller
+            let c = AboutWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.aboutWindow = nil } }
+            aboutWindow = c
         }
         aboutWindow?.showWindow()
     }
 
     func openPermissions() {
         if permissionsWindow == nil {
-            let controller = PermissionsWindowController()
-            controller.onClose = { [weak self] in
-                DispatchQueue.main.async { self?.permissionsWindow = nil }
-            }
-            permissionsWindow = controller
+            let c = PermissionsWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.permissionsWindow = nil } }
+            permissionsWindow = c
         }
         permissionsWindow?.showWindow()
+    }
+
+    /// OOBE 的业务回调（onFinish）只在创建时由调用方注入一次。
+    /// (OOBE business callbacks injected once on creation via `configure`.)
+    func openOOBE(configure: (OOBEWindowController) -> Void) {
+        if oobeWindow == nil {
+            let c = OOBEWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.oobeWindow = nil } }
+            configure(c)
+            oobeWindow = c
+        }
+        oobeWindow?.showWindow()
     }
 }

@@ -13,7 +13,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var textOutputSinkRegistry: TextOutputSinkRegistry!
     private var volumeController: VolumeController!
     private var memoryPressureSource: DispatchSourceMemoryPressure?
-    private var oobeWindowController: OOBEWindowController?
     private var selectedRecognitionEngineCode = ASREngineRegistry.appleCode
     private var selectedSherpaPresetID = ""
     private var selectedSherpaRecognitionLanguage = ""
@@ -37,6 +36,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         terminateOtherRunningInstances()
+
+        // 安装最小主菜单（含 Edit），让设置窗口的 NSTextField 能响应 Cmd+C/V/X/A
+        // (Install minimal main menu with Edit so settings-window text fields accept Cmd+C/V/X/A.)
+        MainMenuInstaller.install()
 
         AppSettings.registerDefaults()
         if !AppSettings.doubaoASRLowLatencyDefaultApplied {
@@ -433,10 +436,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// 展示 OOBE 引导窗口（Show OOBE onboarding window）
+    /// 控制器生命周期统一交给 MenuWindowRouter 管理，这里只注入业务回调。
+    /// (Lifetime is owned by MenuWindowRouter — this method just injects business callbacks.)
     func showOOBE() {
-        if oobeWindowController == nil {
-            oobeWindowController = OOBEWindowController()
-            oobeWindowController?.onFinish = { [weak self] engine, triggerKey in
+        menuBarController.presentOOBE { controller in
+            controller.onFinish = { [weak self] engine, triggerKey in
                 guard let self else { return }
                 // 同步触发键到 FnKeyMonitor（Sync trigger key to FnKeyMonitor）
                 self.fnKeyMonitor.triggerKeyCode = triggerKey
@@ -456,10 +460,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 default:
                     break
                 }
-                self.oobeWindowController = nil
             }
         }
-        oobeWindowController?.showWindow()
     }
 
     /// OOBE 完成后用：触发已存在的 Sherpa 下载提示流程。

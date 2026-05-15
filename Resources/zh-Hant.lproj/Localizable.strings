@@ -469,3 +469,15 @@
 "doubao.model.v2" = "豆包串流 2.0（預設）";
 
 "doubao.model.v1" = "豆包串流 1.0";
+
+/* Edit menu */
+"menu.app.quit" = "結束 %@";
+"menu.edit" = "編輯";
+"menu.edit.undo" = "還原";
+"menu.edit.redo" = "重做";
+"menu.edit.cut" = "剪下";
+"menu.edit.copy" = "拷貝";
+"menu.edit.paste" = "貼上";
+"menu.edit.pasteAndMatchStyle" = "貼上並符合樣式";
+"menu.edit.delete" = "刪除";
+"menu.edit.selectAll" = "全選";

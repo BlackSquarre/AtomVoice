@@ -469,3 +469,15 @@
 "doubao.model.v2" = "Doubao Streaming 2.0 (Predeterminado)";
 
 "doubao.model.v1" = "Doubao Streaming 1.0";
+
+/* Edit menu */
+"menu.app.quit" = "Salir de %@";
+"menu.edit" = "Edición";
+"menu.edit.undo" = "Deshacer";
+"menu.edit.redo" = "Rehacer";
+"menu.edit.cut" = "Cortar";
+"menu.edit.copy" = "Copiar";
+"menu.edit.paste" = "Pegar";
+"menu.edit.pasteAndMatchStyle" = "Pegar y coincidir el estilo";
+"menu.edit.delete" = "Eliminar";
+"menu.edit.selectAll" = "Seleccionar todo";

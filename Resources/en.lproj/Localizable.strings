@@ -469,3 +469,15 @@
 "doubao.model.v2" = "Doubao Streaming 2.0 (Default)";
 
 "doubao.model.v1" = "Doubao Streaming 1.0";
+
+/* Edit menu — installed at launch so settings-window text fields can use Cmd+C/V/X/A */
+"menu.app.quit" = "Quit %@";
+"menu.edit" = "Edit";
+"menu.edit.undo" = "Undo";
+"menu.edit.redo" = "Redo";
+"menu.edit.cut" = "Cut";
+"menu.edit.copy" = "Copy";
+"menu.edit.paste" = "Paste";
+"menu.edit.pasteAndMatchStyle" = "Paste and Match Style";
+"menu.edit.delete" = "Delete";
+"menu.edit.selectAll" = "Select All";
