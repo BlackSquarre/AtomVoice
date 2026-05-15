@@ -465,3 +465,9 @@
 "sherpa.update.title" = "Mettre à jour le runtime Sherpa";
 "sherpa.update.message.same" = "La version installée (%@) est déjà la plus récente. Réinstaller quand même ?";
 "sherpa.update.message.new" = "Une nouvelle version est disponible : %@ (Actuelle : %@). Mettre à jour maintenant ?";
+
+"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
+
+
+"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
+"tooltip.menu.pasteCompatibility" = "Applique un délai de collage plus long aux apps connues de bureau à distance, machines virtuelles et streaming de jeux pour éviter les caractères perdus.";

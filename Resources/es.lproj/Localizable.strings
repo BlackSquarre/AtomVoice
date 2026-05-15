@@ -465,3 +465,9 @@
 "sherpa.update.title" = "Actualizar entorno de ejecución de Sherpa";
 "sherpa.update.message.same" = "La versión instalada (%@) ya es la más reciente. ¿Reinstalar de todos modos?";
 "sherpa.update.message.new" = "Hay una nueva versión disponible: %@ (Actual: %@). ¿Actualizar ahora?";
+
+"menu.pasteCompatibility" = "호환성 자동 최적화";
+
+
+"menu.pasteCompatibility" = "Optimización de compatibilidad automática";
+"tooltip.menu.pasteCompatibility" = "Usa un retardo de pegado más largo en apps conocidas de escritorio remoto, máquinas virtuales y juegos en streaming para evitar caracteres perdidos.";

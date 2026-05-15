@@ -20,6 +20,7 @@ private extension NSColor {
 // MARK: - PermissionsWindowController
 
 final class PermissionsWindowController: NSObject {
+    var onClose: (() -> Void)?
     private let permissionService = PermissionService.shared
     private var window: NSWindow?
     private var rowViews: [PermissionRowView] = []
@@ -300,6 +301,7 @@ extension PermissionsWindowController: NSWindowDelegate {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
+        onClose?()
     }
     func windowDidBecomeKey(_ notification: Notification) { refresh() }
 }

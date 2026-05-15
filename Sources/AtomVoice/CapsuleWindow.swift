@@ -1,5 +1,15 @@
 import Cocoa
 
+private final class CapsuleClickOverlayView: NSView {
+    var onClick: (() -> Void)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        onClick?()
+    }
+}
+
 final class CapsuleWindowController {
     enum DisplayMode {
         case normal
@@ -21,6 +31,8 @@ final class CapsuleWindowController {
     private var presentationID = 0
     private(set) var isShowingError = false
     private var displayMode: DisplayMode = .normal
+    var recordingClickEnabled = false
+    var onRecordingClick: (() -> Void)?
 
     #if DEBUG_BUILD
     private var timerLabel: NSTextField?
@@ -230,6 +242,24 @@ final class CapsuleWindowController {
                 container.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
             ])
         }
+
+        let clickOverlay = CapsuleClickOverlayView()
+        clickOverlay.translatesAutoresizingMaskIntoConstraints = false
+        clickOverlay.onClick = { [weak self] in
+            guard let self,
+                  self.recordingClickEnabled,
+                  self.displayMode == .normal,
+                  !self.isShowingError
+            else { return }
+            self.onRecordingClick?()
+        }
+        surface.addSubview(clickOverlay)
+        NSLayoutConstraint.activate([
+            clickOverlay.leadingAnchor.constraint(equalTo: surface.leadingAnchor),
+            clickOverlay.trailingAnchor.constraint(equalTo: surface.trailingAnchor),
+            clickOverlay.topAnchor.constraint(equalTo: surface.topAnchor),
+            clickOverlay.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
+        ])
 
         NSLayoutConstraint.activate([
             waveform.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: waveformLeadingOffset),

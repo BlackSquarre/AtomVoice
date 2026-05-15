@@ -390,6 +390,7 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
 // MARK: - 设置窗口
 
 final class SettingsWindowController: NSObject {
+    var onClose: (() -> Void)?
     private var window: NSWindow?
     private var providerPopup: NSPopUpButton!
     private var apiBaseURLField: NSTextField!
@@ -668,6 +669,7 @@ extension SettingsWindowController: NSWindowDelegate {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
+        onClose?()
     }
 }
 

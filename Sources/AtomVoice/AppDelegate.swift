@@ -64,6 +64,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         llmRefiner = LLMRefiner()
         textInjector = TextInjector()
         capsuleWindow = CapsuleWindowController()
+        capsuleWindow.onRecordingClick = { [weak self] in
+            guard let self, self.session.isRecording else { return }
+            self.session.stop()
+        }
         audioEngine = AudioEngineController()
         textPostProcessorRegistry = TextPostProcessorRegistry(processors: [
             SherpaPunctuationProcessor(registry: asrEngineRegistry) { [weak self] text in
@@ -146,6 +150,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         session.onRecordingStateChanged = { [weak self] active in
             guard let self else { return }
             self.fnKeyMonitor.isRecording = active
+            self.capsuleWindow.recordingClickEnabled = active
             self.handleRecordingStateChangedForDownloadCapsule(active: active)
         }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in

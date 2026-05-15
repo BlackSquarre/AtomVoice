@@ -465,3 +465,9 @@
 "sherpa.update.title" = "Sherpa-Laufzeitumgebung aktualisieren";
 "sherpa.update.message.same" = "Die installierte Version (%@) ist bereits die neueste. Trotzdem neu installieren?";
 "sherpa.update.message.new" = "Eine neue Version ist verfügbar: %@ (Aktuell: %@). Jetzt aktualisieren?";
+
+"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
+
+
+"menu.pasteCompatibility" = "Kompatibilitätsoptimierung automatisch anwenden";
+"tooltip.menu.pasteCompatibility" = "Verwendet bei bekannten Remote-Desktop-, VM- und Game-Streaming-Apps eine längere Einfügeverzögerung, um Zeichenverluste zu vermeiden.";

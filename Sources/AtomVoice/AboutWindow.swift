@@ -1,6 +1,7 @@
 import Cocoa
 
 final class AboutWindowController: NSObject {
+    var onClose: (() -> Void)?
     private var window: NSWindow?
     private var thirdPartyWindow: NSWindow?
 
@@ -349,6 +350,11 @@ extension AboutWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
+        }
+        // 主窗口关闭时才通知路由清空槽位；ThirdParty 子窗口关闭忽略
+        // (Notify router only when the main window closes; ignore the ThirdParty subwindow)
+        if (notification.object as? NSWindow) === window {
+            onClose?()
         }
     }
 }

@@ -129,7 +129,9 @@ final class CloudASRRecognizerController: NSObject {
 
     private let provider: CloudASRProvider
     private let queue = DispatchQueue(label: "com.atomvoice.cloudASR")
-    private let chunkSizeBytes = 16_000 / 5 * 2  // 200ms, mono, int16
+    private let lowLatencyChunkSizeBytes = 16_000 / 10 * 2  // 100ms, mono, int16
+    private let standardChunkSizeBytes = 16_000 / 5 * 2  // 200ms, mono, int16
+    private let lowLatencyWindowBytes = 16_000 * 2  // 前 1 秒用小包降低首包等待时间
     private let minimumUsefulAudioBytes = 16_000 / 4 * 2  // 250ms, mono, int16
 
     private var connection: CloudASRConnection?
@@ -241,12 +243,17 @@ final class CloudASRRecognizerController: NSObject {
     // MARK: - 内部方法
 
     private func flushBufferedAudioLocked() {
-        while chunkBuffer.count >= chunkSizeBytes {
-            let chunk = chunkBuffer.prefix(chunkSizeBytes)
-            chunkBuffer.removeFirst(chunkSizeBytes)
+        while chunkBuffer.count >= currentChunkSizeBytesLocked() {
+            let chunkSize = currentChunkSizeBytesLocked()
+            let chunk = chunkBuffer.prefix(chunkSize)
+            chunkBuffer.removeFirst(chunkSize)
             connection?.sendAudioChunk(Data(chunk), isFinal: false)
-            sentAudioBytes += chunkSizeBytes
+            sentAudioBytes += chunkSize
         }
+    }
+
+    private func currentChunkSizeBytesLocked() -> Int {
+        sentAudioBytes < lowLatencyWindowBytes ? lowLatencyChunkSizeBytes : standardChunkSizeBytes
     }
 
     private func beginFinishingLocked() {
@@ -261,11 +268,12 @@ final class CloudASRRecognizerController: NSObject {
         }
 
         // 发送剩余缓冲音频（Send remaining buffered audio）
-        while chunkBuffer.count >= chunkSizeBytes {
-            let chunk = chunkBuffer.prefix(chunkSizeBytes)
-            chunkBuffer.removeFirst(chunkSizeBytes)
+        while chunkBuffer.count >= currentChunkSizeBytesLocked() {
+            let chunkSize = currentChunkSizeBytesLocked()
+            let chunk = chunkBuffer.prefix(chunkSize)
+            chunkBuffer.removeFirst(chunkSize)
             connection?.sendAudioChunk(Data(chunk), isFinal: false)
-            sentAudioBytes += chunkSizeBytes
+            sentAudioBytes += chunkSize
         }
         connection?.sendAudioChunk(chunkBuffer, isFinal: true)
         sentAudioBytes += chunkBuffer.count

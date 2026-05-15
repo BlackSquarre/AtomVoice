@@ -465,3 +465,9 @@
 "sherpa.update.title" = "Sherpa ランタイムの更新";
 "sherpa.update.message.same" = "インストール済みのバージョン (%@) はすでに最新です。再インストールしますか？";
 "sherpa.update.message.new" = "新しいバージョンが利用可能です: %@ (現在: %@)。更新しますか？";
+
+"menu.pasteCompatibility" = "自動套用相容性最佳化";
+
+
+"menu.pasteCompatibility" = "互換性の自動最適化";
+"tooltip.menu.pasteCompatibility" = "既知のリモートデスクトップ／仮想マシン／ゲームストリーミングアプリで貼り付け遅延を長めにし、文字落ちを防ぎます。";

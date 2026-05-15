@@ -2,6 +2,7 @@ import Cocoa
 import Speech
 
 final class ASRSettingsWindowController: NSObject {
+    var onClose: (() -> Void)?
     private var window: NSWindow?
     private var tabView: NSTabView!
 
@@ -925,6 +926,7 @@ extension ASRSettingsWindowController: NSWindowDelegate {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
+        onClose?()
     }
 }
 

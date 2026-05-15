@@ -465,3 +465,9 @@
 "sherpa.update.title" = "Update Sherpa Runtime";
 "sherpa.update.message.same" = "Installed version (%@) is already the latest. Reinstall anyway?";
 "sherpa.update.message.new" = "A new version is available: %@ (Current: %@). Update now?";
+
+"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
+
+
+"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
+"tooltip.menu.pasteCompatibility" = "Use a longer paste delay for known remote desktop, VM and game streaming apps to avoid dropped characters.";

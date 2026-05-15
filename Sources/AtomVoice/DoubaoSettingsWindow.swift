@@ -1,6 +1,7 @@
 import Cocoa
 
 final class DoubaoSettingsWindowController: NSObject {
+    var onClose: (() -> Void)?
     private var window: NSWindow?
     private var apiKeyField: NSSecureTextField!
     private var resourceIDField: NSTextField!
@@ -180,6 +181,7 @@ extension DoubaoSettingsWindowController: NSWindowDelegate {
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
+        onClose?()
     }
 }
 

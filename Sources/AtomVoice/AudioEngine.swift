@@ -282,34 +282,24 @@ final class AudioEngineController {
         var tapError: NSString?
         let installed = AtomVoiceInstallAudioTapWithError(inputNode, 0, 1024, format, { [weak self] buffer, time in
             guard let self else { return }
+            // 实时音频线程上只做必要的最少工作：投递给识别器 + 拷一份 samples 异步交给 worker
+            // 静音检测、FFT、波形回调全部异步到 bufferQueue 上，避免阻塞音频线程导致丢帧
+            // (Audio thread does minimum work: feed recognizer + copy samples + async dispatch.
+            //  Silence detection / FFT / bands callback all run on bufferQueue to avoid stalling the audio thread.)
             self.recognitionRequest?.append(buffer)
             self.audioBufferHandler?(buffer, time)
 
-            if let channelData = buffer.floatChannelData {
-                let count = Int(buffer.frameLength)
+            guard let channelData = buffer.floatChannelData else { return }
+            let count = Int(buffer.frameLength)
+            guard count > 0 else { return }
 
-                self.bufferQueue.sync {
-                    self.sampleBuffer.append(
-                        contentsOf: UnsafeBufferPointer(start: channelData[0], count: count)
-                    )
+            // 在音频线程做一次拷贝（buffer 引用仅在 tap 内有效），随后异步处理
+            // (Copy on the audio thread — buffer is only valid inside the tap — then process async.)
+            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: count))
+            let bufferDuration = Double(count) / Double(sampleRate)
 
-                    // 静音检测：用 RMS 判断音量（Silence detection: judge volume by RMS）
-                    let bufferDuration = Double(count) / Double(sampleRate)
-                    self.recordingDuration += bufferDuration
-                    self.detectSilence(channelData: channelData[0], frameCount: count, bufferDuration: bufferDuration)
-
-                    // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率（Perform FFT when enough samples accumulate, 50% overlap for better time resolution）
-                    var offset = 0
-                    while self.sampleBuffer.count - offset >= self.fftSize {
-                        let chunk = Array(self.sampleBuffer[offset..<(offset + self.fftSize)])
-                        offset += self.fftSize / 2
-                        let bands = self.computeBands(samples: chunk, sampleRate: sampleRate)
-                        self.bandsHandler?(bands)
-                    }
-                    if offset > 0 {
-                        self.sampleBuffer.removeSubrange(0..<offset)
-                    }
-                }
+            self.bufferQueue.async { [weak self] in
+                self?.processSamplesOnWorker(samples: samples, bufferDuration: bufferDuration, sampleRate: sampleRate)
             }
         }, &tapError)
         guard installed else {
@@ -351,9 +341,38 @@ final class AudioEngineController {
         }
     }
 
+    // MARK: - Worker queue 处理（Audio worker queue processing）
+
+    /// 在 bufferQueue 上处理一帧音频：累积到 sampleBuffer、做静音检测、按 fftSize 滑动窗口做 FFT。
+    /// (Process one audio buffer on bufferQueue: accumulate into sampleBuffer, run silence detection,
+    ///  slide an FFT window at fftSize granularity.)
+    private func processSamplesOnWorker(samples: [Float], bufferDuration: Double, sampleRate: Float) {
+        sampleBuffer.append(contentsOf: samples)
+        recordingDuration += bufferDuration
+
+        samples.withUnsafeBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { return }
+            detectSilence(channelData: base, frameCount: samples.count, bufferDuration: bufferDuration)
+        }
+
+        // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率（Perform FFT when enough samples accumulate, 50% overlap for better time resolution）
+        var offset = 0
+        while sampleBuffer.count - offset >= fftSize {
+            let bands = sampleBuffer.withUnsafeBufferPointer { bufPtr -> [Float] in
+                guard let base = bufPtr.baseAddress else { return [Float](repeating: 0, count: 5) }
+                return computeBands(samplesPointer: base.advanced(by: offset), sampleRate: sampleRate)
+            }
+            offset += fftSize / 2
+            bandsHandler?(bands)
+        }
+        if offset > 0 {
+            sampleBuffer.removeSubrange(0..<offset)
+        }
+    }
+
     // MARK: - 静音检测
 
-    private func detectSilence(channelData: UnsafeMutablePointer<Float>, frameCount: Int, bufferDuration: Double) {
+    private func detectSilence(channelData: UnsafePointer<Float>, frameCount: Int, bufferDuration: Double) {
         // 保护期内不检测（Skip detection during guard period）
         guard recordingDuration > silenceGuardPeriod else { return }
 
@@ -436,8 +455,10 @@ final class AudioEngineController {
 
     // MARK: - FFT
 
-    private func computeBands(samples: [Float], sampleRate: Float) -> [Float] {
-        guard let fftSetup, samples.count == fftSize else {
+    /// 从滑动窗口直接读 fftSize 个样本做 FFT，避免 Array 切片拷贝。
+    /// (Read fftSize samples directly from a sliding window pointer to avoid Array slicing copy.)
+    private func computeBands(samplesPointer: UnsafePointer<Float>, sampleRate: Float) -> [Float] {
+        guard let fftSetup else {
             return [Float](repeating: 0, count: 5)
         }
 
@@ -446,7 +467,7 @@ final class AudioEngineController {
 
         // 加汉宁窗（Apply Hanning window）
         var windowed = [Float](repeating: 0, count: fftSize)
-        vDSP_vmul(samples, 1, hannWindow, 1, &windowed, 1, vDSP_Length(fftSize))
+        vDSP_vmul(samplesPointer, 1, hannWindow, 1, &windowed, 1, vDSP_Length(fftSize))
 
         // 实数 FFT（Real-valued FFT）
         var real = [Float](repeating: 0, count: halfSize)

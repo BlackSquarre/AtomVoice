@@ -466,3 +466,9 @@
 "sherpa.update.title" = "更新 Sherpa 运行时";
 "sherpa.update.message.same" = "当前版本 (%@) 已经是最新，是否重新安装？";
 "sherpa.update.message.new" = "发现新版本: %@ (当前: %@)，是否更新？";
+
+"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
+
+
+"menu.pasteCompatibility" = "自动应用兼容性优化";
+"tooltip.menu.pasteCompatibility" = "对已知的远程桌面、虚拟机、游戏串流类应用使用更长的粘贴延迟，避免丢字符。";
