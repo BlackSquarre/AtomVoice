@@ -285,22 +285,22 @@
 "doubao.settings.title" = "Réglages Doubao ASR";
 "doubao.settings.desc" = "Configurez la reconnaissance vocale en streaming Volcengine Doubao. L’audio est envoyé à Doubao uniquement lorsque ce moteur est sélectionné.";
 "doubao.settings.apiKey" = "API Key :";
-"doubao.settings.resourceID" = "Resource ID :";
+"doubao.settings.resourceID" = "Modèle :";
 "doubao.settings.endpoint" = "Endpoint :";
 "doubao.settings.options" = "Options :";
 "doubao.settings.enablePunctuation" = "Activer la ponctuation";
-"doubao.settings.enableITN" = "Activer ITN";
-"doubao.settings.enableDDC" = "Activer le nettoyage des hésitations";
-"doubao.settings.enableNonstream" = "Polir le texte";
+"doubao.settings.enableITN" = "Normalisation du texte";
+"doubao.settings.enableDDC" = "Lissage de la parole";
+"doubao.settings.enableNonstream" = "Optimisation du texte";
 "doubao.settings.finalTimeout" = "Délai d’attente :";
 "doubao.settings.keychainFailed" = "Impossible d’enregistrer l’API Key dans le trousseau.";
 "tooltip.doubao.apiKey" = "APP Key de la console Volcengine, utilisée pour se connecter au service vocal Doubao.";
-"tooltip.doubao.resourceID" = "ID de ressource du service, par exemple la ressource horaire ou concurrente de Doubao ASR 2.0.";
+"tooltip.doubao.resourceID" = "Le modèle de reconnaissance vocale Doubao activé sur votre compte Volcengine.";
 "tooltip.doubao.endpoint" = "Endpoint Doubao ASR en streaming. Par défaut, l’endpoint bidirectionnel optimisé recommandé officiellement est utilisé.";
 "tooltip.doubao.enablePunctuation" = "Paramètre enable_punc : active la ponctuation. Activé par défaut.";
-"tooltip.doubao.enableITN" = "Paramètre enable_itn : normalisation du texte, convertit la sortie ASR brute en texte écrit plus lisible.";
-"tooltip.doubao.enableDDC" = "Paramètre enable_ddc : lissage sémantique, supprime ou modifie les pauses, tics de langage et répétitions sémantiques.";
-"tooltip.doubao.enableNonstream" = "Paramètre enable_nonstream : active la reconnaissance streaming + une seconde passe non-streaming ; renvoie d’abord le texte en direct puis réanalyse les segments audio pour améliorer la précision finale.";
+"tooltip.doubao.enableITN" = "Convertit les nombres et dates parlés en chiffres, par exemple « dix-neuf cent soixante-dix » → « 1970 ».";
+"tooltip.doubao.enableDDC" = "Supprime automatiquement les pauses, tics de langage (« euh », « hum ») et répétitions.";
+"tooltip.doubao.enableNonstream" = "Après l’arrêt de l’enregistrement, Doubao ré-analyse l’audio complet pour améliorer la précision. Ajoute un léger délai.";
 "tooltip.doubao.finalTimeout" = "Temps d’attente maximal après relâchement pour obtenir le résultat final poli ; en cas d’expiration, le texte reconnu actuel est utilisé.";
 "doubao.settings.accountSection" = "Compte et service";
 "doubao.settings.effectSection" = "Effets Doubao";
@@ -331,7 +331,6 @@
 "alert.onDeviceModel.message" = "Le modèle de reconnaissance vocale Apple hors ligne pour la langue actuelle n'a pas été téléchargé. Allez dans Réglages Système → Général → Clavier → Dictée pour télécharger le modèle.";
 "alert.onDeviceModel.openSettings" = "Ouvrir les Réglages Système";
 "menu.debug.testOnDeviceAlert" = "Tester l'alerte modèle hors ligne";
-
 
 /* OOBE — Assistant de premier lancement */
 "oobe.window.title" = "Bienvenue dans AtomVoice";
@@ -466,8 +465,6 @@
 "sherpa.update.message.same" = "La version installée (%@) est déjà la plus récente. Réinstaller quand même ?";
 "sherpa.update.message.new" = "Une nouvelle version est disponible : %@ (Actuelle : %@). Mettre à jour maintenant ?";
 
-"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
+"doubao.model.v2" = "Doubao Streaming 2.0 (par défaut)";
 
-
-"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
-"tooltip.menu.pasteCompatibility" = "Applique un délai de collage plus long aux apps connues de bureau à distance, machines virtuelles et streaming de jeux pour éviter les caractères perdus.";
+"doubao.model.v1" = "Doubao Streaming 1.0";

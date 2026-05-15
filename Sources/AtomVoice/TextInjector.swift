@@ -44,9 +44,7 @@ final class TextInjector {
     private func performInject(text: String, completion: (() -> Void)? = nil) {
         // 在主线程上读取前台应用的 bundleID，命中内置兼容性清单时改用更长的粘贴延迟，避免远程桌面/虚拟机/串流类应用丢字符。
         // (Resolve frontmost app on main thread to pick per-app paste delay override for remote desktop / VM / streaming clients.)
-        let compatProfile: PasteCompatibilityProfile? = AppSettings.pasteCompatibilityEnabled
-            ? PasteCompatibilityRegistry.profileForFrontmostApp()
-            : nil
+        let compatProfile: PasteCompatibilityProfile? = PasteCompatibilityRegistry.profileForFrontmostApp()
 
         // 将获取光标后字符的跨进程 IPC 调用移至后台队列，避免目标应用挂起时连带卡死主线程
         // (Move the cross-process IPC call for getting character after cursor to a background queue to avoid freezing the main thread if target app hangs)

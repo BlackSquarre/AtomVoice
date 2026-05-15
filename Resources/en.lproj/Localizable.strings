@@ -285,22 +285,22 @@
 "doubao.settings.title" = "Doubao ASR Settings";
 "doubao.settings.desc" = "Configure Volcengine Doubao streaming speech recognition. Audio will be sent to Doubao only when this recognition engine is selected.";
 "doubao.settings.apiKey" = "API Key:";
-"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.resourceID" = "Model:";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "Options:";
 "doubao.settings.enablePunctuation" = "Enable punctuation";
-"doubao.settings.enableITN" = "Enable ITN";
-"doubao.settings.enableDDC" = "Enable disfluency cleanup";
-"doubao.settings.enableNonstream" = "Text polish";
+"doubao.settings.enableITN" = "Text normalization";
+"doubao.settings.enableDDC" = "Enable speech smoothing";
+"doubao.settings.enableNonstream" = "Text optimization";
 "doubao.settings.finalTimeout" = "Timeout:";
 "doubao.settings.keychainFailed" = "Failed to save API Key to Keychain.";
 "tooltip.doubao.apiKey" = "The APP Key from the Volcengine console, used to connect to Doubao Speech.";
-"tooltip.doubao.resourceID" = "The service resource ID, such as the hourly or concurrent resource for Doubao streaming ASR 2.0.";
+"tooltip.doubao.resourceID" = "Which Doubao streaming ASR model is enabled on your Volcengine account.";
 "tooltip.doubao.endpoint" = "The Doubao streaming ASR endpoint. The default uses the officially recommended optimized bidirectional streaming endpoint.";
 "tooltip.doubao.enablePunctuation" = "Document parameter enable_punc: enable punctuation. Enabled by default.";
-"tooltip.doubao.enableITN" = "Document parameter enable_itn: text normalization, converting raw ASR output into readable written text, such as “nineteen seventy” to “1970”.";
-"tooltip.doubao.enableDDC" = "Document parameter enable_ddc: semantic smoothing, removing or modifying disfluent parts such as pauses, filler words, and repeated words.";
-"tooltip.doubao.enableNonstream" = "Document parameter enable_nonstream: enables streaming + non-streaming second-pass recognition; returns live text first, then re-recognizes sentence audio segments to improve final accuracy.";
+"tooltip.doubao.enableITN" = "Convert spoken numbers and dates into digits, e.g. “nineteen seventy” → “1970”.";
+"tooltip.doubao.enableDDC" = "Automatically drop pauses, “uh” / “um”, and repeated words.";
+"tooltip.doubao.enableNonstream" = "After you stop talking, Doubao re-runs recognition on the full clip to improve accuracy. Adds a small delay.";
 "tooltip.doubao.finalTimeout" = "How long to wait after release for the polished final result; if it times out, AtomVoice uses the current recognized text.";
 "doubao.settings.accountSection" = "Account & Service";
 "doubao.settings.effectSection" = "Doubao Effects";
@@ -331,7 +331,6 @@
 "alert.onDeviceModel.message" = "The Apple offline speech recognition model for the current language has not been downloaded. Go to System Settings → General → Keyboard → Dictation to download the model.";
 "alert.onDeviceModel.openSettings" = "Open System Settings";
 "menu.debug.testOnDeviceAlert" = "Test On-Device Model Alert";
-
 
 /* OOBE — First-launch onboarding */
 "oobe.window.title" = "Welcome to AtomVoice";
@@ -466,8 +465,6 @@
 "sherpa.update.message.same" = "Installed version (%@) is already the latest. Reinstall anyway?";
 "sherpa.update.message.new" = "A new version is available: %@ (Current: %@). Update now?";
 
-"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
+"doubao.model.v2" = "Doubao Streaming 2.0 (Default)";
 
-
-"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
-"tooltip.menu.pasteCompatibility" = "Use a longer paste delay for known remote desktop, VM and game streaming apps to avoid dropped characters.";
+"doubao.model.v1" = "Doubao Streaming 1.0";

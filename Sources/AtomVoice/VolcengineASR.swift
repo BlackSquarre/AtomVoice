@@ -1,6 +1,31 @@
 import AVFoundation
 import Foundation
 
+// MARK: - 豆包流式 ASR 模型版本（X-Api-Resource-Id 取值，个人版按时长计费）
+// (Doubao streaming ASR model versions — X-Api-Resource-Id values, duration-based pricing for personal use.)
+
+enum DoubaoModelKind: CaseIterable {
+    case v2   // 2.0，对应 volc.seedasr.sauc.duration
+    case v1   // 1.0，对应 volc.bigasr.sauc.duration
+
+    var resourceID: String {
+        switch self {
+        case .v2: return "volc.seedasr.sauc.duration"
+        case .v1: return "volc.bigasr.sauc.duration"
+        }
+    }
+
+    /// 把任意 resourceID 字符串映射回模型版本；未知值（例如手动填入的并发版）也归到对应版本里。
+    /// (Map any resourceID string back to a model version; unknown variants like concurrent-billing fall through to their version.)
+    static func from(resourceID: String) -> DoubaoModelKind {
+        let normalized = resourceID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized == v1.resourceID || normalized.contains("bigasr") {
+            return .v1
+        }
+        return .v2
+    }
+}
+
 // MARK: - 火山引擎豆包 ASR 设置
 
 struct VolcengineASRSettings {
@@ -17,7 +42,7 @@ struct VolcengineASRSettings {
     var selectedLanguage: String
 
     static var defaultEndpoint: String { "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async" }
-    static var defaultResourceID: String { "volc.seedasr.sauc.duration" }
+    static var defaultResourceID: String { DoubaoModelKind.v2.resourceID }
 
     static var savedAPIKey: String {
         KeychainStore.string(service: keychainService, account: keychainAccount) ?? ""

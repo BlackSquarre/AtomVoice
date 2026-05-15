@@ -286,22 +286,22 @@
 "doubao.settings.title" = "豆包 ASR 设置";
 "doubao.settings.desc" = "配置火山引擎豆包流式语音识别。只有选择该识别引擎时，音频才会发送到豆包服务。";
 "doubao.settings.apiKey" = "API Key:";
-"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.resourceID" = "模型：";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "选项:";
 "doubao.settings.enablePunctuation" = "启用标点";
-"doubao.settings.enableITN" = "启用 ITN";
+"doubao.settings.enableITN" = "文本规范化";
 "doubao.settings.enableDDC" = "启用语义顺滑";
-"doubao.settings.enableNonstream" = "文本润色";
+"doubao.settings.enableNonstream" = "文本优化";
 "doubao.settings.finalTimeout" = "超时时间:";
 "doubao.settings.keychainFailed" = "无法将 API Key 保存到钥匙串。";
 "tooltip.doubao.apiKey" = "火山引擎控制台里的 APP Key，用于连接豆包语音服务。";
-"tooltip.doubao.resourceID" = "调用服务的资源信息 ID，例如豆包流式语音识别模型 2.0 的小时版或并发版。";
+"tooltip.doubao.resourceID" = "你在火山引擎控制台开通的豆包流式语音识别模型。";
 "tooltip.doubao.endpoint" = "豆包流式语音识别接口地址，默认使用官方推荐的双向流式优化版。";
 "tooltip.doubao.enablePunctuation" = "文档参数 enable_punc：启用标点，默认开启。";
-"tooltip.doubao.enableITN" = "文档参数 enable_itn：文本规范化，把原始语音输出转换成更可读的书面形式，例如“一九七零年”变成“1970年”。";
-"tooltip.doubao.enableDDC" = "文档参数 enable_ddc：语义顺滑，删除或修改停顿词、语气词、语义重复词等不流畅部分。";
-"tooltip.doubao.enableNonstream" = "文档参数 enable_nonstream：开启流式+非流式二遍识别，实时返回逐字文本，再重新识别分句音频片段提升最终准确率。";
+"tooltip.doubao.enableITN" = "把口语中的数字、日期转成阿拉伯数字，例如「一九七零年」→「1970 年」。";
+"tooltip.doubao.enableDDC" = "自动去掉停顿、「嗯」「啊」等语气词以及重复词。";
+"tooltip.doubao.enableNonstream" = "录音停止后用完整音频再跑一次识别，提升准确率，但最终等待时间会稍长。";
 "tooltip.doubao.finalTimeout" = "松手后最多等待多久拿文本润色后的最终结果；超时则使用当前已有识别结果。";
 "doubao.settings.accountSection" = "账号与服务";
 "doubao.settings.effectSection" = "豆包专属效果";
@@ -332,7 +332,6 @@
 "alert.onDeviceModel.message" = "当前语言的 Apple 离线语音识别模型尚未下载。请前往 系统设置 → 通用 → 键盘 → 听写，下载对应语言的模型。";
 "alert.onDeviceModel.openSettings" = "打开系统设置";
 "menu.debug.testOnDeviceAlert" = "测试离线模型下载提示";
-
 
 /* OOBE — 首次启动引导 */
 "oobe.window.title" = "欢迎使用原子微语";
@@ -467,8 +466,6 @@
 "sherpa.update.message.same" = "当前版本 (%@) 已经是最新，是否重新安装？";
 "sherpa.update.message.new" = "发现新版本: %@ (当前: %@)，是否更新？";
 
-"menu.pasteCompatibility" = "Auto-apply Compatibility Tweaks";
+"doubao.model.v2" = "豆包流式 2.0（默认）";
 
-
-"menu.pasteCompatibility" = "自动应用兼容性优化";
-"tooltip.menu.pasteCompatibility" = "对已知的远程桌面、虚拟机、游戏串流类应用使用更长的粘贴延迟，避免丢字符。";
+"doubao.model.v1" = "豆包流式 1.0";

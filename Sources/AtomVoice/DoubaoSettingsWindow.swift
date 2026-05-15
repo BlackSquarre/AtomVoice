@@ -4,8 +4,9 @@ final class DoubaoSettingsWindowController: NSObject {
     var onClose: (() -> Void)?
     private var window: NSWindow?
     private var apiKeyField: NSSecureTextField!
-    private var resourceIDField: NSTextField!
+    private var modelPopup: NSPopUpButton!
     private var endpointField: NSTextField!
+    private let modelOptions: [DoubaoModelKind] = [.v2, .v1]
     private var itnCheckbox: NSButton!
     private var ddcCheckbox: NSButton!
     private var nonstreamCheckbox: NSButton!
@@ -45,8 +46,14 @@ final class DoubaoSettingsWindowController: NSObject {
 
         apiKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
         apiKeyField.toolTip = loc("tooltip.doubao.apiKey")
-        resourceIDField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultResourceID, delegate: self)
-        resourceIDField.toolTip = loc("tooltip.doubao.resourceID")
+        modelPopup = NSPopUpButton()
+        modelPopup.toolTip = loc("tooltip.doubao.resourceID")
+        for option in modelOptions {
+            switch option {
+            case .v2: modelPopup.addItem(withTitle: loc("doubao.model.v2"))
+            case .v1: modelPopup.addItem(withTitle: loc("doubao.model.v1"))
+            }
+        }
         endpointField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultEndpoint, delegate: self)
         endpointField.toolTip = loc("tooltip.doubao.endpoint")
 
@@ -74,7 +81,7 @@ final class DoubaoSettingsWindowController: NSObject {
 
         let rows: [(String, NSView)] = [
             (loc("doubao.settings.apiKey"), apiKeyField),
-            (loc("doubao.settings.resourceID"), resourceIDField),
+            (loc("doubao.settings.resourceID"), modelPopup),
             (loc("doubao.settings.endpoint"), endpointField),
             (loc("doubao.settings.effects"), effectsStack),
             (loc("doubao.settings.globalFollow"), globalInfoLabel),
@@ -140,7 +147,10 @@ final class DoubaoSettingsWindowController: NSObject {
     private func refreshFields() {
         let settings = VolcengineASRSettings.load()
         apiKeyField?.stringValue = settings.apiKey
-        resourceIDField?.stringValue = settings.resourceID
+        let currentKind = DoubaoModelKind.from(resourceID: settings.resourceID)
+        if let idx = modelOptions.firstIndex(of: currentKind) {
+            modelPopup?.selectItem(at: idx)
+        }
         endpointField?.stringValue = settings.endpoint
         itnCheckbox?.state = settings.enableITN ? .on : .off
         ddcCheckbox?.state = settings.enableDDC ? .on : .off
@@ -156,10 +166,11 @@ final class DoubaoSettingsWindowController: NSObject {
             return
         }
 
+        let selectedKind = modelOptions[modelPopup.indexOfSelectedItem]
         VolcengineASRSettings(
             endpoint: endpointField.stringValue,
             apiKey: apiKeyField.stringValue,
-            resourceID: resourceIDField.stringValue,
+            resourceID: selectedKind.resourceID,
             enableITN: itnCheckbox.state == .on,
             enableDDC: ddcCheckbox.state == .on,
             enableNonstream: nonstreamCheckbox.state == .on,

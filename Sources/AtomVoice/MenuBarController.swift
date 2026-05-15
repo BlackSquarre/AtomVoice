@@ -349,17 +349,6 @@ final class MenuBarController {
             )
         )
 
-        // 自动应用兼容性优化（远程桌面/虚拟机/串流类应用使用更长的粘贴延迟，避免丢字符）
-        m.addItem(
-            makeMenuItem(
-                title: loc("menu.pasteCompatibility"),
-                action: #selector(togglePasteCompatibility(_:)),
-                imageName: "checkmark.shield",
-                state: AppSettings.pasteCompatibilityEnabled ? .on : .off,
-                toolTip: loc("tooltip.menu.pasteCompatibility")
-            )
-        )
-
         // 开机启动（Launch at login）
         m.addItem(
             makeMenuItem(
@@ -751,12 +740,6 @@ final class MenuBarController {
     @objc private func toggleLowerVolumeOnRecording(_ sender: NSMenuItem) {
         toggleAndRebuild(currentValue: AppSettings.lowerVolumeOnRecording) {
             AppSettings.lowerVolumeOnRecording = $0
-        }
-    }
-
-    @objc private func togglePasteCompatibility(_ sender: NSMenuItem) {
-        toggleAndRebuild(currentValue: AppSettings.pasteCompatibilityEnabled) {
-            AppSettings.pasteCompatibilityEnabled = $0
         }
     }
 

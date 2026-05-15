@@ -8,8 +8,9 @@ final class ASRSettingsWindowController: NSObject {
 
     // 豆包设置（Doubao settings）
     private var doubaoAPIKeyField: NSSecureTextField!
-    private var doubaoResourceIDField: NSTextField!
+    private var doubaoModelPopup: NSPopUpButton!
     private var doubaoEndpointField: NSTextField!
+    private let doubaoModelOptions: [DoubaoModelKind] = [.v2, .v1]
     private var doubaoITNCheckbox: NSButton!
     private var doubaoDDCCheckbox: NSButton!
     private var doubaoNonstreamCheckbox: NSButton!
@@ -141,8 +142,14 @@ final class ASRSettingsWindowController: NSObject {
 
         doubaoAPIKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
         doubaoAPIKeyField.toolTip = loc("tooltip.doubao.apiKey")
-        doubaoResourceIDField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultResourceID, delegate: self)
-        doubaoResourceIDField.toolTip = loc("tooltip.doubao.resourceID")
+        doubaoModelPopup = NSPopUpButton()
+        doubaoModelPopup.toolTip = loc("tooltip.doubao.resourceID")
+        for option in doubaoModelOptions {
+            switch option {
+            case .v2: doubaoModelPopup.addItem(withTitle: loc("doubao.model.v2"))
+            case .v1: doubaoModelPopup.addItem(withTitle: loc("doubao.model.v1"))
+            }
+        }
         doubaoEndpointField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultEndpoint, delegate: self)
         doubaoEndpointField.toolTip = loc("tooltip.doubao.endpoint")
 
@@ -170,7 +177,7 @@ final class ASRSettingsWindowController: NSObject {
 
         let rows: [(String, NSView)] = [
             (loc("doubao.settings.apiKey"), doubaoAPIKeyField),
-            (loc("doubao.settings.resourceID"), doubaoResourceIDField),
+            (loc("doubao.settings.resourceID"), doubaoModelPopup),
             (loc("doubao.settings.endpoint"), doubaoEndpointField),
             (loc("doubao.settings.effects"), effectsStack),
             (loc("doubao.settings.globalFollow"), doubaoGlobalInfoLabel),
@@ -539,7 +546,10 @@ final class ASRSettingsWindowController: NSObject {
         // 豆包设置
         let doubaoSettings = VolcengineASRSettings.load()
         doubaoAPIKeyField?.stringValue = doubaoSettings.apiKey
-        doubaoResourceIDField?.stringValue = doubaoSettings.resourceID
+        let currentKind = DoubaoModelKind.from(resourceID: doubaoSettings.resourceID)
+        if let idx = doubaoModelOptions.firstIndex(of: currentKind) {
+            doubaoModelPopup?.selectItem(at: idx)
+        }
         doubaoEndpointField?.stringValue = doubaoSettings.endpoint
         doubaoITNCheckbox?.state = doubaoSettings.enableITN ? .on : .off
         doubaoDDCCheckbox?.state = doubaoSettings.enableDDC ? .on : .off
@@ -848,10 +858,11 @@ final class ASRSettingsWindowController: NSObject {
             return
         }
 
+        let selectedKind = doubaoModelOptions[doubaoModelPopup.indexOfSelectedItem]
         VolcengineASRSettings(
             endpoint: doubaoEndpointField.stringValue,
             apiKey: doubaoAPIKeyField.stringValue,
-            resourceID: doubaoResourceIDField.stringValue,
+            resourceID: selectedKind.resourceID,
             enableITN: doubaoITNCheckbox.state == .on,
             enableDDC: doubaoDDCCheckbox.state == .on,
             enableNonstream: doubaoNonstreamCheckbox.state == .on,

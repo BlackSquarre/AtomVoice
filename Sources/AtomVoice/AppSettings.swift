@@ -49,7 +49,6 @@ enum AppSettings {
         static let doubaoASRPrivacyAccepted = "doubaoASRPrivacyAccepted"
         static let doubaoASRLowLatencyDefaultApplied = "doubaoASRLowLatencyDefaultApplied"
         static let pasteDelay = "pasteDelay"
-        static let pasteCompatibilityEnabled = "pasteCompatibilityEnabled"
         static let tapModeManualStop = "tapModeManualStop"
     }
 
@@ -124,7 +123,6 @@ enum AppSettings {
             Keys.doubaoASREnableNonstream: false,
             Keys.doubaoASRPrivacyAccepted: false,
             Keys.pasteDelay: defaultPasteDelay,
-            Keys.pasteCompatibilityEnabled: true,
             OOBEWindowController.completionDefaultsKey: false,
         ])
     }
@@ -305,13 +303,6 @@ enum AppSettings {
             return v > 0 ? v : defaultPasteDelay
         }
         set { defaults.set(newValue, forKey: Keys.pasteDelay) }
-    }
-
-    /// 是否启用「应用兼容性优化」：命中内置清单的远程桌面/虚拟机/串流类应用时使用更长的粘贴延迟，避免丢字符。
-    /// (Whether to apply per-app paste compatibility overrides for remote desktop / VM / streaming clients that drop characters at default delay.)
-    static var pasteCompatibilityEnabled: Bool {
-        get { defaults.bool(forKey: Keys.pasteCompatibilityEnabled) }
-        set { defaults.set(newValue, forKey: Keys.pasteCompatibilityEnabled) }
     }
 
     /// 单击说话模式下：true 表示禁用静音自动停止，必须再点一次触发键才结束。

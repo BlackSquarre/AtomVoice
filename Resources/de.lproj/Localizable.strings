@@ -285,22 +285,22 @@
 "doubao.settings.title" = "Doubao-ASR-Einstellungen";
 "doubao.settings.desc" = "Konfigurieren Sie die Streaming-Spracherkennung von Volcengine Doubao. Audio wird nur an Doubao gesendet, wenn diese Erkennungs-Engine ausgewählt ist.";
 "doubao.settings.apiKey" = "API Key:";
-"doubao.settings.resourceID" = "Resource ID:";
+"doubao.settings.resourceID" = "Modell:";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "Optionen:";
 "doubao.settings.enablePunctuation" = "Interpunktion aktivieren";
-"doubao.settings.enableITN" = "ITN aktivieren";
-"doubao.settings.enableDDC" = "Bereinigung von Unflüssigkeiten aktivieren";
-"doubao.settings.enableNonstream" = "Text verfeinern";
+"doubao.settings.enableITN" = "Textnormalisierung";
+"doubao.settings.enableDDC" = "Sprachglättung aktivieren";
+"doubao.settings.enableNonstream" = "Textoptimierung";
 "doubao.settings.finalTimeout" = "Zeitlimit:";
 "doubao.settings.keychainFailed" = "API Key konnte nicht im Schlüsselbund gespeichert werden.";
 "tooltip.doubao.apiKey" = "APP Key aus der Volcengine-Konsole, zur Verbindung mit Doubao Speech.";
-"tooltip.doubao.resourceID" = "Ressourcen-ID des Dienstes, z. B. Stunden- oder Parallelitätsressource für Doubao Streaming-ASR 2.0.";
+"tooltip.doubao.resourceID" = "Das in Ihrem Volcengine-Konto aktivierte Doubao Streaming-Spracherkennungsmodell.";
 "tooltip.doubao.endpoint" = "Doubao Streaming-ASR-Endpoint. Standardmäßig wird der offiziell empfohlene optimierte bidirektionale Streaming-Endpoint verwendet.";
 "tooltip.doubao.enablePunctuation" = "Dokumentparameter enable_punc: aktiviert Interpunktion. Standardmäßig aktiviert.";
-"tooltip.doubao.enableITN" = "Dokumentparameter enable_itn: Textnormalisierung, wandelt rohe ASR-Ausgabe in besser lesbaren geschriebenen Text um.";
-"tooltip.doubao.enableDDC" = "Dokumentparameter enable_ddc: semantische Glättung, entfernt oder ändert Pausenwörter, Füllwörter und semantische Wiederholungen.";
-"tooltip.doubao.enableNonstream" = "Dokumentparameter enable_nonstream: aktiviert Streaming + nicht-streaming Zweitdurchlauf; gibt zuerst Live-Text zurück und erkennt Satzsegmente erneut, um die finale Genauigkeit zu verbessern.";
+"tooltip.doubao.enableITN" = "Wandelt gesprochene Zahlen und Daten in Ziffern um, z. B. „neunzehnhundertsiebzig“ → „1970“.";
+"tooltip.doubao.enableDDC" = "Entfernt automatisch Pausen, Füllwörter („äh“, „hm“) und Wiederholungen.";
+"tooltip.doubao.enableNonstream" = "Nach Aufnahmeende erkennt Doubao das gesamte Audio erneut, um die Genauigkeit zu verbessern. Verursacht eine kleine Verzögerung.";
 "tooltip.doubao.finalTimeout" = "Wie lange nach dem Loslassen auf das verfeinerte Endergebnis gewartet wird; bei Zeitüberschreitung wird der aktuelle erkannte Text verwendet.";
 "doubao.settings.accountSection" = "Konto und Dienst";
 "doubao.settings.effectSection" = "Doubao-Effekte";
@@ -331,7 +331,6 @@
 "alert.onDeviceModel.message" = "Das Apple-Offline-Spracherkennungsmodell für die aktuelle Sprache wurde noch nicht heruntergeladen. Gehe zu Systemeinstellungen → Allgemein → Tastatur → Diktat, um das Modell herunterzuladen.";
 "alert.onDeviceModel.openSettings" = "Systemeinstellungen öffnen";
 "menu.debug.testOnDeviceAlert" = "Offline-Modell-Benachrichtigung testen";
-
 
 /* OOBE — Erste Einrichtung */
 "oobe.window.title" = "Willkommen bei AtomVoice";
@@ -466,8 +465,6 @@
 "sherpa.update.message.same" = "Die installierte Version (%@) ist bereits die neueste. Trotzdem neu installieren?";
 "sherpa.update.message.new" = "Eine neue Version ist verfügbar: %@ (Aktuell: %@). Jetzt aktualisieren?";
 
-"menu.pasteCompatibility" = "Optimisation de compatibilité automatique";
+"doubao.model.v2" = "Doubao Streaming 2.0 (Standard)";
 
-
-"menu.pasteCompatibility" = "Kompatibilitätsoptimierung automatisch anwenden";
-"tooltip.menu.pasteCompatibility" = "Verwendet bei bekannten Remote-Desktop-, VM- und Game-Streaming-Apps eine längere Einfügeverzögerung, um Zeichenverluste zu vermeiden.";
+"doubao.model.v1" = "Doubao Streaming 1.0";
