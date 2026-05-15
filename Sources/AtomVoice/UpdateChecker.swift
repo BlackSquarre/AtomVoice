@@ -1,4 +1,5 @@
 import Cocoa
+import CryptoKit
 import Security
 
 /// 轻量自动更新模块：检查 GitHub Releases，下载并替换 .app（Lightweight auto-update module: check GitHub Releases, download and replace .app）
@@ -70,6 +71,8 @@ final class UpdateChecker: NSObject {
     private struct Release {
         let version: String
         let downloadURL: URL
+        let assetName: String
+        let checksumsURL: URL
         let isPreRelease: Bool
     }
 
@@ -103,21 +106,36 @@ final class UpdateChecker: NSObject {
                 let isPreRelease = json["prerelease"] as? Bool ?? false
                 let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
 
-                // 优先 Universal，其次按当前架构选包（Prefer Universal, then select by current architecture）
+                // 按当前架构精确匹配资产；Universal 仅在架构专属包缺失时作为兜底
+                // (Match the asset for the current architecture; Universal is only a fallback when arch-specific build is missing.)
                 #if arch(arm64)
-                let preferred = ["Universal", "AppleSilicon"]
+                let preferred = ["AppleSilicon", "Universal"]
                 #else
-                let preferred = ["Universal", "Intel"]
+                let preferred = ["Intel", "Universal"]
                 #endif
+
+                // 校验文件 SHA256SUMS.txt 与 release 一起发布
+                // (Checksum file SHA256SUMS.txt is published with each release.)
+                guard let checksumsAsset = assets.first(where: { ($0["name"] as? String) == "SHA256SUMS.txt" }),
+                      let checksumsURLStr = checksumsAsset["browser_download_url"] as? String,
+                      let checksumsURL = URL(string: checksumsURLStr) else {
+                    completion(.failure(URLError(.fileDoesNotExist)))
+                    return
+                }
 
                 for suffix in preferred {
                     if let asset = assets.first(where: {
                            ($0["name"] as? String)?.contains(suffix) == true &&
                            ($0["name"] as? String)?.hasSuffix(".zip") == true
                        }),
+                       let assetName = asset["name"] as? String,
                        let dlStr = asset["browser_download_url"] as? String,
                        let dlURL = URL(string: dlStr) {
-                        completion(.success(Release(version: version, downloadURL: dlURL, isPreRelease: isPreRelease)))
+                        completion(.success(Release(version: version,
+                                                    downloadURL: dlURL,
+                                                    assetName: assetName,
+                                                    checksumsURL: checksumsURL,
+                                                    isPreRelease: isPreRelease)))
                         return
                     }
                 }
@@ -183,9 +201,11 @@ final class UpdateChecker: NSObject {
                     return
                 }
 
-                self.updateProgressLabel(loc("update.installing"))
+                self.updateProgressLabel(loc("update.verifying"))
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
+                        try self.verifyChecksum(zipURL: tmpURL, release: release)
+                        DispatchQueue.main.async { self.updateProgressLabel(loc("update.installing")) }
                         let newApp = try self.extractZip(tmpURL)
                         try self.validateDownloadedApp(newApp, expectedVersion: release.version)
                         DispatchQueue.main.async {
@@ -204,6 +224,66 @@ final class UpdateChecker: NSObject {
                 }
             }
         }.resume()
+    }
+
+    // MARK: - 校验 SHA256
+
+    /// 下载 SHA256SUMS.txt，根据资产名查 hash 并与下载到本地的 zip 文件比对。
+    /// (Download SHA256SUMS.txt, look up the hash by asset name, and compare against the downloaded zip.)
+    private func verifyChecksum(zipURL: URL, release: Release) throws {
+        var req = URLRequest(url: release.checksumsURL, timeoutInterval: 15)
+        req.setValue("text/plain", forHTTPHeaderField: "Accept")
+
+        let (data, error) = synchronousData(for: req)
+        if let error { throw UpdateError.checksumFetchFailed(error.localizedDescription) }
+        guard let data, let listing = String(data: data, encoding: .utf8) else {
+            throw UpdateError.checksumFetchFailed("empty response")
+        }
+
+        // 每行格式：<sha256>  <filename>（shasum -a 256 输出格式）
+        // (Each line: "<sha256>  <filename>" — output format of `shasum -a 256`.)
+        var expectedHash: String?
+        for raw in listing.split(separator: "\n", omittingEmptySubsequences: true) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            let parts = line.split(separator: " ", omittingEmptySubsequences: true)
+            guard parts.count >= 2 else { continue }
+            let name = parts.last!.trimmingCharacters(in: CharacterSet(charactersIn: "*"))
+            if name == release.assetName {
+                expectedHash = String(parts[0]).lowercased()
+                break
+            }
+        }
+        guard let expectedHash else {
+            throw UpdateError.checksumMissing(release.assetName)
+        }
+
+        let fileHandle = try FileHandle(forReadingFrom: zipURL)
+        defer { try? fileHandle.close() }
+        var hasher = SHA256()
+        while autoreleasepool(invoking: {
+            let chunk = fileHandle.readData(ofLength: 1024 * 1024)
+            if chunk.isEmpty { return false }
+            hasher.update(data: chunk)
+            return true
+        }) {}
+        let actualHash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+
+        guard actualHash == expectedHash else {
+            throw UpdateError.checksumMismatch(expected: expectedHash, actual: actualHash)
+        }
+    }
+
+    private func synchronousData(for request: URLRequest) -> (Data?, Error?) {
+        let semaphore = DispatchSemaphore(value: 0)
+        var resultData: Data?
+        var resultError: Error?
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            resultData = data
+            resultError = error
+            semaphore.signal()
+        }.resume()
+        semaphore.wait()
+        return (resultData, resultError)
     }
 
     // MARK: - 解压
@@ -330,11 +410,20 @@ final class UpdateChecker: NSObject {
         guard state == .downloading else { return }
         state = .readyToRestart
         let alert = NSAlert()
+        alert.alertStyle = .critical
         alert.messageText = loc("update.done.title")
         alert.informativeText = loc("update.done.message", version)
         alert.addButton(withTitle: loc("update.restart"))
         alert.addButton(withTitle: loc("update.later"))
-        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
+
+        // 强提醒：抢占前台 + Dock 跳动直到用户响应
+        // (Strong attention: come to foreground + bounce Dock until the user responds.)
+        NSApp.activate(ignoringOtherApps: true)
+        let attentionRequest = NSApp.requestUserAttention(.criticalRequest)
+
+        let response = AlertPresenter.shared.runModalAlert(alert)
+        NSApp.cancelUserAttentionRequest(attentionRequest)
+        if response == .alertFirstButtonReturn {
             applyAndRelaunch(newAppURL: newAppURL)
         } else {
             state = .idle
@@ -549,6 +638,9 @@ final class UpdateChecker: NSObject {
         case invalidZipEntry(String)
         case invalidBundle(String)
         case signatureInvalid(String)
+        case checksumFetchFailed(String)
+        case checksumMissing(String)
+        case checksumMismatch(expected: String, actual: String)
 
         var errorDescription: String? {
             switch self {
@@ -562,6 +654,12 @@ final class UpdateChecker: NSObject {
                 return "Downloaded app is invalid: \(reason)"
             case .signatureInvalid(let reason):
                 return "Downloaded app signature is invalid: \(reason)"
+            case .checksumFetchFailed(let reason):
+                return "Failed to fetch SHA256SUMS.txt: \(reason)"
+            case .checksumMissing(let asset):
+                return "SHA256 entry missing for \(asset)"
+            case .checksumMismatch(let expected, let actual):
+                return "SHA256 mismatch (expected \(expected), got \(actual))"
             }
         }
     }

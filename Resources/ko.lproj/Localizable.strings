@@ -223,6 +223,7 @@
 "update.install" = "설치";
 "update.later" = "나중에";
 "update.downloading" = "%@ 다운로드 중...";
+"update.verifying" = "검증 중...";
 "update.installing" = "설치 중...";
 "update.done.title" = "업데이트 준비 완료";
 "update.done.message" = "아톰보이스 %@ 다운로드가 완료되었습니다. 지금 재시작하여 업데이트를 적용하시겠습니까？";

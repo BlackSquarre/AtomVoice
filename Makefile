@@ -44,9 +44,15 @@ sherpa-memory:
 	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
 
 # ── Release：构建三个架构并打包 zip ──────────────────────────────────
-release: clean-dist build-arm64 build-x86_64 build-universal
+release: clean-dist build-arm64 build-x86_64 build-universal sha256sums
 	@echo "\n✓ Release artifacts in $(DIST_DIR)/"
 	@ls -lh $(DIST_DIR)/
+
+# ── 生成 SHA256 校验文件，供客户端自动更新校验 ───────────────────────
+sha256sums:
+	@echo "→ Generating SHA256SUMS.txt..."
+	cd $(DIST_DIR) && shasum -a 256 *.zip > SHA256SUMS.txt
+	@cat $(DIST_DIR)/SHA256SUMS.txt
 
 clean-dist:
 	rm -rf $(DIST_DIR)

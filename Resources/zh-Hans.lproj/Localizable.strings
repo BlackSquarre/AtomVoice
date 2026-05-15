@@ -224,6 +224,7 @@
 "update.install" = "安装";
 "update.later" = "稍后";
 "update.downloading" = "正在下载 %@...";
+"update.verifying" = "正在校验...";
 "update.installing" = "正在安装...";
 "update.done.title" = "更新已就绪";
 "update.done.message" = "原子微语 %@ 已下载完成，重启后生效。";

@@ -223,6 +223,7 @@
 "update.install" = "Installieren";
 "update.later" = "Später";
 "update.downloading" = "Lade %@ herunter...";
+"update.verifying" = "Überprüfe...";
 "update.installing" = "Installiere...";
 "update.done.title" = "Update bereit";
 "update.done.message" = "AtomVoice %@ wurde heruntergeladen. Jetzt neu starten, um das Update anzuwenden?";

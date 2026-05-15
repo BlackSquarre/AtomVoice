@@ -223,6 +223,7 @@
 "update.install" = "安裝";
 "update.later" = "稍後";
 "update.downloading" = "正在下載 %@...";
+"update.verifying" = "正在校驗...";
 "update.installing" = "正在安裝...";
 "update.done.title" = "更新已就緒";
 "update.done.message" = "原子微語 %@ 已下載完成，重新啟動後生效。";

@@ -223,6 +223,7 @@
 "update.install" = "インストール";
 "update.later" = "後で";
 "update.downloading" = "%@ をダウンロード中...";
+"update.verifying" = "検証中...";
 "update.installing" = "インストール中...";
 "update.done.title" = "アップデート準備完了";
 "update.done.message" = "AtomVoice %@ のダウンロードが完了しました。今すぐ再起動して適用しますか？";
