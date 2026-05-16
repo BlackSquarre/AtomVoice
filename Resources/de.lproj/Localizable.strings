@@ -481,3 +481,10 @@
 "menu.edit.pasteAndMatchStyle" = "Einsetzen und Stil anpassen";
 "menu.edit.delete" = "Löschen";
 "menu.edit.selectAll" = "Alles auswählen";
+
+/* Kopfhörer-Fernbedienung */
+"menu.headphoneControl" = "Kopfhörer-Fernbedienung";
+"tooltip.menu.headphoneControl" = "Mit der Fernbedienung deiner Kopfhörer die Aufnahme steuern (Klick / Doppelklick / Lang)";
+"alert.headphoneControl.title" = "Kopfhörer-Fernbedienung aktivieren?";
+"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer, um die Aufnahme zu steuern: Einfacher Klick folgt deinem aktuellen Eingabemodus, Doppelklick sendet Return, langes Drücken zum Sprechen. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
+"alert.headphoneControl.enable" = "Aktivieren";

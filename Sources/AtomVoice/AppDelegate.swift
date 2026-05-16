@@ -5,6 +5,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private let asrEngineProvider = ASREngineProvider()
     private var menuBarController: MenuBarController!
     private var fnKeyMonitor: FnKeyMonitor!
+    private var headphoneCoordinator: HeadphoneInputCoordinator!
     private var audioEngine: AudioEngineController!
     private var capsuleWindow: CapsuleWindowController!
     private var textInjector: TextInjector!
@@ -179,6 +180,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // (Fresh install: defer event tap until OOBE finishes to avoid the early Accessibility prompt.)
         if AppSettings.hasCompletedOOBE {
             fnKeyMonitor.start()
+        }
+
+        // 耳机线控按钮协调器（默认关闭，需用户在菜单显式开启）
+        // (Headphone remote-button coordinator — opt-in via menu.)
+        headphoneCoordinator = HeadphoneInputCoordinator(
+            session: session,
+            cancelSherpaAutoUnload: { [weak self] in self?.cancelSherpaAutoUnloadTask() },
+            onAccessibilityWarning: { [weak self] in self?.menuBarController.showAccessibilityWarning() }
+        )
+        if AppSettings.hasCompletedOOBE {
+            headphoneCoordinator.startIfEnabled()
         }
 
         // 启动 5 秒后静默检查更新，不阻塞启动流程（Silently check for updates 5s after launch, non-blocking）
@@ -447,6 +459,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 // OOBE 完成后再启动 tap 与权限请求；start 是幂等的
                 // (Start tap & request perms now; start() is idempotent so repeated OOBE runs are safe.)
                 self.fnKeyMonitor.start()
+                self.headphoneCoordinator.startIfEnabled()
                 self.requestPermissions()
                 // 完成后按选中引擎触发后续配置（After finish, trigger follow-up by chosen engine）
                 self.menuBarController.rebuildMenuPublic()
@@ -468,6 +481,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     /// (Trigger existing Sherpa download prompt after OOBE.)
     fileprivate func promptSherpaDownloadPublic() {
         promptSherpaDownload()
+    }
+
+    /// 由菜单调用：转发耳机控制开关切换给协调器。
+    /// (Called by menu — forward the headphone control toggle to the coordinator.)
+    func setHeadphoneControlEnabled(_ enabled: Bool) {
+        headphoneCoordinator.setEnabled(enabled)
     }
 
     private func startSherpaDownload() {

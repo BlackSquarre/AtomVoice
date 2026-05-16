@@ -349,6 +349,17 @@ final class MenuBarController {
             )
         )
 
+        // 使用耳机线控按钮控制录音（Use headphone remote button for recording）
+        m.addItem(
+            makeMenuItem(
+                title: loc("menu.headphoneControl"),
+                action: #selector(toggleHeadphoneControl(_:)),
+                imageName: "headphones",
+                state: AppSettings.headphoneControlEnabled ? .on : .off,
+                toolTip: loc("tooltip.menu.headphoneControl")
+            )
+        )
+
         // 开机启动（Launch at login）
         m.addItem(
             makeMenuItem(
@@ -761,6 +772,25 @@ final class MenuBarController {
                 DebugLog.error("[LaunchAtLogin] Error: \(error)")
             }
         }
+        rebuildMenu()
+    }
+
+    @objc private func toggleHeadphoneControl(_ sender: NSMenuItem) {
+        let willEnable = !AppSettings.headphoneControlEnabled
+        if willEnable && !AppSettings.headphoneControlAlertShown {
+            let alert = NSAlert()
+            alert.messageText = loc("alert.headphoneControl.title")
+            alert.informativeText = loc("alert.headphoneControl.message")
+            alert.icon = NSImage(systemSymbolName: "headphones", accessibilityDescription: nil)
+            alert.addButton(withTitle: loc("alert.headphoneControl.enable"))
+            alert.addButton(withTitle: loc("common.cancel"))
+            guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else {
+                rebuildMenu()
+                return
+            }
+            AppSettings.headphoneControlAlertShown = true
+        }
+        (NSApp.delegate as? AppDelegate)?.setHeadphoneControlEnabled(willEnable)
         rebuildMenu()
     }
 

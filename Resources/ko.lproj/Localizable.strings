@@ -481,3 +481,10 @@
 "menu.edit.pasteAndMatchStyle" = "붙여넣고 스타일 일치";
 "menu.edit.delete" = "삭제";
 "menu.edit.selectAll" = "전체 선택";
+
+/* 이어폰 리모컨 제어 */
+"menu.headphoneControl" = "이어폰 리모컨 제어";
+"tooltip.menu.headphoneControl" = "이어폰 리모컨 버튼으로 녹음 제어 (한 번 / 두 번 / 길게)";
+"alert.headphoneControl.title" = "이어폰 리모컨 제어를 사용하시겠습니까?";
+"alert.headphoneControl.message" = "AtomVoice가 이어폰의 재생/일시정지 버튼을 가져와 녹음을 제어합니다: 한 번 누르면 현재 입력 모드대로 동작하고, 두 번 누르면 Return을 보내며, 길게 누르면 말합니다. 이어폰이나 블루투스 기기가 연결된 경우에만 작동합니다. 일부 블루투스 기기는 길게 누르기를 지원하지 않을 수 있습니다.";
+"alert.headphoneControl.enable" = "사용";

@@ -481,3 +481,10 @@
 "menu.edit.pasteAndMatchStyle" = "ペーストしてスタイルを合わせる";
 "menu.edit.delete" = "削除";
 "menu.edit.selectAll" = "すべてを選択";
+
+/* ヘッドフォン リモート操作 */
+"menu.headphoneControl" = "ヘッドフォン リモート操作";
+"tooltip.menu.headphoneControl" = "ヘッドフォンのリモートボタンで録音を操作（シングル / ダブル / 長押し）";
+"alert.headphoneControl.title" = "ヘッドフォン リモート操作を有効にしますか？";
+"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで録音を操作します：シングルクリックは現在の入力モードに従い、ダブルクリックで Return を送信、長押しで話します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しが使えないことがあります。";
+"alert.headphoneControl.enable" = "有効にする";

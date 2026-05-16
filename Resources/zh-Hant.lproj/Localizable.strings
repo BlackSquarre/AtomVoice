@@ -481,3 +481,10 @@
 "menu.edit.pasteAndMatchStyle" = "貼上並符合樣式";
 "menu.edit.delete" = "刪除";
 "menu.edit.selectAll" = "全選";
+
+/* 耳機線控按鈕 */
+"menu.headphoneControl" = "耳機線控按鈕";
+"tooltip.menu.headphoneControl" = "用耳機線控按鈕控制錄音（單擊 / 雙擊 / 長按）";
+"alert.headphoneControl.title" = "啟用耳機線控按鈕？";
+"alert.headphoneControl.message" = "AtomVoice 會接管耳機的播放/暫停鍵來控制錄音：單擊對應目前輸入模式，雙擊送出 Return，長按說話。僅在連接耳機或藍牙裝置時才會生效。部分藍牙裝置可能不支援長按。";
+"alert.headphoneControl.enable" = "啟用";

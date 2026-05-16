@@ -50,6 +50,8 @@ enum AppSettings {
         static let doubaoASRLowLatencyDefaultApplied = "doubaoASRLowLatencyDefaultApplied"
         static let pasteDelay = "pasteDelay"
         static let tapModeManualStop = "tapModeManualStop"
+        static let headphoneControlEnabled = "headphoneControlEnabled"
+        static let headphoneControlAlertShown = "headphoneControlAlertShown"
     }
 
     static let defaultPasteDelay: Double = 0.25
@@ -310,6 +312,18 @@ enum AppSettings {
     static var tapModeManualStop: Bool {
         get { defaults.bool(forKey: Keys.tapModeManualStop) }
         set { defaults.set(newValue, forKey: Keys.tapModeManualStop) }
+    }
+
+    /// 使用耳机线控按钮控制录音（单击/长按按当前输入模式匹配，双击回车）。
+    /// (Use headphone remote button to control recording — single/long press matches input mode, double tap sends Return.)
+    static var headphoneControlEnabled: Bool {
+        get { defaults.bool(forKey: Keys.headphoneControlEnabled) }
+        set { defaults.set(newValue, forKey: Keys.headphoneControlEnabled) }
+    }
+
+    static var headphoneControlAlertShown: Bool {
+        get { defaults.bool(forKey: Keys.headphoneControlAlertShown) }
+        set { defaults.set(newValue, forKey: Keys.headphoneControlAlertShown) }
     }
 
     static var hasCompletedOOBE: Bool {

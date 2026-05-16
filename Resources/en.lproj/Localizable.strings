@@ -481,3 +481,10 @@
 "menu.edit.pasteAndMatchStyle" = "Paste and Match Style";
 "menu.edit.delete" = "Delete";
 "menu.edit.selectAll" = "Select All";
+
+/* Headphone remote control */
+"menu.headphoneControl" = "Headphone Remote Control";
+"tooltip.menu.headphoneControl" = "Use the headphone remote button to control recording (single / double / long press)";
+"alert.headphoneControl.title" = "Enable Headphone Remote Control?";
+"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button to control recording: single press follows your current input mode, double press sends Return, long press to talk. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support long press.";
+"alert.headphoneControl.enable" = "Enable";

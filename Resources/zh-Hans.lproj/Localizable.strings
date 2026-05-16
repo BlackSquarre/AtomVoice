@@ -482,3 +482,10 @@
 "menu.edit.pasteAndMatchStyle" = "粘贴并匹配样式";
 "menu.edit.delete" = "删除";
 "menu.edit.selectAll" = "全选";
+
+/* 耳机线控按钮 */
+"menu.headphoneControl" = "耳机线控按钮";
+"tooltip.menu.headphoneControl" = "用耳机线控按钮控制录音（单击 / 双击 / 长按）";
+"alert.headphoneControl.title" = "启用耳机线控按钮？";
+"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制录音：单击对应当前输入模式，双击发送回车，长按说话。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按。";
+"alert.headphoneControl.enable" = "启用";
