@@ -408,6 +408,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "触发方式"; "oobe.trigger.mode.hold" = "长按说话"; "oobe.trigger.mode.tap" = "单击说话"; "oobe.trigger.mode.hold.desc" = "按住触发键开始说话，松开自动上屏。"; "oobe.trigger.mode.tap.desc" = "单击开始，再次点击或停顿一段时间后自动上屏。"; "oobe.engine.cost.localNote" = "需下载模型";
+"oobe.trigger.headphone.title" = "耳机按钮";
+"oobe.trigger.headphone.desc" = "用耳机或蓝牙音频设备的播放/暂停键控制语音输入。仅在已连接设备时生效。";
+"oobe.trigger.headphone.enable" = "启用耳机按钮输入";
+"oobe.trigger.headphone.mode.hold" = "长按模式下，按住耳机按钮说话，松开结束。";
+"oobe.trigger.headphone.mode.tap" = "单击模式下，按一次开始或停止；双击发送回车。部分蓝牙设备可能不支持长按。";
 
 /* 识别引擎设置窗口 */
 "menu.asrSettings" = "识别引擎设置...";

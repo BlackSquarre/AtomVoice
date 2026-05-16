@@ -407,6 +407,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "Input mode"; "oobe.trigger.mode.hold" = "Hold to talk"; "oobe.trigger.mode.tap" = "Tap to talk"; "oobe.trigger.mode.hold.desc" = "Hold the trigger key while speaking; release to insert."; "oobe.trigger.mode.tap.desc" = "Tap once to start, tap again or stay silent to stop and insert."; "oobe.engine.cost.localNote" = "Model download required";
+"oobe.trigger.headphone.title" = "Headphone button";
+"oobe.trigger.headphone.desc" = "Use the play/pause button on headphones or Bluetooth audio devices to control voice input. Only active while one is connected.";
+"oobe.trigger.headphone.enable" = "Enable headphone button input";
+"oobe.trigger.headphone.mode.hold" = "In hold mode, hold the headphone button to talk and release to finish.";
+"oobe.trigger.headphone.mode.tap" = "In tap mode, press once to start or stop; double press sends Return. Some Bluetooth devices may not support hold mode.";
 
 /* ASR Settings Window */
 "menu.asrSettings" = "Recognition Engine Settings...";

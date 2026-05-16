@@ -30,11 +30,13 @@ final class OOBEWindowController: NSObject {
     private var selectedEngine: String = ASREngineRegistry.appleCode
     private var selectedTriggerKeyCode: UInt16 = 61
     private var selectedSilenceAutoStop: Bool = false
+    private var selectedHeadphoneControl: Bool = false
     private var engineCardViews: [EngineCardView] = []
     private var keyboardDiagramView: KeyboardDiagramView?
     private var triggerSubtitleLabel: NSTextField?
     private var triggerSelectionLabel: NSTextField?
     private var inputModeDescLabel: NSTextField?
+    private var headphoneControlCard: OOBEHeadphoneControlCardView?
 
     // 权限页（Permissions page）
     private var permissionCards: [OOBEPermissionCardView] = []
@@ -53,6 +55,7 @@ final class OOBEWindowController: NSObject {
         let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
         selectedTriggerKeyCode = (savedKey == 0) ? 61 : savedKey
         selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        selectedHeadphoneControl = AppSettings.headphoneControlEnabled
         buildWindow()
     }
 
@@ -221,6 +224,10 @@ final class OOBEWindowController: NSObject {
         UserDefaults.standard.set(selectedEngine, forKey: "recognitionEngine")
         UserDefaults.standard.set(Int(selectedTriggerKeyCode), forKey: "triggerKeyCode")
         UserDefaults.standard.set(selectedSilenceAutoStop, forKey: "silenceAutoStopEnabled")
+        AppSettings.headphoneControlEnabled = selectedHeadphoneControl
+        if selectedHeadphoneControl {
+            AppSettings.headphoneControlAlertShown = true
+        }
         if selectedEngine == VolcengineASRSettings.engineCode {
             UserDefaults.standard.set(true, forKey: "doubaoASRPrivacyAccepted")
         }
@@ -386,12 +393,13 @@ final class OOBEWindowController: NSObject {
         sub.textColor = .secondaryLabelColor
         sub.lineBreakMode = .byWordWrapping
         sub.maximumNumberOfLines = 0
+        triggerSubtitleLabel = sub
         v.addArrangedSubview(sub)
         sub.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
         v.setCustomSpacing(20, after: sub)
 
-        // 居中放置一张键盘示意图 + 下方动态显示当前选中键名
-        // (Centered keyboard diagram + dynamic label showing currently selected key)
+        // 左侧：键盘示意图 + 当前选中键名 + 触发方式
+        // (Left: keyboard diagram + current key label + input mode)
         let diagram = KeyboardDiagramView()
         diagram.translatesAutoresizingMaskIntoConstraints = false
         diagram.onSelect = { [weak self] code in self?.triggerKeySelected(code) }
@@ -432,24 +440,44 @@ final class OOBEWindowController: NSObject {
         modeStack.alignment = .centerX
         modeStack.spacing = 8
 
-        let centerStack = NSStackView()
-        centerStack.orientation = .vertical
-        centerStack.alignment = .centerX
-        centerStack.spacing = 18
-        centerStack.translatesAutoresizingMaskIntoConstraints = false
-        centerStack.addArrangedSubview(diagram)
-        centerStack.addArrangedSubview(label)
-        centerStack.setCustomSpacing(28, after: label)
-        centerStack.addArrangedSubview(modeStack)
+        let leftStack = NSStackView()
+        leftStack.orientation = .vertical
+        leftStack.alignment = .centerX
+        leftStack.spacing = 18
+        leftStack.translatesAutoresizingMaskIntoConstraints = false
+        leftStack.addArrangedSubview(diagram)
+        leftStack.addArrangedSubview(label)
+        leftStack.setCustomSpacing(24, after: label)
+        leftStack.addArrangedSubview(modeStack)
+
+        let headphoneCard = OOBEHeadphoneControlCardView()
+        headphoneCard.translatesAutoresizingMaskIntoConstraints = false
+        headphoneCard.setEnabled(selectedHeadphoneControl)
+        headphoneCard.updateModeDescription(selectedSilenceAutoStop: selectedSilenceAutoStop)
+        headphoneCard.onToggle = { [weak self] enabled in
+            self?.selectedHeadphoneControl = enabled
+        }
+        headphoneControlCard = headphoneCard
+
+        let contentRow = NSStackView(views: [leftStack, headphoneCard])
+        contentRow.orientation = .horizontal
+        contentRow.alignment = .centerY
+        contentRow.distribution = .fill
+        contentRow.spacing = 18
+        contentRow.translatesAutoresizingMaskIntoConstraints = false
 
         let topSpacer = NSView()
         let botSpacer = NSView()
 
         v.addArrangedSubview(topSpacer)
-        v.addArrangedSubview(centerStack)
+        v.addArrangedSubview(contentRow)
         v.addArrangedSubview(botSpacer)
         topSpacer.heightAnchor.constraint(equalTo: botSpacer.heightAnchor).isActive = true
-        centerStack.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+        contentRow.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+        leftStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        headphoneCard.setContentHuggingPriority(.required, for: .horizontal)
+        headphoneCard.widthAnchor.constraint(equalToConstant: 210).isActive = true
+        headphoneCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 214).isActive = true
 
         return v
     }
@@ -459,6 +487,7 @@ final class OOBEWindowController: NSObject {
         inputModeDescLabel?.stringValue = inputModeDescription()
         let subLocKey = selectedSilenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
         triggerSubtitleLabel?.stringValue = loc(subLocKey)
+        headphoneControlCard?.updateModeDescription(selectedSilenceAutoStop: selectedSilenceAutoStop)
     }
 
     private func inputModeDescription() -> String {
@@ -999,6 +1028,10 @@ final class KeyboardDiagramView: NSView {
     private var keyCaps: [KeyCap] = []
     private var selectedCode: UInt16 = 61
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: 450, height: 138)
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
@@ -1030,8 +1063,8 @@ final class KeyboardDiagramView: NSView {
 
     private func buildKeyboard() {
         // 顶部两排装饰键（Decorative rows: 14 + 14 caps）
-        let row1 = makeDecorativeRow(count: 14, capWidth: 28)
-        let row2 = makeDecorativeRow(count: 13, capWidth: 30, leftIndent: 14)
+        let row1 = makeDecorativeRow(count: 14, capWidth: 25)
+        let row2 = makeDecorativeRow(count: 13, capWidth: 27, leftIndent: 14)
         // 修饰键底排（Modifier row — left modifiers + space + right modifiers）
         let row3 = makeModifierRow()
 
@@ -1074,16 +1107,16 @@ final class KeyboardDiagramView: NSView {
         row.alignment = .centerY
 
         // 左侧候选键（Left: candidate keys — Fn / Control / Option）
-        let fn = makeCap(loc("menu.triggerKey.fn.symbol"), keyCode: 63, width: 36)
-        let leftCtrl = makeCap("⌃", keyCode: 59, width: 36)
-        let leftOpt  = makeCap("⌥", keyCode: 58, width: 36)
-        let leftCmd  = KeyCap(label: "⌘", keyCode: nil, width: 44)
+        let fn = makeCap(loc("menu.triggerKey.fn.symbol"), keyCode: 63, width: 32)
+        let leftCtrl = makeCap("⌃", keyCode: 59, width: 32)
+        let leftOpt  = makeCap("⌥", keyCode: 58, width: 32)
+        let leftCmd  = KeyCap(label: "⌘", keyCode: nil, width: 40)
         // Space 装饰（decorative space bar）
-        let space    = KeyCap(label: "", keyCode: nil, width: 168)
+        let space    = KeyCap(label: "", keyCode: nil, width: 132)
         // 右侧候选键（Right: candidate keys — Command / Option / Control）
-        let rightCmd = makeCap("⌘", keyCode: 54, width: 44)
-        let rightOpt = makeCap("⌥", keyCode: 61, width: 36)
-        let rightCtl = makeCap("⌃", keyCode: 62, width: 36)
+        let rightCmd = makeCap("⌘", keyCode: 54, width: 40)
+        let rightOpt = makeCap("⌥", keyCode: 61, width: 32)
+        let rightCtl = makeCap("⌃", keyCode: 62, width: 32)
 
         [fn, leftCtrl, leftOpt, leftCmd, space, rightCmd, rightOpt, rightCtl].forEach {
             row.addArrangedSubview($0)
@@ -1098,6 +1131,121 @@ final class KeyboardDiagramView: NSView {
         cap.setHighlighted(keyCode == selectedCode)
         return cap
     }
+}
+
+// MARK: - OOBE Headphone Control Card
+
+final class OOBEHeadphoneControlCardView: NSView {
+    var onToggle: ((Bool) -> Void)?
+
+    private let toggle = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let modeLabel = NSTextField(labelWithString: "")
+    private var isEnabled = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var wantsUpdateLayer: Bool { true }
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let bg = isDark ? NSColor(white: 0.20, alpha: 1) : NSColor(white: 0.97, alpha: 1)
+            layer?.backgroundColor = bg.cgColor
+            layer?.borderColor = (isEnabled ? NSColor.controlAccentColor : NSColor.clear).cgColor
+        }
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    private func setup() {
+        wantsLayer = true
+        layer?.cornerRadius = 14
+        layer?.cornerCurve = .continuous
+        layer?.borderWidth = 2
+
+        let icon = NSImageView()
+        icon.image = NSImage(systemSymbolName: "headphones", accessibilityDescription: nil)
+        icon.symbolConfiguration = .init(pointSize: 28, weight: .regular)
+        icon.contentTintColor = .systemBlue
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: loc("oobe.trigger.headphone.title"))
+        title.font = .systemFont(ofSize: 15, weight: .semibold)
+        title.textColor = .labelColor
+
+        let desc = NSTextField(labelWithString: loc("oobe.trigger.headphone.desc"))
+        desc.font = .systemFont(ofSize: 11.5)
+        desc.textColor = .secondaryLabelColor
+        desc.lineBreakMode = .byWordWrapping
+        desc.maximumNumberOfLines = 0
+
+        modeLabel.font = .systemFont(ofSize: 11)
+        modeLabel.textColor = .tertiaryLabelColor
+        modeLabel.lineBreakMode = .byWordWrapping
+        modeLabel.maximumNumberOfLines = 0
+
+        let divider = NSBox()
+        divider.boxType = .separator
+        divider.translatesAutoresizingMaskIntoConstraints = false
+
+        toggle.title = loc("oobe.trigger.headphone.enable")
+        toggle.target = self
+        toggle.action = #selector(toggleChanged)
+
+        let v = NSStackView()
+        v.orientation = .vertical
+        v.alignment = .leading
+        v.spacing = 0
+        v.translatesAutoresizingMaskIntoConstraints = false
+        v.addArrangedSubview(icon)
+        v.setCustomSpacing(12, after: icon)
+        v.addArrangedSubview(title)
+        v.setCustomSpacing(6, after: title)
+        v.addArrangedSubview(desc)
+        v.setCustomSpacing(12, after: desc)
+        v.addArrangedSubview(modeLabel)
+        v.setCustomSpacing(14, after: modeLabel)
+        v.addArrangedSubview(divider)
+        v.setCustomSpacing(12, after: divider)
+        v.addArrangedSubview(toggle)
+
+        addSubview(v)
+        NSLayoutConstraint.activate([
+            v.topAnchor.constraint(equalTo: topAnchor, constant: 18),
+            v.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            v.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            v.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
+        ])
+        desc.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+        modeLabel.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+        divider.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+
+        updateModeDescription(selectedSilenceAutoStop: AppSettings.silenceAutoStopEnabled)
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        isEnabled = enabled
+        toggle.state = enabled ? .on : .off
+        needsDisplay = true
+    }
+
+    func updateModeDescription(selectedSilenceAutoStop: Bool) {
+        modeLabel.stringValue = selectedSilenceAutoStop
+            ? loc("oobe.trigger.headphone.mode.tap")
+            : loc("oobe.trigger.headphone.mode.hold")
+    }
+
+    @objc private func toggleChanged() {
+        setEnabled(toggle.state == .on)
+        onToggle?(isEnabled)
+    }
+
+    override func resetCursorRects() {}
 }
 
 // MARK: - Single Key Cap

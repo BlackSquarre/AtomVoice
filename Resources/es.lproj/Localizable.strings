@@ -407,6 +407,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "Modo de entrada"; "oobe.trigger.mode.hold" = "Mantener para hablar"; "oobe.trigger.mode.tap" = "Tocar para hablar"; "oobe.trigger.mode.hold.desc" = "Mantén pulsada la tecla mientras hablas; suelta para insertar."; "oobe.trigger.mode.tap.desc" = "Toca una vez para empezar; toca otra vez o calla para parar e insertar."; "oobe.engine.cost.localNote" = "Requiere descarga de modelo";
+"oobe.trigger.headphone.title" = "Botón de auriculares";
+"oobe.trigger.headphone.desc" = "Usa el botón reproducir/pausa de auriculares o dispositivos de audio Bluetooth para controlar la entrada por voz. Solo funciona mientras haya uno conectado.";
+"oobe.trigger.headphone.enable" = "Activar botón de auriculares";
+"oobe.trigger.headphone.mode.hold" = "En modo mantener, mantén pulsado el botón de los auriculares para hablar y suelta para terminar.";
+"oobe.trigger.headphone.mode.tap" = "En modo tocar, pulsa una vez para iniciar o detener; doble pulsación envía Return. Algunos dispositivos Bluetooth pueden no admitir mantener pulsado.";
 
 /* Ventana de configuración del motor de reconocimiento */
 "menu.asrSettings" = "Configuración del motor de reconocimiento...";

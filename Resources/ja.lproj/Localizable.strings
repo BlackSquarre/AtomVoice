@@ -407,6 +407,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "入力方式"; "oobe.trigger.mode.hold" = "押している間"; "oobe.trigger.mode.tap" = "タップ"; "oobe.trigger.mode.hold.desc" = "トリガーキーを押している間に話し、離すと挿入されます。"; "oobe.trigger.mode.tap.desc" = "1 回タップで開始、再度タップまたは無音で停止＆挿入。"; "oobe.engine.cost.localNote" = "モデルのDLが必要";
+"oobe.trigger.headphone.title" = "ヘッドフォンボタン";
+"oobe.trigger.headphone.desc" = "ヘッドフォンや Bluetooth オーディオ機器の再生/一時停止ボタンで音声入力を操作します。接続中のみ有効です。";
+"oobe.trigger.headphone.enable" = "ヘッドフォンボタン入力を有効化";
+"oobe.trigger.headphone.mode.hold" = "押している間モードでは、ヘッドフォンボタンを押して話し、離すと終了します。";
+"oobe.trigger.headphone.mode.tap" = "タップモードでは、1 回押しで開始/停止、2 回押しで Return を送信します。一部の Bluetooth 機器では長押しに対応しない場合があります。";
 
 /* 認識エンジン設定ウィンドウ */
 "menu.asrSettings" = "認識エンジン設定...";

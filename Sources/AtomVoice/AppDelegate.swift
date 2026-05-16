@@ -459,7 +459,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 // OOBE 完成后再启动 tap 与权限请求；start 是幂等的
                 // (Start tap & request perms now; start() is idempotent so repeated OOBE runs are safe.)
                 self.fnKeyMonitor.start()
-                self.headphoneCoordinator.startIfEnabled()
+                self.headphoneCoordinator.setEnabled(AppSettings.headphoneControlEnabled)
                 self.requestPermissions()
                 // 完成后按选中引擎触发后续配置（After finish, trigger follow-up by chosen engine）
                 self.menuBarController.rebuildMenuPublic()

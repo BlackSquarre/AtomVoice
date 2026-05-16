@@ -407,6 +407,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "Eingabemodus"; "oobe.trigger.mode.hold" = "Gedrückt halten"; "oobe.trigger.mode.tap" = "Tippen"; "oobe.trigger.mode.hold.desc" = "Taste gedrückt halten und sprechen; loslassen zum Einfügen."; "oobe.trigger.mode.tap.desc" = "Einmal tippen zum Start, erneut tippen oder schweigen zum Einfügen."; "oobe.engine.cost.localNote" = "Modell-Download nötig";
+"oobe.trigger.headphone.title" = "Kopfhörertaste";
+"oobe.trigger.headphone.desc" = "Nutze die Play/Pause-Taste von Kopfhörern oder Bluetooth-Audiogeräten, um die Spracheingabe zu steuern. Nur aktiv, wenn ein Gerät verbunden ist.";
+"oobe.trigger.headphone.enable" = "Kopfhörertaste aktivieren";
+"oobe.trigger.headphone.mode.hold" = "Im Halten-Modus die Kopfhörertaste gedrückt halten zum Sprechen, loslassen zum Beenden.";
+"oobe.trigger.headphone.mode.tap" = "Im Tippen-Modus einmal drücken zum Starten oder Stoppen; Doppeldruck sendet Return. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
 
 /* Fenster für Erkennungseinstellungen */
 "menu.asrSettings" = "Erkennungseinstellungen...";

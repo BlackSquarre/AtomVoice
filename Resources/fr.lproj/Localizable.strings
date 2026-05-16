@@ -407,6 +407,11 @@
 
 /* OOBE 输入模式 / 本地下载副本 */
 "oobe.trigger.mode.title" = "Mode d'entrée"; "oobe.trigger.mode.hold" = "Maintenir pour parler"; "oobe.trigger.mode.tap" = "Toucher pour parler"; "oobe.trigger.mode.hold.desc" = "Maintenez la touche pendant que vous parlez ; relâchez pour insérer."; "oobe.trigger.mode.tap.desc" = "Touchez pour démarrer ; touchez à nouveau ou faites silence pour insérer."; "oobe.engine.cost.localNote" = "Téléchargement de modèle requis";
+"oobe.trigger.headphone.title" = "Bouton du casque";
+"oobe.trigger.headphone.desc" = "Utilisez le bouton lecture/pause du casque ou d'un appareil audio Bluetooth pour contrôler la saisie vocale. Actif uniquement lorsqu'un appareil est connecté.";
+"oobe.trigger.headphone.enable" = "Activer le bouton du casque";
+"oobe.trigger.headphone.mode.hold" = "En mode maintien, gardez le bouton du casque enfoncé pour parler, puis relâchez pour terminer.";
+"oobe.trigger.headphone.mode.tap" = "En mode toucher, appuyez une fois pour démarrer ou arrêter ; double appui envoie Return. Certains appareils Bluetooth peuvent ne pas prendre en charge l'appui long.";
 
 /* Fenêtre de configuration du moteur de reconnaissance */
 "menu.asrSettings" = "Configuration du moteur de reconnaissance...";

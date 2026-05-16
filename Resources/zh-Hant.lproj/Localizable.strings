@@ -407,6 +407,11 @@
 
 /* OOBE 輸入模式 / 本機下載副本 */
 "oobe.trigger.mode.title" = "觸發方式"; "oobe.trigger.mode.hold" = "長按說話"; "oobe.trigger.mode.tap" = "單擊說話"; "oobe.trigger.mode.hold.desc" = "按住觸發鍵開始說話，鬆開自動上屏。"; "oobe.trigger.mode.tap.desc" = "單擊開始，再次按一下或停頓一段時間後自動上屏。"; "oobe.engine.cost.localNote" = "需下載模型";
+"oobe.trigger.headphone.title" = "耳機按鈕";
+"oobe.trigger.headphone.desc" = "用耳機或藍牙音訊裝置的播放/暫停鍵控制語音輸入。僅在已連接裝置時生效。";
+"oobe.trigger.headphone.enable" = "啟用耳機按鈕輸入";
+"oobe.trigger.headphone.mode.hold" = "長按模式下，按住耳機按鈕說話，鬆開結束。";
+"oobe.trigger.headphone.mode.tap" = "單擊模式下，按一下開始或停止；雙擊送出 Return。部分藍牙裝置可能不支援長按。";
 
 /* 辨識引擎設定視窗 */
 "menu.asrSettings" = "辨識引擎設定...";
