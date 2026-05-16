@@ -777,18 +777,11 @@ final class MenuBarController {
 
     @objc private func toggleHeadphoneControl(_ sender: NSMenuItem) {
         let willEnable = !AppSettings.headphoneControlEnabled
-        if willEnable && !AppSettings.headphoneControlAlertShown {
-            let alert = NSAlert()
-            alert.messageText = loc("alert.headphoneControl.title")
-            alert.informativeText = loc("alert.headphoneControl.message")
-            alert.icon = NSImage(systemSymbolName: "headphones", accessibilityDescription: nil)
-            alert.addButton(withTitle: loc("alert.headphoneControl.enable"))
-            alert.addButton(withTitle: loc("common.cancel"))
-            guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else {
+        if willEnable {
+            guard HeadphoneControlPrompt.requestEnable() else {
                 rebuildMenu()
                 return
             }
-            AppSettings.headphoneControlAlertShown = true
         }
         (NSApp.delegate as? AppDelegate)?.setHeadphoneControlEnabled(willEnable)
         rebuildMenu()
