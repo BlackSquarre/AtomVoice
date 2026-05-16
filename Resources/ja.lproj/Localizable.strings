@@ -30,6 +30,14 @@
 "menu.quit" = "終了";
 "common.ok" = "OK";
 "common.cancel" = "キャンセル";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "LLM テキスト最適化設定";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Sherpa モデルのダウンロード完了 ✓";
 "sherpa.download.failed" = "Sherpa モデルのダウンロード失敗：%@";
 "sherpa.redownload.message" = "Sherpa モデルファイルが見つからないか破損しています。再ダウンロードしますか？";
+"sherpa.download.error.allMirrorsFailed" = "%@ のダウンロードに失敗しました: すべてのミラーに接続できません";
+"sherpa.download.error.moveFailed" = "ダウンロードしたファイルの移動に失敗しました: %@";
+"sherpa.download.error.extractFailed" = "%@ の解凍に失敗しました";
 
 /* Permissions */
 "permission.mic.title" = "マイクへのアクセスが必要です";
 "permission.mic.message" = "システム設定 > プライバシーとセキュリティ > マイクで本アプリを許可してください。";
-"permission.speech.title" = "音声認識へのアクセスが必要です";
+"permission.speech.requiredTitle" = "音声認識へのアクセスが必要です";
 "permission.speech.message" = "システム設定 > プライバシーとセキュリティ > 音声認識で本アプリを許可してください。";
 "accessibility.warning.title" = "アクセシビリティの権限が無効です";
 "accessibility.warning.message" = "システム設定 > プライバシーとセキュリティ > アクセシビリティで、原子微声 を削除して再追加してください。";
@@ -439,9 +450,9 @@
 "sherpa.import.failedTitle" = "インポートに失敗しました";
 "sherpa.import.error.unsupported" = "サポートされていないアーカイブ形式: %@。対応形式: .tar.bz2 / .tar.gz / .tgz / .zip / 解凍済みフォルダ。";
 "sherpa.import.error.extract" = "解凍に失敗しました: %@";
+"sherpa.import.error.extractorExitCode" = "解凍ツールの終了コード %d";
 "sherpa.import.error.copy" = "コピーに失敗しました: %@";
 "sherpa.import.error.unrecognized" = "%@ 内に encoder/decoder/joiner/tokens.txt が見つかりません。sherpa-onnx streaming zipformer モデルか確認してください。";
-"common.ok" = "OK";
 "sherpa.chooser.title" = "Sherpa モデルを選択";
 "sherpa.chooser.header" = "認識言語とモデルを選択してください。選択したモデルは次にダウンロードされます。";
 "sherpa.chooser.confirm" = "続ける";

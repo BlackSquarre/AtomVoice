@@ -30,6 +30,14 @@
 "menu.quit" = "Beenden";
 "common.ok" = "OK";
 "common.cancel" = "Abbrechen";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "LLM-Verfeinerung Einstellungen";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Sherpa-Modell-Download abgeschlossen ✓";
 "sherpa.download.failed" = "Sherpa-Modell-Download fehlgeschlagen: %@";
 "sherpa.redownload.message" = "Sherpa-Modelldateien fehlen oder sind beschädigt. Erneut herunterladen?";
+"sherpa.download.error.allMirrorsFailed" = "Download von %@ fehlgeschlagen: Alle Mirrors sind nicht erreichbar";
+"sherpa.download.error.moveFailed" = "Heruntergeladene Datei konnte nicht verschoben werden: %@";
+"sherpa.download.error.extractFailed" = "Entpacken von %@ fehlgeschlagen";
 
 /* Permissions */
 "permission.mic.title" = "Mikrofonzugriff erforderlich";
 "permission.mic.message" = "Bitte gewähren Sie den Mikrofonzugriff in Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon.";
-"permission.speech.title" = "Spracherkennungszugriff erforderlich";
+"permission.speech.requiredTitle" = "Spracherkennungszugriff erforderlich";
 "permission.speech.message" = "Bitte gewähren Sie den Zugriff auf Spracherkennung in Systemeinstellungen > Datenschutz & Sicherheit > Spracherkennung.";
 "accessibility.warning.title" = "Barrierefreiheitsberechtigung verloren";
 "accessibility.warning.message" = "Bitte gehen Sie zu Systemeinstellungen > Datenschutz & Sicherheit > Barrierefreiheit, entfernen und fügen Sie AtomVoice erneut hinzu.";
@@ -439,9 +450,9 @@
 "sherpa.import.failedTitle" = "Modellimport fehlgeschlagen";
 "sherpa.import.error.unsupported" = "Nicht unterstütztes Archivformat: %@. Unterstützt: .tar.bz2 / .tar.gz / .tgz / .zip / entpackter Ordner.";
 "sherpa.import.error.extract" = "Entpacken fehlgeschlagen: %@";
+"sherpa.import.error.extractorExitCode" = "Entpacker wurde mit Code %d beendet";
 "sherpa.import.error.copy" = "Kopieren fehlgeschlagen: %@";
 "sherpa.import.error.unrecognized" = "Encoder/decoder/joiner/tokens.txt in %@ nicht gefunden. Stelle sicher, dass es ein sherpa-onnx streaming zipformer Modell ist.";
-"common.ok" = "OK";
 "sherpa.chooser.title" = "Sherpa-Modell auswählen";
 "sherpa.chooser.header" = "Wähle Erkennungssprache und Modell. Das ausgewählte Modell wird als Nächstes heruntergeladen.";
 "sherpa.chooser.confirm" = "Weiter";

@@ -30,6 +30,14 @@
 "menu.quit" = "Salir";
 "common.ok" = "Aceptar";
 "common.cancel" = "Cancelar";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "Ajustes de refinado con LLM";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Descarga del modelo de Sherpa completada ✓";
 "sherpa.download.failed" = "Falló la descarga del modelo de Sherpa: %@";
 "sherpa.redownload.message" = "Faltan archivos del modelo de Sherpa o están dañados. ¿Volver a descargar?";
+"sherpa.download.error.allMirrorsFailed" = "Error al descargar %@: no se puede acceder a ningún espejo";
+"sherpa.download.error.moveFailed" = "Error al mover el archivo descargado: %@";
+"sherpa.download.error.extractFailed" = "Error al extraer %@";
 
 /* Permissions */
 "permission.mic.title" = "Se requiere acceso al micrófono";
 "permission.mic.message" = "Concede acceso al micrófono en Ajustes del sistema > Privacidad y seguridad > Micrófono.";
-"permission.speech.title" = "Se requiere reconocimiento de voz";
+"permission.speech.requiredTitle" = "Se requiere reconocimiento de voz";
 "permission.speech.message" = "Concede acceso al reconocimiento de voz en Ajustes del sistema > Privacidad y seguridad > Reconocimiento de voz.";
 "accessibility.warning.title" = "Permiso de accesibilidad perdido";
 "accessibility.warning.message" = "Ve a Ajustes del sistema > Privacidad y seguridad > Accesibilidad, elimina y vuelve a añadir AtomVoice.";
@@ -439,9 +450,9 @@
 "sherpa.import.failedTitle" = "Error al importar modelo";
 "sherpa.import.error.unsupported" = "Formato de archivo no compatible: %@. Soportado: .tar.bz2 / .tar.gz / .tgz / .zip / carpeta extraída.";
 "sherpa.import.error.extract" = "Error al extraer: %@";
+"sherpa.import.error.extractorExitCode" = "El extractor salió con el código %d";
 "sherpa.import.error.copy" = "Error al copiar: %@";
 "sherpa.import.error.unrecognized" = "No se encontraron encoder/decoder/joiner/tokens.txt en %@. Asegúrate de que sea un modelo sherpa-onnx streaming zipformer.";
-"common.ok" = "OK";
 "sherpa.chooser.title" = "Elegir modelo Sherpa";
 "sherpa.chooser.header" = "Elige el idioma de reconocimiento y el modelo. El modelo seleccionado se descargará a continuación.";
 "sherpa.chooser.confirm" = "Continuar";

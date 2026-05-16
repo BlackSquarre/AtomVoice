@@ -30,6 +30,14 @@
 "menu.quit" = "退出";
 "common.ok" = "确定";
 "common.cancel" = "取消";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "LLM 文本优化设置";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Sherpa 模型下载完成 ✓";
 "sherpa.download.failed" = "Sherpa 模型下载失败：%@";
 "sherpa.redownload.message" = "Sherpa 模型文件缺失或损坏，是否重新下载？";
+"sherpa.download.error.allMirrorsFailed" = "下载 %@ 失败：所有镜像均不可达";
+"sherpa.download.error.moveFailed" = "移动下载文件失败：%@";
+"sherpa.download.error.extractFailed" = "解压 %@ 失败";
 
 /* Permissions */
 "permission.mic.title" = "需要麦克风权限";
 "permission.mic.message" = "请在系统设置 > 隐私与安全性 > 麦克风中授权本应用。";
-"permission.speech.title" = "需要语音识别权限";
+"permission.speech.requiredTitle" = "需要语音识别权限";
 "permission.speech.message" = "请在系统设置 > 隐私与安全性 > 语音识别中授权本应用。";
 "accessibility.warning.title" = "辅助功能权限已失效";
 "accessibility.warning.message" = "请前往系统设置 > 隐私与安全性 > 辅助功能，移除并重新添加原子微语。";
@@ -440,9 +451,9 @@
 "sherpa.import.failedTitle" = "导入失败";
 "sherpa.import.error.unsupported" = "不支持的压缩格式：%@。支持的格式：.tar.bz2 / .tar.gz / .tgz / .zip / 已解压目录。";
 "sherpa.import.error.extract" = "解压失败：%@";
+"sherpa.import.error.extractorExitCode" = "解压器退出码 %d";
 "sherpa.import.error.copy" = "复制失败：%@";
 "sherpa.import.error.unrecognized" = "在 %@ 中找不到 encoder/decoder/joiner/tokens.txt。请确认它是 sherpa-onnx streaming zipformer 模型。";
-"common.ok" = "好";
 "sherpa.chooser.title" = "选择 Sherpa 模型";
 "sherpa.chooser.header" = "选择识别语言和模型，所选模型将在下一步下载。";
 "sherpa.chooser.confirm" = "继续";

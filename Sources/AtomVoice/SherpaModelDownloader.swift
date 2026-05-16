@@ -389,7 +389,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let item = itemsToDownload[currentItemIndex]
         guard currentCandidateIndex < item.urlCandidates.count else {
             // 所有候选都失败（All candidates exhausted）
-            finishWithError("下载 \(item.name) 失败：所有镜像均不可达")
+            finishWithError(loc("sherpa.download.error.allMirrorsFailed", item.name))
             return
         }
 
@@ -438,7 +438,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             try FileManager.default.moveItem(at: location, to: archiveURL)
         } catch {
             DebugLog.error("[下载] 移动下载文件失败: \(error.localizedDescription)")
-            finishWithError("移动下载文件失败: \(error.localizedDescription)")
+            finishWithError(loc("sherpa.download.error.moveFailed", error.localizedDescription))
             return
         }
 
@@ -477,7 +477,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     }
                     self.advanceToNextItem()
                 } else {
-                    self.finishWithError("解压 \(item.name) 失败")
+                    self.finishWithError(loc("sherpa.download.error.extractFailed", item.name))
                 }
             }
         }

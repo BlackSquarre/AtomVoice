@@ -30,6 +30,14 @@
 "menu.quit" = "Quit";
 "common.ok" = "OK";
 "common.cancel" = "Cancel";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "LLM Refinement Settings";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Sherpa model download complete ✓";
 "sherpa.download.failed" = "Sherpa model download failed: %@";
 "sherpa.redownload.message" = "Sherpa model files are missing or corrupted. Re-download?";
+"sherpa.download.error.allMirrorsFailed" = "Download of %@ failed: all mirrors are unreachable";
+"sherpa.download.error.moveFailed" = "Failed to move downloaded file: %@";
+"sherpa.download.error.extractFailed" = "Failed to extract %@";
 
 /* Permissions */
 "permission.mic.title" = "Microphone Access Required";
 "permission.mic.message" = "Please grant microphone access in System Settings > Privacy & Security > Microphone.";
-"permission.speech.title" = "Speech Recognition Required";
+"permission.speech.requiredTitle" = "Speech Recognition Required";
 "permission.speech.message" = "Please grant speech recognition access in System Settings > Privacy & Security > Speech Recognition.";
 "accessibility.warning.title" = "Accessibility Permission Lost";
 "accessibility.warning.message" = "Please go to System Settings > Privacy & Security > Accessibility, remove and re-add AtomVoice.";
@@ -439,9 +450,9 @@
 "sherpa.import.failedTitle" = "Failed to import model";
 "sherpa.import.error.unsupported" = "Unsupported archive format: %@. Supported: .tar.bz2 / .tar.gz / .tgz / .zip / extracted folder.";
 "sherpa.import.error.extract" = "Extraction failed: %@";
+"sherpa.import.error.extractorExitCode" = "Extractor exited with code %d";
 "sherpa.import.error.copy" = "Copy failed: %@";
 "sherpa.import.error.unrecognized" = "Could not find encoder/decoder/joiner/tokens.txt inside %@. Make sure it's a sherpa-onnx streaming zipformer model.";
-"common.ok" = "OK";
 "sherpa.chooser.title" = "Choose Sherpa model";
 "sherpa.chooser.header" = "Pick a recognition language and model. The selected model will be downloaded next.";
 "sherpa.chooser.confirm" = "Continue";

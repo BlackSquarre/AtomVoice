@@ -148,7 +148,7 @@ final class SherpaModelImportFlow {
             try process.run()
             process.waitUntilExit()
             if process.terminationStatus != 0 {
-                return .failure(.extractFailed("解压器退出码 \(process.terminationStatus)"))
+                return .failure(.extractFailed(loc("sherpa.import.error.extractorExitCode", process.terminationStatus)))
             }
         } catch {
             return .failure(.extractFailed(error.localizedDescription))

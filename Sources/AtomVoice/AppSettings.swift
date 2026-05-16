@@ -2,7 +2,9 @@ import Foundation
 
 struct AppLanguageOption {
     let code: String
-    let displayName: String
+    let displayNameKey: String
+
+    var displayName: String { loc(displayNameKey) }
 }
 
 struct LLMConnectionSettings {
@@ -67,14 +69,14 @@ enum AppSettings {
     static let sherpaAutoUnloadMinuteOptions = [5, 10, 15, 30, 60]
 
     static let appLanguageOptions: [AppLanguageOption] = [
-        AppLanguageOption(code: "en-US", displayName: "English"),
-        AppLanguageOption(code: "zh-CN", displayName: "简体中文"),
-        AppLanguageOption(code: "zh-TW", displayName: "繁體中文"),
-        AppLanguageOption(code: "ja-JP", displayName: "日本語"),
-        AppLanguageOption(code: "ko-KR", displayName: "한국어"),
-        AppLanguageOption(code: "es-ES", displayName: "Español"),
-        AppLanguageOption(code: "fr-FR", displayName: "Français"),
-        AppLanguageOption(code: "de-DE", displayName: "Deutsch"),
+        AppLanguageOption(code: "en-US", displayNameKey: "language.en-US"),
+        AppLanguageOption(code: "zh-CN", displayNameKey: "language.zh-CN"),
+        AppLanguageOption(code: "zh-TW", displayNameKey: "language.zh-TW"),
+        AppLanguageOption(code: "ja-JP", displayNameKey: "language.ja-JP"),
+        AppLanguageOption(code: "ko-KR", displayNameKey: "language.ko-KR"),
+        AppLanguageOption(code: "es-ES", displayNameKey: "language.es-ES"),
+        AppLanguageOption(code: "fr-FR", displayNameKey: "language.fr-FR"),
+        AppLanguageOption(code: "de-DE", displayNameKey: "language.de-DE"),
     ]
 
     /// 根据系统语言推断初始识别语言，没匹配上回退到英文。

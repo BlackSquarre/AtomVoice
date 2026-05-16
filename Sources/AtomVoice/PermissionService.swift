@@ -157,7 +157,7 @@ final class PermissionService {
             if !granted {
                 DispatchQueue.main.async {
                     let alert = NSAlert()
-                    alert.messageText = loc("permission.speech.title")
+                    alert.messageText = loc("permission.speech.requiredTitle")
                     alert.informativeText = loc("permission.speech.message")
                     alertPresenter.runModalAlert(alert)
                 }

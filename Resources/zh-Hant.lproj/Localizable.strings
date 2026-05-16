@@ -30,6 +30,14 @@
 "menu.quit" = "退出";
 "common.ok" = "確定";
 "common.cancel" = "取消";
+"language.en-US" = "English";
+"language.zh-CN" = "简体中文";
+"language.zh-TW" = "繁體中文";
+"language.ja-JP" = "日本語";
+"language.ko-KR" = "한국어";
+"language.es-ES" = "Español";
+"language.fr-FR" = "Français";
+"language.de-DE" = "Deutsch";
 
 /* Settings */
 "settings.title" = "LLM 文字優化設定";
@@ -116,11 +124,14 @@
 "sherpa.download.complete" = "Sherpa 模型下載完成 ✓";
 "sherpa.download.failed" = "Sherpa 模型下載失敗：%@";
 "sherpa.redownload.message" = "Sherpa 模型檔案缺失或損壞，是否重新下載？";
+"sherpa.download.error.allMirrorsFailed" = "下載 %@ 失敗：所有鏡像均無法連線";
+"sherpa.download.error.moveFailed" = "移動下載檔案失敗：%@";
+"sherpa.download.error.extractFailed" = "解壓 %@ 失敗";
 
 /* Permissions */
 "permission.mic.title" = "需要麥克風權限";
 "permission.mic.message" = "請在系統設定 > 隱私權與安全性 > 麥克風中授權本應用程式。";
-"permission.speech.title" = "需要語音辨識權限";
+"permission.speech.requiredTitle" = "需要語音辨識權限";
 "permission.speech.message" = "請在系統設定 > 隱私權與安全性 > 語音辨識中授權本應用程式。";
 "accessibility.warning.title" = "輔助使用權限已失效";
 "accessibility.warning.message" = "請前往系統設定 > 隱私權與安全性 > 輔助使用，移除並重新新增原子微語。";
@@ -131,7 +142,7 @@
 "permissions.window.title" = "系統權限狀態";
 "permissions.heading" = "授予原子微語完整功能所需權限";
 "permissions.guide.title" = "如何授予權限";
-"permissions.guide.step1" = "點擊右側按鈕開啟系統設定";
+"permissions.guide.step1" = "按一下右側按鈕開啟系統設定";
 "permissions.guide.step2" = "在列表中找到原子微語並開啟對應開關";
 "permissions.guide.step3" = "返回此視窗，確認狀態變為綠色「已授權」";
 "permissions.troubleshoot" = "疑難排解";
@@ -205,12 +216,12 @@
 
 /* Custom Prompt */
 "settings.prompt.label" = "系統提示詞:";
-"settings.prompt.title" = "自定義系統提示詞";
-"settings.prompt.desc" = "輸入用於指導 LLM 如何優化識別文本的系統提示詞（System Prompt）。保持空白則使用依據當前選定語言的默認提示詞。";
+"settings.prompt.title" = "自訂系統提示詞";
+"settings.prompt.desc" = "輸入用來指導 LLM 如何優化辨識文字的系統提示詞（System Prompt）。保持空白則使用依據目前選定語言的預設提示詞。";
 "settings.prompt.edit" = "編輯...";
 "settings.prompt.done" = "完成";
 "settings.prompt.cancel" = "取消";
-"settings.prompt.reset" = "恢復默認";
+"settings.prompt.reset" = "恢復預設";
 "settings.delay.immediate" = "立即注入";
 
 /* Update */
@@ -245,7 +256,7 @@
 "tooltip.settings.apiKey" = "LLM 服務商的 API 金鑰";
 "tooltip.settings.model" = "使用的 LLM 模型名稱";
 "tooltip.settings.delay" = "辨識完成後等待指定時間再注入文字，避免過早注入不完整結果";
-"tooltip.settings.prompt" = "自定義傳送給 LLM 的系統提示詞";
+"tooltip.settings.prompt" = "自訂傳送給 LLM 的系統提示詞";
 "tooltip.settings.test" = "使用目前設定測試 LLM API 連線";
 "tooltip.settings.save" = "儲存設定並關閉視窗";
 "tooltip.prompt.reset" = "恢復為預設系統提示詞";
@@ -277,8 +288,8 @@
 "doubao.error.missingApiKey" = "請先設定豆包 ASR API Key。";
 "doubao.error.missingResourceID" = "請先設定豆包 ASR Resource ID。";
 "doubao.error.invalidEndpoint" = "豆包 ASR Endpoint 必須是有效的 wss:// 位址。";
-"doubao.error.protocol" = "豆包 ASR 返回了無效協議幀。";
-"doubao.error.unsupportedCompression" = "豆包 ASR 返回了目前版本暫不支援解碼的壓縮資料。";
+"doubao.error.protocol" = "豆包 ASR 傳回了無效協定幀。";
+"doubao.error.unsupportedCompression" = "豆包 ASR 傳回了目前版本暫不支援解碼的壓縮資料。";
 "doubao.error.timeout" = "豆包 ASR 辨識逾時，請重試。";
 "doubao.error.sendFailed" = "傳送音訊到豆包 ASR 失敗：%@";
 "doubao.error.connectionFailed" = "豆包 ASR 連線失敗：%@";
@@ -290,19 +301,19 @@
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "選項:";
 "doubao.settings.enablePunctuation" = "啟用標點";
-"doubao.settings.enableITN" = "文本規範化";
+"doubao.settings.enableITN" = "文字規範化";
 "doubao.settings.enableDDC" = "啟用語意順滑";
-"doubao.settings.enableNonstream" = "文本最佳化";
+"doubao.settings.enableNonstream" = "文字最佳化";
 "doubao.settings.finalTimeout" = "逾時時間:";
 "doubao.settings.keychainFailed" = "無法將 API Key 儲存到鑰匙圈。";
 "tooltip.doubao.apiKey" = "火山引擎控制台裡的 APP Key，用於連接豆包語音服務。";
 "tooltip.doubao.resourceID" = "你在火山引擎主控台開通的豆包串流語音辨識模型。";
-"tooltip.doubao.endpoint" = "豆包串流語音辨識接口地址，預設使用官方推薦的雙向串流優化版。";
+"tooltip.doubao.endpoint" = "豆包串流語音辨識介面位址，預設使用官方推薦的雙向串流優化版。";
 "tooltip.doubao.enablePunctuation" = "文件參數 enable_punc：啟用標點，預設開啟。";
 "tooltip.doubao.enableITN" = "把口語中的數字、日期轉成阿拉伯數字，例如「一九七零年」→「1970 年」。";
 "tooltip.doubao.enableDDC" = "自動去掉停頓、「嗯」「啊」等語氣詞以及重複詞。";
 "tooltip.doubao.enableNonstream" = "錄音停止後用完整音訊再跑一次辨識，提升準確率，但最終等待時間會稍長。";
-"tooltip.doubao.finalTimeout" = "鬆手後最多等待多久拿文本潤飾後的最終結果；逾時則使用目前已有辨識結果。";
+"tooltip.doubao.finalTimeout" = "鬆手後最多等待多久取得文字潤飾後的最終結果；逾時則使用目前已有辨識結果。";
 "doubao.settings.accountSection" = "帳號與服務";
 "doubao.settings.effectSection" = "豆包專屬效果";
 "doubao.settings.globalSection" = "跟隨全域設定";
@@ -329,7 +340,7 @@
 
 /* 離線模型下載 */
 "alert.onDeviceModel.title" = "Apple 離線模型未下載";
-"alert.onDeviceModel.message" = "當前語言的 Apple 離線語音識別模型尚未下載。請前往 系統設定 → 一般 → 鍵盤 → 聽寫，下載對應語言的模型。";
+"alert.onDeviceModel.message" = "目前語言的 Apple 離線語音辨識模型尚未下載。請前往「系統設定」→「一般」→「鍵盤」→「聽寫」，下載對應語言的模型。";
 "alert.onDeviceModel.openSettings" = "開啟系統設定";
 "menu.debug.testOnDeviceAlert" = "測試離線模型下載提示";
 
@@ -349,21 +360,21 @@
 "oobe.welcome.hint" = "開始之前，先來設定一下。";
 
 "oobe.perm.heading" = "授予所需權限";
-"oobe.perm.subtitle" = "原子微語需要三項系統權限才能運作。點擊各項授權或開啟「系統設定」。";
+"oobe.perm.subtitle" = "原子微語需要三項系統權限才能運作。按一下各項授權或開啟「系統設定」。";
 
 "oobe.trigger.heading" = "選擇觸發按鍵";
 "oobe.trigger.subtitle" = "按住此鍵開始語音輸入。之後可隨時於選單列修改。";
 "oobe.trigger.subtitle.tap" = "按一下此鍵開始語音輸入。之後可隨時於選單列修改。";
 
-"oobe.engine.heading" = "選擇識別引擎";
-"oobe.engine.subtitle" = "卡片從左到右依隱私保護由高至低排列。之後可隨時於選單列切換。";
+"oobe.engine.heading" = "選擇辨識引擎";
+"oobe.engine.subtitle" = "卡片從左到右依隱私保護由高到低排列。之後可隨時於選單列切換。";
 "oobe.engine.recommended" = "推薦";
 "oobe.engine.attr.privacy" = "隱私";
 "oobe.engine.attr.quality" = "效果";
 "oobe.engine.attr.cost" = "費用";
 
-"oobe.engine.privacy.high" = "本地推理";
-"oobe.engine.privacy.medium" = "Apple 本地 + 雲端";
+"oobe.engine.privacy.high" = "本機推理";
+"oobe.engine.privacy.medium" = "Apple 本機 + 雲端";
 "oobe.engine.privacy.low" = "純雲端";
 "oobe.engine.quality.fair" = "中等";
 "oobe.engine.quality.good" = "良好";
@@ -372,45 +383,45 @@
 "oobe.engine.cost.paid" = "付費 · 需 API Key";
 "oobe.engine.cost.local" = "免費 · 需下載模型";
 
-"oobe.engine.sherpa.title" = "本地離線語音";
+"oobe.engine.sherpa.title" = "本機離線語音";
 "oobe.engine.sherpa.tagline" = "音訊完全不離開本機。";
-"oobe.engine.sherpa.desc" = "基於 Sherpa-ONNX 完全於本機推理。長句準確度略弱。需一次性下載本地模型。\n\n適合隱私優先，或要求完全斷網使用的環境。";
+"oobe.engine.sherpa.desc" = "基於 Sherpa-ONNX 完全於本機推理。長句準確度略弱。需一次性下載本機模型。\n\n適合隱私優先，或要求完全斷網使用的環境。";
 
 "oobe.engine.apple.title" = "Apple 語音";
 "oobe.engine.apple.tagline" = "macOS 內建，免費，多語言。";
-"oobe.engine.apple.desc" = "呼叫 macOS 內建能力，支援多國語言。日常溝通的均衡選擇。\n\n\n適合看重綜合體驗與隱私保護的用戶，支援開啟強制離線模式。";
+"oobe.engine.apple.desc" = "呼叫 macOS 內建能力，支援多國語言。日常溝通的均衡選擇。\n\n適合重視綜合體驗與隱私保護的使用者，支援開啟強制離線模式。";
 
 "oobe.engine.doubao.title" = "豆包語音";
-"oobe.engine.doubao.tagline" = "中文識別表現優秀，串流低延遲。";
-"oobe.engine.doubao.desc" = "音訊上傳至火山引擎伺服器，普通話/方言識別表現優良。需配置 API Key，按量付費。\n\n適合高頻及長文輸入，反應迅速且綜合體驗較好。\n\n使用需全程聯網，無網時將回退到 Apple 語音。";
+"oobe.engine.doubao.tagline" = "中文辨識表現優秀，串流低延遲。";
+"oobe.engine.doubao.desc" = "音訊上傳至火山引擎伺服器，普通話/方言辨識表現優良。需配置 API Key，按量付費。\n\n適合高頻及長文輸入，反應迅速且綜合體驗較好。\n\n使用需全程連網，無網路時將回退到 Apple 語音。";
 
 "oobe.done.title" = "一切就緒";
 "oobe.done.body" = "按住 %@ 即可說話，鬆開自動上屏。\n可透過選單列中 (ICON) 修改更多設定。";
 "oobe.done.body.tap" = "按一下 %@ 即可說話，再次按一下或停頓後自動上屏。\n可透過選單列中 (ICON) 修改更多設定。";
-"oobe.done.followup.apple" = "提示：可於選單列啟用 Apple 端上識別以提升隱私。";
+"oobe.done.followup.apple" = "提示：可於選單列啟用 Apple 裝置端辨識以提升隱私。";
 "oobe.done.followup.doubao" = "接下來將開啟豆包設定，請填入 API Key。";
-"oobe.done.followup.sherpa" = "接下來將提示你下載本地識別模型。";
+"oobe.done.followup.sherpa" = "接下來將提示你下載本機辨識模型。";
 
 "menu.rerunOOBE" = "重新執行設定引導…";
 "oobe.trigger.selected" = "已選擇：%@";
 
-/* OOBE 输入模式 / 本地下载副本 */
-"oobe.trigger.mode.title" = "觸發方式"; "oobe.trigger.mode.hold" = "長按說話"; "oobe.trigger.mode.tap" = "單擊說話"; "oobe.trigger.mode.hold.desc" = "按住觸發鍵開始說話，鬆開自動上屏。"; "oobe.trigger.mode.tap.desc" = "單擊開始，再次點擊或停頓一段時間後自動上屏。"; "oobe.engine.cost.localNote" = "需下載模型";
+/* OOBE 輸入模式 / 本機下載副本 */
+"oobe.trigger.mode.title" = "觸發方式"; "oobe.trigger.mode.hold" = "長按說話"; "oobe.trigger.mode.tap" = "單擊說話"; "oobe.trigger.mode.hold.desc" = "按住觸發鍵開始說話，鬆開自動上屏。"; "oobe.trigger.mode.tap.desc" = "單擊開始，再次按一下或停頓一段時間後自動上屏。"; "oobe.engine.cost.localNote" = "需下載模型";
 
-/* 識別引擎設定視窗 */
-"menu.asrSettings" = "識別引擎設定...";
-"asrSettings.title" = "識別引擎設定";
-"asrSettings.tab.doubao" = "豆包雲端識別";
-"asrSettings.tab.sherpa" = "Sherpa 本地識別";
-"asrSettings.tab.apple" = "Apple 離線識別";
-"asrSettings.sherpa.desc" = "選擇目前語言的離線識別模型。模型會在首次使用時自動下載。";
+/* 辨識引擎設定視窗 */
+"menu.asrSettings" = "辨識引擎設定...";
+"asrSettings.title" = "辨識引擎設定";
+"asrSettings.tab.doubao" = "豆包雲端辨識";
+"asrSettings.tab.sherpa" = "Sherpa 本機辨識";
+"asrSettings.tab.apple" = "Apple 離線辨識";
+"asrSettings.sherpa.desc" = "選擇目前語言的離線辨識模型。模型會在首次使用時自動下載。";
 "asrSettings.sherpa.currentLang" = "目前語言:";
 "asrSettings.sherpa.downloadStatus" = "下載狀態:";
 "asrSettings.sherpa.downloaded" = "已下載";
 "asrSettings.sherpa.notDownloaded" = "未下載";
-"asrSettings.sherpa.download" = "下載選中模型";
-"asrSettings.sherpa.download.confirm" = "下載選中的模型？這可能需要幾分鐘時間。";
-"asrSettings.sherpa.recognitionLanguage" = "識別語言:";
+"asrSettings.sherpa.download" = "下載選取的模型";
+"asrSettings.sherpa.download.confirm" = "下載選取的模型？這可能需要幾分鐘時間。";
+"asrSettings.sherpa.recognitionLanguage" = "辨識語言:";
 "asrSettings.sherpa.lang.bilingual" = "中英雙語";
 "asrSettings.sherpa.group.downloaded" = "已下載";
 "asrSettings.sherpa.empty" = "該語言暫無內建模型，請使用下方「匯入模型」載入第三方 sherpa-onnx 模型包。";
@@ -422,38 +433,38 @@
 "asrSettings.sherpa.saveUndownloaded.title" = "模型尚未下載";
 "asrSettings.sherpa.saveUndownloaded.message" = "%@ (%dMB) 還未下載，是否立即下載並啟用？";
 "asrSettings.sherpa.saveUndownloaded.download" = "下載並啟用";
-"asrSettings.sherpa.saveUndownloaded.cancelled" = "已取消保存：模型未下載。";
+"asrSettings.sherpa.saveUndownloaded.cancelled" = "已取消儲存：模型未下載。";
 "asrSettings.sherpa.import" = "匯入模型包…";
 "asrSettings.sherpa.import.tooltip" = "選擇 sherpa-onnx 模型壓縮包（.tar.bz2 / .tar.gz / .zip）或已解壓目錄，檔名將自動辨識。";
 "asrSettings.sherpa.modelListLink" = "在 GitHub 瀏覽模型 ↗";
-"asrSettings.sherpa.autoUnload" = "閒置時自動卸載本地模型";
+"asrSettings.sherpa.autoUnload" = "閒置時自動卸載本機模型";
 "asrSettings.sherpa.autoUnload.tooltip" = "Sherpa 模型閒置一段時間後自動釋放，以降低記憶體占用。";
 "asrSettings.sherpa.autoUnload.after" = "閒置時長：";
 "asrSettings.sherpa.autoUnload.minutes" = "%d 分鐘";
 "sherpa.import.pickerTitle" = "選擇 Sherpa 模型壓縮包或資料夾";
-"sherpa.import.languageTitle" = "設定識別語言";
-"sherpa.import.languageMessage" = "已匯入 %@ (%dMB)。該模型用於哪種識別語言？";
-"sherpa.import.detected" = "已自動識別為：%@（如有誤請手動調整）";
+"sherpa.import.languageTitle" = "設定辨識語言";
+"sherpa.import.languageMessage" = "已匯入 %@ (%dMB)。該模型用於哪種辨識語言？";
+"sherpa.import.detected" = "已自動辨識為：%@（如有誤請手動調整）";
 "sherpa.import.confirm" = "匯入";
 "sherpa.import.success" = "已成功匯入 \"%@\"。";
 "sherpa.import.failedTitle" = "匯入失敗";
 "sherpa.import.error.unsupported" = "不支援的壓縮格式：%@。支援的格式：.tar.bz2 / .tar.gz / .tgz / .zip / 已解壓目錄。";
 "sherpa.import.error.extract" = "解壓失敗：%@";
+"sherpa.import.error.extractorExitCode" = "解壓程式結束碼 %d";
 "sherpa.import.error.copy" = "複製失敗：%@";
 "sherpa.import.error.unrecognized" = "在 %@ 中找不到 encoder/decoder/joiner/tokens.txt。請確認它是 sherpa-onnx streaming zipformer 模型。";
-"common.ok" = "好";
 "sherpa.chooser.title" = "選擇 Sherpa 模型";
-"sherpa.chooser.header" = "選擇識別語言和模型，所選模型將在下一步下載。";
+"sherpa.chooser.header" = "選擇辨識語言和模型，所選模型將在下一步下載。";
 "sherpa.chooser.confirm" = "繼續";
 "sherpa.chooser.note.downloaded" = "%@ 已下載，無需再次下載。";
 "sherpa.chooser.note.toDownload" = "繼續後將下載約 %dMB。";
 "asrSettings.sherpa.downloading" = "下載中...";
-"asrSettings.apple.desc" = "使用 Apple 語音辨識的離線模式。音訊在裝置本地處理，不傳送到雲端。";
+"asrSettings.apple.desc" = "使用 Apple 語音辨識的離線模式。音訊在本機裝置處理，不傳送到雲端。";
 "asrSettings.apple.status" = "目前狀態:";
 "asrSettings.apple.modelDownloaded" = "已下載離線模型";
 "asrSettings.apple.modelNotDownloaded" = "離線模型未下載";
-"asrSettings.apple.enable" = "啟用 Apple 語音識別";
-"asrSettings.apple.note" = "部分語言可能不支援離線識別。如果模型未下載，請點擊下方按鈕前往系統設定下載。";
+"asrSettings.apple.enable" = "啟用 Apple 語音辨識";
+"asrSettings.apple.note" = "部分語言可能不支援離線辨識。如果模型未下載，請按一下下方按鈕前往系統設定下載。";
 "asrSettings.apple.openSettings" = "開啟系統設定下載模型";
 "sherpa.chooser.provider" = "計算後端：";
 "sherpa.chooser.provider.cpu" = "CPU";
