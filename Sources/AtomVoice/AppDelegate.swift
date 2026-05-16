@@ -113,8 +113,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.startSherpaDownload()
         }
 
-        audioEngine.onSilenceTimeout = { [weak self] in self?.session.stop() }
-
         fnKeyMonitor = FnKeyMonitor(
             onFnDown: { [weak self] in
                 guard let self else { return }

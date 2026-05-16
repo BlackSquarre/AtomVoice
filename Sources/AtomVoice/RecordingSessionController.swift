@@ -36,9 +36,18 @@ final class RecordingSessionController {
     private var liveInsertionPasteInFlight = false
     private var streamSession: TextStreamSession?
 
+    /// 当前录音在 AudioRouter 上注册的消费者 ID（Sherpa/豆包/Apple 各家会注册自己想要的目标 format）。
+    /// 任一时刻只有一个引擎在录音，所以单字段足够。markRecordingStopped 时注销。
+    /// (Single consumer id per active recording session; cleared in markRecordingStopped.)
+    private var activeRouterConsumerID: UUID?
+
     // MARK: - 协调器（Coordinators）
     let sherpaPreload = SherpaPreloadCoordinator()
     let doubaoFallback = DoubaoFallbackCoordinator()
+    private let audioAnalyzer = AudioAnalyzer()
+    /// AudioAnalyzer 订阅 router 16kHz 的消费者 ID；session 整体 deinit 时注销。
+    /// (Analyzer's router consumer; unregistered on session deinit.)
+    private var analyzerConsumerID: UUID?
     private lazy var appleLiveFallback: AppleLiveFallbackStrategy = AppleLiveFallbackStrategy(
         audioEngine: audioEngine,
         fallback: doubaoFallback,
@@ -85,6 +94,26 @@ final class RecordingSessionController {
         self.volumeController = volumeController
         self.asrEngineRegistry = asrEngineRegistry
         self.asrEngineProvider = asrEngineProvider
+
+        // AudioAnalyzer 永久订阅 router 16kHz 通道：tap 装上才会有 buffer，不录音期间零开销。
+        // (Permanent 16kHz subscription; analyzer only sees buffers when tap is installed.)
+        analyzerConsumerID = audioEngine.router.register(format: .voice16k) { [weak self] buffer in
+            self?.audioAnalyzer.accept(buffer)
+        }
+        audioAnalyzer.onSilenceTimeout = { [weak self] in
+            self?.stop()
+        }
+        audioAnalyzer.onBands = { [weak self] bands in
+            DispatchQueue.main.async {
+                self?.capsuleWindow.updateBands(bands)
+            }
+        }
+    }
+
+    deinit {
+        if let id = analyzerConsumerID {
+            audioEngine.router.unregister(id)
+        }
     }
 
     // MARK: - 公开 API（Public API）
@@ -233,20 +262,21 @@ final class RecordingSessionController {
             return
         }
 
-        if !audioEngine.start(
-            bandsHandler: makeBandsHandler(),
-            recognitionRequest: nil,
-            audioBufferHandler: { [weak self] buffer, _ in
-                guard let self,
-                      self.recordingGeneration == generation,
-                      self.isRecording,
-                      self.asrEngineRegistry.isApple(self.currentRecordingEngine)
-                else { return }
-                self.appleEngine().accept(buffer: buffer)
-            }
-        ) {
+        if !audioEngine.start() {
             appleEngine().cancel()
             handleAudioStartFailure()
+            return
+        }
+        // Apple 原生通道（nil-format）：直接拿设备原生 SR 的 buffer 给 SFSpeechRecognizer，
+        // 它内部最优重采样到 16kHz。这条路径上 router 不做 SR 转换，零拷贝透传。
+        // (Apple consumes native-format buffers; SFSpeechRecognizer resamples internally.)
+        activeRouterConsumerID = audioEngine.router.register(format: nil) { [weak self] buffer in
+            guard let self,
+                  self.recordingGeneration == generation,
+                  self.isRecording,
+                  self.asrEngineRegistry.isApple(self.currentRecordingEngine)
+            else { return }
+            self.appleEngine().accept(buffer: buffer)
         }
     }
 
@@ -266,20 +296,21 @@ final class RecordingSessionController {
         }
 
         capsuleWindow.showRecording()
-        if !audioEngine.start(
-            bandsHandler: makeBandsHandler(),
-            recognitionRequest: nil,
-            audioBufferHandler: { [weak self] buffer, _ in
-                guard let self,
-                      self.recordingGeneration == generation,
-                      self.isRecording,
-                      self.asrEngineRegistry.isSherpa(self.currentRecordingEngine)
-                else { return }
-                self.sherpaEngine().accept(buffer: buffer)
-            }
-        ) {
+        if !audioEngine.start() {
             sherpaEngine().cancel()
             handleAudioStartFailure()
+            return
+        }
+        // 注册 16kHz 消费者：router 会按需建 AVAudioConverter，把任何设备的原始 SR 重采样到 16kHz 喂 Sherpa。
+        // 这是修复"边录音边戴/摘耳机时 sherpa C 层 abort"的关键 —— sherpa 永远只收 16kHz，运行时不再有 SR 突变。
+        // (Sherpa always sees 16kHz; eliminates the SR-jump crash on mid-recording route changes.)
+        activeRouterConsumerID = audioEngine.router.register(format: .voice16k) { [weak self] buffer in
+            guard let self,
+                  self.recordingGeneration == generation,
+                  self.isRecording,
+                  self.asrEngineRegistry.isSherpa(self.currentRecordingEngine)
+            else { return }
+            self.sherpaEngine().accept(buffer: buffer)
         }
     }
 
@@ -290,25 +321,24 @@ final class RecordingSessionController {
 
         capsuleWindow.showProgress(loc("sherpa.loadingModel"))
 
-        // 1. 立即启动 AudioEngine，缓存音频（Start AudioEngine immediately, buffer audio）
-        if !audioEngine.start(
-            bandsHandler: makeBandsHandler(),
-            recognitionRequest: nil,
-            audioBufferHandler: { [weak self] buffer, _ in
-                guard let self,
-                      self.recordingGeneration == generation,
-                      self.isRecording,
-                      self.asrEngineRegistry.isSherpa(self.currentRecordingEngine)
-                else { return }
-                let buffered = self.sherpaPreload.appendIfActive(buffer) { self.copyAudioBuffer($0) }
-                if !buffered {
-                    self.sherpaEngine().accept(buffer: buffer)
-                }
-            }
-        ) {
+        // 1. 立即启动 AudioEngine，下面通过 router 16kHz 消费者拿音频
+        if !audioEngine.start() {
             sherpaPreload.cancel()
             handleAudioStartFailure()
             return
+        }
+        // Sherpa 16kHz 消费者：preload 期间缓存 16k buffer；模型加载完成后由 drain 喂入 sherpa。
+        // (Sherpa 16kHz consumer: buffers into preload while model loads; drain feeds them after.)
+        activeRouterConsumerID = audioEngine.router.register(format: .voice16k) { [weak self] buffer in
+            guard let self,
+                  self.recordingGeneration == generation,
+                  self.isRecording,
+                  self.asrEngineRegistry.isSherpa(self.currentRecordingEngine)
+            else { return }
+            let buffered = self.sherpaPreload.appendIfActive(buffer) { self.copyAudioBuffer($0) }
+            if !buffered {
+                self.sherpaEngine().accept(buffer: buffer)
+            }
         }
 
         // 2. 后台加载模型（Load model in background）
@@ -392,17 +422,22 @@ final class RecordingSessionController {
             return
         }
 
-        if !audioEngine.start(
-            bandsHandler: makeBandsHandler(),
-            recognitionRequest: nil,
-            audioBufferHandler: { [weak self] buffer, _ in
-                guard let self else { return }
-                self.doubaoFallback.appendAudioBufferIfWaiting(buffer, copyBuffer: self.copyAudioBuffer)
-                self.volcengineEngine().accept(buffer: buffer)
-            }
-        ) {
+        if !audioEngine.start() {
             volcengineEngine().cancel()
             handleAudioStartFailure()
+            return
+        }
+        // 豆包 16kHz 消费者：CloudAudioConverter 看到 16kHz 输入会跳过 resample，仅做 Float32 → Int16。
+        // doubaoFallback 也存 16kHz 副本，万一回退到 Apple Speech，Apple 自己会内部重采样。
+        // (Doubao 16kHz consumer: CloudAudioConverter skips resample, only does Float→Int16. Fallback uses 16kHz too.)
+        activeRouterConsumerID = audioEngine.router.register(format: .voice16k) { [weak self] buffer in
+            guard let self,
+                  self.recordingGeneration == generation,
+                  self.isRecording,
+                  self.currentRecordingEngine == VolcengineASRSettings.engineCode
+            else { return }
+            self.doubaoFallback.appendAudioBufferIfWaiting(buffer, copyBuffer: self.copyAudioBuffer)
+            self.volcengineEngine().accept(buffer: buffer)
         }
     }
 
@@ -497,15 +532,17 @@ final class RecordingSessionController {
         isRecording = false
         onRecordingStateChanged?(false)
         volumeController.restoreVolume()
+        // 注销本次录音在 router 上的消费者
+        if let id = activeRouterConsumerID {
+            audioEngine.router.unregister(id)
+            activeRouterConsumerID = nil
+        }
+        // 清掉 Apple Live Fallback 留下的 switchRequest 消费者（豆包回退路径用）
+        audioEngine.clearSwitchedRequest()
+        // 重置静音/FFT 滚动状态（下次录音从干净状态开始）
+        audioAnalyzer.reset()
     }
 
-    private func makeBandsHandler() -> ([Float]) -> Void {
-        { [weak self] bands in
-            DispatchQueue.main.async {
-                self?.capsuleWindow.updateBands(bands)
-            }
-        }
-    }
 
     private func stopCurrentLocalASREngineSynchronously() -> String {
         if asrEngineRegistry.isSherpa(currentRecordingEngine) {
@@ -660,7 +697,12 @@ final class RecordingSessionController {
             fallbackTextIfAppleEmpty: fallbackTextIfAppleEmpty,
             stopLiveFallback: { [weak self] in self?.speechRecognizer().stop() ?? "" }
         )
-        let fallbackError = fallback.originalError.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : fallback.originalError
+        // 用 doubao.fallback.withError 包装原始错误：错误文案会带上"已切换到 Apple 语音识别"，
+        // 让用户清楚地知道我们已经尝试过 fallback、不是只显示豆包原始报错。
+        // (Wrap with the fallback format so the user sees "switched to Apple"; avoids
+        //  showing the raw cloud error as if no fallback was attempted.)
+        let trimmedOriginal = fallback.originalError.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackError = trimmedOriginal.isEmpty ? nil : loc("doubao.fallback.withError", trimmedOriginal)
 
         guard !fallback.buffers.isEmpty else {
             currentRecordingEngine = ASREngineRegistry.appleCode

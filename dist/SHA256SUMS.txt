@@ -1,0 +1,3 @@
+5e1281b4755d40eb699196aa94bd322c2fba5fd2bbdda35c95d8e7e4dec9b5c4  AtomVoice-0.10.2-Beta-6-AppleSilicon.zip
+2c164b35cd71b9f68bbaf5f24df2e57d3cfb35411ae8768cc6eccbf0e3bbed97  AtomVoice-0.10.2-Beta-6-Intel.zip
+85633e27e5a5a668efa15efd4fc99bf2655f8cbdae5d1f384477753cabb558b9  AtomVoice-0.10.2-Beta-6-Universal.zip

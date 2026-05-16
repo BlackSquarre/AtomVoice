@@ -1,61 +1,157 @@
 import AVFoundation
 import Speech
-import Accelerate
 import CoreAudio
 import AudioTapShim
 
 final class AudioEngineController {
-    let engine = AVAudioEngine()
-    private var bandsHandler: (([Float]) -> Void)?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var audioBufferHandler: ((AVAudioPCMBuffer, AVAudioTime) -> Void)?
+    private(set) var engine = AVAudioEngine()
     private var tapInstalled = false
 
-    // 静音自动停止（Silence auto-stop）
-    var onSilenceTimeout: (() -> Void)?
-    private var silenceDuration: Double = 0
-    private var recordingDuration: Double = 0
-    private let silenceGuardPeriod: Double = 0.5  // 录音前 0.5 秒不检测静音（Skip silence detection for the first 0.5s）
+    /// 音频路由：tap 收到的 buffer 经 router 分发到各消费者（按目标 format 自动重采样）。
+    /// 静音检测/频谱可视化通过 AudioAnalyzer（router 的 16kHz 消费者）实现，本类只负责 source。
+    /// (Audio router: tap buffer dispatched to consumers; analysis lives in AudioAnalyzer.)
+    let router = AudioRouter()
 
-    // 持续噪声检测（Steady noise detection）
-    // 如果音频能量长时间稳定（方差低），说明是持续噪声而非人声
-    // (If audio energy is stable for a long time (low variance), it's steady noise, not speech)
-    private var rmsHistory: [Float] = []
-    private let rmsHistorySize = 30  // 记录最近 30 个 RMS 值（约 1.5 秒）(Keep last 30 RMS values, ~1.5 seconds)
-    private var steadyNoiseDuration: Double = 0
-    // 方差阈值：越小越难触发（需要更稳定的噪声）；越大越容易触发
-    // (Variance threshold: smaller = harder to trigger (needs steadier noise); larger = easier to trigger)
-    private var steadyNoiseThreshold: Float = 0.001
-
-    // FFT
-    private let fftSize = 1024
-    private var fftSetup: FFTSetup?
-    private var hannWindow: [Float] = []
-    private var sampleBuffer: [Float] = []
-    private let bufferQueue = DispatchQueue(label: "com.atomvoice.audioBuffer")  // 保护 sampleBuffer 和静音检测状态（Protect sampleBuffer and silence detection state）
-
-    // 只用人声核心频率范围驱动视觉，避免低频震动/高频噪声把波形整体推起来。（Use only core voice frequency ranges for visuals, avoiding low-freq rumble/high-freq noise from inflating the waveform.）
-    // 频谱只判断人声存在感，最终仍映射为 logo 式居中分布。（Spectrum only determines voice presence; final mapping uses logo-style centered distribution.）
-    private let bandFreqRanges: [(Float, Float)] = [
-        (100,  260),   // 第1根 — 男声低频轮廓（Bar 1 — male low-freq contour）
-        (260,  650),   // 第2根 — 低共振峰（Bar 2 — low formant）
-        (650,  1500),  // 第3根 — 元音主体（Bar 3 — vowel core）
-        (1500, 2800),  // 第4根 — 清晰度与高共振峰（Bar 4 — clarity & high formant）
-        (2800, 4200),  // 第5根 — 辅音边缘，权重较低（Bar 5 — consonant edge, lower weight）
-    ]
-    private let visualBarProfile: [Float] = [0.40, 0.68, 1.0, 0.68, 0.40]
-    private let voicePresenceWeights: [Float] = [0.25, 0.85, 1.0, 0.75, 0.20]
-    private let bandNoiseFloors: [Float] = [-50, -57, -61, -64, -66]
+    /// Apple Live Fallback 调 switchRequest 时挂载的 nil-format 消费者 id。
+    /// (Consumer id for the SFSpeechAudioBufferRecognitionRequest currently switched in.)
+    private var switchedRequestConsumerID: UUID?
+    /// 最近一次成功完成 start() 的时间戳；用于过滤"自己触发"的 ConfigurationChange 通知。
+    /// (Timestamp of the most recent successful start(); used to filter self-induced ConfigurationChange events.)
+    private var lastStartSucceededAt: Date?
+    /// 标记：真实路由变化后 engine 实例已不可用，下次 start() 前必须重建。
+    /// (Flag: real route-change occurred; engine is corrupted, must rebuild before next start().)
+    private var needsEngineRebuild = false
 
     init() {
-        let log2n = vDSP_Length(log2(Float(fftSize)))
-        fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))
-        hannWindow = [Float](repeating: 0, count: fftSize)
-        vDSP_hann_window(&hannWindow, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
+        // 监听音频路由变化（如摘下 AirPods）：engine 的 inputNode 不会自动跟随系统默认输入变化，
+        // 必须在路由变化后主动 stop + reset，下次 start() 才能重新绑定到新的默认设备。
+        registerConfigurationChangeObserver()
+    }
+
+    private func registerConfigurationChangeObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleConfigurationChange(_:)),
+            name: .AVAudioEngineConfigurationChange,
+            object: engine
+        )
+    }
+
+    /// 销毁当前 engine 并新建一个：真实路由变化后唯一可靠的恢复路径。
+    /// (Tear down current engine and create a fresh one — the only reliable recovery after real route changes.)
+    private func rebuildEngine() {
+        DebugLog.info("[AudioEngine] 重建 AVAudioEngine 实例 (start)")
+        NotificationCenter.default.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: engine)
+        if tapInstalled {
+            DebugLog.info("[AudioEngine] rebuild: removeTap")
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+        if engine.isRunning {
+            DebugLog.info("[AudioEngine] rebuild: engine.stop")
+            engine.stop()
+        }
+        DebugLog.info("[AudioEngine] rebuild: 实例化新 AVAudioEngine")
+        engine = AVAudioEngine()
+        registerConfigurationChangeObserver()
+        needsEngineRebuild = false
+        lastStartSucceededAt = nil
+        // 新 engine 的 input format 通常与旧的不同，丢弃 router 里所有 converter cache
+        router.invalidate()
+        DebugLog.info("[AudioEngine] 重建 AVAudioEngine 实例 (done)")
     }
 
     deinit {
-        if let s = fftSetup { vDSP_destroy_fftsetup(s) }
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func handleConfigurationChange(_ note: Notification) {
+        DebugLog.info("[AudioEngine] 收到 AVAudioEngineConfigurationChange")
+        // 通知可能在任意线程；统一切回主线程操作 engine 状态。
+        // Apple 行为：configuration change 时 engine 会自动 stop 自己；这里只需清掉 tap 状态，
+        // 让下次 start() 走干净路径。不调用 engine.reset() —— 它会让 inputNode 的格式与 AU 配置不一致，
+        // 导致 installTapOnBus 报 "Failed to create tap due to format mismatch"。
+        // (Notification can arrive on any thread; marshal to main. Per Apple, engine auto-stops on config change;
+        //  we only clear tap state. Do NOT call engine.reset() — it desynchronizes inputNode format from the AU
+        //  and causes installTapOnBus to throw "format mismatch".)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            // 自触发窗口（engine.start 后 ~1s 内）：系统常会延迟回吐一次 ConfigurationChange，
+            // 不代表真实路由变化，忽略。否则视为真实路由变化（如摘耳机），标记 engine 需要重建。
+            // 真实路由变化后旧 AVAudioEngine 实例的 inputNode 会进入"format 缓存与底层 AU 不一致"
+            // 的损坏状态，installTapOnBus 会持续抛 "Failed to create tap due to format mismatch"，
+            // 唯一可靠的恢复路径是丢掉整个 engine 实例重建。
+            // (Self-induced echo within ~1s → ignore. Otherwise, real route change → mark engine for rebuild;
+            //  the only reliable recovery from a real route change is to discard and recreate the engine.)
+            if let last = self.lastStartSucceededAt, Date().timeIntervalSince(last) < 1.0 {
+                DebugLog.info("[AudioEngine] 忽略 start 后 \(Int(Date().timeIntervalSince(last)*1000))ms 内的自触发 ConfigurationChange")
+                return
+            }
+            let wasActive = self.tapInstalled
+            NSLog("[ATOMVOICE] route-change handler PRE-cleanup wasActive=%d", wasActive ? 1 : 0)
+            DebugLog.info("[AudioEngine] 检测到真实路由变化，wasActive=\(wasActive)")
+            // 清掉旧 engine 状态
+            if self.tapInstalled {
+                self.engine.inputNode.removeTap(onBus: 0)
+                self.tapInstalled = false
+            }
+            if self.engine.isRunning {
+                self.engine.stop()
+            }
+            self.needsEngineRebuild = true
+
+            // 如果当前是活跃录音（用户还在按着触发键），就地做无缝设备切换：
+            // 重建 engine + 用同一套 handler 重新装 tap & 启动。复用同一个 recognitionRequest，
+            // 新设备来的 PCM 直接追加进去，录音不中断。
+            // 注：曾试过"复用 engine 仅重装 tap"的快路径，但 inputNode.outputFormat 在路由变化后返回旧设备
+            // 的缓存格式，installTap 必然 format mismatch。只有新建 AVAudioEngine 实例才能读到新格式。
+            // (Seamless mid-recording device swap requires a fresh AVAudioEngine — outputFormat is cached
+            //  on the old instance and won't reflect the new device.)
+            if wasActive {
+                NSLog("[ATOMVOICE] route-change before rebuild")
+                self.rebuildEngine()
+                NSLog("[ATOMVOICE] route-change before re-arm")
+                if self.armEngineWithCurrentHandlers(context: "route-change re-arm") {
+                    NSLog("[ATOMVOICE] route-change AFTER re-arm OK")
+                    DebugLog.info("[AudioEngine] 路由变化后无缝切到新设备成功")
+                } else {
+                    NSLog("[ATOMVOICE] route-change re-arm FAILED")
+                    DebugLog.error("[AudioEngine] 路由变化后重启 engine 失败，等待下次 start()")
+                }
+            }
+        }
+    }
+
+    /// 读取 audio unit 当前绑定的输入设备 ID（Read currently-bound input device on audio unit）
+    private func currentAudioUnitInputDeviceID() -> AudioDeviceID? {
+        guard let audioUnit = engine.inputNode.audioUnit else { return nil }
+        var deviceID: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioUnitGetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceID,
+            &size
+        )
+        return status == noErr ? deviceID : nil
+    }
+
+    /// 读取系统当前默认输入设备 ID（Read current system default input device）
+    private func systemDefaultInputDeviceID() -> AudioDeviceID? {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &addr, 0, nil, &size, &deviceID
+        )
+        return status == noErr && deviceID != 0 ? deviceID : nil
     }
 
     // MARK: - 输入设备管理
@@ -138,6 +234,14 @@ final class AudioEngineController {
     /// (Async-wait until input path is ready: non-empty device list + valid inputNode format.
     ///  Tolerates audio-route transitions from AirPods hot-plug without blocking the main thread.)
     func waitForInputReady(timeout: TimeInterval, completion: @escaping (Bool) -> Void) {
+        // 若 engine 因路由变化标记为需重建，跳过 preflight：start() 内会重建后再做正式校验。
+        // 不在这里操作旧 engine，避免在损坏实例上读 format / 写 AU property。
+        // (If engine is flagged for rebuild, skip preflight — start() will rebuild and validate.)
+        if needsEngineRebuild {
+            DebugLog.info("[AudioEngine] waitForInputReady: 跳过（engine 待重建）")
+            DispatchQueue.main.async { completion(true) }
+            return
+        }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else {
                 DispatchQueue.main.async { completion(false) }
@@ -246,77 +350,89 @@ final class AudioEngineController {
         }
     }
 
-    /// 滚动分段时切换识别请求，后续 buffer 将推送到新请求（Switch recognition request during scroll; subsequent buffers will be pushed to the new request）
+    /// Apple Live Fallback 切换识别请求时调用：以 nil-format 透传消费者方式接入 router。
+    /// 当前只有 Apple Live Fallback（豆包失败后回退到 Apple Speech）用此 API。
+    /// (Used by Apple Live Fallback when Doubao fails; subsequent buffers feed the new request.)
     func switchRequest(_ newRequest: SFSpeechAudioBufferRecognitionRequest) {
-        recognitionRequest = newRequest
+        if let id = switchedRequestConsumerID {
+            router.unregister(id)
+        }
+        switchedRequestConsumerID = router.register(format: nil) { buffer in
+            newRequest.append(buffer)
+        }
+    }
+
+    /// 录音结束时清理 switchRequest 留下的消费者（Cleanup on recording stop）
+    func clearSwitchedRequest() {
+        if let id = switchedRequestConsumerID {
+            router.unregister(id)
+            switchedRequestConsumerID = nil
+        }
     }
 
     @discardableResult
-    func start(bandsHandler: @escaping ([Float]) -> Void,
-               recognitionRequest: SFSpeechAudioBufferRecognitionRequest?,
-               audioBufferHandler: ((AVAudioPCMBuffer, AVAudioTime) -> Void)? = nil) -> Bool {
+    func start() -> Bool {
         stop()
 
-        self.bandsHandler = bandsHandler
-        self.recognitionRequest = recognitionRequest
-        self.audioBufferHandler = audioBufferHandler
-        bufferQueue.sync {
-            sampleBuffer = []
-            silenceDuration = 0
-            recordingDuration = 0
+        if needsEngineRebuild {
+            rebuildEngine()
         }
 
-        // 应用用户选择的输入设备（Apply user-selected input device）
-        applySelectedInputDevice()
+        // 应用输入设备：仅在用户明确选了具体设备时才 setProperty。
+        // 默认设备（UID 为空）路径完全不动 AU —— AVAudioEngine 初始化时自动绑定系统当前默认输入，
+        // 任何 setProperty 都可能让 AU 进入 "format 未协商完成" 的中间态，导致 engine.start 抛
+        // kAudioUnitErr_FormatNotSupported (-10868) 或 installTap format mismatch。
+        // 路由变化（如摘耳机）由 ConfigurationChange 监听 → 标记 needsEngineRebuild → 下次 start()
+        // 时重建 AVAudioEngine 实例处理；新 engine 自动绑定到新的系统默认输入。
+        // (Default-device path: do NOT touch AU. Fresh AVAudioEngine binds to current default natively;
+        //  any setProperty risks leaving AU in a half-negotiated state. Route changes are handled by
+        //  rebuilding the engine on the next start().)
+        if !AppSettings.audioInputDeviceUID.isEmpty {
+            applySelectedInputDevice()
+        }
 
+        return armEngineWithCurrentHandlers(context: "start")
+    }
+
+    /// 装 tap 并启动 engine。失败时标记 needsEngineRebuild。
+    /// (Install tap and start engine; flag rebuild on failure.)
+    private func armEngineWithCurrentHandlers(context: String) -> Bool {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
-        DebugLog.info("[AudioEngine] start: format sr=\(format.sampleRate) ch=\(format.channelCount)")
+        DebugLog.info("[AudioEngine] \(context): format sr=\(format.sampleRate) ch=\(format.channelCount)")
         guard format.sampleRate > 0, format.channelCount > 0 else {
-            DebugLog.error("[AudioEngine] start: 输入格式无效")
-            stop()
+            DebugLog.error("[AudioEngine] \(context): 输入格式无效")
+            needsEngineRebuild = true
             return false
         }
-        let sampleRate = Float(format.sampleRate)
+
+        let tapBlock: AVAudioNodeTapBlock = { [weak self] buffer, _ in
+            // tap 唯一职责：把 buffer 交给 router，由 router 按消费者目标 format 分发。
+            // (Tap's sole job: hand buffer to router for fan-out by target format.)
+            self?.router.receive(buffer)
+        }
 
         var tapError: NSString?
-        let installed = AtomVoiceInstallAudioTapWithError(inputNode, 0, 1024, format, { [weak self] buffer, time in
-            guard let self else { return }
-            // 实时音频线程上只做必要的最少工作：投递给识别器 + 拷一份 samples 异步交给 worker
-            // 静音检测、FFT、波形回调全部异步到 bufferQueue 上，避免阻塞音频线程导致丢帧
-            // (Audio thread does minimum work: feed recognizer + copy samples + async dispatch.
-            //  Silence detection / FFT / bands callback all run on bufferQueue to avoid stalling the audio thread.)
-            self.recognitionRequest?.append(buffer)
-            self.audioBufferHandler?(buffer, time)
-
-            guard let channelData = buffer.floatChannelData else { return }
-            let count = Int(buffer.frameLength)
-            guard count > 0 else { return }
-
-            // 在音频线程做一次拷贝（buffer 引用仅在 tap 内有效），随后异步处理
-            // (Copy on the audio thread — buffer is only valid inside the tap — then process async.)
-            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: count))
-            let bufferDuration = Double(count) / Double(sampleRate)
-
-            self.bufferQueue.async { [weak self] in
-                self?.processSamplesOnWorker(samples: samples, bufferDuration: bufferDuration, sampleRate: sampleRate)
-            }
-        }, &tapError)
+        let installed = AtomVoiceInstallAudioTapWithError(inputNode, 0, 1024, format, tapBlock, &tapError)
         guard installed else {
-            let errorDetail = tapError as String? ?? "unknown"
-            DebugLog.error("[AudioEngine] start: 装 tap 失败: \(errorDetail)")
-            stop()
+            DebugLog.error("[AudioEngine] \(context): 装 tap 失败: \(tapError as String? ?? "unknown")")
+            needsEngineRebuild = true
             return false
         }
         tapInstalled = true
 
         do {
             try engine.start()
-            DebugLog.info("[AudioEngine] start: engine.start 成功")
+            lastStartSucceededAt = Date()
+            DebugLog.info("[AudioEngine] \(context): engine.start 成功")
             return true
         } catch {
-            DebugLog.error("[AudioEngine] start: engine.start 抛异常 \(error)")
-            stop()
+            DebugLog.error("[AudioEngine] \(context): engine.start 抛异常 \(error)")
+            if tapInstalled {
+                inputNode.removeTap(onBus: 0)
+                tapInstalled = false
+            }
+            needsEngineRebuild = true
             return false
         }
     }
@@ -329,237 +445,6 @@ final class AudioEngineController {
         if engine.isRunning {
             engine.stop()
         }
-        bandsHandler = nil
-        recognitionRequest = nil
-        audioBufferHandler = nil
-        bufferQueue.sync {
-            sampleBuffer = []
-            silenceDuration = 0
-            steadyNoiseDuration = 0
-            rmsHistory = []
-            recordingDuration = 0
-        }
-    }
-
-    // MARK: - Worker queue 处理（Audio worker queue processing）
-
-    /// 在 bufferQueue 上处理一帧音频：累积到 sampleBuffer、做静音检测、按 fftSize 滑动窗口做 FFT。
-    /// (Process one audio buffer on bufferQueue: accumulate into sampleBuffer, run silence detection,
-    ///  slide an FFT window at fftSize granularity.)
-    private func processSamplesOnWorker(samples: [Float], bufferDuration: Double, sampleRate: Float) {
-        sampleBuffer.append(contentsOf: samples)
-        recordingDuration += bufferDuration
-
-        samples.withUnsafeBufferPointer { ptr in
-            guard let base = ptr.baseAddress else { return }
-            detectSilence(channelData: base, frameCount: samples.count, bufferDuration: bufferDuration)
-        }
-
-        // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率（Perform FFT when enough samples accumulate, 50% overlap for better time resolution）
-        var offset = 0
-        while sampleBuffer.count - offset >= fftSize {
-            let bands = sampleBuffer.withUnsafeBufferPointer { bufPtr -> [Float] in
-                guard let base = bufPtr.baseAddress else { return [Float](repeating: 0, count: 5) }
-                return computeBands(samplesPointer: base.advanced(by: offset), sampleRate: sampleRate)
-            }
-            offset += fftSize / 2
-            bandsHandler?(bands)
-        }
-        if offset > 0 {
-            sampleBuffer.removeSubrange(0..<offset)
-        }
-    }
-
-    // MARK: - 静音检测
-
-    private func detectSilence(channelData: UnsafePointer<Float>, frameCount: Int, bufferDuration: Double) {
-        // 保护期内不检测（Skip detection during guard period）
-        guard recordingDuration > silenceGuardPeriod else { return }
-
-        // 读取用户设置（Read user settings）
-        guard AppSettings.silenceAutoStopEnabled else { return }
-        // 单击模式下若选择了"手动停止"，跳过静音自动停止（Tap mode w/ manual-stop: skip silence auto-stop）
-        guard !AppSettings.tapModeManualStop else { return }
-
-        let threshold = AppSettings.silenceThreshold
-        let requiredDuration = AppSettings.silenceDuration
-
-        // 更新持续噪声灵敏度设置（Update steady noise sensitivity setting）
-        let sensitivity = AppSettings.steadyNoiseSensitivity
-        switch sensitivity {
-        case 0: steadyNoiseThreshold = 0.0005  // 低灵敏度：需要非常稳定的噪声才触发 (Low: needs very steady noise)
-        case 2: steadyNoiseThreshold = 0.003   // 高灵敏度：较容易触发 (High: triggers easier)
-        default: steadyNoiseThreshold = 0.001   // 中灵敏度 (Medium)
-        }
-
-        // 计算 RMS（用 Accelerate，几乎零开销）（Compute RMS via Accelerate, near-zero overhead）
-        var rms: Float = 0
-        vDSP_rmsqv(channelData, 1, &rms, vDSP_Length(frameCount))
-        let dB = 20 * log10(max(rms, 1e-7))
-
-        // 更新 RMS 历史，用于持续噪声检测（Update RMS history for steady noise detection）
-        rmsHistory.append(rms)
-        if rmsHistory.count > rmsHistorySize {
-            rmsHistory.removeFirst()
-        }
-
-        // 检测持续噪声：RMS 有值但方差很低（Detect steady noise: RMS is present but variance is low）
-        let isSteadyNoise = rmsHistory.count >= rmsHistorySize && detectSteadyNoise(rmsHistory: rmsHistory, currentRMS: rms)
-
-        if Double(dB) < threshold {
-            // 完全静音（Complete silence）
-            silenceDuration += bufferDuration
-            steadyNoiseDuration = 0
-            if silenceDuration >= requiredDuration {
-                silenceDuration = 0  // 防止重复触发（Prevent repeated triggers）
-                DispatchQueue.main.async { [weak self] in
-                    self?.onSilenceTimeout?()
-                }
-            }
-        } else if isSteadyNoise {
-            // 持续噪声（如空调、风扇）：能量稳定，不是人声（Steady noise like AC/fan: stable energy, not speech）
-            silenceDuration = 0
-            steadyNoiseDuration += bufferDuration
-            if steadyNoiseDuration >= requiredDuration {
-                steadyNoiseDuration = 0
-                DispatchQueue.main.async { [weak self] in
-                    self?.onSilenceTimeout?()
-                }
-            }
-        } else {
-            // 有人声（Speech detected）
-            silenceDuration = 0
-            steadyNoiseDuration = 0
-        }
-    }
-
-    /// 检测持续噪声：RMS 有值但方差很低（Detect steady noise: RMS is present but variance is low）
-    private func detectSteadyNoise(rmsHistory: [Float], currentRMS: Float) -> Bool {
-        // 只在 RMS 高于完全静音阈值时才检测（Only check when RMS is above complete silence）
-        // 避免把真正的安静误判为噪声（Avoid misjudging real silence as noise）
-        guard currentRMS > 0.005 else { return false }
-
-        // 计算 RMS 方差（Compute RMS variance）
-        var mean: Float = 0
-        vDSP_meanv(rmsHistory, 1, &mean, vDSP_Length(rmsHistory.count))
-
-        var variance: Float = 0
-        var squaredDiffs = [Float](repeating: 0, count: rmsHistory.count)
-        let meanVec = [Float](repeating: mean, count: rmsHistory.count)
-        vDSP_vsub(rmsHistory, 1, meanVec, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
-        vDSP_vsq(squaredDiffs, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
-        vDSP_meanv(squaredDiffs, 1, &variance, vDSP_Length(rmsHistory.count))
-
-        return variance < steadyNoiseThreshold
-    }
-
-    // MARK: - FFT
-
-    /// 从滑动窗口直接读 fftSize 个样本做 FFT，避免 Array 切片拷贝。
-    /// (Read fftSize samples directly from a sliding window pointer to avoid Array slicing copy.)
-    private func computeBands(samplesPointer: UnsafePointer<Float>, sampleRate: Float) -> [Float] {
-        guard let fftSetup else {
-            return [Float](repeating: 0, count: 5)
-        }
-
-        let halfSize = fftSize / 2
-        let log2n = vDSP_Length(log2(Float(fftSize)))
-
-        // 加汉宁窗（Apply Hanning window）
-        var windowed = [Float](repeating: 0, count: fftSize)
-        vDSP_vmul(samplesPointer, 1, hannWindow, 1, &windowed, 1, vDSP_Length(fftSize))
-
-        // 实数 FFT（Real-valued FFT）
-        var real = [Float](repeating: 0, count: halfSize)
-        var imag = [Float](repeating: 0, count: halfSize)
-
-        let bands: [Float] = real.withUnsafeMutableBufferPointer { realBuf in
-            imag.withUnsafeMutableBufferPointer { imagBuf in
-                var split = DSPSplitComplex(realp: realBuf.baseAddress!,
-                                            imagp: imagBuf.baseAddress!)
-
-                // 把 real 信号打包成复数格式（Pack real signal into complex format）
-                windowed.withUnsafeBytes { rawPtr in
-                    rawPtr.withMemoryRebound(to: DSPComplex.self) { complexPtr in
-                        vDSP_ctoz(complexPtr.baseAddress!, 2, &split, 1, vDSP_Length(halfSize))
-                    }
-                }
-
-                vDSP_fft_zrip(fftSetup, &split, 1, log2n, FFTDirection(FFT_FORWARD))
-
-                // 幅度（不是功率），正确归一化：除以 N 再取 sqrt（Magnitude (not power), correct normalization: divide by N then sqrt）
-                var mags = [Float](repeating: 0, count: halfSize)
-                vDSP_zvabs(&split, 1, &mags, 1, vDSP_Length(halfSize))
-                // vDSP_zvabs 输出是 sqrt(r²+i²)，但 zrip 的输出在 0 号位不含虚部（vDSP_zvabs outputs sqrt(r²+i²), but zrip output at index 0 has no imaginary part）
-                // 归一化：除以 (fftSize/2)（Normalization: divide by fftSize/2）
-                var norm = Float(halfSize)
-                vDSP_vsdiv(mags, 1, &norm, &mags, 1, vDSP_Length(halfSize))
-
-                // 频谱只用于判断“有人声”和制造细微纹理，不再使用全频 RMS。（Spectrum only determines “voice present” and creates subtle texture; no longer using full-band RMS.）
-                let freqPerBin = sampleRate / Float(self.fftSize)
-                let spectralLevels = self.bandFreqRanges.enumerated().map { (i, range) in
-                    let (loFreq, hiFreq) = range
-                    let loIdx = max(1, Int(loFreq / freqPerBin))
-                    let hiIdx = min(halfSize - 1, Int(hiFreq / freqPerBin))
-                    guard loIdx < hiIdx else { return Float(0) }
-
-                    let energy = self.bandEnergy(mags: mags, loIdx: loIdx, hiIdx: hiIdx)
-
-                    let dB = 20.0 * log10(max(energy, 1e-7))
-                    let floor = i < self.bandNoiseFloors.count ? self.bandNoiseFloors[i] : -62
-                    return self.normalizedDecibels(dB, floor: floor, range: 40)
-                }
-
-                let spectralPresence = self.weightedAverage(spectralLevels, weights: self.voicePresenceWeights)
-                let voiceEnergy = self.voiceGate(spectralPresence)
-
-                return spectralLevels.enumerated().map { (i, spectral) in
-                    let profile = i < self.visualBarProfile.count ? self.visualBarProfile[i] : 1
-
-                    // 应用图标式分布：全人声居中，两侧随动但不抢视觉重心。（Apply icon-style distribution: voice centered, sides follow but don't steal visual focus.）
-                    let texture = 0.99 + spectral * 0.025
-                    return max(0, min(1, voiceEnergy * profile * texture))
-                }
-            }
-        }
-
-        return bands
-    }
-
-    private func bandEnergy(mags: [Float], loIdx: Int, hiIdx: Int) -> Float {
-        var sum: Float = 0
-        var peak: Float = 0
-        let count = hiIdx - loIdx + 1
-
-        for idx in loIdx...hiIdx {
-            let value = mags[idx]
-            sum += value
-            if value > peak { peak = value }
-        }
-
-        let mean = sum / Float(count)
-        return mean * 0.50 + peak * 0.50
-    }
-
-    private func weightedAverage(_ values: [Float], weights: [Float]) -> Float {
-        var weightedSum: Float = 0
-        var totalWeight: Float = 0
-
-        for i in 0..<values.count {
-            let weight = i < weights.count ? weights[i] : 1
-            weightedSum += values[i] * weight
-            totalWeight += weight
-        }
-
-        guard totalWeight > 0 else { return 0 }
-        return weightedSum / totalWeight
-    }
-
-    private func voiceGate(_ level: Float) -> Float {
-        max(0, min(1, (level - 0.055) / 0.84))
-    }
-
-    private func normalizedDecibels(_ dB: Float, floor: Float, range: Float) -> Float {
-        max(0, min(1, (dB - floor) / range))
+        lastStartSucceededAt = nil
     }
 }
