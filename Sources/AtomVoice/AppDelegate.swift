@@ -170,7 +170,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // ESC 取消录音，不上屏（ESC cancels recording, no text injection）
         fnKeyMonitor.onEscPressed = { [weak self] in self?.session.cancel() }
-        // Space/Backspace 立即上屏，跳过 LLM（Space/Backspace injects text immediately, skipping LLM）
+        // Return 确认结束录音，继续走自动标点和 LLM 优化（Return commits recording through normal finalization）
+        fnKeyMonitor.onCommitStop = { [weak self] in self?.session.stop() }
+        // Space/Backspace/标点立即上屏，跳过 LLM（Space/Backspace/punctuation injects text immediately, skipping LLM）
         fnKeyMonitor.onImmediateStop = { [weak self] punctuation in
             self?.session.stopImmediate(appending: punctuation)
         }

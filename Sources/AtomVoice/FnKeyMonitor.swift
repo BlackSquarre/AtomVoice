@@ -31,6 +31,7 @@ final class FnKeyMonitor {
 
     // 录音期间的按键回调（Key callbacks during recording）
     var onEscPressed: (() -> Void)?         // ESC 取消录音（ESC cancels recording）
+    var onCommitStop: (() -> Void)?         // Return 确认结束，保留 LLM 优化（Return commits recording, keeping LLM refinement）
     var onImmediateStop: ((String?) -> Void)?  // Space/Backspace/标点立即上屏（Space/Backspace/punctuation injects immediately）
     var isRecording = false                  // 由 AppDelegate 设置（Set by AppDelegate）
 
@@ -45,6 +46,7 @@ final class FnKeyMonitor {
 
     private static let fnKeyCode: UInt16 = 0x3F  // 63
     private static let escKeyCode: UInt16 = 0x35  // 53
+    private static let returnKeyCode: UInt16 = 0x24  // 36
     private static let spaceKeyCode: UInt16 = 0x31  // 49
     private static let backspaceKeyCode: UInt16 = 0x33  // 51
 
@@ -162,6 +164,13 @@ final class FnKeyMonitor {
                     DebugLog.info("[FnKeyMonitor] >>> ESC 取消录音")
                     DispatchQueue.main.async { [weak self] in
                         self?.onEscPressed?()
+                    }
+                    return nil
+
+                case FnKeyMonitor.returnKeyCode:
+                    DebugLog.info("[FnKeyMonitor] >>> Return 确认结束录音")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onCommitStop?()
                     }
                     return nil
 
