@@ -482,9 +482,9 @@
 "menu.edit.delete" = "Löschen";
 "menu.edit.selectAll" = "Alles auswählen";
 
-/* Kopfhörer-Fernbedienung */
-"menu.headphoneControl" = "Kopfhörer-Fernbedienung";
-"tooltip.menu.headphoneControl" = "Mit der Fernbedienung deiner Kopfhörer die Aufnahme steuern (Klick / Doppelklick / Lang)";
-"alert.headphoneControl.title" = "Kopfhörer-Fernbedienung aktivieren?";
-"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer, um die Aufnahme zu steuern: Einfacher Klick folgt deinem aktuellen Eingabemodus, Doppelklick sendet Return, langes Drücken zum Sprechen. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
+/* Kopfhörer-Sprachsteuerung */
+"menu.headphoneControl" = "Kopfhörer-Sprachsteuerung (Beta)";
+"tooltip.menu.headphoneControl" = "Mit der Play/Pause-Taste der Kopfhörer die Spracheingabe steuern: im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden; im Klick-Modus startet oder stoppt ein Klick; Doppelklick sendet Return. Empfohlen für Vibe Coding.";
+"alert.headphoneControl.title" = "Kopfhörer-Sprachsteuerung aktivieren?";
+"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer für die Spracheingabe. Im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden. Im Klick-Modus startet oder stoppt ein Klick. Doppelklick sendet immer Return. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen den Halten-Modus eventuell nicht.";
 "alert.headphoneControl.enable" = "Aktivieren";

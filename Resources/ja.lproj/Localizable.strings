@@ -483,8 +483,8 @@
 "menu.edit.selectAll" = "すべてを選択";
 
 /* ヘッドフォン リモート操作 */
-"menu.headphoneControl" = "ヘッドフォン リモート操作";
-"tooltip.menu.headphoneControl" = "ヘッドフォンのリモートボタンで録音を操作（シングル / ダブル / 長押し）";
-"alert.headphoneControl.title" = "ヘッドフォン リモート操作を有効にしますか？";
-"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで録音を操作します：シングルクリックは現在の入力モードに従い、ダブルクリックで Return を送信、長押しで話します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しが使えないことがあります。";
+"menu.headphoneControl" = "ヘッドフォン音声コントロール (Beta)";
+"tooltip.menu.headphoneControl" = "ヘッドフォンの再生/一時停止ボタンで音声入力を操作: 長押しモードでは押している間話し、離すと終了。タップモードではシングル押しで開始/停止。ダブル押しで Return を送信します。Vibe Coding におすすめです。";
+"alert.headphoneControl.title" = "ヘッドフォン音声コントロールを有効にしますか？";
+"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで音声入力を操作します。長押しモードでは押している間話し、離すと終了します。タップモードではシングル押しで開始または停止します。ダブル押しは常に Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しモードが使えないことがあります。";
 "alert.headphoneControl.enable" = "有効にする";

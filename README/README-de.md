@@ -12,10 +12,10 @@
 ---
 
 ### 🔒 Datenschutz zuerst
-Spracherkennung läuft standardmäßig **auf dem Gerät** — entweder über Apples Spracherkennung oder die mitgelieferte Sherpa-ONNX-Lokal-Engine. Audio verlässt deinen Mac nur, wenn du die LLM-Textverfeinerung explizit aktivierst.
+AtomVoice macht jede Cloud-Nutzung explizit. Sherpa-ONNX ist vollständig offline, Apple Speech kann auf dem Gerät erzwungen werden, wenn die aktuelle Sprache das unterstützt, und Doubao Cloud ASR / LLM-Verfeinerung sind optional. AtomVoice betreibt keinen Server, bewahrt keine Aufnahmen auf und speichert keinen Transkriptverlauf.
 
 ### ⚡ Leichtgewichtig
-Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons. Sherpa-Modelle werden bei Bedarf geladen und unter Speicherdruck automatisch freigegeben.
+Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons. Sherpa-Runtime, ASR-Modelle und Satzzeichenmodelle werden bei Bedarf geladen; große lokale Modelle können nach Leerlaufzeit oder kritischem Speicherdruck freigegeben werden.
 
 ---
 
@@ -25,18 +25,20 @@ Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons.
 - **Halten zum Sprechen** oder **Tippen zum Sprechen** — deine Wahl, mit optionalem Stille-Auto-Stopp
 - **Anpassbare Auslösetaste** — wähle den Modifier, der zu deiner Tastatur passt
 - **Tastenkürzel während der Aufnahme** — Aufnahme abbrechen, sofort einfügen ohne LLM, oder mit einem Satzzeichen abschließen — alles per Einzeltastendruck
+- **Kopfhörer-Sprachsteuerung (Beta)** — nutze die Play/Pause-Taste der Kopfhörer für Spracheingabe: einfacher Druck folgt deinem Eingabemodus, langer Druck startet Aufnahme, Doppeldruck sendet Return
 - **Auto-Abbruch beim App-Wechsel** (nur Halten-Modus)
 
 ### Erkennungs-Engines
-- **Apple Spracherkennung** — Streaming, optionaler On-Device-Modus, **rollende Segmentierung** umgeht das 1-Minuten-Limit von SFSpeechRecognizer
-- **Sherpa-ONNX** — vollständig offline-fähige lokale Engine, Modelle werden beim ersten Gebrauch automatisch geladen, Satzzeichen-Modell inklusive
-- **8 Erkennungssprachen** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch
+- **Apple Spracherkennung** — System-Engine mit Streaming, optionalem On-Device-Modus und **rollender Segmentierung**, die das 1-Minuten-Limit von SFSpeechRecognizer umgeht
+- **Sherpa-ONNX** — vollständig offline-fähige lokale Engine mit sprachspezifischen Modell-Presets, CPU/Core-ML-Backends, On-Demand-Downloads für Runtime/ASR/Satzzeichen, Auto-Unload und Import von Drittanbieter-Modellen
+- **Doubao Cloud ASR** — optionale Volcengine-Streaming-Erkennung mit API-Key im Schlüsselbund, ITN, smarten Satzzeichen, Textglättung, optionalem Final-Pass und Apple-Speech-Fallback bei Cloud-Fehlern
+- **8 UI- und Erkennungssprachen** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa unterstützt außerdem importierte Drittanbieter-Modelle für Sprachen ohne integriertes Preset
 
 ### Textausgabe
 - **Apple Live-Einfügen** — abgeschlossene Sätze werden während der Aufnahme eingefügt, ohne dass du die Taste loslassen musst
 - **Smarte Satzzeichen** — lokaler heuristischer Satzzeichen-Generator (sprachabhängig); übersprungen, wenn der Cursor bereits von einem Satzzeichen gefolgt ist
 - **CJK-IME-kompatibel** — wechselt vor dem Einfügen vorübergehend zur ASCII-Belegung und stellt sie danach wieder her
-- **LLM-Verfeinerung** — OpenAI-kompatible **und Anthropic**-APIs mit Streaming-Vorschau; 10 vorkonfigurierte Anbieter + frei editierbare Liste; mehrsprachiger Standard-System-Prompt oder dein eigener
+- **LLM-Verfeinerung (Beta)** — reine Nachbearbeitung des erkannten Texts mit OpenAI-kompatiblen **und Anthropic**-APIs, Streaming-Vorschau, 10 vorkonfigurierten Anbietern + frei editierbarer Liste, mehrsprachigem Standard-System-Prompt oder deinem eigenen
 
 ### UI und Animation
 - **5-Band-FFT-Spektralwellenform**, abgestimmt auf die menschliche Stimme (100–4200 Hz), getrieben von Accelerate
@@ -45,9 +47,11 @@ Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons.
 - **8 UI-Sprachen**, automatisch anhand der Systemsprache erkannt
 
 ### Systemintegration
-- **Auto-Update** von GitHub Releases mit Code-Signatur-Prüfung (optionaler Beta-Kanal)
+- **Ersteinrichtung** führt durch Berechtigungen, Eingabemodus und Wahl der Erkennungs-Engine
+- **Auto-Update** von GitHub Releases mit SHA256- und Code-Signatur-Prüfung (optionaler Beta-Kanal)
 - **Beim Anmelden starten** (SMAppService)
 - **Audio-Eingabegerät auswählen** — beliebiges Systemmikrofon möglich
+- **Robuste Audio-Routen** — Aufnahmen können sich erholen, wenn Kopfhörer, AirPods oder Eingabegeräte währenddessen wechseln; Audio wird pro Engine neu abgetastet
 - **Systemlautstärke beim Aufnehmen senken** (optional)
 - **Single-Instance-Schutz** — alte Instanzen werden beim Start automatisch beendet
 
@@ -74,12 +78,21 @@ brew install --cask atomvoice
 ```bash
 git clone https://github.com/BlackSquarre/AtomVoice.git
 cd AtomVoice
-make install
+make dev
+open dist/Test/AtomVoice.app
 ```
+
+Für Architekturprüfungen:
+
+```bash
+make test
+```
+
+Das Makefile bündelt und signiert die App mit der in `Makefile` konfigurierten Apple-Development-Identität; passe sie an, wenn du auf einem anderen Mac baust.
 
 ## ⚠️ Gatekeeper-Hinweis
 
-Ad-hoc-signiert (nicht notarisiert). Beim ersten Öffnen:
+Nicht notarisiert. Beim ersten Öffnen:
 
 1. Rechtsklick auf `AtomVoice.app` → **Öffnen** → **Öffnen** klicken
 2. Oder **Systemeinstellungen → Datenschutz & Sicherheit** → **Trotzdem öffnen**
@@ -92,19 +105,29 @@ Ad-hoc-signiert (nicht notarisiert). Beim ersten Öffnen:
 | Auslösetaste halten | Aufnahme starten (Halten-Modus) |
 | Auslösetaste loslassen | Aufnahme stoppen und Text einfügen |
 | Auslösetaste tippen | Aufnahme starten / stoppen (Tippen-Modus) |
+| Kapsel während der Aufnahme anklicken | Aufnahme stoppen und Text einfügen |
 | `ESC` während Aufnahme | Abbrechen, kein Text eingefügt |
 | `Leertaste` / `Rücktaste` während Aufnahme | Sofort einfügen, LLM überspringen |
 | Satzzeichen während Aufnahme tippen | Sofort einfügen + dieses Zeichen anhängen |
-| Menüleisten-Symbol | Engine / Sprache / Modus / Animation / LLM wechseln |
+| Kopfhörer-Play/Pause-Taste (optional, Beta) | Einfacher Druck folgt dem Modus, langer Druck nimmt auf, Doppeldruck sendet Return |
+| Menüleisten-Symbol | Engine / Sprache / Eingabemodus / Animation / ASR-Einstellungen / LLM wechseln |
 
-## LLM-Verfeinerung einrichten
+## Engine Einrichten
 
-Menüleiste → **LLM-Verfeinerung** → **Einstellungen** — wähle einen Anbieter-Preset oder füge eigene hinzu, trage API-Key und Modellnamen ein. Der Streaming-Output wird live in der Kapsel angezeigt.
+- **Apple Speech** funktioniert sofort. Aktiviere On-Device-Erkennung, wenn die gewählte Sprache sie unterstützt.
+- **Sherpa-ONNX** wird unter **Erkennungs-Engine-Einstellungen → Sherpa lokal** konfiguriert. Wähle Sprache, Modell-Preset, CPU/Core-ML-Backend, Auto-Unload-Verzögerung oder importiere ein Drittanbieter-Modellpaket.
+- **Doubao Cloud ASR** wird unter **Erkennungs-Engine-Einstellungen → Doubao Cloud ASR** konfiguriert. Trage deinen Volcengine-API-Key ein, wähle die Modellversion und behalte oder ändere den WebSocket-Endpunkt. Beim ersten Wechsel zu Doubao wird Cloud-Audioverarbeitung bestätigt.
+
+## LLM-Verfeinerung (Beta) einrichten
+
+Menüleiste → **LLM-Verfeinerung (Beta)** → **Einstellungen** — wähle einen Anbieter-Preset oder füge eigene hinzu, trage API-Key und Modellnamen ein. Der Streaming-Output wird live in der Kapsel angezeigt.
 
 Eingebaute Presets: **OpenAI** / **Anthropic** / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq / **Ollama (lokal)** / Benutzerdefiniert.
 
-Der Standard-System-Prompt ist auf Diktat-Politur abgestimmt (Homophone, falsch erkannte Produkt-/API-Namen, Füllwörter, Satzzeichen) und wechselt automatisch je nach Erkennungssprache. Du kannst ihn mit deinem eigenen Prompt überschreiben.
+Der Standard-System-Prompt ist auf Diktat-Politur abgestimmt (Homophone, falsch erkannte Produkt-/API-Namen, Füllwörter, Satzzeichen) und wechselt automatisch je nach Erkennungssprache. Du kannst ihn mit deinem eigenen Prompt überschreiben. Die LLM-Verfeinerung sendet erkannten Text, kein Audio, an den gewählten Anbieter.
 
 ## License
 
 Apache License 2.0
+
+Datenschutzerklärung: [Deutsch](privacy/PRIVACY-de.md) / [English](privacy/PRIVACY-en.md).

@@ -482,9 +482,9 @@
 "menu.edit.delete" = "Supprimer";
 "menu.edit.selectAll" = "Tout sélectionner";
 
-/* Contrôle par écouteurs */
-"menu.headphoneControl" = "Contrôle par écouteurs";
-"tooltip.menu.headphoneControl" = "Utilisez la télécommande des écouteurs pour piloter l'enregistrement (clic / double clic / appui long)";
-"alert.headphoneControl.title" = "Activer le contrôle par écouteurs ?";
-"alert.headphoneControl.message" = "AtomVoice prend le contrôle de la touche lecture/pause des écouteurs pour piloter l'enregistrement : un clic suit votre mode d'entrée actuel, un double clic envoie Entrée, un appui long pour parler. Actif uniquement quand des écouteurs ou un appareil Bluetooth est connecté. Certains appareils Bluetooth peuvent ne pas prendre en charge l'appui long.";
+/* Contrôle vocal au casque */
+"menu.headphoneControl" = "Contrôle vocal au casque (Beta)";
+"tooltip.menu.headphoneControl" = "Utilisez le bouton lecture/pause du casque pour contrôler la saisie vocale : en mode maintien, maintenez pour parler puis relâchez pour terminer ; en mode clic, un clic démarre ou arrête ; double clic envoie Return. Recommandé pour le vibe coding.";
+"alert.headphoneControl.title" = "Activer le contrôle vocal au casque ?";
+"alert.headphoneControl.message" = "AtomVoice prend le contrôle de la touche lecture/pause du casque pour la saisie vocale. En mode maintien, maintenez pour parler puis relâchez pour terminer. En mode clic, un clic démarre ou arrête. Le double clic envoie toujours Return. Actif uniquement quand des écouteurs ou un appareil Bluetooth est connecté. Certains appareils Bluetooth peuvent ne pas prendre en charge le mode maintien.";
 "alert.headphoneControl.enable" = "Activer";

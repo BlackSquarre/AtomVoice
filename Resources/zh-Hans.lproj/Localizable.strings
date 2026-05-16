@@ -483,9 +483,9 @@
 "menu.edit.delete" = "删除";
 "menu.edit.selectAll" = "全选";
 
-/* 耳机线控按钮 */
-"menu.headphoneControl" = "耳机线控按钮";
-"tooltip.menu.headphoneControl" = "用耳机线控按钮控制录音（单击 / 双击 / 长按）";
-"alert.headphoneControl.title" = "启用耳机线控按钮？";
-"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制录音：单击对应当前输入模式，双击发送回车，长按说话。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按。";
+/* 耳机语音控制 */
+"menu.headphoneControl" = "耳机语音控制 (Beta)";
+"tooltip.menu.headphoneControl" = "用耳机播放/暂停键控制语音输入：长按模式下按住说话、松开结束；单击模式下单击开始/停止；双击发送回车。适合 Vibe Coding 时使用。";
+"alert.headphoneControl.title" = "启用耳机语音控制？";
+"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击始终发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。";
 "alert.headphoneControl.enable" = "启用";

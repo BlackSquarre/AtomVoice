@@ -12,10 +12,10 @@
 ---
 
 ### 🔒 Privacy First
-Speech recognition runs **on-device** by default — either via Apple Speech Recognition or the bundled Sherpa-ONNX local engine. No audio leaves your Mac unless you explicitly enable LLM Refinement.
+AtomVoice makes cloud use explicit. Sherpa-ONNX is fully offline, Apple Speech can be forced on-device when the current language supports it, and Doubao Cloud ASR / LLM Refinement are opt-in. AtomVoice itself does not run a server, keep recordings, or store transcript history.
 
 ### ⚡ Lightweight
-Small app bundle, near-zero CPU when idle, no background daemons. Sherpa models are downloaded on demand and released automatically under memory pressure.
+Small app bundle, near-zero CPU when idle, no background daemons. Sherpa runtime, ASR models, and punctuation models are downloaded on demand, and large local models can be released after idle time or critical memory pressure.
 
 ---
 
@@ -25,18 +25,20 @@ Small app bundle, near-zero CPU when idle, no background daemons. Sherpa models 
 - **Hold-to-talk or tap-to-talk** — your choice, with optional silence-based auto-stop
 - **Customizable trigger key** — pick whichever modifier fits your keyboard
 - **In-recording shortcuts** — cancel the take, inject immediately and skip LLM polish, or end with a punctuation in one keypress
+- **Headphone Voice Control (Beta)** — use the headphone play/pause button for voice input: single press follows your input mode, long press talks, double press sends Return
 - **Auto-cancel on app switch** (hold mode only)
 
 ### Recognition engines
-- **Apple Speech Recognition** — streaming, optional on-device mode, **segmented rolling** that breaks the 1-minute SFSpeechRecognizer limit
-- **Sherpa-ONNX** — fully offline local engine, models auto-download on first use; ships with a punctuation model
-- **8 recognition languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch
+- **Apple Speech Recognition** — system engine with streaming, optional on-device mode, and **segmented rolling** that breaks the 1-minute SFSpeechRecognizer limit
+- **Sherpa-ONNX** — fully offline local engine with language-specific model presets, CPU/Core ML backends, on-demand runtime/model/punctuation downloads, auto-unload, and third-party model import
+- **Doubao Cloud ASR** — optional Volcengine streaming recognition with API Key stored in Keychain, ITN, smart punctuation, text smoothing, optional final-pass recognition, and Apple Speech fallback on cloud failures
+- **8 app and recognition languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa also supports imported third-party models for languages without built-in presets
 
 ### Text output
 - **Apple Live Insertion** — completed sentences are injected during recording, no need to wait for release
 - **Smart punctuation** — local heuristic punctuator (per-language); skipped automatically when the cursor is already followed by punctuation
 - **CJK IME compatible** — temporarily switches to ASCII layout before paste, restores after
-- **LLM Refinement** — OpenAI-compatible **and Anthropic** APIs with streaming preview; 10 preset providers + fully editable custom list; multilingual default system prompt or your own
+- **LLM Refinement (Beta)** — text-only post-processing with OpenAI-compatible **and Anthropic** APIs, streaming preview, 10 preset providers + fully editable custom list, multilingual default system prompt or your own
 
 ### UI & animation
 - **5-band FFT spectrum waveform** tuned for the human voice (100–4200 Hz), driven by Accelerate
@@ -45,9 +47,11 @@ Small app bundle, near-zero CPU when idle, no background daemons. Sherpa models 
 - **8 UI languages**, auto-detected from system
 
 ### System integration
-- **Auto update** from GitHub Releases with code-signature verification (optional Beta channel)
+- **First-run setup** guides permissions, input mode, and recognition-engine choice
+- **Auto update** from GitHub Releases with SHA256 and code-signature verification (optional Beta channel)
 - **Launch at login** (SMAppService)
 - **Audio input device picker** — choose any system microphone
+- **Audio route resilience** — recording can recover when headphones, AirPods, or input devices change mid-session; audio is resampled per recognition engine
 - **Lower system volume while recording** (optional)
 - **Single-instance protection** — old instance is terminated automatically on launch
 
@@ -74,12 +78,21 @@ brew install --cask atomvoice
 ```bash
 git clone https://github.com/BlackSquarre/AtomVoice.git
 cd AtomVoice
-make install
+make dev
+open dist/Test/AtomVoice.app
 ```
+
+For architecture checks, run:
+
+```bash
+make test
+```
+
+The Makefile bundles and signs the app with the Apple Development identity configured in `Makefile`; change that identity if you build on another Mac.
 
 ## ⚠️ Gatekeeper Warning
 
-Ad-hoc signed (not notarized). On first open:
+Not notarized. On first open:
 
 1. Right-click `AtomVoice.app` → **Open** → click **Open**
 2. Or go to **System Settings → Privacy & Security** → **Open Anyway**
@@ -92,21 +105,31 @@ Ad-hoc signed (not notarized). On first open:
 | Hold trigger key | Start recording (hold mode) |
 | Release trigger key | Stop and inject text |
 | Tap trigger key | Start / stop recording (tap mode) |
+| Click capsule while recording | Stop and inject text |
 | `ESC` while recording | Cancel, no text injected |
 | `Space` / `Backspace` while recording | Inject immediately, skip LLM |
 | Type punctuation while recording | Inject + append that punctuation |
-| Menu bar icon | Switch engine / language / mode / animation / LLM |
+| Headphone play/pause button (optional, Beta) | Single press follows input mode, long press records, double press sends Return |
+| Menu bar icon | Switch engine / language / input mode / animation / ASR settings / LLM |
 
-## LLM Refinement Setup
+## Recognition Engine Setup
 
-Menu bar → **LLM Refinement** → **Settings** — pick a provider preset or add your own, enter API key and model name. Streaming output is previewed live in the capsule.
+- **Apple Speech** works out of the box. Enable on-device recognition when the selected language supports it.
+- **Sherpa-ONNX** can be configured in **Recognition Engine Settings → Sherpa Local**. Choose language, model preset, CPU/Core ML provider, auto-unload delay, or import a third-party model package.
+- **Doubao Cloud ASR** can be configured in **Recognition Engine Settings → Doubao Cloud ASR**. Enter your Volcengine API Key, choose the model version, and keep or edit the WebSocket endpoint. The first switch to Doubao asks for cloud-audio confirmation.
+
+## LLM Refinement (Beta) Setup
+
+Menu bar → **LLM Refinement (Beta)** → **Settings** — pick a provider preset or add your own, enter API key and model name. Streaming output is previewed live in the capsule.
 
 Built-in presets: **OpenAI** / **Anthropic** / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq / **Ollama (local)** / Custom.
 
-The default system prompt is tuned for dictation polish (fix homophones, mis-transcribed product/API names, fillers, punctuation) and switches automatically by recognition language. You can override it with your own prompt.
+The default system prompt is tuned for dictation polish (fix homophones, mis-transcribed product/API names, fillers, punctuation) and switches automatically by recognition language. You can override it with your own prompt. LLM Refinement sends recognized text, not audio, to the provider you select.
 
 ## License
 
 Apache 2.0 — see [../LICENSE](../LICENSE) for details.
 
 Third-party notices (Sherpa-ONNX / ONNX Runtime) are in [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+Privacy policy: [English](privacy/PRIVACY-en.md) / [简体中文](privacy/PRIVACY-zh-Hans.md).

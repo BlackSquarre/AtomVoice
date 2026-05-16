@@ -482,9 +482,9 @@
 "menu.edit.delete" = "刪除";
 "menu.edit.selectAll" = "全選";
 
-/* 耳機線控按鈕 */
-"menu.headphoneControl" = "耳機線控按鈕";
-"tooltip.menu.headphoneControl" = "用耳機線控按鈕控制錄音（單擊 / 雙擊 / 長按）";
-"alert.headphoneControl.title" = "啟用耳機線控按鈕？";
-"alert.headphoneControl.message" = "AtomVoice 會接管耳機的播放/暫停鍵來控制錄音：單擊對應目前輸入模式，雙擊送出 Return，長按說話。僅在連接耳機或藍牙裝置時才會生效。部分藍牙裝置可能不支援長按。";
+/* 耳機語音控制 */
+"menu.headphoneControl" = "耳機語音控制 (Beta)";
+"tooltip.menu.headphoneControl" = "用耳機播放/暫停鍵控制語音輸入：長按模式下按住說話、鬆開結束；單擊模式下單擊開始/停止；雙擊送出 Return。適合 Vibe Coding 時使用。";
+"alert.headphoneControl.title" = "啟用耳機語音控制？";
+"alert.headphoneControl.message" = "AtomVoice 會接管耳機的播放/暫停鍵來控制語音輸入。長按模式下，按住說話、鬆開結束；單擊模式下，單擊開始或停止；雙擊一律送出 Return。僅在連接耳機或藍牙裝置時才會生效。部分藍牙裝置可能不支援長按模式。";
 "alert.headphoneControl.enable" = "啟用";

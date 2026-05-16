@@ -483,8 +483,8 @@
 "menu.edit.selectAll" = "Seleccionar todo";
 
 /* Control remoto de auriculares */
-"menu.headphoneControl" = "Control remoto de auriculares";
-"tooltip.menu.headphoneControl" = "Usa el botón de los auriculares para controlar la grabación (clic / doble clic / pulsación larga)";
-"alert.headphoneControl.title" = "¿Activar el control remoto de auriculares?";
-"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para grabar: un clic sigue tu modo de entrada actual, doble clic envía Return, mantener pulsado para hablar. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir la pulsación larga.";
+"menu.headphoneControl" = "Control de voz con auriculares (Beta)";
+"tooltip.menu.headphoneControl" = "Usa el botón reproducir/pausa de los auriculares para controlar la entrada por voz: en modo mantener, mantén pulsado para hablar y suelta para terminar; en modo pulsar, un clic inicia o detiene; doble clic envía Return. Recomendado para vibe coding.";
+"alert.headphoneControl.title" = "¿Activar el control de voz con auriculares?";
+"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para la entrada por voz. En modo mantener, mantén pulsado para hablar y suelta para terminar. En modo pulsar, un clic inicia o detiene. El doble clic siempre envía Return. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir el modo mantener.";
 "alert.headphoneControl.enable" = "Activar";

@@ -12,10 +12,10 @@
 ---
 
 ### 🔒 Confidentialité avant tout
-La reconnaissance vocale s'exécute **sur l'appareil** par défaut — via la reconnaissance vocale d'Apple ou le moteur local Sherpa-ONNX intégré. Aucun audio ne quitte ton Mac à moins que tu n'actives explicitement l'optimisation par LLM.
+AtomVoice rend tout traitement cloud explicite. Sherpa-ONNX est entièrement hors ligne, Apple Speech peut être forcé sur l'appareil quand la langue le permet, et Doubao Cloud ASR / l'optimisation LLM sont optionnels. AtomVoice n'exploite pas de serveur, ne conserve pas les enregistrements et ne stocke pas l'historique des transcriptions.
 
 ### ⚡ Léger
-Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Les modèles Sherpa sont téléchargés à la demande et libérés automatiquement en cas de pression mémoire.
+Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Le runtime Sherpa, les modèles ASR et les modèles de ponctuation sont téléchargés à la demande, et les gros modèles locaux peuvent être libérés après inactivité ou forte pression mémoire.
 
 ---
 
@@ -25,18 +25,20 @@ Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Les modè
 - **Maintenir pour parler** ou **appuyer pour parler** — au choix, avec arrêt automatique sur silence en option
 - **Touche de déclenchement personnalisable** — choisis le modificateur qui te convient
 - **Raccourcis pendant l'enregistrement** — annuler la prise, insérer immédiatement en sautant le LLM, ou clore avec un signe de ponctuation en une seule touche
+- **Contrôle vocal au casque (Beta)** — utilisez le bouton lecture/pause du casque pour la saisie vocale : appui simple selon le mode choisi, appui long pour parler, double appui pour envoyer Return
 - **Annulation automatique au changement d'app** (mode maintenir uniquement)
 
 ### Moteurs de reconnaissance
-- **Reconnaissance vocale Apple** — streaming, mode sur l'appareil optionnel, **segmentation glissante** qui dépasse la limite d'1 minute de SFSpeechRecognizer
-- **Sherpa-ONNX** — moteur local entièrement hors ligne, modèles téléchargés automatiquement à la première utilisation, modèle de ponctuation inclus
-- **8 langues de reconnaissance** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch
+- **Reconnaissance vocale Apple** — moteur système avec streaming, mode sur l'appareil optionnel et **segmentation glissante** qui dépasse la limite d'1 minute de SFSpeechRecognizer
+- **Sherpa-ONNX** — moteur local entièrement hors ligne avec préréglages par langue, backends CPU/Core ML, téléchargements à la demande du runtime, des modèles ASR et de ponctuation, déchargement automatique et import de modèles tiers
+- **Doubao Cloud ASR** — moteur cloud Volcengine optionnel avec API Key stockée dans le trousseau, ITN, ponctuation intelligente, lissage du texte, passe finale optionnelle et repli Apple Speech en cas d'échec cloud
+- **8 langues d'interface et de reconnaissance** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch ; Sherpa accepte aussi des modèles tiers importés pour les langues sans préréglage intégré
 
 ### Sortie texte
 - **Insertion en direct Apple** — les phrases terminées sont injectées pendant l'enregistrement, sans attendre que tu relâches la touche
 - **Ponctuation intelligente** — moteur heuristique local (par langue) ; ignoré automatiquement si le curseur est déjà suivi d'un signe de ponctuation
 - **Compatible IME CJK** — bascule temporairement vers la disposition ASCII avant de coller, puis restaure
-- **Optimisation par LLM** — APIs compatibles OpenAI **et Anthropic** avec aperçu en streaming ; 10 fournisseurs prédéfinis + liste personnalisée librement modifiable ; system prompt par défaut multilingue ou le tien
+- **Optimisation par LLM (Beta)** — post-traitement du texte reconnu uniquement, avec APIs compatibles OpenAI **et Anthropic**, aperçu en streaming, 10 fournisseurs prédéfinis + liste personnalisée librement modifiable, system prompt par défaut multilingue ou le tien
 
 ### UI et animation
 - **Forme d'onde spectrale FFT à 5 bandes** réglée pour la voix humaine (100–4200 Hz), pilotée par Accelerate
@@ -45,9 +47,11 @@ Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Les modè
 - **8 langues d'interface**, détectées automatiquement depuis le système
 
 ### Intégration système
-- **Mise à jour automatique** depuis GitHub Releases avec vérification de signature (canal Beta optionnel)
+- **Configuration initiale** pour guider les permissions, le mode de saisie et le choix du moteur de reconnaissance
+- **Mise à jour automatique** depuis GitHub Releases avec vérification SHA256 et signature (canal Beta optionnel)
 - **Lancement à la connexion** (SMAppService)
 - **Sélecteur de périphérique d'entrée** — choisis n'importe quel micro du système
+- **Résilience audio** — l'enregistrement peut récupérer lors du branchement/retrait d'un casque, d'AirPods ou d'un changement d'entrée ; l'audio est rééchantillonné pour chaque moteur
 - **Baisse du volume système pendant l'enregistrement** (optionnel)
 - **Protection contre les doublons d'instance** — l'ancienne instance est fermée automatiquement au démarrage
 
@@ -74,12 +78,21 @@ brew install --cask atomvoice
 ```bash
 git clone https://github.com/BlackSquarre/AtomVoice.git
 cd AtomVoice
-make install
+make dev
+open dist/Test/AtomVoice.app
 ```
+
+Pour les vérifications d'architecture :
+
+```bash
+make test
+```
+
+Le Makefile empaquette et signe l'app avec l'identité Apple Development configurée dans `Makefile` ; change-la si tu construis sur un autre Mac.
 
 ## ⚠️ Avertissement Gatekeeper
 
-Signature ad-hoc (non notarisée). Au premier lancement :
+Non notarisée. Au premier lancement :
 
 1. Clic droit sur `AtomVoice.app` → **Ouvrir** → clique sur **Ouvrir**
 2. Ou va dans **Réglages système → Confidentialité et sécurité** → **Ouvrir quand même**
@@ -92,19 +105,29 @@ Signature ad-hoc (non notarisée). Au premier lancement :
 | Maintenir la touche de déclenchement | Démarre l'enregistrement (mode maintenir) |
 | Relâcher la touche de déclenchement | Arrête et insère le texte |
 | Appuyer sur la touche de déclenchement | Démarre / arrête (mode appuyer) |
+| Cliquer la capsule pendant l'enregistrement | Arrête et insère le texte |
 | `ESC` pendant l'enregistrement | Annule, aucun texte inséré |
 | `Espace` / `Retour arrière` pendant l'enregistrement | Insère immédiatement, saute le LLM |
 | Saisir un signe de ponctuation pendant l'enregistrement | Insère + ajoute ce signe |
-| Icône dans la barre de menus | Changer moteur / langue / mode / animation / LLM |
+| Bouton lecture/pause du casque (optionnel, Beta) | Appui simple selon le mode, appui long pour enregistrer, double appui pour Return |
+| Icône dans la barre de menus | Changer moteur / langue / mode de saisie / animation / réglages ASR / LLM |
 
-## Configuration de l'optimisation par LLM
+## Configuration des moteurs
 
-Barre de menus → **Optimisation par LLM** → **Réglages** — choisis un préréglage ou ajoute le tien, saisis ta clé API et le nom du modèle. La sortie en streaming est prévisualisée en direct dans la capsule.
+- **Apple Speech** fonctionne sans configuration. Active la reconnaissance sur l'appareil quand la langue sélectionnée la prend en charge.
+- **Sherpa-ONNX** se configure dans **Réglages du moteur de reconnaissance → Sherpa local**. Choisis la langue, le modèle, le backend CPU/Core ML, le délai de déchargement, ou importe un modèle tiers.
+- **Doubao Cloud ASR** se configure dans **Réglages du moteur de reconnaissance → Doubao Cloud ASR**. Saisis ta clé API Volcengine, choisis la version du modèle et conserve ou modifie l'endpoint WebSocket. Le premier passage à Doubao demande une confirmation de traitement audio cloud.
+
+## Configuration de l'optimisation par LLM (Beta)
+
+Barre de menus → **Optimisation par LLM (Beta)** → **Réglages** — choisis un préréglage ou ajoute le tien, saisis ta clé API et le nom du modèle. La sortie en streaming est prévisualisée en direct dans la capsule.
 
 Préréglages intégrés : **OpenAI** / **Anthropic** / DeepSeek / Moonshot (Kimi) / Qwen / GLM / Yi / Groq / **Ollama (local)** / Personnalisé.
 
-Le system prompt par défaut est ajusté pour le polissage de dictée (homophones, noms de produits/APIs mal transcrits, mots de remplissage, ponctuation) et bascule automatiquement selon la langue de reconnaissance. Tu peux le remplacer par le tien.
+Le system prompt par défaut est ajusté pour le polissage de dictée (homophones, noms de produits/APIs mal transcrits, mots de remplissage, ponctuation) et bascule automatiquement selon la langue de reconnaissance. Tu peux le remplacer par le tien. L'optimisation LLM envoie le texte reconnu, pas l'audio, au fournisseur choisi.
 
 ## License
 
 Apache License 2.0
+
+Politique de confidentialité : [Français](privacy/PRIVACY-fr.md) / [English](privacy/PRIVACY-en.md).

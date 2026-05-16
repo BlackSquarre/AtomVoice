@@ -482,9 +482,9 @@
 "menu.edit.delete" = "Delete";
 "menu.edit.selectAll" = "Select All";
 
-/* Headphone remote control */
-"menu.headphoneControl" = "Headphone Remote Control";
-"tooltip.menu.headphoneControl" = "Use the headphone remote button to control recording (single / double / long press)";
-"alert.headphoneControl.title" = "Enable Headphone Remote Control?";
-"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button to control recording: single press follows your current input mode, double press sends Return, long press to talk. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support long press.";
+/* Headphone voice control */
+"menu.headphoneControl" = "Headphone Voice Control (Beta)";
+"tooltip.menu.headphoneControl" = "Use the headphone play/pause button to control voice input: in hold mode, press and hold to talk, then release to finish; in tap mode, single press starts or stops; double press sends Return. Recommended for vibe coding.";
+"alert.headphoneControl.title" = "Enable Headphone Voice Control?";
+"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button for voice input. In hold mode, press and hold to talk, then release to finish. In tap mode, single press starts or stops. Double press always sends Return. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support hold mode.";
 "alert.headphoneControl.enable" = "Enable";
