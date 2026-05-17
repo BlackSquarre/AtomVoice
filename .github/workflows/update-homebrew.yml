@@ -23,13 +23,18 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          # 文件名中的版本号：空格替换为点号
-          FILE_VERSION="${VERSION// /-}"
-          FILE_VERSION="${FILE_VERSION//-/.}"
-          echo "file_version=$FILE_VERSION" >> $GITHUB_OUTPUT
-          
+          TAG="v${VERSION}"
+
+          # 从 release assets 读取真实的 Universal zip 文件名，避免版本命名规则变化导致 404。
+          ASSET_NAME=$(gh release view "$TAG" --repo ${{ github.repository }} --json assets -q '.assets[].name | select(endswith("-Universal.zip"))' | head -n 1)
+          if [ -z "$ASSET_NAME" ]; then
+            echo "Universal zip asset not found for $TAG" >&2
+            exit 1
+          fi
+          echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
+
           # 下载 Universal zip
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AtomVoice-${FILE_VERSION}-Universal.zip"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ASSET_NAME}"
           curl -L -o /tmp/AtomVoice.zip "$DOWNLOAD_URL"
           
           # 计算 SHA256
@@ -49,15 +54,15 @@ jobs:
       - name: Update cask file
         run: |
           VERSION="${{ steps.release.outputs.version }}"
-          FILE_VERSION="${{ steps.release.outputs.file_version }}"
           SHA256="${{ steps.release.outputs.sha256 }}"
+          DOWNLOAD_URL="${{ steps.release.outputs.download_url }}"
           
           cat > homebrew-tap/Casks/atomvoice.rb << EOF
           cask "atomvoice" do
             version "${VERSION}"
             sha256 "${SHA256}"
 
-            url "https://github.com/BlackSquarre/AtomVoice/releases/download/v${VERSION}/AtomVoice-${FILE_VERSION}-Universal.zip"
+            url "${DOWNLOAD_URL}"
             name "AtomVoice"
             desc "macOS menu bar voice input tool - press Fn to record, release to inject text"
             homepage "https://github.com/BlackSquarre/AtomVoice"
