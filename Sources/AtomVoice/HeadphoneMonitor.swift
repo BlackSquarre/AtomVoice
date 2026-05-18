@@ -5,14 +5,18 @@ import Cocoa
 /// 拦截条件：
 ///   1. AppSettings.headphoneControlEnabled == true
 ///   2. AudioOutputProbe.isHeadphoneOutputActive() == true
+///   3. HID 来源证明为可信非键盘 Consumer Control 设备
 ///
 /// 手势：
 ///   - 长按（> 250ms 未松开）：触发 onLongPressStart，松开时触发 onLongPressEnd
 ///   - 双击（< 280ms 内再次按下并松开）：触发 onDoubleTap
-///   - 单击（不是双击的快速点击）：触发 onSingleTap；如果回调返回 false，则把原 play/pause 事件
-///     补发给系统，让音乐照常播放/暂停
+///   - 单击：先尝试 onOptimisticSingleTap 低延迟处理；若业务不接管，则等双击窗口落定后触发 onSingleTap。
+///     如果单击回调返回 false，则把原 play/pause 事件补发给系统，让音乐照常播放/暂停。
 final class HeadphoneMonitor {
     var onSingleTap: () -> Bool        // 返回 true 表示已处理，无需补发 play/pause
+    var onOptimisticSingleTap: () -> Bool = { false }
+    var onCancelOptimisticSingleTap: () -> Void = {}
+    var onOptimisticSingleTapSettled: () -> Void = {}
     var onDoubleTap: () -> Void
     var onLongPressStart: () -> Void
     var onLongPressEnd: () -> Void
@@ -26,6 +30,8 @@ final class HeadphoneMonitor {
 
     /// 由外部根据「开关 + 当前输出设备」综合决定是否拦截
     var isInterceptEnabled: () -> Bool
+    /// 由外部提供最近 Play/Pause 是否来自可信 HID 来源
+    var hasTrustedPlayPauseSource: () -> Bool
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -43,6 +49,8 @@ final class HeadphoneMonitor {
     private var doubleTapTimer: Timer?
     private var pendingPlayPauseEvent: CGEvent?  // 等待是否补发的原始事件副本
     private var isSecondPress = false            // 当前 .pressed 是否来自双击的第二次按下
+    private var optimisticSingleHandled = false  // 第一下是否已经被业务乐观消费
+    private var trustedPlayPausePressActive = false
 
     private static let longPressThreshold: TimeInterval = 0.25
     private static let doubleTapWindow: TimeInterval = 0.28
@@ -61,13 +69,15 @@ final class HeadphoneMonitor {
         onDoubleTap: @escaping () -> Void,
         onLongPressStart: @escaping () -> Void,
         onLongPressEnd: @escaping () -> Void,
-        isInterceptEnabled: @escaping () -> Bool
+        isInterceptEnabled: @escaping () -> Bool,
+        hasTrustedPlayPauseSource: @escaping () -> Bool
     ) {
         self.onSingleTap = onSingleTap
         self.onDoubleTap = onDoubleTap
         self.onLongPressStart = onLongPressStart
         self.onLongPressEnd = onLongPressEnd
         self.isInterceptEnabled = isInterceptEnabled
+        self.hasTrustedPlayPauseSource = hasTrustedPlayPauseSource
     }
 
     func start() {
@@ -153,6 +163,7 @@ final class HeadphoneMonitor {
             return Unmanaged.passUnretained(event)
         }
         guard keyCode == HeadphoneMonitor.nxKeyTypePlay else {
+            DebugLog.info("[HeadphoneMonitor] 放行非 PLAY 媒体键 keyCode=\(keyCode) subtype=\(nsEvent.subtype.rawValue)")
             return Unmanaged.passUnretained(event)
         }
 
@@ -164,6 +175,19 @@ final class HeadphoneMonitor {
         let keyFlags = data1 & 0x0000FFFF
         let keyState = (keyFlags & 0xFF00) >> 8
         let isKeyDown = keyState == 0x0A    // NX_KEYDOWN
+
+        if isKeyDown {
+            guard hasTrustedPlayPauseSource() else {
+                DebugLog.info("[HeadphoneMonitor] 放行 PLAY：缺少可信 HID 来源证明")
+                return Unmanaged.passUnretained(event)
+            }
+            trustedPlayPausePressActive = true
+        } else {
+            guard trustedPlayPausePressActive else {
+                return Unmanaged.passUnretained(event)
+            }
+            trustedPlayPausePressActive = false
+        }
 
         // 拷贝事件以便后续可能补发（必须在返回 nil 之前）
         let copy = event.copy()
@@ -182,10 +206,15 @@ final class HeadphoneMonitor {
     private func handlePlayKeyDown(originalCopy: CGEvent?) {
         switch state {
         case .idle:
-            pendingPlayPauseEvent = originalCopy
             isSecondPress = false
+            optimisticSingleHandled = onOptimisticSingleTap()
+            pendingPlayPauseEvent = optimisticSingleHandled ? nil : originalCopy
             state = .pressed
-            scheduleLongPressTimer()
+            if optimisticSingleHandled {
+                DebugLog.info("[HeadphoneMonitor] 单击已乐观处理，等待双击窗口")
+            } else {
+                scheduleLongPressTimer()
+            }
         case .awaitingSecondTap:
             doubleTapTimer?.invalidate()
             doubleTapTimer = nil
@@ -207,11 +236,14 @@ final class HeadphoneMonitor {
             state = .idle
             isSecondPress = false
             pendingPlayPauseEvent = nil
+            settleOptimisticSingleTap(cancel: false)
             onLongPressEnd()
         case .pressed:
             if isSecondPress {
                 state = .idle
                 isSecondPress = false
+                pendingPlayPauseEvent = nil
+                settleOptimisticSingleTap(cancel: true)
                 onDoubleTap()
             } else {
                 state = .awaitingSecondTap
@@ -242,6 +274,10 @@ final class HeadphoneMonitor {
             let cachedEvent = self.pendingPlayPauseEvent
             self.pendingPlayPauseEvent = nil
             self.state = .idle
+            if self.optimisticSingleHandled {
+                self.settleOptimisticSingleTap(cancel: false)
+                return
+            }
             let handled = self.onSingleTap()
             if !handled, let event = cachedEvent {
                 // 单击未被业务消化 → 把 play/pause 还给系统，让音乐照常控制
@@ -265,6 +301,17 @@ final class HeadphoneMonitor {
         up?.post(tap: .cghidEventTap)
     }
 
+    private func settleOptimisticSingleTap(cancel: Bool) {
+        guard optimisticSingleHandled else { return }
+        optimisticSingleHandled = false
+        if cancel {
+            DebugLog.info("[HeadphoneMonitor] 双击成立，撤销乐观单击")
+            onCancelOptimisticSingleTap()
+        } else {
+            onOptimisticSingleTapSettled()
+        }
+    }
+
     private func resetGesture() {
         longPressTimer?.invalidate()
         longPressTimer = nil
@@ -272,6 +319,8 @@ final class HeadphoneMonitor {
         doubleTapTimer = nil
         pendingPlayPauseEvent = nil
         isSecondPress = false
+        settleOptimisticSingleTap(cancel: false)
+        trustedPlayPausePressActive = false
         state = .idle
     }
 }
