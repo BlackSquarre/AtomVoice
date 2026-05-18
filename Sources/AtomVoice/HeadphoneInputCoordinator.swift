@@ -13,6 +13,15 @@ final class HeadphoneInputCoordinator {
     private let onAccessibilityWarning: () -> Void
     private let monitor: HeadphoneMonitor
 
+    // 部分 USB DAC 的双击会发 NX_SUBTYPE_AUX_MOUSE_BUTTONS（而非两次 play/pause）。
+    // 为避免误伤普通鼠标侧键，只在录音中 / 刚结束录音的窗口内把这种事件当作"双击 → 回车"。
+    // (Some USB DACs emit aux-mouse-button events for the double-click. To avoid hijacking real
+    //  mouse aux clicks we only treat them as "double-tap → Return" while recording, or shortly after.)
+    private var lastRecordingEndTime: Date = .distantPast
+    private var lastAuxEmitTime: Date = .distantPast
+    private static let auxWindowAfterStop: TimeInterval = 60.0
+    private static let auxDebounce: TimeInterval = 0.3
+
     init(
         session: RecordingSessionController,
         cancelSherpaAutoUnload: @escaping () -> Void,
@@ -39,6 +48,13 @@ final class HeadphoneInputCoordinator {
         monitor.onLongPressStart = { [weak self] in self?.handleLongPressStart() }
         monitor.onLongPressEnd = { [weak self] in self?.handleLongPressEnd() }
         monitor.onTapDisabled = { [weak self] in self?.onAccessibilityWarning() }
+        monitor.onAuxMouseButton = { [weak self] in self?.handleAuxMouseButton() ?? false }
+    }
+
+    /// 由 session 状态回调通知：录音状态变化（active=true 进入录音；false 结束）。
+    /// (Session state callback — used to gate aux-mouse-button hijacking.)
+    func notifyRecordingStateChanged(_ active: Bool) {
+        if !active { lastRecordingEndTime = Date() }
     }
 
     // MARK: - 对外 API
@@ -96,8 +112,24 @@ final class HeadphoneInputCoordinator {
         session.stop()
     }
 
+    /// 在"录音中 / 刚结束录音 5s 内"才把辅助鼠标按钮事件当作"双击 → 回车"，
+    /// 并做 300ms 去抖（一次双击会发出 2 个事件，间隔仅几毫秒）。
+    /// (Hijack aux-mouse-button only while/just after recording. Debounce to one Return per double-click.)
+    private func handleAuxMouseButton() -> Bool {
+        let now = Date()
+        let inWindow = session.isRecordingOrStarting ||
+            now.timeIntervalSince(lastRecordingEndTime) < HeadphoneInputCoordinator.auxWindowAfterStop
+        guard inWindow else { return false }
+        if now.timeIntervalSince(lastAuxEmitTime) < HeadphoneInputCoordinator.auxDebounce {
+            return true  // 吞掉同一双击的伴随事件
+        }
+        lastAuxEmitTime = now
+        HeadphoneMonitor.sendReturnKey()
+        return true
+    }
+
     private func toggleRecording() {
-        if session.isRecording {
+        if session.isRecordingOrStarting {
             session.stop()
         } else {
             cancelSherpaAutoUnload()

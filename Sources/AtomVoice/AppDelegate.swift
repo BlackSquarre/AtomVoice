@@ -124,7 +124,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 let silenceMode = AppSettings.silenceAutoStopEnabled
                 if silenceMode {
                     // 切换模式：按一次开始，再按一次手动停止（Toggle mode: press once to start, press again to stop manually）
-                    if self.session.isRecording {
+                    if self.session.isRecordingOrStarting {
                         self.session.stop()
                     } else {
                         self.cancelSherpaAutoUnloadTask()
@@ -153,6 +153,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             self.fnKeyMonitor.isRecording = active
             self.capsuleWindow.recordingClickEnabled = active
+            self.headphoneCoordinator.notifyRecordingStateChanged(active)
             self.handleRecordingStateChangedForDownloadCapsule(active: active)
             #if DEBUG_BUILD
             MemoryProbe.log(active ? "recording-start" : "recording-stop")

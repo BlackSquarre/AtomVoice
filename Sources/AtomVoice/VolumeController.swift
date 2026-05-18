@@ -26,42 +26,61 @@ final class VolumeController {
         return status == noErr ? deviceID : nil
     }
 
-    /// 获取系统音量（0.0–1.0）（Get system volume, 0.0–1.0）
-    private func getSystemVolume() -> Float? {
-        guard let deviceID = getDefaultOutputDevice() else { return nil }
-        var volume: Float32 = 0
-        var size = UInt32(MemoryLayout<Float32>.size)
-        // 先尝试主声道（element 0），不支持时尝试 element 1（Try main channel first, fall back to element 1）
-        for element: UInt32 in [kAudioObjectPropertyElementMain, 1] {
-            var address = AudioObjectPropertyAddress(
+    // macOS 系统音量 HUD 在 USB DAC 等设备上用的"虚拟主音量"属性 'vmvc'
+    // (Apple's unified "main volume" abstraction used by the system volume HUD — required for USB DACs etc.)
+    private static let virtualMainVolumeSelector: AudioObjectPropertySelector = 0x766d7663 // 'vmvc'
+
+    /// 候选属性地址：先试 VirtualMainVolume，再试常规 VolumeScalar 的多组 scope/element。
+    /// 第一个能成功 get 的就用它来 set，保证读写同源。
+    /// (Candidate property addresses to probe — pick the first one that returns data, use the same for set.)
+    private static let candidateAddresses: [AudioObjectPropertyAddress] = {
+        var list: [AudioObjectPropertyAddress] = []
+        // 虚拟主音量（macOS HUD 走这条）
+        list.append(AudioObjectPropertyAddress(
+            mSelector: VolumeController.virtualMainVolumeSelector,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        ))
+        // 常规 VolumeScalar，输出 scope，主声道 / L / R
+        for el: UInt32 in [kAudioObjectPropertyElementMain, 1, 2] {
+            list.append(AudioObjectPropertyAddress(
                 mSelector: kAudioDevicePropertyVolumeScalar,
                 mScope: kAudioDevicePropertyScopeOutput,
-                mElement: element
-            )
-            if AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &volume) == noErr {
-                return volume
+                mElement: el
+            ))
+        }
+        return list
+    }()
+
+    /// 找出当前设备真正可用的音量属性地址，并返回读到的值。
+    /// (Pick the first property address that yields a value on the current device.)
+    private func resolveVolumeAddress(deviceID: AudioDeviceID) -> (AudioObjectPropertyAddress, Float)? {
+        var volume: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        for var addr in VolumeController.candidateAddresses {
+            if AudioObjectHasProperty(deviceID, &addr),
+               AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &volume) == noErr {
+                return (addr, volume)
             }
         }
         return nil
+    }
+
+    /// 获取系统音量（0.0–1.0）（Get system volume, 0.0–1.0）
+    private func getSystemVolume() -> Float? {
+        guard let deviceID = getDefaultOutputDevice() else { return nil }
+        return resolveVolumeAddress(deviceID: deviceID)?.1
     }
 
     /// 设置系统音量（0.0–1.0）（Set system volume, 0.0–1.0）
     private func setSystemVolume(_ volume: Float) {
         guard let deviceID = getDefaultOutputDevice() else { return }
         var vol = max(0, min(1, volume))
-        for element: UInt32 in [kAudioObjectPropertyElementMain, 1, 2] {
-            var address = AudioObjectPropertyAddress(
-                mSelector: kAudioDevicePropertyVolumeScalar,
-                mScope: kAudioDevicePropertyScopeOutput,
-                mElement: element
-            )
-            // 检查属性是否可设置（Check if property is settable）
-            var settable: DarwinBoolean = false
-            guard AudioObjectIsPropertySettable(deviceID, &address, &settable) == noErr, settable.boolValue else {
-                continue
-            }
-            AudioObjectSetPropertyData(deviceID, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &vol)
-        }
+        guard var (addr, _) = resolveVolumeAddress(deviceID: deviceID) else { return }
+        var settable: DarwinBoolean = false
+        guard AudioObjectIsPropertySettable(deviceID, &addr, &settable) == noErr,
+              settable.boolValue else { return }
+        AudioObjectSetPropertyData(deviceID, &addr, 0, nil, UInt32(MemoryLayout<Float32>.size), &vol)
     }
 
     // MARK: - 渐变控制

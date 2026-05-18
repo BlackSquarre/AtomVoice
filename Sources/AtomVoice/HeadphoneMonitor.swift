@@ -17,6 +17,12 @@ final class HeadphoneMonitor {
     var onLongPressStart: () -> Void
     var onLongPressEnd: () -> Void
     var onTapDisabled: (() -> Void)?
+    /// 一些 USB DAC（如 MOONDROP MAY）的双击中键不发标准 play/pause，
+    /// 而是直接发"辅助鼠标按钮"事件（NX_SUBTYPE_AUX_MOUSE_BUTTONS, data1=1）。
+    /// 回调返回 true 表示已处理（吞掉原事件，避免触发系统全屏手势）。
+    /// (Some USB DACs fire NX_SUBTYPE_AUX_MOUSE_BUTTONS for the middle-button double-click
+    ///  instead of two play/pause events. Return true to consume the event.)
+    var onAuxMouseButton: () -> Bool = { false }
 
     /// 由外部根据「开关 + 当前输出设备」综合决定是否拦截
     var isInterceptEnabled: () -> Bool
@@ -45,6 +51,7 @@ final class HeadphoneMonitor {
 
     private static let nxSysDefinedType: UInt32 = 14
     private static let nxSubtypeAuxControlButtons: Int16 = 8
+    private static let nxSubtypeAuxMouseButtons: Int16 = 7   // NX_SUBTYPE_AUX_MOUSE_BUTTONS
     private static let nxKeyTypePlay: Int32 = 16   // NX_KEYTYPE_PLAY
 
     // MARK: - 生命周期
@@ -67,8 +74,11 @@ final class HeadphoneMonitor {
         guard eventTap == nil else { return }
 
         let mask: CGEventMask = (1 << HeadphoneMonitor.nxSysDefinedType)
+        // .cghidEventTap：HID 层最早的位置；session 层返回 nil 拦不住 WindowServer
+        // 把 aux mouse 解释成全屏/Mission Control 的系统手势。
+        // (Hook at the HID layer so returning nil actually blocks WindowServer's gesture handling.)
         guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
+            tap: .cghidEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: mask,
@@ -120,13 +130,28 @@ final class HeadphoneMonitor {
             return Unmanaged.passUnretained(event)
         }
 
-        // 只处理 AUX 控制按钮中的 PLAY 键
-        guard let nsEvent = NSEvent(cgEvent: event),
-              nsEvent.subtype.rawValue == HeadphoneMonitor.nxSubtypeAuxControlButtons else {
+        guard let nsEvent = NSEvent(cgEvent: event) else {
             return Unmanaged.passUnretained(event)
         }
         let data1 = nsEvent.data1
         let keyCode = Int32((data1 & 0xFFFF0000) >> 16)
+
+        // 辅助鼠标按钮事件：仅当业务方在窗口期内处理（如录音中）时才吞掉，避免误伤普通鼠标侧键
+        // (Aux-mouse-button events: only swallow when the callback consumes them within an active window.)
+        if nsEvent.subtype.rawValue == HeadphoneMonitor.nxSubtypeAuxMouseButtons && data1 == 1 {
+            guard isInterceptEnabled() else {
+                return Unmanaged.passUnretained(event)
+            }
+            // 事件 tap 已挂在 main runloop 上，回调直接同步执行
+            // (The tap is wired to the main runloop, so the callback runs synchronously here.)
+            let handled = onAuxMouseButton()
+            return handled ? nil : Unmanaged.passUnretained(event)
+        }
+
+        // 只处理 AUX 控制按钮中的 PLAY 键
+        guard nsEvent.subtype.rawValue == HeadphoneMonitor.nxSubtypeAuxControlButtons else {
+            return Unmanaged.passUnretained(event)
+        }
         guard keyCode == HeadphoneMonitor.nxKeyTypePlay else {
             return Unmanaged.passUnretained(event)
         }
@@ -226,12 +251,16 @@ final class HeadphoneMonitor {
     }
 
     /// 合成回车键发送给当前前台 App（用于双击 → Enter）
-    /// (Synthesize a Return key press for the current foreground app — used by the double-tap gesture.)
+    /// 关键：使用 .privateState 不带继承的修饰键，并显式清空 flags，
+    /// 否则若系统当前以为有 Cmd/Ctrl/Shift 被按住，Return 会变成 Cmd+W / Cmd+Shift+T / Cmd+Ctrl+F 等组合键。
+    /// (Use .privateState and explicitly clear flags, otherwise inherited modifiers turn Return into Cmd+W etc.)
     static func sendReturnKey() {
-        let source = CGEventSource(stateID: .combinedSessionState)
+        let source = CGEventSource(stateID: .privateState)
         let returnKeyCode: CGKeyCode = 0x24  // Return
         let down = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: true)
         let up   = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: false)
+        down?.flags = []
+        up?.flags = []
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
     }
