@@ -199,7 +199,7 @@
 "menu.inputMode" = "Mode de saisie";
 "menu.inputMode.tap" = "Appuyer pour parler";
 "menu.inputMode.hold" = "Maintenir pour parler";
-"menu.inputMode.liveInsertion" = "Insertion en direct (expérimental)";
+"menu.inputMode.liveInsertion" = "Insertion en direct (Beta)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple Speech uniquement. Les phrases terminées sont insérées pendant l'enregistrement ; le raffinement par LLM est ignoré pour le texte inséré en direct.";
 "menu.silence.duration" = "Délai d'arrêt";
 "menu.silence.manualStop" = "Arrêt manuel";
@@ -502,5 +502,5 @@
 "menu.headphoneControl" = "Contrôle vocal au casque (Beta)";
 "tooltip.menu.headphoneControl" = "Utilisez le bouton lecture/pause du casque pour contrôler la saisie vocale : en mode maintien, maintenez pour parler puis relâchez pour terminer ; en mode clic, un clic démarre ou arrête ; double clic envoie Return. Recommandé pour le vibe coding.";
 "alert.headphoneControl.title" = "Activer le contrôle vocal au casque ?";
-"alert.headphoneControl.message" = "AtomVoice prend le contrôle de la touche lecture/pause du casque pour la saisie vocale. En mode maintien, maintenez pour parler puis relâchez pour terminer. En mode clic, un clic démarre ou arrête. Le double clic envoie toujours Return. Actif uniquement quand des écouteurs ou un appareil Bluetooth est connecté. Certains appareils Bluetooth peuvent ne pas prendre en charge le mode maintien.";
+"alert.headphoneControl.message" = "AtomVoice prend le contrôle de la touche lecture/pause du casque pour la saisie vocale. En mode maintien, maintenez pour parler puis relâchez pour terminer. En mode clic, un clic démarre ou arrête. Le double clic envoie toujours Return. Actif uniquement quand des écouteurs ou un appareil Bluetooth est connecté. Certains appareils Bluetooth peuvent ne pas prendre en charge le mode maintien. AirPods n'est pas pris en charge actuellement en raison de limitations de l'API.";
 "alert.headphoneControl.enable" = "Activer";

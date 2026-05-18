@@ -199,7 +199,7 @@
 "menu.inputMode" = "Modo de entrada";
 "menu.inputMode.tap" = "Pulsar para hablar";
 "menu.inputMode.hold" = "Mantener para hablar";
-"menu.inputMode.liveInsertion" = "Inserción en vivo (experimental)";
+"menu.inputMode.liveInsertion" = "Inserción en vivo (Beta)";
 "menu.inputMode.liveInsertion.tooltip" = "Solo Apple Speech. Las frases completas se insertan durante la grabación; el refinado con LLM se omite para el texto insertado en vivo.";
 "menu.silence.duration" = "Retraso de parada";
 "menu.silence.manualStop" = "Detener manualmente";
@@ -502,5 +502,5 @@
 "menu.headphoneControl" = "Control de voz con auriculares (Beta)";
 "tooltip.menu.headphoneControl" = "Usa el botón reproducir/pausa de los auriculares para controlar la entrada por voz: en modo mantener, mantén pulsado para hablar y suelta para terminar; en modo pulsar, un clic inicia o detiene; doble clic envía Return. Recomendado para vibe coding.";
 "alert.headphoneControl.title" = "¿Activar el control de voz con auriculares?";
-"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para la entrada por voz. En modo mantener, mantén pulsado para hablar y suelta para terminar. En modo pulsar, un clic inicia o detiene. El doble clic siempre envía Return. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir el modo mantener.";
+"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para la entrada por voz. En modo mantener, mantén pulsado para hablar y suelta para terminar. En modo pulsar, un clic inicia o detiene. El doble clic siempre envía Return. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir el modo mantener. AirPods no es compatible actualmente debido a limitaciones de la API.";
 "alert.headphoneControl.enable" = "Activar";

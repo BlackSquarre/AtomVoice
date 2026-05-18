@@ -199,7 +199,7 @@
 "menu.inputMode" = "Input Mode";
 "menu.inputMode.tap" = "Tap to Speak";
 "menu.inputMode.hold" = "Hold to Speak";
-"menu.inputMode.liveInsertion" = "Live Insert (Experimental)";
+"menu.inputMode.liveInsertion" = "Live Insert (Beta)";
 "menu.inputMode.liveInsertion.tooltip" = "Apple Speech only. Completed sentences are inserted while recording; LLM refinement is skipped for live-inserted text.";
 "menu.silence.duration" = "Stop Delay";
 "menu.silence.manualStop" = "Manual Stop";
@@ -502,5 +502,5 @@
 "menu.headphoneControl" = "Headphone Voice Control (Beta)";
 "tooltip.menu.headphoneControl" = "Use the headphone play/pause button to control voice input: in hold mode, press and hold to talk, then release to finish; in tap mode, single press starts or stops; double press sends Return. Recommended for vibe coding.";
 "alert.headphoneControl.title" = "Enable Headphone Voice Control?";
-"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button for voice input. In hold mode, press and hold to talk, then release to finish. In tap mode, single press starts or stops. Double press always sends Return. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support hold mode.";
+"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button for voice input. In hold mode, press and hold to talk, then release to finish. In tap mode, single press starts or stops. Double press always sends Return. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support hold mode. AirPods are not currently supported due to API limitations.";
 "alert.headphoneControl.enable" = "Enable";

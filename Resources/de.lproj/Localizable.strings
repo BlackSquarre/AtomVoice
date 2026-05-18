@@ -199,7 +199,7 @@
 "menu.inputMode" = "Eingabemodus";
 "menu.inputMode.tap" = "Tippen zum Sprechen";
 "menu.inputMode.hold" = "Halten zum Sprechen";
-"menu.inputMode.liveInsertion" = "Live-Einfügen (experimentell)";
+"menu.inputMode.liveInsertion" = "Live-Einfügen (Beta)";
 "menu.inputMode.liveInsertion.tooltip" = "Nur Apple-Spracherkennung. Fertige Sätze werden während der Aufnahme eingefügt; live eingefügter Text überspringt die LLM-Verfeinerung.";
 "menu.silence.duration" = "Stopp-Verzögerung";
 "menu.silence.manualStop" = "Manuell stoppen";
@@ -502,5 +502,5 @@
 "menu.headphoneControl" = "Kopfhörer-Sprachsteuerung (Beta)";
 "tooltip.menu.headphoneControl" = "Mit der Play/Pause-Taste der Kopfhörer die Spracheingabe steuern: im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden; im Klick-Modus startet oder stoppt ein Klick; Doppelklick sendet Return. Empfohlen für Vibe Coding.";
 "alert.headphoneControl.title" = "Kopfhörer-Sprachsteuerung aktivieren?";
-"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer für die Spracheingabe. Im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden. Im Klick-Modus startet oder stoppt ein Klick. Doppelklick sendet immer Return. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen den Halten-Modus eventuell nicht.";
+"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer für die Spracheingabe. Im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden. Im Klick-Modus startet oder stoppt ein Klick. Doppelklick sendet immer Return. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen den Halten-Modus eventuell nicht. AirPods wird derzeit aufgrund von API-Einschränkungen nicht unterstützt.";
 "alert.headphoneControl.enable" = "Aktivieren";

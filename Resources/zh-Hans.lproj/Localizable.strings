@@ -200,7 +200,7 @@
 "menu.inputMode" = "输入方式";
 "menu.inputMode.tap" = "单击说话";
 "menu.inputMode.hold" = "长按说话";
-"menu.inputMode.liveInsertion" = "实时上屏（实验）";
+"menu.inputMode.liveInsertion" = "实时上屏（Beta）";
 "menu.inputMode.liveInsertion.tooltip" = "仅 Apple 语音识别可用。录音过程中会把已完成句子直接上屏，实时上屏部分不会再走 LLM 优化。";
 "menu.silence.duration" = "停录延迟";
 "menu.silence.manualStop" = "手动停止";
@@ -503,5 +503,5 @@
 "menu.headphoneControl" = "耳机语音控制 (Beta)";
 "tooltip.menu.headphoneControl" = "用耳机播放/暂停键控制语音输入：长按模式下按住说话、松开结束；单击模式下单击开始/停止；双击发送回车。适合 Vibe Coding 时使用。";
 "alert.headphoneControl.title" = "启用耳机语音控制？";
-"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击始终发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。";
+"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击始终发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。AirPods 由于接口原因暂不支持。";
 "alert.headphoneControl.enable" = "启用";

@@ -199,7 +199,7 @@
 "menu.inputMode" = "入力モード";
 "menu.inputMode.tap" = "クリックして話す";
 "menu.inputMode.hold" = "長押しして話す";
-"menu.inputMode.liveInsertion" = "ライブ入力（実験）";
+"menu.inputMode.liveInsertion" = "ライブ入力（Beta）";
 "menu.inputMode.liveInsertion.tooltip" = "Apple 音声認識のみ。録音中に完了した文を直接入力します。ライブ入力済みの文は LLM 最適化をスキップします。";
 "menu.silence.duration" = "停止ディレイ";
 "menu.silence.manualStop" = "手動停止";
@@ -502,5 +502,5 @@
 "menu.headphoneControl" = "ヘッドフォン音声コントロール (Beta)";
 "tooltip.menu.headphoneControl" = "ヘッドフォンの再生/一時停止ボタンで音声入力を操作: 長押しモードでは押している間話し、離すと終了。タップモードではシングル押しで開始/停止。ダブル押しで Return を送信します。Vibe Coding におすすめです。";
 "alert.headphoneControl.title" = "ヘッドフォン音声コントロールを有効にしますか？";
-"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで音声入力を操作します。長押しモードでは押している間話し、離すと終了します。タップモードではシングル押しで開始または停止します。ダブル押しは常に Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しモードが使えないことがあります。";
+"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで音声入力を操作します。長押しモードでは押している間話し、離すと終了します。タップモードではシングル押しで開始または停止します。ダブル押しは常に Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しモードが使えないことがあります。AirPods は API の制限により現在サポートされていません。";
 "alert.headphoneControl.enable" = "有効にする";
