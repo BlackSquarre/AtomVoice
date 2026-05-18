@@ -28,8 +28,10 @@ final class RecordingSessionController {
 
     // MARK: - 状态（State）
     private(set) var isRecording = false
+    private var isStarting = false
     private(set) var currentRecordingEngine = ASREngineRegistry.appleCode
     private var recordingGeneration = 0
+    private var startRequestGeneration = 0
     private var liveInsertionActive = false
     private var liveInsertionCommittedText = ""
     private var liveInsertionLatestText = ""
@@ -142,13 +144,20 @@ final class RecordingSessionController {
     /// 当前是否正在显示错误胶囊（Whether the error capsule is currently showing）
     var isShowingError: Bool { capsuleWindow.isShowingError }
 
+    /// 录音已经开始，或正在等待异步输入设备 preflight 完成。
+    /// (Recording has started, or the async input preflight is still pending.)
+    var isRecordingOrStarting: Bool { isRecording || isStarting }
+
     /// 关闭错误胶囊（Dismiss the error capsule）
     func dismissError() { capsuleWindow.dismiss() }
 
     // MARK: - 录音启动（Recording start）
 
     private func startRecording() {
-        guard !isRecording else { return }
+        guard !isRecording, !isStarting else { return }
+        isStarting = true
+        startRequestGeneration += 1
+        let startRequest = startRequestGeneration
 
         // 输入设备/格式未就绪时（如 AirPods 热插拔造成的音频路由过渡），
         // 后台异步等待最多 500ms 再继续；主线程不阻塞。
@@ -160,24 +169,31 @@ final class RecordingSessionController {
         //  inputNode.outputFormat may still be 0/0 after an AirPods route swap.)
         audioEngine.waitForInputReady(timeout: 0.5) { [weak self] ready in
             guard let self else { return }
-            guard !self.isRecording else { return }
+            guard self.isStarting,
+                  self.startRequestGeneration == startRequest,
+                  !self.isRecording else { return }
             guard ready else {
+                self.isStarting = false
                 DebugLog.error("[Session] startRecording: preflight 失败，显示错误胶囊")
                 self.capsuleWindow.show()
                 self.capsuleWindow.showError(loc("error.noInputDevice"), dismissAfter: 5)
                 return
             }
-            self.continueStartRecording()
+            self.continueStartRecording(startRequest: startRequest)
         }
     }
 
-    private func continueStartRecording() {
+    private func continueStartRecording(startRequest: Int) {
+        guard isStarting,
+              startRequestGeneration == startRequest,
+              !isRecording else { return }
         // Sherpa 引擎：直接按当前 preset 实读磁盘判断；isReady 内部含一次轻量自愈
         // (Sherpa engine: read disk for current preset; isReady includes one lightweight self-heal pass)
         let engine = AppSettings.normalizedRecognitionEngine
         let selectedASREngine = asrEngine(for: engine)
         if asrEngineRegistry.isSherpa(engine) {
             if !SherpaModelDownloader.isReady() {
+                isStarting = false
                 if SherpaModelDownloader.shared.isDownloading { return }
                 DispatchQueue.main.async { [weak self] in
                     self?.delegate?.sessionRequiresSherpaModelDownload(redownload: false)
@@ -187,6 +203,7 @@ final class RecordingSessionController {
         }
         if engine == VolcengineASRSettings.engineCode {
             guard AppSettings.doubaoASRPrivacyAccepted else {
+                isStarting = false
                 DispatchQueue.main.async { [self] in
                     capsuleWindow.show()
                     capsuleWindow.showError(loc("doubao.error.privacyNotAccepted"), dismissAfter: 5)
@@ -194,6 +211,7 @@ final class RecordingSessionController {
                 return
             }
             if let error = selectedASREngine.validate() {
+                isStarting = false
                 DispatchQueue.main.async { [self] in
                     capsuleWindow.show()
                     capsuleWindow.showError(error, dismissAfter: 5)
@@ -206,6 +224,7 @@ final class RecordingSessionController {
         llmRefiner.cancel()
         doubaoFallback.reset()
 
+        isStarting = false
         isRecording = true
         onRecordingStateChanged?(true)
         recordingGeneration += 1
@@ -560,6 +579,7 @@ final class RecordingSessionController {
     }
 
     private func markRecordingStopped() {
+        cancelPendingStart()
         isRecording = false
         onRecordingStateChanged?(false)
         volumeController.restoreVolume()
@@ -574,6 +594,11 @@ final class RecordingSessionController {
         audioAnalyzer.reset()
     }
 
+    private func cancelPendingStart() {
+        guard isStarting else { return }
+        isStarting = false
+        startRequestGeneration += 1
+    }
 
     private func stopCurrentLocalASREngineSynchronously() -> String {
         if asrEngineRegistry.isSherpa(currentRecordingEngine) {
@@ -645,7 +670,10 @@ final class RecordingSessionController {
     // MARK: - 录音收尾（Recording stop / cancel / immediate）
 
     private func stopRecording() {
-        guard isRecording else { return }
+        guard isRecording else {
+            cancelPendingStart()
+            return
+        }
         let generation = recordingGeneration
         markRecordingStopped()
 
@@ -676,6 +704,10 @@ final class RecordingSessionController {
     }
 
     private func cancelRecording() {
+        guard isRecording else {
+            cancelPendingStart()
+            return
+        }
         markRecordingStopped()
 
         DispatchQueue.main.async { [self] in
@@ -695,7 +727,10 @@ final class RecordingSessionController {
     /// Space/Backspace/标点立即上屏：停止录音，跳过 LLM，直接注入。
     /// (Space/Backspace/punctuation injects immediately: stop recording, skip LLM, inject directly.)
     private func stopRecordingImmediate(appending punctuation: String? = nil) {
-        guard isRecording else { return }
+        guard isRecording else {
+            cancelPendingStart()
+            return
+        }
         let generation = recordingGeneration
         markRecordingStopped()
 

@@ -15,6 +15,7 @@ final class SpeechRecognizerController {
 
     // 回调（Callbacks）
     private var onResult: ((String, Bool) -> Void)?
+    private var onError: ((String) -> Void)?
     private var onRequestSwitch: ((SFSpeechAudioBufferRecognitionRequest) -> Void)?
 
     init() {
@@ -22,7 +23,7 @@ final class SpeechRecognizerController {
     }
 
     var currentText: String {
-        segmentOffset + currentSegmentText
+        Self.mergedSegmentText(prefix: segmentOffset, segment: currentSegmentText)
     }
 
     func updateLanguage() {
@@ -36,6 +37,7 @@ final class SpeechRecognizerController {
     /// 返回首个识别请求（供 AudioEngine 推送 buffer）（Returns the first recognition request (for AudioEngine to push buffers)）
     func start(
         onResult: @escaping (String, Bool) -> Void,
+        onError: @escaping (String) -> Void,
         onRequestSwitch: @escaping (SFSpeechAudioBufferRecognitionRequest) -> Void
     ) -> SFSpeechAudioBufferRecognitionRequest? {
         recognitionTask?.cancel()
@@ -43,6 +45,7 @@ final class SpeechRecognizerController {
         recognitionRequest = nil
 
         self.onResult = onResult
+        self.onError = onError
         self.onRequestSwitch = onRequestSwitch
         segmentOffset = ""
         currentSegmentText = ""
@@ -67,9 +70,10 @@ final class SpeechRecognizerController {
         recognitionTask = nil
         recognitionRequest = nil
         onResult = nil
+        onError = nil
         onRequestSwitch = nil
 
-        return segmentOffset + currentSegmentText
+        return currentText
     }
 
     // MARK: - 缓存音频识别
@@ -89,6 +93,7 @@ final class SpeechRecognizerController {
         recognitionRequest = nil
         onRequestSwitch = nil
         self.onResult = nil
+        self.onError = nil
 
         segmentOffset = ""
         currentSegmentText = ""
@@ -116,7 +121,7 @@ final class SpeechRecognizerController {
                 timeoutTimer?.invalidate()
                 timeoutTimer = nil
 
-                let finalText = self.segmentOffset + self.currentSegmentText
+                let finalText = self.currentText
                 self.activeTaskID += 1
                 self.recognitionRequest?.endAudio()
                 self.recognitionTask?.finish()
@@ -132,7 +137,7 @@ final class SpeechRecognizerController {
 
                 if let result {
                     self.currentSegmentText = result.bestTranscription.formattedString
-                    let fullText = self.segmentOffset + self.currentSegmentText
+                    let fullText = self.currentText
                     onResult(fullText, result.isFinal)
                     if result.isFinal {
                         finishRecognition()
@@ -193,7 +198,7 @@ final class SpeechRecognizerController {
         }
 
         // 1. 提交当前分段文字到 offset（Commit current segment text to offset）
-        segmentOffset += currentSegmentText
+        segmentOffset = Self.mergedSegmentText(prefix: segmentOffset, segment: currentSegmentText)
         currentSegmentText = ""
 
         // 2. 让旧任务的后续回调失效（Invalidate subsequent callbacks from old task）
@@ -240,17 +245,48 @@ final class SpeechRecognizerController {
 
                 if let result {
                     self.currentSegmentText = result.bestTranscription.formattedString
-                    let fullText = self.segmentOffset + self.currentSegmentText
+                    let fullText = self.currentText
                     self.onResult?(fullText, result.isFinal)
                 }
                 if let error {
                     let nsError = error as NSError
                     // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
-                    if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
+                    if !Self.isBenignCancellation(nsError) {
                         DebugLog.error("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                        self.onError?(error.localizedDescription)
                     }
                 }
             }
         }
+    }
+
+    private static func isBenignCancellation(_ error: NSError) -> Bool {
+        error.domain == "kAFAssistantErrorDomain" && error.code == 216
+    }
+
+    static func mergedSegmentText(prefix: String, segment: String) -> String {
+        let segment = segment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !segment.isEmpty else { return prefix }
+        guard !prefix.isEmpty else { return segment }
+
+        if segment.hasPrefix(prefix) { return segment }
+        if prefix.hasSuffix(segment) { return prefix }
+
+        let maxOverlap = min(prefix.count, segment.count)
+        for length in stride(from: maxOverlap, through: 1, by: -1) {
+            if prefix.suffix(length) == segment.prefix(length) {
+                return prefix + segment.dropFirst(length)
+            }
+        }
+
+        let separator = shouldInsertSpaceBetweenSegments(prefix, segment) ? " " : ""
+        return prefix + separator + segment
+    }
+
+    private static func shouldInsertSpaceBetweenSegments(_ left: String, _ right: String) -> Bool {
+        guard let last = left.last, let first = right.first else { return false }
+        if last.isWhitespace || first.isWhitespace { return false }
+        if PunctuationProcessor.isSentenceEndingPunctuation(last) { return true }
+        return last.isASCII && first.isASCII && last.isLetter && first.isLetter
     }
 }

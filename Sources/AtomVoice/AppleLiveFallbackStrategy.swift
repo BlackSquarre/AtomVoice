@@ -57,6 +57,9 @@ final class AppleLiveFallbackStrategy {
                     onPartial(self.fallback.liveDisplayText(liveText: text))
                 }
             },
+            onError: { error in
+                DebugLog.error("[AppleLiveFallback] \(error)")
+            },
             onRequestSwitch: { [weak self] newRequest in
                 self?.audioEngine.switchRequest(newRequest)
             }

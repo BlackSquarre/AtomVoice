@@ -31,6 +31,7 @@ let package = Package(
             exclude: [
                 "Info.plist",
                 "AppIcon.icns",
+                "AppIcon.svg",
                 "AppIcon.png",
                 "AppIcon-1024.png",
                 "AppIcon-source-chromakey.png",

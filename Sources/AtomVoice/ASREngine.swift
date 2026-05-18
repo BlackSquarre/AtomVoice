@@ -51,6 +51,7 @@ final class AppleSpeechASREngine: ASREngine {
                onError: @escaping (String) -> Void) -> String? {
         request = recognizer.start(
             onResult: onResult,
+            onError: onError,
             onRequestSwitch: { [weak self] newRequest in
                 self?.request = newRequest
             }

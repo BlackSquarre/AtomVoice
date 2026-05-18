@@ -74,11 +74,11 @@ final class HeadphoneMonitor {
         guard eventTap == nil else { return }
 
         let mask: CGEventMask = (1 << HeadphoneMonitor.nxSysDefinedType)
-        // .cghidEventTap：HID 层最早的位置；session 层返回 nil 拦不住 WindowServer
-        // 把 aux mouse 解释成全屏/Mission Control 的系统手势。
-        // (Hook at the HID layer so returning nil actually blocks WindowServer's gesture handling.)
+        // 用 session 层 tap：HID 层 active tap 会打断 macOS 内部对音量/亮度等媒体键的处理，
+        // 导致键盘音量键失效。
+        // (Use session-level tap; HID-level active tap blocks macOS's internal volume/brightness handling.)
         guard let tap = CGEvent.tapCreate(
-            tap: .cghidEventTap,
+            tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: mask,

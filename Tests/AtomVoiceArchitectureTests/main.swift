@@ -275,6 +275,33 @@ struct ArchitectureTestRunner {
             try expect(merged == "hello world from cache again")
         }
 
+        await runner.run("Apple speech rolling merge inserts Latin spacing") {
+            let merged = SpeechRecognizerController.mergedSegmentText(
+                prefix: "hello world",
+                segment: "this is a test"
+            )
+
+            try expect(merged == "hello world this is a test")
+        }
+
+        await runner.run("Apple speech rolling merge removes overlap") {
+            let merged = SpeechRecognizerController.mergedSegmentText(
+                prefix: "hello world",
+                segment: "world again"
+            )
+
+            try expect(merged == "hello world again")
+        }
+
+        await runner.run("Apple speech rolling merge keeps CJK tight") {
+            let merged = SpeechRecognizerController.mergedSegmentText(
+                prefix: "你好世界",
+                segment: "继续说"
+            )
+
+            try expect(merged == "你好世界继续说")
+        }
+
         await runner.run("Model manifest discovers nested files offline") {
             let root = try makeTemporaryDirectory()
             defer { try? FileManager.default.removeItem(at: root) }
