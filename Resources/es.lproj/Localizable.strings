@@ -410,7 +410,7 @@
 "oobe.trigger.headphone.title" = "Botón de auriculares";
 "oobe.trigger.headphone.desc" = "Usa el botón reproducir/pausa de auriculares o dispositivos de audio Bluetooth para controlar la entrada por voz. Solo funciona mientras haya uno conectado.";
 "oobe.trigger.headphone.enable" = "Activar botón de auriculares";
-"oobe.trigger.headphone.mode.hold" = "En modo mantener, mantén pulsado el botón de los auriculares para hablar y suelta para terminar.";
+"oobe.trigger.headphone.mode.hold" = "En modo mantener, mantén pulsado el botón de los auriculares para hablar y suelta para terminar. Algunos dispositivos Bluetooth pueden no admitir mantener pulsado.";
 "oobe.trigger.headphone.mode.tap" = "En modo tocar, pulsa una vez para iniciar o detener; doble pulsación envía Return. Algunos dispositivos Bluetooth pueden no admitir mantener pulsado.";
 
 /* Ventana de configuración del motor de reconocimiento */

@@ -410,7 +410,7 @@
 "oobe.trigger.headphone.title" = "耳機按鈕";
 "oobe.trigger.headphone.desc" = "用耳機或藍牙音訊裝置的播放/暫停鍵控制語音輸入。僅在已連接裝置時生效。";
 "oobe.trigger.headphone.enable" = "啟用耳機按鈕輸入";
-"oobe.trigger.headphone.mode.hold" = "長按模式下，按住耳機按鈕說話，鬆開結束。";
+"oobe.trigger.headphone.mode.hold" = "長按模式下，按住耳機按鈕說話，鬆開結束。部分藍牙裝置可能不支援長按。";
 "oobe.trigger.headphone.mode.tap" = "單擊模式下，按一下開始或停止；雙擊送出 Return。部分藍牙裝置可能不支援長按。";
 
 /* 辨識引擎設定視窗 */

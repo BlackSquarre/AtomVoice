@@ -411,7 +411,7 @@
 "oobe.trigger.headphone.title" = "耳机按钮";
 "oobe.trigger.headphone.desc" = "用耳机或蓝牙音频设备的播放/暂停键控制语音输入。仅在已连接设备时生效。";
 "oobe.trigger.headphone.enable" = "启用耳机按钮输入";
-"oobe.trigger.headphone.mode.hold" = "长按模式下，按住耳机按钮说话，松开结束。";
+"oobe.trigger.headphone.mode.hold" = "长按模式下，按住耳机按钮说话，松开结束。部分蓝牙设备可能不支持长按。";
 "oobe.trigger.headphone.mode.tap" = "单击模式下，按一次开始或停止；双击发送回车。部分蓝牙设备可能不支持长按。";
 
 /* 识别引擎设置窗口 */

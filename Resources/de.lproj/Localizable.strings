@@ -410,7 +410,7 @@
 "oobe.trigger.headphone.title" = "Kopfhörertaste";
 "oobe.trigger.headphone.desc" = "Nutze die Play/Pause-Taste von Kopfhörern oder Bluetooth-Audiogeräten, um die Spracheingabe zu steuern. Nur aktiv, wenn ein Gerät verbunden ist.";
 "oobe.trigger.headphone.enable" = "Kopfhörertaste aktivieren";
-"oobe.trigger.headphone.mode.hold" = "Im Halten-Modus die Kopfhörertaste gedrückt halten zum Sprechen, loslassen zum Beenden.";
+"oobe.trigger.headphone.mode.hold" = "Im Halten-Modus die Kopfhörertaste gedrückt halten zum Sprechen, loslassen zum Beenden. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
 "oobe.trigger.headphone.mode.tap" = "Im Tippen-Modus einmal drücken zum Starten oder Stoppen; Doppeldruck sendet Return. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
 
 /* Fenster für Erkennungseinstellungen */

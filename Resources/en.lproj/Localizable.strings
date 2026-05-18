@@ -410,7 +410,7 @@
 "oobe.trigger.headphone.title" = "Headphone button";
 "oobe.trigger.headphone.desc" = "Use the play/pause button on headphones or Bluetooth audio devices to control voice input. Only active while one is connected.";
 "oobe.trigger.headphone.enable" = "Enable headphone button input";
-"oobe.trigger.headphone.mode.hold" = "In hold mode, hold the headphone button to talk and release to finish.";
+"oobe.trigger.headphone.mode.hold" = "In hold mode, hold the headphone button to talk and release to finish. Some Bluetooth devices may not support hold mode.";
 "oobe.trigger.headphone.mode.tap" = "In tap mode, press once to start or stop; double press sends Return. Some Bluetooth devices may not support hold mode.";
 
 /* ASR Settings Window */

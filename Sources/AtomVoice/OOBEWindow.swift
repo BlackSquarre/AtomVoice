@@ -425,6 +425,22 @@ final class OOBEWindowController: NSObject {
                                               action: #selector(inputModeChanged(_:)))
         modeSegment.selectedSegment = selectedSilenceAutoStop ? 1 : 0
         modeSegment.segmentStyle = .rounded
+        modeSegment.translatesAutoresizingMaskIntoConstraints = false
+        // "单击说话"段加宽并左对齐文字，徽标贴右；避免居中导致左侧大块留白
+        // (Widen the tap segment and left-align its label so the badge sits to its right without leaving a gap on the left)
+        modeSegment.setWidth(72, forSegment: 0)
+        modeSegment.setWidth(108, forSegment: 1)
+        modeSegment.setAlignment(.left, forSegment: 1)
+
+        // 推荐徽标叠加在第二个分段右端（依然在分段控件内部）
+        // (Overlay the recommended badge on the trailing edge of the tap segment, inside the control)
+        let recommendedBadge = OOBERecommendedBadgeView(text: loc("oobe.engine.recommended"))
+        recommendedBadge.translatesAutoresizingMaskIntoConstraints = false
+        modeSegment.addSubview(recommendedBadge)
+        NSLayoutConstraint.activate([
+            recommendedBadge.trailingAnchor.constraint(equalTo: modeSegment.trailingAnchor, constant: -6),
+            recommendedBadge.centerYAnchor.constraint(equalTo: modeSegment.centerYAnchor),
+        ])
 
         let modeDesc = NSTextField(labelWithString: inputModeDescription())
         modeDesc.font = .systemFont(ofSize: 11.5)
@@ -1246,6 +1262,33 @@ final class OOBEHeadphoneControlCardView: NSView {
     }
 
     override func resetCursorRects() {}
+}
+
+// MARK: - 推荐徽标视图（Recommended badge pill used next to OOBE controls）
+
+final class OOBERecommendedBadgeView: NSView {
+    init(text: String) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 3
+        // 白底蓝字：选中（蓝色分段）和未选中（灰色分段）背景下都能看清
+        // (White background + accent text stays legible on both selected and unselected segments)
+        layer?.backgroundColor = NSColor.white.cgColor
+
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 10, weight: .semibold)
+        label.textColor = .controlAccentColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 1),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -1),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
 }
 
 // MARK: - Single Key Cap

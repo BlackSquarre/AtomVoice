@@ -410,7 +410,7 @@
 "oobe.trigger.headphone.title" = "Bouton du casque";
 "oobe.trigger.headphone.desc" = "Utilisez le bouton lecture/pause du casque ou d'un appareil audio Bluetooth pour contrôler la saisie vocale. Actif uniquement lorsqu'un appareil est connecté.";
 "oobe.trigger.headphone.enable" = "Activer le bouton du casque";
-"oobe.trigger.headphone.mode.hold" = "En mode maintien, gardez le bouton du casque enfoncé pour parler, puis relâchez pour terminer.";
+"oobe.trigger.headphone.mode.hold" = "En mode maintien, gardez le bouton du casque enfoncé pour parler, puis relâchez pour terminer. Certains appareils Bluetooth peuvent ne pas prendre en charge l'appui long.";
 "oobe.trigger.headphone.mode.tap" = "En mode toucher, appuyez une fois pour démarrer ou arrêter ; double appui envoie Return. Certains appareils Bluetooth peuvent ne pas prendre en charge l'appui long.";
 
 /* Fenêtre de configuration du moteur de reconnaissance */
