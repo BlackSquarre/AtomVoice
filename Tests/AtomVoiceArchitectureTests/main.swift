@@ -150,6 +150,121 @@ struct ArchitectureTestRunner {
             try expect(third.callCount == 0)
         }
 
+        await runner.run("Recognition finalizer delivers processed paste text") {
+            let processor = FakeTextProcessor(id: "punctuation", output: "hello.")
+            let harness = RecognitionFinalizerHarness(processors: [processor])
+
+            harness.finish("hello")
+
+            try expect(harness.presenter.events == ["update:hello.", "dismiss"])
+            try expect(harness.sink.deliveredTexts == ["hello."])
+            try expect(processor.lastContext?.isImmediateFinish == false)
+        }
+
+        await runner.run("Recognition finalizer replaces streaming text when punctuation changes") {
+            let stream = FakeTextStreamSession()
+            let harness = RecognitionFinalizerHarness(processors: [
+                FakeTextProcessor(id: "punctuation", output: "hello.")
+            ])
+
+            harness.finish("hello", streamSession: stream)
+
+            try expect(harness.presenter.events == ["update:hello.", "dismiss"])
+            try expect(stream.finalizedReplacements == ["hello."])
+            try expect(stream.cancelCount == 0)
+            try expect(harness.clearedStreamCount == 1)
+        }
+
+        await runner.run("Recognition finalizer appends immediate punctuation without LLM") {
+            let processor = FakeTextProcessor(id: "punctuation", output: "hello.")
+            let harness = RecognitionFinalizerHarness(processors: [processor])
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.refiner.nextResult = "HELLO"
+
+            harness.finish("hello", mode: .immediate(appending: "?"))
+
+            try expect(harness.refiner.requests.isEmpty)
+            try expect(harness.sink.deliveredTexts == ["hello?"])
+            try expect(processor.lastContext?.isImmediateFinish == true)
+        }
+
+        await runner.run("Recognition finalizer runs LLM for paste output") {
+            let harness = RecognitionFinalizerHarness(processors: [
+                FakeTextProcessor(id: "punctuation", output: "hello.")
+            ])
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 0
+            harness.refiner.nextProgress = "pol"
+            harness.refiner.nextResult = "polished."
+
+            harness.finish("hello")
+            try await waitForAsyncCallbacks()
+
+            try expect(harness.refiner.requests == ["hello."])
+            try expect(harness.presenter.events == ["update:hello.", "refining", "update:pol", "update:polished.", "dismiss"])
+            try expect(harness.sink.deliveredTexts == ["polished."])
+        }
+
+        await runner.run("Recognition finalizer delivers processed text when LLM fails") {
+            let harness = RecognitionFinalizerHarness(processors: [
+                FakeTextProcessor(id: "punctuation", output: "hello.")
+            ])
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.refiner.nextError = "LLM failed"
+
+            harness.finish("hello")
+            try await waitForAsyncCallbacks()
+
+            try expect(harness.sink.deliveredTexts == ["hello."])
+            try expect(harness.presenter.events == ["update:hello.", "refining", "error:LLM failed:3.0"])
+        }
+
+        await runner.run("Recognition finalizer handles empty text error fallback") {
+            let harness = RecognitionFinalizerHarness()
+            let stream = FakeTextStreamSession()
+
+            harness.finish("", errorMessage: "No speech", streamSession: stream)
+
+            try expect(stream.cancelCount == 1)
+            try expect(harness.clearedStreamCount == 1)
+            try expect(harness.presenter.events == ["error:No speech:5.0"])
+            try expect(harness.sink.deliveredTexts.isEmpty)
+        }
+
+        await runner.run("Recognition finalizer injects live insertion remainder") {
+            let harness = RecognitionFinalizerHarness()
+
+            harness.finish(
+                "Hello world again",
+                liveInsertion: RecognitionLiveInsertionSnapshot(isActive: true, committedText: "Hello world")
+            )
+
+            try expect(harness.sink.deliveredTexts == ["again"])
+        }
+
+        await runner.run("Recognition finalizer keeps LLM for streaming after live insertion") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 0
+            harness.refiner.nextResult = "world polished"
+            let stream = FakeTextStreamSession()
+
+            harness.finish(
+                "Hello world",
+                liveInsertion: RecognitionLiveInsertionSnapshot(isActive: true, committedText: "Hello"),
+                streamSession: stream
+            )
+            try await waitForAsyncCallbacks()
+
+            try expect(harness.refiner.requests == ["world"])
+            try expect(stream.finalizedReplacements == ["world polished"])
+            try expect(harness.clearedStreamCount == 1)
+        }
+
         await runner.run("Cloud fallback text merge removes overlap") {
             let merged = DoubaoFallbackCoordinator.combinedText(
                 prefix: "hello world",
@@ -270,6 +385,10 @@ private func require<T>(
     return value
 }
 
+private func waitForAsyncCallbacks() async throws {
+    try await Task.sleep(nanoseconds: 80_000_000)
+}
+
 private func makeTemporaryDirectory() throws -> URL {
     let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         .appendingPathComponent("AtomVoiceArchitectureTests-\(UUID().uuidString)", isDirectory: true)
@@ -333,6 +452,8 @@ private final class FakeTextProcessor: TextPostProcessor {
     let id: String
     private let output: String?
     private(set) var callCount = 0
+    private(set) var lastText: String?
+    private(set) var lastContext: TextProcessingContext?
 
     init(id: String, output: String?) {
         self.id = id
@@ -341,6 +462,152 @@ private final class FakeTextProcessor: TextPostProcessor {
 
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
         callCount += 1
+        lastText = text
+        lastContext = context
         return output
+    }
+}
+
+private final class RecognitionFinalizerHarness {
+    let presenter = FakeRecognitionPresenter()
+    let refiner = FakeRecognitionRefiner()
+    let sink = FakeTextOutputSink()
+    let settings: RecognitionFinalizerSettingsBox
+    private(set) var clearedStreamCount = 0
+    private let finalizer: RecognitionResultFinalizer
+
+    init(processors: [TextPostProcessor] = []) {
+        let settings = RecognitionFinalizerSettingsBox()
+        self.settings = settings
+        finalizer = RecognitionResultFinalizer(
+            presenter: presenter,
+            refiner: refiner,
+            textPostProcessorRegistry: TextPostProcessorRegistry(processors: processors),
+            outputSinkProvider: { [sink] in sink },
+            settingsProvider: { settings.value }
+        )
+    }
+
+    func finish(
+        _ text: String,
+        mode: RecognitionFinalizationMode = .normal,
+        errorMessage: String? = nil,
+        liveInsertion: RecognitionLiveInsertionSnapshot = RecognitionLiveInsertionSnapshot(isActive: false, committedText: ""),
+        streamSession: TextStreamSession? = nil
+    ) {
+        finalizer.finish(
+            RecognitionResultFinalizer.Request(
+                recognizedText: text,
+                errorMessage: errorMessage,
+                mode: mode,
+                engineCode: ASREngineRegistry.appleCode,
+                liveInsertion: liveInsertion,
+                streamSession: streamSession,
+                clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 }
+            )
+        )
+    }
+}
+
+private final class RecognitionFinalizerSettingsBox {
+    var value = RecognitionResultFinalizer.Settings(
+        language: "en-US",
+        llmEnabled: false,
+        llmAPIKey: "",
+        llmResultDelay: 0
+    )
+
+    var language: String {
+        get { value.language }
+        set { value.language = newValue }
+    }
+
+    var llmEnabled: Bool {
+        get { value.llmEnabled }
+        set { value.llmEnabled = newValue }
+    }
+
+    var llmAPIKey: String {
+        get { value.llmAPIKey }
+        set { value.llmAPIKey = newValue }
+    }
+
+    var llmResultDelay: Double {
+        get { value.llmResultDelay }
+        set { value.llmResultDelay = newValue }
+    }
+}
+
+private final class FakeRecognitionPresenter: RecognitionResultPresenting {
+    private(set) var events: [String] = []
+
+    func updateRecognitionText(_ text: String) {
+        events.append("update:\(text)")
+    }
+
+    func showRecognitionRefining() {
+        events.append("refining")
+    }
+
+    func showRecognitionError(_ message: String, dismissAfter: TimeInterval) {
+        events.append(String(format: "error:%@:%0.1f", message, dismissAfter))
+    }
+
+    func dismissRecognition(completion: (() -> Void)?) {
+        events.append("dismiss")
+        completion?()
+    }
+}
+
+private final class FakeRecognitionRefiner: RecognitionTextRefining {
+    var nextProgress: String?
+    var nextResult: String?
+    var nextError: String?
+    private(set) var requests: [String] = []
+
+    func refine(
+        text: String,
+        onProgress: ((String) -> Void)?,
+        completion: @escaping (String?, String?) -> Void
+    ) {
+        requests.append(text)
+        if let nextProgress {
+            onProgress?(nextProgress)
+        }
+        completion(nextResult, nextError)
+    }
+}
+
+private final class FakeTextOutputSink: TextOutputSink {
+    let descriptor = TextOutputSinkDescriptor(
+        code: "fake",
+        displayNameKey: "fake",
+        iconName: "fake",
+        supportsStreaming: false
+    )
+    private(set) var deliveredTexts: [String] = []
+
+    func deliver(text: String, completion: (() -> Void)?) {
+        deliveredTexts.append(text)
+        completion?()
+    }
+}
+
+private final class FakeTextStreamSession: TextStreamSession {
+    private(set) var updates: [String] = []
+    private(set) var finalizedReplacements: [String?] = []
+    private(set) var cancelCount = 0
+
+    func update(currentText: String) {
+        updates.append(currentText)
+    }
+
+    func finalize(replacingWith finalText: String?, completion: (() -> Void)?) {
+        finalizedReplacements.append(finalText)
+        completion?()
+    }
+
+    func cancel() {
+        cancelCount += 1
     }
 }

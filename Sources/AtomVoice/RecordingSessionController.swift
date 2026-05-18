@@ -15,11 +15,11 @@ final class RecordingSessionController {
     private let audioEngine: AudioEngineController
     private let capsuleWindow: CapsuleWindowController
     private let llmRefiner: LLMRefiner
-    private let textPostProcessorRegistry: TextPostProcessorRegistry
     private let textOutputSinkRegistry: TextOutputSinkRegistry
     private let volumeController: VolumeController
     private let asrEngineRegistry: ASREngineRegistry
     private let asrEngineProvider: ASREngineProviding
+    private let recognitionFinalizer: RecognitionResultFinalizer
     weak var delegate: RecordingSessionDelegate?
 
     /// 录音中状态变化回调：true=进入录音，false=结束（用于同步外部组件如 FnKeyMonitor.isRecording）。
@@ -89,11 +89,24 @@ final class RecordingSessionController {
         self.audioEngine = audioEngine
         self.capsuleWindow = capsuleWindow
         self.llmRefiner = llmRefiner
-        self.textPostProcessorRegistry = textPostProcessorRegistry
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.volumeController = volumeController
         self.asrEngineRegistry = asrEngineRegistry
         self.asrEngineProvider = asrEngineProvider
+        self.recognitionFinalizer = RecognitionResultFinalizer(
+            presenter: capsuleWindow,
+            refiner: llmRefiner,
+            textPostProcessorRegistry: textPostProcessorRegistry,
+            outputSinkProvider: { textOutputSinkRegistry.current() },
+            settingsProvider: {
+                RecognitionResultFinalizer.Settings(
+                    language: AppSettings.selectedLanguage,
+                    llmEnabled: AppSettings.llmEnabled,
+                    llmAPIKey: AppSettings.llmAPIKey,
+                    llmResultDelay: AppSettings.llmResultDelay
+                )
+            }
+        )
 
         // AudioAnalyzer 永久订阅 router 16kHz 通道：tap 装上才会有 buffer，不录音期间零开销。
         // (Permanent 16kHz subscription; analyzer only sees buffers when tap is installed.)
@@ -107,6 +120,9 @@ final class RecordingSessionController {
             DispatchQueue.main.async {
                 self?.capsuleWindow.updateBands(bands)
             }
+        }
+        audioEngine.onRouteRecoveryFailed = { [weak self] in
+            self?.handleAudioRouteRecoveryFailed()
         }
     }
 
@@ -490,6 +506,21 @@ final class RecordingSessionController {
         capsuleWindow.showError(loc("error.audioTapFailed"), dismissAfter: 5)
     }
 
+    private func handleAudioRouteRecoveryFailed() {
+        guard isRecording else { return }
+        DebugLog.error("[Session] 音频路由变化恢复失败，结束当前录音")
+        markRecordingStopped()
+        let shouldStopAppleLiveFallback = doubaoFallback.cancel()
+        cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
+        audioEngine.abandonAfterRouteRecoveryFailure()
+        sherpaPreload.cancel()
+        resetLiveInsertionState()
+        streamSession?.cancel()
+        streamSession = nil
+        capsuleWindow.showError(loc("error.audioTapFailed"), dismissAfter: 5)
+        delegate?.sessionDidEnd()
+    }
+
     private func handleRecognitionStartFailure(_ message: String) {
         markRecordingStopped()
         resetLiveInsertionState()
@@ -744,123 +775,12 @@ final class RecordingSessionController {
 
     private func finishRecording(with recognizedText: String, errorMsg: String? = nil) {
         defer { delegate?.sessionDidEnd() }
-        let rawText = remainingTextAfterLiveInsertion(recognizedText)
-
-        // 流式 sink 路径：ASR 文字已上屏；按需做 LLM 替换或自动标点替换，然后关闭会话
-        // (Streaming sink path: ASR text already on screen; do LLM/punctuation replacement as needed, then close the session)
-        if let session = streamSession {
-            finishStreamingRecording(session: session, rawText: rawText, errorMsg: errorMsg)
-            return
-        }
-
-        if rawText.isEmpty {
-            showRecordingResultErrorOrDismiss(errorMsg)
-            return
-        }
-
-        let processedText = processedTextForFinalResult(rawText)
-        if shouldRunLLMRefinement(skipWhenLiveInsertionCommitted: true) {
-            capsuleWindow.showRefining()
-            llmRefiner.refine(text: processedText, onProgress: { [weak self] partial in
-                self?.capsuleWindow.updateText(partial)
-            }) { [weak self] refined, errorMsg in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if let errorMsg {
-                        // 立即注入文字，同时胶囊显示错误 3 秒（Inject text immediately, while capsule shows error for 3 seconds）
-                        self.activeOutputSink.deliver(text: processedText, completion: nil)
-                        self.capsuleWindow.showError(errorMsg)
-                        return
-                    }
-                    let finalText = refined ?? processedText
-                    self.capsuleWindow.updateText(finalText)
-                    let delay = AppSettings.llmResultDelay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        self.capsuleWindow.dismiss {
-                            self.activeOutputSink.deliver(text: finalText, completion: nil)
-                        }
-                    }
-                }
-            }
-        } else {
-            dismissAndDeliver(processedText)
-        }
-    }
-
-    /// 流式 sink 模式下的录音结束流程：替换/补标点/调 LLM，然后关闭 session。
-    /// (Recording-finish flow under streaming sink: replace / add punctuation / run LLM, then close the session.)
-    private func finishStreamingRecording(session: TextStreamSession, rawText: String, errorMsg: String?) {
-        if rawText.isEmpty {
-            cancelStreamingResult(session, errorMsg: errorMsg)
-            return
-        }
-
-        let processedText = processedTextForFinalResult(rawText)
-        if shouldRunLLMRefinement(skipWhenLiveInsertionCommitted: false) {
-            capsuleWindow.showRefining()
-            llmRefiner.refine(text: processedText, onProgress: { [weak self] partial in
-                self?.capsuleWindow.updateText(partial)
-            }) { [weak self] refined, llmError in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    let finalText = refined ?? processedText
-                    let toApply = llmError != nil ? processedText : finalText
-                    self.finalizeStreamSession(session, replacingWith: toApply)
-                    if let llmError {
-                        self.capsuleWindow.showError(llmError)
-                    } else {
-                        self.capsuleWindow.updateText(finalText)
-                        let delay = AppSettings.llmResultDelay
-                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                            self.capsuleWindow.dismiss()
-                        }
-                    }
-                }
-            }
-        } else {
-            // 无 LLM：仅在自动标点改了文本时做替换；否则原样提交即可
-            // (No LLM: only replace when auto-punctuation changed the text; otherwise commit as-is)
-            let replacement: String? = (processedText != rawText) ? processedText : nil
-            capsuleWindow.dismiss { [weak self] in
-                self?.finalizeStreamSession(session, replacingWith: replacement)
-            }
-        }
+        finalizeRecognizedResult(recognizedText, mode: .normal, errorMsg: errorMsg)
     }
 
     private func finishImmediateRecording(with recognizedText: String, appending punctuation: String?, errorMsg: String? = nil) {
         defer { delegate?.sessionDidEnd() }
-        let rawText = remainingTextAfterLiveInsertion(recognizedText)
-
-        // 流式 sink 路径：文本已上屏；标点直接追加在末尾即可
-        // (Streaming sink path: text already on screen; punctuation just appended at the end)
-        if let session = streamSession {
-            if rawText.isEmpty {
-                cancelStreamingImmediateResult(session, errorMsg: errorMsg, punctuation: punctuation)
-                return
-            }
-            let processedText = processedTextForFinalResult(rawText, isImmediateFinish: true)
-            let finalText = textByAppendingImmediatePunctuation(punctuation, to: processedText)
-            capsuleWindow.dismiss { [weak self] in
-                self?.finalizeStreamSession(session, replacingWith: finalText != rawText ? finalText : nil)
-            }
-            return
-        }
-
-        if rawText.isEmpty {
-            if let errorMsg, punctuation?.isEmpty ?? true {
-                capsuleWindow.showError(errorMsg, dismissAfter: 5)
-                return
-            }
-
-            dismissAndDeliverPunctuationOnly(punctuation)
-            return
-        }
-
-        // 本地自动标点（保留），但跳过 LLM（Local auto-punctuation applied, but skip LLM）
-        let processedText = processedTextForFinalResult(rawText, isImmediateFinish: true)
-        let finalText = textByAppendingImmediatePunctuation(punctuation, to: processedText)
-
-        dismissAndDeliver(finalText)
+        finalizeRecognizedResult(recognizedText, mode: .immediate(appending: punctuation), errorMsg: errorMsg)
     }
 
     private func finishRecognizedResult(_ text: String, errorMsg: String? = nil, appending punctuation: String? = nil) {
@@ -869,6 +789,29 @@ final class RecordingSessionController {
         } else {
             finishRecording(with: text, errorMsg: errorMsg)
         }
+    }
+
+    private func finalizeRecognizedResult(
+        _ text: String,
+        mode: RecognitionFinalizationMode,
+        errorMsg: String?
+    ) {
+        recognitionFinalizer.finish(
+            RecognitionResultFinalizer.Request(
+                recognizedText: text,
+                errorMessage: errorMsg,
+                mode: mode,
+                engineCode: currentRecordingEngine,
+                liveInsertion: RecognitionLiveInsertionSnapshot(
+                    isActive: liveInsertionActive,
+                    committedText: liveInsertionCommittedText
+                ),
+                streamSession: streamSession,
+                clearStreamSession: { [weak self] in
+                    self?.streamSession = nil
+                }
+            )
+        )
     }
 
     // MARK: - Apple live insertion 段落提交（Apple live segment commit）
@@ -921,126 +864,5 @@ final class RecordingSessionController {
         }
 
         return nil
-    }
-
-    private func remainingTextAfterLiveInsertion(_ text: String) -> String {
-        guard liveInsertionActive, !liveInsertionCommittedText.isEmpty else { return text }
-
-        if text.hasPrefix(liveInsertionCommittedText) {
-            return String(text.dropFirst(liveInsertionCommittedText.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        let committed = liveInsertionCommittedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !committed.isEmpty, text.hasPrefix(committed) {
-            return String(text.dropFirst(committed.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        let commonPrefixEnd = commonPrefixEndIndex(in: text, with: liveInsertionCommittedText)
-        let commonPrefixLength = text.distance(from: text.startIndex, to: commonPrefixEnd)
-        if commonPrefixLength > 0 {
-            DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不完全一致，从共同前缀后继续注入")
-            return String(text[commonPrefixEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不一致，注入完整最终文本以避免丢字")
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func commonPrefixEndIndex(in text: String, with prefix: String) -> String.Index {
-        var textIndex = text.startIndex
-        var prefixIndex = prefix.startIndex
-
-        while textIndex < text.endIndex,
-              prefixIndex < prefix.endIndex,
-              text[textIndex] == prefix[prefixIndex] {
-            textIndex = text.index(after: textIndex)
-            prefixIndex = prefix.index(after: prefixIndex)
-        }
-
-        return textIndex
-    }
-
-    // MARK: - 文本后处理（Text post-processing）
-
-    private func applyAutoPunctuation(to rawText: String, isImmediateFinish: Bool = false) -> String {
-        let lang = AppSettings.selectedLanguage
-        let context = TextProcessingContext(
-            engineCode: currentRecordingEngine,
-            language: lang,
-            isImmediateFinish: isImmediateFinish
-        )
-        return textPostProcessorRegistry.run(rawText, context: context)
-    }
-
-    private func removingTrailingSentencePunctuation(from text: String) -> String {
-        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        while let last = result.last, PunctuationProcessor.isSentenceEndingPunctuation(last) {
-            result.removeLast()
-        }
-        return result
-    }
-
-    private func processedTextForFinalResult(_ rawText: String, isImmediateFinish: Bool = false) -> String {
-        let processedText = applyAutoPunctuation(to: rawText, isImmediateFinish: isImmediateFinish)
-        if processedText != rawText {
-            capsuleWindow.updateText(processedText)
-        }
-        return processedText
-    }
-
-    private func textByAppendingImmediatePunctuation(_ punctuation: String?, to text: String) -> String {
-        guard let punctuation, !punctuation.isEmpty else { return text }
-        return removingTrailingSentencePunctuation(from: text) + punctuation
-    }
-
-    private func shouldRunLLMRefinement(skipWhenLiveInsertionCommitted: Bool) -> Bool {
-        guard AppSettings.llmEnabled, !AppSettings.llmAPIKey.isEmpty else { return false }
-        return !(skipWhenLiveInsertionCommitted && !liveInsertionCommittedText.isEmpty)
-    }
-
-    // MARK: - 收尾辅助（Finish helpers）
-
-    private func showRecordingResultErrorOrDismiss(_ errorMsg: String?) {
-        if let errorMsg {
-            capsuleWindow.showError(errorMsg, dismissAfter: 5)
-        } else {
-            capsuleWindow.dismiss()
-        }
-    }
-
-    private func cancelStreamingResult(_ session: TextStreamSession, errorMsg: String?) {
-        session.cancel()
-        streamSession = nil
-        showRecordingResultErrorOrDismiss(errorMsg)
-    }
-
-    private func cancelStreamingImmediateResult(_ session: TextStreamSession, errorMsg: String?, punctuation: String?) {
-        session.cancel()
-        streamSession = nil
-        if let errorMsg, punctuation?.isEmpty ?? true {
-            capsuleWindow.showError(errorMsg, dismissAfter: 5)
-            return
-        }
-        dismissAndDeliverPunctuationOnly(punctuation)
-    }
-
-    private func finalizeStreamSession(_ session: TextStreamSession, replacingWith replacement: String?) {
-        session.finalize(replacingWith: replacement) { [weak self] in
-            self?.streamSession = nil
-        }
-    }
-
-    private func dismissAndDeliver(_ text: String) {
-        capsuleWindow.dismiss { [self] in
-            activeOutputSink.deliver(text: text, completion: nil)
-        }
-    }
-
-    private func dismissAndDeliverPunctuationOnly(_ punctuation: String?) {
-        capsuleWindow.dismiss { [self] in
-            if let punctuation, !punctuation.isEmpty {
-                activeOutputSink.deliver(text: punctuation, completion: nil)
-            }
-        }
     }
 }

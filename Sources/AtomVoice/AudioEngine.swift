@@ -6,6 +6,10 @@ import AudioTapShim
 final class AudioEngineController {
     private(set) var engine = AVAudioEngine()
     private var tapInstalled = false
+    private let routeRecoveryQueue = DispatchQueue(label: "com.atomvoice.audioEngine.routeRecovery", qos: .userInitiated)
+    private let routeRecoveryLock = NSLock()
+    private var routeRecoveryToken = 0
+    var onRouteRecoveryFailed: (() -> Void)?
 
     /// 音频路由：tap 收到的 buffer 经 router 分发到各消费者（按目标 format 自动重采样）。
     /// 静音检测/频谱可视化通过 AudioAnalyzer（router 的 16kHz 消费者）实现，本类只负责 source。
@@ -21,6 +25,30 @@ final class AudioEngineController {
     /// 标记：真实路由变化后 engine 实例已不可用，下次 start() 前必须重建。
     /// (Flag: real route-change occurred; engine is corrupted, must rebuild before next start().)
     private var needsEngineRebuild = false
+
+    private func nextRouteRecoveryToken() -> Int {
+        routeRecoveryLock.lock()
+        defer { routeRecoveryLock.unlock() }
+        routeRecoveryToken += 1
+        return routeRecoveryToken
+    }
+
+    private func invalidateRouteRecovery() {
+        _ = nextRouteRecoveryToken()
+    }
+
+    private func completeRouteRecovery(token: Int) {
+        routeRecoveryLock.lock()
+        defer { routeRecoveryLock.unlock() }
+        guard routeRecoveryToken == token else { return }
+        routeRecoveryToken += 1
+    }
+
+    private func isCurrentRouteRecovery(_ token: Int) -> Bool {
+        routeRecoveryLock.lock()
+        defer { routeRecoveryLock.unlock() }
+        return routeRecoveryToken == token
+    }
 
     init() {
         // 监听音频路由变化（如摘下 AirPods）：engine 的 inputNode 不会自动跟随系统默认输入变化，
@@ -83,7 +111,9 @@ final class AudioEngineController {
             // 唯一可靠的恢复路径是丢掉整个 engine 实例重建。
             // (Self-induced echo within ~1s → ignore. Otherwise, real route change → mark engine for rebuild;
             //  the only reliable recovery from a real route change is to discard and recreate the engine.)
-            if let last = self.lastStartSucceededAt, Date().timeIntervalSince(last) < 1.0 {
+            if let last = self.lastStartSucceededAt,
+               Date().timeIntervalSince(last) < 1.0,
+               self.engine.isRunning {
                 DebugLog.info("[AudioEngine] 忽略 start 后 \(Int(Date().timeIntervalSince(last)*1000))ms 内的自触发 ConfigurationChange")
                 return
             }
@@ -108,17 +138,57 @@ final class AudioEngineController {
             // (Seamless mid-recording device swap requires a fresh AVAudioEngine — outputFormat is cached
             //  on the old instance and won't reflect the new device.)
             if wasActive {
-                NSLog("[ATOMVOICE] route-change before rebuild")
-                self.rebuildEngine()
-                NSLog("[ATOMVOICE] route-change before re-arm")
-                if self.armEngineWithCurrentHandlers(context: "route-change re-arm") {
-                    NSLog("[ATOMVOICE] route-change AFTER re-arm OK")
-                    DebugLog.info("[AudioEngine] 路由变化后无缝切到新设备成功")
-                } else {
-                    NSLog("[ATOMVOICE] route-change re-arm FAILED")
-                    DebugLog.error("[AudioEngine] 路由变化后重启 engine 失败，等待下次 start()")
-                }
+                let token = self.nextRouteRecoveryToken()
+                self.scheduleRouteRecovery(token: token)
             }
+        }
+    }
+
+    private func scheduleRouteRecovery(token: Int) {
+        DebugLog.info("[AudioEngine] 路由变化恢复已转入后台队列 token=\(token)")
+        routeRecoveryQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.recoverRouteAfterActiveChange(token: token)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self, self.isCurrentRouteRecovery(token) else { return }
+            DebugLog.error("[AudioEngine] 路由变化恢复 watchdog 超时，结束当前录音 token=\(token)")
+            self.completeRouteRecovery(token: token)
+            self.onRouteRecoveryFailed?()
+        }
+    }
+
+    private func recoverRouteAfterActiveChange(token: Int) {
+        let deadline = Date().addingTimeInterval(1.5)
+        var attempt = 0
+
+        while isCurrentRouteRecovery(token), Date() < deadline {
+            attempt += 1
+            NSLog("[ATOMVOICE] route-change before rebuild")
+            rebuildEngine()
+
+            guard isCurrentRouteRecovery(token) else { return }
+            NSLog("[ATOMVOICE] route-change before re-arm")
+            DebugLog.info("[AudioEngine] 路由变化后台重启尝试 \(attempt)")
+
+            if armEngineWithCurrentHandlers(context: "route-change re-arm") {
+                guard isCurrentRouteRecovery(token) else {
+                    stop()
+                    return
+                }
+                completeRouteRecovery(token: token)
+                NSLog("[ATOMVOICE] route-change AFTER re-arm OK")
+                DebugLog.info("[AudioEngine] 路由变化后无缝切到新设备成功")
+                return
+            }
+
+            Thread.sleep(forTimeInterval: 0.15)
+        }
+
+        guard isCurrentRouteRecovery(token) else { return }
+        DebugLog.error("[AudioEngine] 路由变化后台重启超时，结束当前录音")
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isCurrentRouteRecovery(token) else { return }
+            self.onRouteRecoveryFailed?()
         }
     }
 
@@ -438,6 +508,7 @@ final class AudioEngineController {
     }
 
     func stop() {
+        invalidateRouteRecovery()
         if tapInstalled {
             engine.inputNode.removeTap(onBus: 0)
             tapInstalled = false
@@ -446,5 +517,15 @@ final class AudioEngineController {
             engine.stop()
         }
         lastStartSucceededAt = nil
+    }
+
+    /// 路由恢复 watchdog 超时后使用：不要再同步触碰当前 AVAudioEngine。
+    /// 它可能正卡在 CoreAudio 硬件查询里；这里只标脏，等待下一次 start() 新建实例。
+    func abandonAfterRouteRecoveryFailure() {
+        invalidateRouteRecovery()
+        tapInstalled = false
+        needsEngineRebuild = true
+        lastStartSucceededAt = nil
+        router.invalidate()
     }
 }
