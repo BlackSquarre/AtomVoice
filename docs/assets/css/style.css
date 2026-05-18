@@ -1,347 +1,426 @@
+/* ──────────────────────────────────────────────────────────────
+   AtomVoice — Tesla 风格视觉系统
+   基线：纯白底、单一蓝色 CTA、Carbon Dark 文本、无阴影无渐变、
+   字重 400/500、字距 normal、4px 微圆角、每屏一信息。
+   ────────────────────────────────────────────────────────────── */
+
 /* ── Reset ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Variables ───────────────────────────────────────────────── */
+/* ── Tokens ──────────────────────────────────────────────────── */
 :root {
-  --bg:        #f5f5f7;
-  --bg-white:  #ffffff;
-  --bg-dark:   #0d0d1a;
-  --text:      #1d1d1f;
-  --text-sec:  #6e6e73;
-  --accent:    #0071e3;
-  --accent-hv: #0077ed;
-  --border:    rgba(0, 0, 0, 0.08);
-  --shadow:    0 4px 24px rgba(0, 0, 0, 0.07);
-  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.05);
-  --r:         18px;
-  --r-sm:      12px;
-  --nav-h:     54px;
-  --font:      -apple-system, BlinkMacSystemFont, "SF Pro Display",
-               "Helvetica Neue", Arial, sans-serif;
-  --mono:      "SF Mono", Menlo, Monaco, Consolas, monospace;
+  /* 色板 — 严格对应 Tesla DESIGN.md */
+  --blue:        #3E6AE1;          /* Electric Blue：唯一彩色，仅用于主 CTA */
+  --carbon:      #171A20;          /* Carbon Dark：主标题与导航 */
+  --graphite:    #393C41;          /* Graphite：正文 */
+  --pewter:      #5C5E62;          /* Pewter：三级文字、次级链接 */
+  --silver:      #8E8E8E;          /* Silver Fog：占位 */
+  --cloud:       #EEEEEE;          /* Cloud Gray：分割线 */
+  --ash:         #F4F4F4;          /* Light Ash：替代浅底 */
+  --white:       #FFFFFF;
+  --frost:       rgba(255,255,255,0.75);
+
+  /* 字体 */
+  --font: "Universal Sans Text", "Universal Sans Display",
+          -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Universal Sans Display", "Universal Sans Text",
+                  -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --mono: "SF Mono", Menlo, Monaco, Consolas, monospace;
+
+  /* 几何 */
+  --r-btn:       4px;
+  --r-card:      12px;
+  --nav-h:       56px;
+
+  /* 动效 — Tesla 统一 0.33s */
+  --t: 0.33s;
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font);
-  font-size: 17px;
-  line-height: 1.6;
-  color: var(--text);
-  background: var(--bg);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--graphite);
+  background: var(--white);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Nav ─────────────────────────────────────────────────────── */
+/* ── Nav：浮于 hero 上方，无阴影、无边框 ───────────────────── */
 .nav {
   position: sticky; top: 0; z-index: 100;
   height: var(--nav-h);
-  background: rgba(245, 245, 247, 0.82);
+  background: var(--frost);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--border);
 }
 .nav-inner {
-  max-width: 1100px; margin: 0 auto;
+  max-width: 1383px; margin: 0 auto;
   height: 100%;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 .nav-brand {
-  display: flex; align-items: center; gap: 9px;
-  text-decoration: none; color: var(--text);
-  font-weight: 600; font-size: 16px;
-  letter-spacing: -0.1px;
-}
-.nav-brand img { border-radius: 7px; }
-.nav-right {
-  display: flex; align-items: center; gap: 20px;
-}
-.nav-download {
-  text-decoration: none; color: var(--accent);
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--carbon);
   font-size: 14px; font-weight: 500;
-  white-space: nowrap;
+  line-height: 1;
 }
-.nav-download:hover { color: var(--accent-hv); }
+.nav-brand img { display: block; }
+.nav-right { display: flex; align-items: center; gap: 24px; }
+.nav-download {
+  text-decoration: none; color: var(--carbon);
+  font-size: 14px; font-weight: 500;
+  padding: 4px 16px;
+  border-radius: var(--r-btn);
+  transition: background-color var(--t), color var(--t);
+}
+.nav-download:hover { background: rgba(0,0,0,0.04); }
 
-/* Lang switcher */
+/* 语言切换 — 走 Pewter 文字链路 */
 .lang-switcher {
-  display: flex; align-items: center; gap: 1px;
+  display: flex; align-items: center; gap: 2px;
 }
 .lang-btn {
   background: none; border: none; cursor: pointer;
   font-family: var(--font); font-size: 12px; font-weight: 500;
-  color: var(--text-sec);
-  padding: 4px 6px; border-radius: 6px;
-  transition: background 0.12s, color 0.12s;
+  color: var(--pewter);
+  padding: 4px 6px;
+  border-radius: var(--r-btn);
+  transition: color var(--t), background-color var(--t);
   line-height: 1;
 }
-.lang-btn:hover { background: rgba(0,0,0,0.06); color: var(--text); }
-.lang-btn.active { background: rgba(0,0,0,0.09); color: var(--text); }
+.lang-btn:hover { color: var(--carbon); }
+.lang-btn.active { color: var(--carbon); background: rgba(0,0,0,0.05); }
 
-/* ── Hero ────────────────────────────────────────────────────── */
+/* ── Hero：全视口、留白主导 ────────────────────────────────── */
 .hero {
-  background: linear-gradient(155deg, #0d0d1a 0%, #16213e 45%, #0f172a 100%);
+  position: relative;
   min-height: calc(100vh - var(--nav-h));
-  display: flex; align-items: center; justify-content: center;
+  background: var(--white);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 96px 24px 96px;
   text-align: center;
-  padding: 80px 24px 100px;
+  overflow: hidden;
 }
 .hero-inner {
-  max-width: 640px;
+  width: 100%;
   display: flex; flex-direction: column; align-items: center;
 }
 .hero-icon {
-  width: 112px; height: 112px;
-  border-radius: 26px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-  margin-bottom: 28px;
-}
-.hero-name {
-  display: flex; align-items: baseline; gap: 12px;
-  margin-bottom: 16px;
+  width: 144px; height: 144px;
+  margin-bottom: 40px;
+  /* Tesla 不用阴影；图标本身有形即可 */
 }
 .hero-name h1 {
-  font-size: 52px; font-weight: 700;
-  letter-spacing: -1px; color: #ffffff;
-  line-height: 1;
-}
-.hero-sub {
-  font-size: 22px; font-weight: 500;
-  color: rgba(255,255,255,0.82);
-  letter-spacing: -0.2px;
+  font-family: var(--font-display);
+  font-size: 40px; font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: normal;
+  color: var(--carbon);
   margin-bottom: 12px;
 }
+.hero-sub {
+  font-size: 16px; font-weight: 400;
+  color: var(--graphite);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
 .hero-tag {
-  font-size: 17px; color: rgba(255,255,255,0.48);
-  max-width: 460px; line-height: 1.55;
-  margin-bottom: 36px;
+  font-size: 14px; font-weight: 400;
+  color: var(--pewter);
+  max-width: 520px;
+  line-height: 1.45;
 }
 .hero-btns {
-  display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-  margin-bottom: 20px;
+  margin-top: 40px;
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
 }
 .hero-req {
-  font-size: 12px; color: rgba(255,255,255,0.28);
-  letter-spacing: 0.02em;
+  margin-top: 24px;
+  font-size: 12px; color: var(--pewter);
 }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
+/* ── Buttons：4px 圆角，0.33s 色彩过渡 ─────────────────────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 12px 22px; border-radius: 980px;
-  font-family: var(--font); font-size: 15px; font-weight: 500;
-  text-decoration: none; cursor: pointer; border: none;
-  transition: transform 0.15s, background 0.15s, opacity 0.15s;
+  min-height: 40px;
+  min-width: 200px;
+  padding: 4px 24px;
+  border-radius: var(--r-btn);
+  font-family: var(--font);
+  font-size: 14px; font-weight: 500;
+  text-decoration: none; cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--t), color var(--t), border-color var(--t);
   white-space: nowrap;
 }
 .btn-primary {
-  background: var(--accent); color: #fff;
+  background: var(--blue); color: var(--white);
 }
-.btn-primary:hover { background: var(--accent-hv); transform: scale(1.02); }
-.btn-ghost {
-  background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85);
-  border: 1px solid rgba(255,255,255,0.18);
-}
-.btn-ghost:hover { background: rgba(255,255,255,0.16); }
-.btn-outline {
-  background: transparent; color: rgba(255,255,255,0.65);
-  border: 1px solid rgba(255,255,255,0.22);
-}
-.btn-outline:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.btn-primary:hover { background: #3458c4; }
 
-/* ── Sections ────────────────────────────────────────────────── */
-.section      { padding: 88px 24px; }
-.section-grey { background: var(--bg); }
-.section-white{ background: var(--bg-white); }
-.section-dark {
-  background: linear-gradient(155deg, #0d0d1a 0%, #16213e 60%, #0f172a 100%);
+.btn-ghost {
+  background: rgba(244,244,244,0.65);
+  color: var(--carbon);
+  border-color: rgba(244,244,244,0.65);
 }
+.btn-ghost:hover { background: rgba(244,244,244,0.85); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--carbon);
+  border-color: var(--carbon);
+}
+.btn-outline:hover { background: var(--carbon); color: var(--white); }
+
+/* ── Sections：每屏一信息 ──────────────────────────────────── */
+.section {
+  padding: 120px 24px;
+  background: var(--white);
+}
+.section-grey  { background: var(--ash); }
+.section-white { background: var(--white); }
+.section-dark  { background: var(--carbon); color: var(--white); }
+
 .container { max-width: 1100px; margin: 0 auto; }
 
 .section-title {
-  font-size: 34px; font-weight: 700;
-  letter-spacing: -0.5px;
+  font-family: var(--font-display);
+  font-size: 32px; font-weight: 500;
+  line-height: 1.2; letter-spacing: normal;
+  color: var(--carbon);
   text-align: center;
-  color: var(--text);
-  margin-bottom: 48px;
+  margin-bottom: 64px;
 }
-.section-title.light { color: rgba(255,255,255,0.88); }
+.section-title.light { color: var(--white); }
 
-/* ── Cards ───────────────────────────────────────────────────── */
+/* ── Card 基础：无阴影、无边框 ─────────────────────────────── */
 .card {
-  background: rgba(255,255,255,0.92);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow: var(--shadow-sm);
-  padding: 32px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
-/* ── Highlights ──────────────────────────────────────────────── */
+/* ── Highlights：左右两栏，留白承担分组 ───────────────────── */
 .highlights {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 64px;
+  max-width: 1100px; margin: 0 auto;
 }
+.highlight-card { padding: 0; text-align: center; }
 .highlight-card .card-icon {
-  font-size: 38px; margin-bottom: 16px; display: block;
+  display: block;
+  font-size: 32px;
+  margin-bottom: 24px;
+  filter: grayscale(1);   /* 收敛色彩，让蓝色 CTA 独显 */
 }
 .highlight-card h3 {
-  font-size: 22px; font-weight: 700;
-  letter-spacing: -0.3px; margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: 24px; font-weight: 500;
+  letter-spacing: normal;
+  color: var(--carbon);
+  margin-bottom: 12px;
 }
-.highlight-card p { color: var(--text-sec); font-size: 16px; line-height: 1.65; }
+.highlight-card p {
+  color: var(--graphite);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 360px;
+  margin: 0 auto;
+}
 
-/* ── Engines ─────────────────────────────────────────────────── */
+/* ── Engines：3 列，纯文本排版 ─────────────────────────────── */
 .engines {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px;
 }
-.engine-card { padding: 28px; }
+.engine-card {
+  padding: 32px 0;
+  border-top: 1px solid var(--cloud);
+}
 .engine-header {
-  display: flex; align-items: center; gap: 9px;
-  flex-wrap: wrap; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 16px;
 }
-.engine-icon   { font-size: 22px; }
-.engine-name   { font-size: 16px; font-weight: 600; }
-.engine-card p { color: var(--text-sec); font-size: 14px; line-height: 1.65; }
+.engine-icon   { font-size: 18px; filter: grayscale(1); }
+.engine-name   {
+  font-size: 17px; font-weight: 500;
+  color: var(--carbon);
+}
+.engine-card p {
+  color: var(--graphite);
+  font-size: 14px; line-height: 1.55;
+}
 
-/* Badges */
+/* Badges — 极简，纯文字色 */
 .badge {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  padding: 2px 8px;
+  border-radius: var(--r-btn);
+  border: 1px solid var(--cloud);
+  color: var(--pewter);
+  background: transparent;
 }
-.badge-default { background: #e6f0ff; color: #1a56c4; }
-.badge-offline { background: #e6f5e6; color: #1a7a1a; }
-.badge-cloud   { background: #f0f0f8; color: #5a5a96; }
+.badge-default { color: var(--blue); border-color: var(--blue); }
+.badge-offline { color: var(--carbon); border-color: var(--carbon); }
+.badge-cloud   { color: var(--pewter); border-color: var(--cloud); }
 
-/* ── Features grid ───────────────────────────────────────────── */
+/* ── Features：纯列表式 ─────────────────────────────────────── */
 .features-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0;
   list-style: none;
+  max-width: 1100px; margin: 0 auto;
+  border-top: 1px solid var(--cloud);
 }
 .features-grid li {
-  background: rgba(255,255,255,0.9);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 14px 16px;
-  font-size: 14px; color: var(--text);
-  display: flex; align-items: center; gap: 9px;
+  padding: 24px 20px;
+  font-size: 14px;
+  color: var(--graphite);
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--cloud);
 }
 .features-grid li::before {
-  content: "✓";
-  color: var(--accent);
-  font-weight: 700;
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--carbon);
   flex-shrink: 0;
-  font-size: 13px;
 }
 
-/* ── Download ────────────────────────────────────────────────── */
+/* ── Download：暗底 section，主 CTA 仍是蓝 ─────────────────── */
+.section-dark .section-title { color: var(--white); }
 .dl-desc {
   text-align: center;
-  color: rgba(255,255,255,0.52);
-  font-size: 16px;
-  margin-bottom: 36px;
+  color: rgba(255,255,255,0.65);
+  font-size: 14px;
+  margin-bottom: 48px;
 }
 .dl-btns {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
-  margin-bottom: 32px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  margin-bottom: 48px;
 }
-.dl-btn { padding: 13px 26px; }
-.dl-alt { text-align: center; }
+.dl-btn { /* 沿用 .btn 尺寸 */ }
+.section-dark .btn-outline {
+  color: var(--white);
+  border-color: var(--white);
+}
+.section-dark .btn-outline:hover {
+  background: var(--white); color: var(--carbon);
+}
 
+.dl-alt { text-align: center; }
 .dl-details summary {
   cursor: pointer; list-style: none;
   display: inline-block;
-  color: rgba(255,255,255,0.38);
+  color: rgba(255,255,255,0.55);
   font-size: 13px;
-  padding: 6px 14px; border-radius: 8px;
-  transition: color 0.15s;
-  text-align: center;
+  padding: 6px 14px;
+  border-radius: var(--r-btn);
+  transition: color var(--t);
 }
 .dl-details summary::-webkit-details-marker { display: none; }
-.dl-details summary:hover { color: rgba(255,255,255,0.7); }
-.dl-details[open] summary { color: rgba(255,255,255,0.6); }
+.dl-details summary:hover { color: var(--white); }
+.dl-details[open] summary { color: rgba(255,255,255,0.75); }
 .dl-details pre {
-  margin-top: 14px; display: inline-block; text-align: left;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: var(--r-sm);
+  margin-top: 16px; display: inline-block; text-align: left;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-btn);
   padding: 16px 20px;
 }
 .dl-details code {
   font-family: var(--mono); font-size: 13px;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.82);
   white-space: pre;
 }
 
 /* ── Privacy page ────────────────────────────────────────────── */
 .privacy-page {
   max-width: 640px; margin: 0 auto;
-  padding: 64px 24px 80px;
+  padding: 96px 24px 120px;
 }
 .privacy-page h1 {
-  font-size: 36px; font-weight: 700;
-  letter-spacing: -0.4px; margin-bottom: 12px;
+  font-family: var(--font-display);
+  font-size: 40px; font-weight: 500;
+  letter-spacing: normal;
+  color: var(--carbon);
+  margin-bottom: 12px;
 }
 .privacy-page .subtitle {
-  color: var(--text-sec); margin-bottom: 40px; font-size: 16px;
+  color: var(--pewter); margin-bottom: 48px; font-size: 14px;
 }
 .lang-list {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 0;
   list-style: none;
+  border-top: 1px solid var(--cloud);
 }
 .lang-list li a {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px;
-  background: var(--bg-white);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  text-decoration: none; color: var(--text);
+  padding: 20px 4px;
+  border-bottom: 1px solid var(--cloud);
+  text-decoration: none; color: var(--carbon);
   font-size: 15px; font-weight: 500;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: color var(--t);
 }
-.lang-list li a:hover {
-  box-shadow: var(--shadow);
-  border-color: rgba(0,0,0,0.14);
+.lang-list li a:hover { color: var(--blue); }
+.lang-list .lang-label {
+  color: var(--pewter); font-size: 12px; font-weight: 400;
+  font-family: var(--mono);
 }
-.lang-list .lang-label { color: var(--text-sec); font-size: 13px; font-weight: 400; }
-.lang-list .arrow { color: var(--text-sec); font-size: 18px; }
+.lang-list .arrow { display: none; }
 
 /* ── Footer ──────────────────────────────────────────────────── */
 .footer {
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+  background: var(--white);
+  border-top: 1px solid var(--cloud);
   padding: 32px 24px;
 }
 .footer-inner {
-  max-width: 1100px; margin: 0 auto;
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  max-width: 1383px; margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
 .footer-links {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 32px;
 }
 .footer-links a {
-  text-decoration: none; color: var(--text-sec);
-  font-size: 13px; transition: color 0.15s;
+  text-decoration: none; color: var(--pewter);
+  font-size: 12px;
+  transition: color var(--t);
 }
-.footer-links a:hover { color: var(--text); }
-.footer-copy { font-size: 12px; color: var(--text-sec); opacity: 0.55; }
+.footer-links a:hover { color: var(--carbon); }
+.footer-copy {
+  font-size: 12px; color: var(--pewter);
+}
 
 /* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 860px) {
-  .engines { grid-template-columns: 1fr 1fr; }
-  .features-grid { grid-template-columns: 1fr 1fr; }
+@media (max-width: 960px) {
+  .engines { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .highlights { gap: 48px; }
 }
 @media (max-width: 640px) {
-  .hero-name h1 { font-size: 38px; }
-  .hero-sub { font-size: 18px; }
-  .highlights { grid-template-columns: 1fr; }
-  .engines { grid-template-columns: 1fr; }
+  .section { padding: 80px 20px; }
+  .hero-name h1 { font-size: 28px; }
+  .hero-icon { width: 112px; height: 112px; margin-bottom: 32px; }
+  .highlights { grid-template-columns: 1fr; gap: 56px; }
+  .engines { grid-template-columns: 1fr; gap: 0; }
+  .engine-card { padding: 24px 0; }
   .features-grid { grid-template-columns: 1fr; }
-  .section-title { font-size: 26px; }
-  .lang-btn { padding: 4px 5px; font-size: 11px; }
+  .section-title { font-size: 24px; margin-bottom: 48px; }
+  .hero-btns { flex-direction: column; width: 100%; max-width: 320px; }
+  .btn { width: 100%; min-width: 0; }
+  .dl-btns { flex-direction: column; align-items: center; }
+  .dl-btn { width: 100%; max-width: 320px; }
+  .nav-inner { padding: 0 16px; }
 }
 @media (max-width: 420px) {
-  .nav-right { gap: 10px; }
+  .nav-right { gap: 12px; }
   .nav-download { display: none; }
+  .lang-btn { padding: 4px 4px; font-size: 11px; }
 }
