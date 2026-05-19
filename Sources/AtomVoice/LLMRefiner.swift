@@ -95,10 +95,22 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
     // MARK: - SSE 解析
 
     private func processBuffer() {
-        guard let text = String(data: buffer, encoding: .utf8) else { return }
+        // 网络层可能在 UTF-8 多字节字符中间截断 buffer（尤其是 CJK 内容），
+        // 此时 String(data:encoding:.utf8) 返回 nil。回退到最后一个合法 UTF-8 边界，
+        // 只解析合法部分，剩余字节保留到下次。
+        // (Network chunks may split mid-UTF-8 sequence — especially with CJK content.
+        //  Fall back to the last valid UTF-8 boundary; keep the remainder for next call.)
+        var validEnd = buffer.count
+        while validEnd > 0 {
+            if String(data: buffer[0..<validEnd], encoding: .utf8) != nil { break }
+            validEnd -= 1
+        }
+        guard validEnd > 0, let text = String(data: buffer[0..<validEnd], encoding: .utf8) else { return }
+        let remainder = Data(buffer[validEnd...])
         let lines = text.components(separatedBy: "\n")
-        // 末尾不完整的行留在 buffer（Leave incomplete trailing line in buffer）
-        buffer = text.hasSuffix("\n") ? Data() : (lines.last?.data(using: .utf8) ?? Data())
+        // 末尾不完整的行留在 buffer，拼上 UTF-8 截断的剩余字节
+        // (Leave incomplete trailing line in buffer, appending any UTF-8 remainder bytes)
+        buffer = (text.hasSuffix("\n") ? Data() : (lines.last?.data(using: .utf8) ?? Data())) + remainder
         for line in lines.dropLast() {
             parseLine(line)
         }
@@ -234,6 +246,7 @@ final class LLMRefiner {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         // 取消上一次未完成的请求（Cancel the previous unfinished request）
+        streamDelegate?.cancelled = true
         streamSession?.invalidateAndCancel()
 
         let startTime = Date()
