@@ -34,6 +34,7 @@ final class FnKeyMonitor {
     var onCommitStop: (() -> Void)?         // Return 确认结束，保留 LLM 优化（Return commits recording, keeping LLM refinement）
     var onImmediateStop: ((String?) -> Void)?  // Space/Backspace/标点立即上屏（Space/Backspace/punctuation injects immediately）
     var isRecording = false                  // 由 AppDelegate 设置（Set by AppDelegate）
+    var isRefining = false                   // 由 AppDelegate 设置（Set by AppDelegate）
 
     // 当前触发键，可运行时修改，修改后自动重置按下状态（Current trigger key, can be changed at runtime, auto-resets pressed state on change）
     var triggerKeyCode: UInt16 = 61 {
@@ -157,39 +158,50 @@ final class FnKeyMonitor {
                 return nil
             }
 
-            // 录音期间拦截特殊按键（仅 keyDown）（Intercept special keys during recording, keyDown only）
-            if type == .keyDown && isRecording {
-                switch keyCode {
-                case FnKeyMonitor.escKeyCode:
-                    DebugLog.info("[FnKeyMonitor] >>> ESC 取消录音")
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onEscPressed?()
-                    }
-                    return nil
-
-                case FnKeyMonitor.returnKeyCode:
-                    DebugLog.info("[FnKeyMonitor] >>> Return 确认结束录音")
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onCommitStop?()
-                    }
-                    return nil
-
-                case FnKeyMonitor.spaceKeyCode, FnKeyMonitor.backspaceKeyCode:
-                    DebugLog.info("[FnKeyMonitor] >>> Space/Backspace 立即上屏")
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onImmediateStop?(nil)
-                    }
-                    return nil
-
-                default:
-                    if let punctuation = typedPunctuation(from: event) {
-                        DebugLog.info("[FnKeyMonitor] >>> 标点立即上屏: \(punctuation)")
+            // 录音或润色期间拦截特殊按键（仅 keyDown）（Intercept special keys during recording or refining, keyDown only）
+            if type == .keyDown {
+                if isRecording {
+                    switch keyCode {
+                    case FnKeyMonitor.escKeyCode:
+                        DebugLog.info("[FnKeyMonitor] >>> ESC 取消录音")
                         DispatchQueue.main.async { [weak self] in
-                            self?.onImmediateStop?(punctuation)
+                            self?.onEscPressed?()
+                        }
+                        return nil
+
+                    case FnKeyMonitor.returnKeyCode:
+                        DebugLog.info("[FnKeyMonitor] >>> Return 确认结束录音")
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onCommitStop?()
+                        }
+                        return nil
+
+                    case FnKeyMonitor.spaceKeyCode, FnKeyMonitor.backspaceKeyCode:
+                        DebugLog.info("[FnKeyMonitor] >>> Space/Backspace 立即上屏")
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onImmediateStop?(nil)
+                        }
+                        return nil
+
+                    default:
+                        if let punctuation = typedPunctuation(from: event) {
+                            DebugLog.info("[FnKeyMonitor] >>> 标点立即上屏: \(punctuation)")
+                            DispatchQueue.main.async { [weak self] in
+                                self?.onImmediateStop?(punctuation)
+                            }
+                            return nil
+                        }
+                        break
+                    }
+                } else if isRefining {
+                    // 润色期间仅拦截 ESC 键，不影响用户输入其他内容（Only intercept ESC during refining, doesn't affect other user inputs）
+                    if keyCode == FnKeyMonitor.escKeyCode {
+                        DebugLog.info("[FnKeyMonitor] >>> ESC 取消润色")
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onEscPressed?()
                         }
                         return nil
                     }
-                    break
                 }
             }
 

@@ -7,7 +7,18 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
     // 到主线程的 onProgress / onComplete）都应静默丢弃，避免污染新一次录音的胶囊。
     // (Cancel flag: once set to true by LLMRefiner.cancel(), all subsequent callbacks — including
     // onProgress / onComplete already enqueued on the main thread — should be silently discarded to avoid polluting the next recording's capsule.)
-    var cancelled = false
+    private let lock = NSLock()
+    private var _cancelled = false
+    var cancelled: Bool {
+        get {
+            lock.lock(); defer { lock.unlock() }
+            return _cancelled
+        }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            _cancelled = newValue
+        }
+    }
     private var buffer = Data()
     private var accumulated = ""
     private var httpError: Int?
@@ -264,17 +275,22 @@ final class LLMRefiner {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error { completion(false, error.localizedDescription); return }
-            guard let http = response as? HTTPURLResponse else { completion(false, "No response"); return }
+            let dispatchCompletion: (Bool, String) -> Void = { success, message in
+                DispatchQueue.main.async {
+                    completion(success, message)
+                }
+            }
+            if let error = error { dispatchCompletion(false, error.localizedDescription); return }
+            guard let http = response as? HTTPURLResponse else { dispatchCompletion(false, "No response"); return }
             if http.statusCode == 200 {
-                completion(true, "OK")
+                dispatchCompletion(true, "OK")
             } else {
                 let raw = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
                 let detail = (data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })
                     .flatMap { $0["error"] as? [String: Any] }
                     .flatMap { $0["message"] as? String }
                     ?? String(raw.prefix(120))
-                completion(false, "HTTP \(http.statusCode): \(detail)")
+                dispatchCompletion(false, "HTTP \(http.statusCode): \(detail)")
             }
         }.resume()
     }

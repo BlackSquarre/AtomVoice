@@ -68,6 +68,7 @@ final class RecognitionResultFinalizer {
         let liveInsertion: RecognitionLiveInsertionSnapshot
         let streamSession: TextStreamSession?
         let clearStreamSession: () -> Void
+        let generation: Int
     }
 
     private let presenter: RecognitionResultPresenting
@@ -75,6 +76,9 @@ final class RecognitionResultFinalizer {
     private let textPostProcessorRegistry: TextPostProcessorRegistry
     private let outputSinkProvider: () -> TextOutputSink
     private let settingsProvider: () -> Settings
+
+    var onRefiningStateChanged: ((Bool, String?) -> Void)?
+    var currentGenerationProvider: (() -> Int)?
 
     init(
         presenter: RecognitionResultPresenting,
@@ -111,6 +115,11 @@ final class RecognitionResultFinalizer {
 
     // MARK: - 普通收尾
 
+    private func isGenerationValid(_ generation: Int) -> Bool {
+        guard let provider = currentGenerationProvider else { return true }
+        return provider() == generation
+    }
+
     private func finishRecording(rawText: String, errorMessage: String?, request: Request) {
         if let session = request.streamSession {
             finishStreamingRecording(
@@ -129,12 +138,16 @@ final class RecognitionResultFinalizer {
 
         let processedText = processedTextForFinalResult(rawText, request: request)
         if shouldRunLLMRefinement(skipWhenLiveInsertionCommitted: true, liveInsertion: request.liveInsertion) {
+            onRefiningStateChanged?(true, processedText)
             presenter.showRecognitionRefining()
             refiner.refine(text: processedText, onProgress: { [weak self] partial in
-                self?.presenter.updateRecognitionText(partial)
+                guard let self, self.isGenerationValid(request.generation) else { return }
+                self.presenter.updateRecognitionText(partial)
             }) { [weak self] refined, errorMessage in
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    guard self.isGenerationValid(request.generation) else { return }
+                    self.onRefiningStateChanged?(false, nil)
                     if let errorMessage {
                         // LLM 失败时保持原行为：先把未润色文本上屏，同时展示错误。
                         self.outputSinkProvider().deliver(text: processedText, completion: nil)
@@ -145,7 +158,7 @@ final class RecognitionResultFinalizer {
                     self.presenter.updateRecognitionText(finalText)
                     let delay = self.settingsProvider().llmResultDelay
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                        guard let self else { return }
+                        guard let self, self.isGenerationValid(request.generation) else { return }
                         self.presenter.dismissRecognition {
                             self.outputSinkProvider().deliver(text: finalText, completion: nil)
                         }
@@ -171,12 +184,16 @@ final class RecognitionResultFinalizer {
 
         let processedText = processedTextForFinalResult(rawText, request: request)
         if shouldRunLLMRefinement(skipWhenLiveInsertionCommitted: false, liveInsertion: request.liveInsertion) {
+            onRefiningStateChanged?(true, processedText)
             presenter.showRecognitionRefining()
             refiner.refine(text: processedText, onProgress: { [weak self] partial in
-                self?.presenter.updateRecognitionText(partial)
+                guard let self, self.isGenerationValid(request.generation) else { return }
+                self.presenter.updateRecognitionText(partial)
             }) { [weak self] refined, llmError in
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    guard self.isGenerationValid(request.generation) else { return }
+                    self.onRefiningStateChanged?(false, nil)
                     let finalText = refined ?? processedText
                     let replacement = llmError != nil ? processedText : finalText
                     self.finalizeStreamSession(session, replacingWith: replacement, request: request)
@@ -186,7 +203,8 @@ final class RecognitionResultFinalizer {
                         self.presenter.updateRecognitionText(finalText)
                         let delay = self.settingsProvider().llmResultDelay
                         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                            self?.presenter.dismissRecognition(completion: nil)
+                            guard let self, self.isGenerationValid(request.generation) else { return }
+                            self.presenter.dismissRecognition(completion: nil)
                         }
                     }
                 }
@@ -195,7 +213,8 @@ final class RecognitionResultFinalizer {
             // 无 LLM：仅在自动标点改了文本时做替换；否则原样提交即可。
             let replacement: String? = (processedText != rawText) ? processedText : nil
             presenter.dismissRecognition { [weak self] in
-                self?.finalizeStreamSession(session, replacingWith: replacement, request: request)
+                guard let self, self.isGenerationValid(request.generation) else { return }
+                self.finalizeStreamSession(session, replacingWith: replacement, request: request)
             }
         }
     }
