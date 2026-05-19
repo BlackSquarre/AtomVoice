@@ -881,9 +881,8 @@ final class RecordingSessionController {
                 if consumeDoubaoFallbackIfNeeded(generation: generation) { return }
                 isWaitingForDoubaoFinalResult = true
                 volcengineEngine().stop { [weak self] recognizedText, errorMsg in
-                    guard let self else { return }
+                    guard let self, self.recordingGeneration == generation else { return }
                     self.isWaitingForDoubaoFinalResult = false
-                    guard self.recordingGeneration == generation else { return }
                     if let errorMsg {
                         self.finishDoubaoRecordingWithAppleFallback(
                             generation: generation,
