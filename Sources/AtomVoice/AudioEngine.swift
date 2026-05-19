@@ -164,15 +164,26 @@ final class AudioEngineController {
         while isCurrentRouteRecovery(token), Date() < deadline {
             attempt += 1
             NSLog("[ATOMVOICE] route-change before rebuild")
-            rebuildEngine()
+
+            // AVAudioEngine 不是线程安全的，必须在主线程操作 engine 状态（rebuild + arm）。
+            // 后台线程只负责重试间隔和 token 校验。
+            // (AVAudioEngine is not thread-safe; engine mutation (rebuild + arm) must happen on the main thread.
+            //  The background queue only handles retry intervals and token validation.)
+            var armSuccess = false
+            DispatchQueue.main.sync { [self] in
+                guard isCurrentRouteRecovery(token) else { return }
+                rebuildEngine()
+                guard isCurrentRouteRecovery(token) else { return }
+                DebugLog.info("[AudioEngine] 路由变化后台重启尝试 \(attempt)")
+                armSuccess = armEngineWithCurrentHandlers(context: "route-change re-arm")
+            }
 
             guard isCurrentRouteRecovery(token) else { return }
             NSLog("[ATOMVOICE] route-change before re-arm")
-            DebugLog.info("[AudioEngine] 路由变化后台重启尝试 \(attempt)")
 
-            if armEngineWithCurrentHandlers(context: "route-change re-arm") {
+            if armSuccess {
                 guard isCurrentRouteRecovery(token) else {
-                    stop()
+                    DispatchQueue.main.sync { [self] in stop() }
                     return
                 }
                 completeRouteRecovery(token: token)
