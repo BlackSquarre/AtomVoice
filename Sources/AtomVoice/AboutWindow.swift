@@ -240,16 +240,13 @@ final class AboutWindowController: NSObject {
         }
 
         let w = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 360),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 400),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         w.title = loc("about.thirdParty.title")
         w.isReleasedWhenClosed = false
-        w.titlebarAppearsTransparent = true
-        w.titleVisibility = .visible
-        w.isMovableByWindowBackground = true
         w.level = .floating
         w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
 
@@ -258,21 +255,16 @@ final class AboutWindowController: NSObject {
         let root = NSStackView()
         root.orientation = .vertical
         root.alignment = .leading
-        root.spacing = 12
+        root.spacing = 14
         root.translatesAutoresizingMaskIntoConstraints = false
         cv.addSubview(root)
 
         NSLayoutConstraint.activate([
-            root.topAnchor.constraint(equalTo: cv.topAnchor, constant: 46),
-            root.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 24),
-            root.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -24),
-            root.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -20),
+            root.topAnchor.constraint(equalTo: cv.topAnchor, constant: 18),
+            root.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 20),
+            root.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -20),
+            root.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -18),
         ])
-
-        let title = NSTextField(labelWithString: loc("about.thirdParty.title"))
-        title.font = .boldSystemFont(ofSize: 18)
-        title.textColor = .labelColor
-        root.addArrangedSubview(title)
 
         let intro = NSTextField(labelWithString: loc("about.thirdParty.intro"))
         intro.font = .systemFont(ofSize: 12.5)
@@ -282,16 +274,58 @@ final class AboutWindowController: NSObject {
         root.addArrangedSubview(intro)
         intro.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
 
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        root.addArrangedSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            scrollView.widthAnchor.constraint(equalTo: root.widthAnchor),
+        ])
+        scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
+
+        let listContainer = FlippedView()
+        listContainer.wantsLayer = true
+        listContainer.layer?.cornerRadius = 8
+        listContainer.layer?.borderWidth = 1
+        listContainer.layer?.borderColor = NSColor.separatorColor.cgColor
+        listContainer.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        listContainer.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = listContainer
+
+        listContainer.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor).isActive = true
+
         let list = NSStackView()
         list.orientation = .vertical
         list.alignment = .leading
-        list.spacing = 13
+        list.spacing = 0
         list.translatesAutoresizingMaskIntoConstraints = false
-        root.addArrangedSubview(list)
-        list.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
+        listContainer.addSubview(list)
 
-        for notice in thirdPartyNotices {
-            list.addArrangedSubview(makeNoticeView(notice))
+        NSLayoutConstraint.activate([
+            list.topAnchor.constraint(equalTo: listContainer.topAnchor),
+            list.leadingAnchor.constraint(equalTo: listContainer.leadingAnchor),
+            list.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor),
+            list.bottomAnchor.constraint(equalTo: listContainer.bottomAnchor)
+        ])
+
+        for (index, notice) in thirdPartyNotices.enumerated() {
+            if index > 0 {
+                let separator = NSView()
+                separator.translatesAutoresizingMaskIntoConstraints = false
+                separator.wantsLayer = true
+                separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+                list.addArrangedSubview(separator)
+                NSLayoutConstraint.activate([
+                    separator.heightAnchor.constraint(equalToConstant: 1),
+                    separator.leadingAnchor.constraint(equalTo: list.leadingAnchor),
+                    separator.trailingAnchor.constraint(equalTo: list.trailingAnchor)
+                ])
+            }
+            list.addArrangedSubview(makeNoticeRowView(notice))
         }
 
         self.thirdPartyWindow = w
@@ -300,39 +334,81 @@ final class AboutWindowController: NSObject {
         WindowPresenter.shared.bringToFrontInCurrentSpace(w)
     }
 
-    private func makeNoticeView(_ notice: ThirdPartyNotice) -> NSView {
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 4
-        stack.translatesAutoresizingMaskIntoConstraints = false
+    private func makeNoticeRowView(_ notice: ThirdPartyNotice) -> NSView {
+        let paddingContainer = NSView()
+        paddingContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        let name = LinkTextButton(title: notice.name, target: self, action: #selector(openLink(_:)))
-        name.identifier = NSUserInterfaceItemIdentifier(notice.projectURL)
-        name.font = .boldSystemFont(ofSize: 13.5)
-        name.contentTintColor = .labelColor
-        stack.addArrangedSubview(name)
+        let container = NSStackView()
+        container.orientation = .horizontal
+        container.alignment = .centerY
+        container.spacing = 12
+        container.translatesAutoresizingMaskIntoConstraints = false
+        paddingContainer.addSubview(container)
 
-        let license = NSTextField(labelWithString: loc("about.thirdParty.license", notice.license))
-        license.font = .systemFont(ofSize: 12)
-        license.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(license)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: paddingContainer.topAnchor, constant: 10),
+            container.leadingAnchor.constraint(equalTo: paddingContainer.leadingAnchor, constant: 14),
+            container.trailingAnchor.constraint(equalTo: paddingContainer.trailingAnchor, constant: -14),
+            container.bottomAnchor.constraint(equalTo: paddingContainer.bottomAnchor, constant: -10)
+        ])
 
-        return stack
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 2
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let nameLabel = NSTextField(labelWithString: notice.name)
+        nameLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        nameLabel.textColor = .labelColor
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textStack.addArrangedSubview(nameLabel)
+
+        let licenseLabel = NSTextField(labelWithString: loc("about.thirdParty.license", notice.license))
+        licenseLabel.font = .systemFont(ofSize: 11.5)
+        licenseLabel.textColor = .secondaryLabelColor
+        licenseLabel.lineBreakMode = .byTruncatingTail
+        licenseLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textStack.addArrangedSubview(licenseLabel)
+
+        container.addArrangedSubview(textStack)
+
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        container.addArrangedSubview(spacer)
+
+        let linkIconButton = LinkIconButton(imageName: "arrow.up.forward.app", target: self, action: #selector(openLink(_:)), url: notice.projectURL)
+        container.addArrangedSubview(linkIconButton)
+
+        return paddingContainer
     }
 }
 
-private final class LinkTextButton: NSButton {
-    init(title: String, target: AnyObject?, action: Selector?) {
+private final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class LinkIconButton: NSButton {
+    init(imageName: String, target: AnyObject?, action: Selector?, url: String) {
         super.init(frame: .zero)
-        self.title = title
         self.target = target
         self.action = action
+        self.identifier = NSUserInterfaceItemIdentifier(url)
         isBordered = false
-        bezelStyle = .inline
         setButtonType(.momentaryChange)
-        alignment = .left
         translatesAutoresizingMaskIntoConstraints = false
+
+        if let symbolImage = NSImage(systemSymbolName: imageName, accessibilityDescription: nil) {
+            self.image = symbolImage.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 12.5, weight: .regular))
+        } else {
+            self.title = "↗"
+        }
+        contentTintColor = .secondaryLabelColor
+
+        widthAnchor.constraint(equalToConstant: 22).isActive = true
+        heightAnchor.constraint(equalToConstant: 22).isActive = true
     }
 
     required init?(coder: NSCoder) {
