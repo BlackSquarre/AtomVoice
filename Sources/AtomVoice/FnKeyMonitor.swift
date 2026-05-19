@@ -77,7 +77,7 @@ final class FnKeyMonitor {
                 let monitor = Unmanaged<FnKeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
                 return monitor.handleEvent(proxy: proxy, type: type, event: event)
             },
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
+            userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
             DebugLog.error("[FnKeyMonitor] 无法创建事件监听。请在系统设置 > 隐私与安全性 > 辅助功能中授权本应用。")
             return
@@ -93,6 +93,8 @@ final class FnKeyMonitor {
     func stop() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
+            // 释放 start() 中 passRetained 的强引用（Release the retained reference from start()）
+            Unmanaged<FnKeyMonitor>.passUnretained(self).release()
         }
         if let source = runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
