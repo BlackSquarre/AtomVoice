@@ -72,8 +72,8 @@ final class RecordingSessionController {
     private lazy var appleLiveFallback: AppleLiveFallbackStrategy = AppleLiveFallbackStrategy(
         audioEngine: audioEngine,
         fallback: doubaoFallback,
-        speechRecognizerProvider: { [unowned self] in
-            self.asrEngineProvider.speechRecognizer()
+        speechRecognizerProvider: { [weak self] in
+            self?.asrEngineProvider.speechRecognizer() ?? SpeechRecognizerController()
         }
     )
 
@@ -381,7 +381,8 @@ final class RecordingSessionController {
         if engine == VolcengineASRSettings.engineCode {
             guard AppSettings.doubaoASRPrivacyAccepted else {
                 isStarting = false
-                DispatchQueue.main.async { [self] in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
                     showInitialCapsule()
                     showCapsuleError(loc("doubao.error.privacyNotAccepted"), dismissAfter: 5, ensurePanel: true)
                 }
@@ -389,7 +390,8 @@ final class RecordingSessionController {
             }
             if let error = selectedASREngine.validate() {
                 isStarting = false
-                DispatchQueue.main.async { [self] in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
                     showInitialCapsule()
                     showCapsuleError(error, dismissAfter: 5, ensurePanel: true)
                 }
@@ -438,8 +440,8 @@ final class RecordingSessionController {
             volumeController.saveAndDecreaseVolume()
         }
 
-        DispatchQueue.main.async { [self] in
-            guard isRecording, recordingGeneration == generation else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, isRecording, recordingGeneration == generation else { return }
 
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 startDoubaoRecording(generation: generation)
@@ -872,7 +874,8 @@ final class RecordingSessionController {
         let generation = recordingGeneration
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 audioEngine.stop()
                 if consumeDoubaoFallbackIfNeeded(generation: generation) { return }
@@ -920,7 +923,8 @@ final class RecordingSessionController {
         
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             llmRefiner.cancel()
             let shouldStopAppleLiveFallback = doubaoFallback.cancel()
             cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
@@ -945,7 +949,8 @@ final class RecordingSessionController {
         let generation = recordingGeneration
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             let recognizedText: String
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 audioEngine.stop()

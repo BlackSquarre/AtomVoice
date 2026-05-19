@@ -761,7 +761,7 @@ private final class RecognitionFinalizerHarness {
         )
         self.finalizer = finalizer
         
-        finalizer.onRefiningStateChanged = { [weak self] refining in
+        finalizer.onRefiningStateChanged = { [weak self] refining, _ in
             self?.isRefining = refining
         }
         finalizer.currentGenerationProvider = { [weak self] in
