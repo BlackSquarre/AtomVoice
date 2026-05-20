@@ -15,13 +15,13 @@ final class HeadphoneInputCoordinator {
     private let monitor: HeadphoneMonitor
 
     // 部分 USB DAC 的双击会发 NX_SUBTYPE_AUX_MOUSE_BUTTONS（而非两次 play/pause）。
-    // 为避免误伤普通鼠标侧键，只在录音中 / 刚结束录音的窗口内把这种事件当作"双击 → 回车"。
+    // 为避免误伤普通鼠标侧键，只在录音中 / 刚结束录音的极短窗口内把这种事件当作"双击 → 回车"。
     // (Some USB DACs emit aux-mouse-button events for the double-click. To avoid hijacking real
     //  mouse aux clicks we only treat them as "double-tap → Return" while recording, or shortly after.)
     private var lastRecordingEndTime: Date = .distantPast
     private var lastAuxEmitTime: Date = .distantPast
     private var optimisticRecordingStarted = false
-    private static let auxWindowAfterStop: TimeInterval = 60.0
+    private static let auxWindowAfterStop: TimeInterval = 1.0
     private static let auxDebounce: TimeInterval = 0.3
     private static let hidSourceWindow: TimeInterval = 0.15
 
@@ -55,7 +55,7 @@ final class HeadphoneInputCoordinator {
         monitor.onOptimisticSingleTap = { [weak self] in self?.handleOptimisticSingleTap() ?? false }
         monitor.onCancelOptimisticSingleTap = { [weak self] in self?.cancelOptimisticSingleTap() }
         monitor.onOptimisticSingleTapSettled = { [weak self] in self?.settleOptimisticSingleTap() }
-        monitor.onDoubleTap = { HeadphoneMonitor.sendReturnKey() }
+        monitor.onDoubleTap = { [weak self] in self?.handleDoubleTap() }
         monitor.onLongPressStart = { [weak self] in self?.handleLongPressStart() }
         monitor.onLongPressEnd = { [weak self] in self?.handleLongPressEnd() }
         monitor.onTapDisabled = { [weak self] in self?.onAccessibilityWarning() }
@@ -154,7 +154,7 @@ final class HeadphoneInputCoordinator {
         session.stop()
     }
 
-    /// 在"录音中 / 刚结束录音 5s 内"才把辅助鼠标按钮事件当作"双击 → 回车"，
+    /// 在"录音中 / 刚结束录音极短时间内"才把辅助鼠标按钮事件当作"双击 → 回车"，
     /// 并做 300ms 去抖（一次双击会发出 2 个事件，间隔仅几毫秒）。
     /// (Hijack aux-mouse-button only while/just after recording. Debounce to one Return per double-click.)
     private func handleAuxMouseButton() -> Bool {
@@ -166,8 +166,16 @@ final class HeadphoneInputCoordinator {
             return true  // 吞掉同一双击的伴随事件
         }
         lastAuxEmitTime = now
-        HeadphoneMonitor.sendReturnKey()
+        handleDoubleTap()
         return true
+    }
+
+    private func handleDoubleTap() {
+        if session.isRecordingOrStarting {
+            session.stop()
+        } else {
+            HeadphoneMonitor.sendReturnKey()
+        }
     }
 
     private func toggleRecording() {

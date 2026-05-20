@@ -289,16 +289,23 @@ final class HeadphoneMonitor {
     /// 合成回车键发送给当前前台 App（用于双击 → Enter）
     /// 关键：使用 .privateState 不带继承的修饰键，并显式清空 flags，
     /// 否则若系统当前以为有 Cmd/Ctrl/Shift 被按住，Return 会变成 Cmd+W / Cmd+Shift+T / Cmd+Ctrl+F 等组合键。
-    /// (Use .privateState and explicitly clear flags, otherwise inherited modifiers turn Return into Cmd+W etc.)
+    /// keyDown 与 keyUp 之间保留极小延迟，让系统和目标 App 更稳定地接收成对事件。
+    /// (Use .privateState and explicitly clear flags, otherwise inherited modifiers turn Return into Cmd+W etc.
+    ///  Keep a tiny delay between down and up so target apps reliably receive paired events.)
     static func sendReturnKey() {
-        let source = CGEventSource(stateID: .privateState)
-        let returnKeyCode: CGKeyCode = 0x24  // Return
-        let down = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: true)
-        let up   = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: false)
-        down?.flags = []
-        up?.flags = []
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let source = CGEventSource(stateID: .privateState)
+            let returnKeyCode: CGKeyCode = 0x24  // Return
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: false) else {
+                return
+            }
+            down.flags = []
+            up.flags = []
+            down.post(tap: .cghidEventTap)
+            Thread.sleep(forTimeInterval: 0.01) // 保证目标 App 更稳定地收到 keyUp
+            up.post(tap: .cghidEventTap)
+        }
     }
 
     private func settleOptimisticSingleTap(cancel: Bool) {
