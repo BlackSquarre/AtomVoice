@@ -33,13 +33,17 @@ final class RecordingSessionController {
     /// 录音中状态变化回调：true=进入录音，false=结束（用于同步外部组件如 FnKeyMonitor.isRecording）。
     /// (Recording-active state callback: true on enter, false on stop. Used to sync external components like FnKeyMonitor.isRecording.)
     var onRecordingStateChanged: ((Bool) -> Void)?
+    var onRefiningStateChanged: ((Bool) -> Void)?
 
     // MARK: - 状态（State）
     private(set) var isRecording = false
+    private(set) var isRefining = false
     private var isStarting = false
     private(set) var currentRecordingEngine = ASREngineRegistry.appleCode
     private var recordingGeneration = 0
     private var startRequestGeneration = 0
+    private var pendingRefinementText: String? = nil
+    private var isWaitingForDoubaoFinalResult = false
     private var liveInsertionActive = false
     private var liveInsertionCommittedText = ""
     private var liveInsertionLatestText = ""
@@ -68,8 +72,8 @@ final class RecordingSessionController {
     private lazy var appleLiveFallback: AppleLiveFallbackStrategy = AppleLiveFallbackStrategy(
         audioEngine: audioEngine,
         fallback: doubaoFallback,
-        speechRecognizerProvider: { [unowned self] in
-            self.asrEngineProvider.speechRecognizer()
+        speechRecognizerProvider: { [weak self] in
+            self?.asrEngineProvider.speechRecognizer() ?? SpeechRecognizerController()
         }
     )
 
@@ -110,7 +114,7 @@ final class RecordingSessionController {
         self.volumeController = volumeController
         self.asrEngineRegistry = asrEngineRegistry
         self.asrEngineProvider = asrEngineProvider
-        self.recognitionFinalizer = RecognitionResultFinalizer(
+        let finalizer = RecognitionResultFinalizer(
             presenter: capsuleWindow,
             refiner: llmRefiner,
             textPostProcessorRegistry: textPostProcessorRegistry,
@@ -124,6 +128,20 @@ final class RecordingSessionController {
                 )
             }
         )
+        self.recognitionFinalizer = finalizer
+        
+        finalizer.onRefiningStateChanged = { [weak self] refining, text in
+            self?.isRefining = refining
+            self?.onRefiningStateChanged?(refining)
+            if refining {
+                self?.pendingRefinementText = text
+            } else {
+                self?.pendingRefinementText = nil
+            }
+        }
+        finalizer.currentGenerationProvider = { [weak self] in
+            self?.recordingGeneration ?? -1
+        }
 
         // AudioAnalyzer 永久订阅 router 16kHz 通道：tap 装上才会有 buffer，不录音期间零开销。
         // (Permanent 16kHz subscription; analyzer only sees buffers when tap is installed.)
@@ -363,7 +381,8 @@ final class RecordingSessionController {
         if engine == VolcengineASRSettings.engineCode {
             guard AppSettings.doubaoASRPrivacyAccepted else {
                 isStarting = false
-                DispatchQueue.main.async { [self] in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
                     showInitialCapsule()
                     showCapsuleError(loc("doubao.error.privacyNotAccepted"), dismissAfter: 5, ensurePanel: true)
                 }
@@ -371,12 +390,27 @@ final class RecordingSessionController {
             }
             if let error = selectedASREngine.validate() {
                 isStarting = false
-                DispatchQueue.main.async { [self] in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
                     showInitialCapsule()
                     showCapsuleError(error, dismissAfter: 5, ensurePanel: true)
                 }
                 return
             }
+        }
+
+        if isWaitingForDoubaoFinalResult {
+            isWaitingForDoubaoFinalResult = false
+            let pendingText = volcengineEngine().currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !pendingText.isEmpty {
+                activeOutputSink.deliver(text: pendingText, completion: nil)
+            }
+        }
+
+        if isRefining, let pendingText = pendingRefinementText, !pendingText.isEmpty {
+            isRefining = false
+            pendingRefinementText = nil
+            activeOutputSink.deliver(text: pendingText, completion: nil)
         }
 
         // 取消正在进行的 LLM 处理，如果有（Cancel any ongoing LLM processing, if any）
@@ -406,8 +440,8 @@ final class RecordingSessionController {
             volumeController.saveAndDecreaseVolume()
         }
 
-        DispatchQueue.main.async { [self] in
-            guard isRecording, recordingGeneration == generation else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, isRecording, recordingGeneration == generation else { return }
 
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 startDoubaoRecording(generation: generation)
@@ -840,12 +874,15 @@ final class RecordingSessionController {
         let generation = recordingGeneration
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 audioEngine.stop()
                 if consumeDoubaoFallbackIfNeeded(generation: generation) { return }
+                isWaitingForDoubaoFinalResult = true
                 volcengineEngine().stop { [weak self] recognizedText, errorMsg in
                     guard let self, self.recordingGeneration == generation else { return }
+                    self.isWaitingForDoubaoFinalResult = false
                     if let errorMsg {
                         self.finishDoubaoRecordingWithAppleFallback(
                             generation: generation,
@@ -867,14 +904,26 @@ final class RecordingSessionController {
     }
 
     private func cancelRecording() {
-        guard isRecording else {
+        guard isRecording || isRefining else {
             cancelPendingStart()
             resetDeferredCapsulePresentation()
             return
         }
+        
+        recordingGeneration += 1
+        
+        if isRefining {
+            isRefining = false
+            onRefiningStateChanged?(false)
+        }
+        
+        isWaitingForDoubaoFinalResult = false
+        pendingRefinementText = nil
+        
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             llmRefiner.cancel()
             let shouldStopAppleLiveFallback = doubaoFallback.cancel()
             cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
@@ -899,7 +948,8 @@ final class RecordingSessionController {
         let generation = recordingGeneration
         markRecordingStopped()
 
-        DispatchQueue.main.async { [self] in
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             let recognizedText: String
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 audioEngine.stop()
@@ -1009,7 +1059,8 @@ final class RecordingSessionController {
                 streamSession: streamSession,
                 clearStreamSession: { [weak self] in
                     self?.streamSession = nil
-                }
+                },
+                generation: recordingGeneration
             )
         )
     }

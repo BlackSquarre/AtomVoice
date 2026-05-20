@@ -111,18 +111,22 @@ final class TextInjector {
         var focused: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
         guard result == .success, let focusedElement = focused else { return nil }
+        guard CFGetTypeID(focusedElement) == AXUIElementGetTypeID() else { return nil }
+        let focusedUIElement = focusedElement as! AXUIElement
 
         // 获取选区范围（光标位置）（Get selection range / cursor position）
         var selectedRange: CFTypeRef?
-        let rangeResult = AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXSelectedTextRangeAttribute as CFString, &selectedRange)
+        let rangeResult = AXUIElementCopyAttributeValue(focusedUIElement, kAXSelectedTextRangeAttribute as CFString, &selectedRange)
         guard rangeResult == .success, let range = selectedRange else { return nil }
 
+        guard CFGetTypeID(range) == AXValueGetTypeID() else { return nil }
+        let axValue = range as! AXValue
         var rangeValue = CFRange()
-        AXValueGetValue(range as! AXValue, .cfRange, &rangeValue)
+        AXValueGetValue(axValue, .cfRange, &rangeValue)
 
         // 获取输入框文本内容（Get text field content）
         var value: CFTypeRef?
-        let textResult = AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXValueAttribute as CFString, &value)
+        let textResult = AXUIElementCopyAttributeValue(focusedUIElement, kAXValueAttribute as CFString, &value)
         guard textResult == .success, let text = value as? String else { return nil }
 
         // 计算光标后方位置（Calculate position after cursor）

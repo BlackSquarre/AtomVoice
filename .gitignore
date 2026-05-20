@@ -1,6 +1,5 @@
 .build/
 .build-cache/
-Tests/
 .DS_Store
 .swiftpm/
 CLAUDE.md

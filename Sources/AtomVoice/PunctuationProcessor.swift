@@ -108,11 +108,13 @@ struct PunctuationProcessor {
             }
         }
 
-        // 检查是否包含疑问代词，即使不在句尾（Check for interrogative pronouns, even if not at sentence end）
+        // 检查句尾附近是否包含疑问代词（仅检查末尾，避免"我不知道什么时候"等陈述句误判）
+        // (Check for interrogative pronouns near the end only — avoids false positives
+        //  on declarative sentences like "I don't know what time...".)
         let zhQuestionWords = ["什么", "怎么", "为什么", "哪里", "哪个", "几个", "多少", "谁的", "如何"]
         if language.hasPrefix("zh") {
             for word in zhQuestionWords {
-                if text.contains(word) {
+                if suffix.hasSuffix(word) {
                     return "？"
                 }
             }

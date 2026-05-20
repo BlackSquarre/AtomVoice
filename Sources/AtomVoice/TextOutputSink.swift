@@ -223,7 +223,11 @@ private final class PasteStreamSession: TextStreamSession {
         guard !operationInFlight, let target = pendingTarget else { return }
         pendingTarget = nil
         let common = commonPrefix(insertedText, target)
-        let staleSuffixLen = insertedText.utf16.count - common.utf16.count
+        // 退格键按 grapheme cluster（Character）删除，不是 UTF-16 code unit。
+        // 用 .count 避免 emoji / 增补 CJK 字符被多删。
+        // (Backspace deletes by grapheme cluster, not UTF-16 code unit.
+        //  Use .count to avoid over-deleting emoji / supplementary CJK characters.)
+        let staleSuffixLen = insertedText.count - common.count
         let newSuffix = String(target[common.endIndex(in: target)...])
 
         if staleSuffixLen == 0 && newSuffix.isEmpty {

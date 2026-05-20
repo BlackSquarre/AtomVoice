@@ -210,8 +210,13 @@ final class SpeechRecognizerController {
         recognitionRequest = newRequest
         onRequestSwitch?(newRequest)
 
-        // 4. 结束旧请求的音频（旧任务自行收尾，回调因 taskID 不匹配而被忽略）（End audio for old request (old task wraps up on its own, callbacks ignored due to taskID mismatch)）
+        // 4. 结束旧请求的音频（End audio for old request）
         oldRequest.endAudio()
+        // 显式 cancel 旧任务，释放 Apple Speech 并发配额（约 5 个）。
+        // 旧回调因 taskID 不匹配已被忽略，cancel 只是回收资源。
+        // (Explicitly cancel old task to free Apple Speech concurrent task quota (~5).
+        //  Old callbacks are already ignored due to taskID mismatch; cancel only reclaims resources.)
+        recognitionTask?.cancel()
 
         // 5. 启动新任务（Start new task）
         startTask(request: newRequest, taskID: newTaskID)

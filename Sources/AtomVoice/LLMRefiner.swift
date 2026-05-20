@@ -7,7 +7,18 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
     // 到主线程的 onProgress / onComplete）都应静默丢弃，避免污染新一次录音的胶囊。
     // (Cancel flag: once set to true by LLMRefiner.cancel(), all subsequent callbacks — including
     // onProgress / onComplete already enqueued on the main thread — should be silently discarded to avoid polluting the next recording's capsule.)
-    var cancelled = false
+    private let lock = NSLock()
+    private var _cancelled = false
+    var cancelled: Bool {
+        get {
+            lock.lock(); defer { lock.unlock() }
+            return _cancelled
+        }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            _cancelled = newValue
+        }
+    }
     private var buffer = Data()
     private var accumulated = ""
     private var httpError: Int?
@@ -84,10 +95,22 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
     // MARK: - SSE 解析
 
     private func processBuffer() {
-        guard let text = String(data: buffer, encoding: .utf8) else { return }
+        // 网络层可能在 UTF-8 多字节字符中间截断 buffer（尤其是 CJK 内容），
+        // 此时 String(data:encoding:.utf8) 返回 nil。回退到最后一个合法 UTF-8 边界，
+        // 只解析合法部分，剩余字节保留到下次。
+        // (Network chunks may split mid-UTF-8 sequence — especially with CJK content.
+        //  Fall back to the last valid UTF-8 boundary; keep the remainder for next call.)
+        var validEnd = buffer.count
+        while validEnd > 0 {
+            if String(data: buffer[0..<validEnd], encoding: .utf8) != nil { break }
+            validEnd -= 1
+        }
+        guard validEnd > 0, let text = String(data: buffer[0..<validEnd], encoding: .utf8) else { return }
+        let remainder = Data(buffer[validEnd...])
         let lines = text.components(separatedBy: "\n")
-        // 末尾不完整的行留在 buffer（Leave incomplete trailing line in buffer）
-        buffer = text.hasSuffix("\n") ? Data() : (lines.last?.data(using: .utf8) ?? Data())
+        // 末尾不完整的行留在 buffer，拼上 UTF-8 截断的剩余字节
+        // (Leave incomplete trailing line in buffer, appending any UTF-8 remainder bytes)
+        buffer = (text.hasSuffix("\n") ? Data() : (lines.last?.data(using: .utf8) ?? Data())) + remainder
         for line in lines.dropLast() {
             parseLine(line)
         }
@@ -223,6 +246,7 @@ final class LLMRefiner {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         // 取消上一次未完成的请求（Cancel the previous unfinished request）
+        streamDelegate?.cancelled = true
         streamSession?.invalidateAndCancel()
 
         let startTime = Date()
@@ -264,17 +288,22 @@ final class LLMRefiner {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error { completion(false, error.localizedDescription); return }
-            guard let http = response as? HTTPURLResponse else { completion(false, "No response"); return }
+            let dispatchCompletion: (Bool, String) -> Void = { success, message in
+                DispatchQueue.main.async {
+                    completion(success, message)
+                }
+            }
+            if let error = error { dispatchCompletion(false, error.localizedDescription); return }
+            guard let http = response as? HTTPURLResponse else { dispatchCompletion(false, "No response"); return }
             if http.statusCode == 200 {
-                completion(true, "OK")
+                dispatchCompletion(true, "OK")
             } else {
                 let raw = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
                 let detail = (data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })
                     .flatMap { $0["error"] as? [String: Any] }
                     .flatMap { $0["message"] as? String }
                     ?? String(raw.prefix(120))
-                completion(false, "HTTP \(http.statusCode): \(detail)")
+                dispatchCompletion(false, "HTTP \(http.statusCode): \(detail)")
             }
         }.resume()
     }

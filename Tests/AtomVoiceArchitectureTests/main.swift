@@ -541,6 +541,57 @@ struct ArchitectureTestRunner {
             try expect(secondID != firstID)
         }
 
+        await runner.run("Recognition finalizer ignores LLM results from old generation") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 0
+            
+            harness.refiner.delayCompletion = true
+            harness.generation = 10
+            
+            harness.finish("hello")
+            
+            // Verify refiner is called and refining state is true
+            try expect(harness.refiner.requests == ["hello"])
+            try expect(harness.isRefining == true)
+            try expect(harness.presenter.events == ["refining"])
+            
+            // Advance generation to 11 (simulating cancellation/restarting a session)
+            harness.generation = 11
+            
+            // Fire the delayed completion callbacks for generation 10
+            harness.refiner.pendingOnProgress?("progress")
+            
+            // Trigger completion on main queue since completion executes inside DispatchQueue.main.async block
+            harness.refiner.pendingCompletion?("polished", nil)
+            try await waitForAsyncCallbacks()
+            
+            // Verify that the old generation's progress/completion results were completely ignored!
+            // No new presenter events and no text delivered to sink!
+            try expect(harness.presenter.events == ["refining"]) // remains unchanged, no "update:progress" or "update:polished"
+            try expect(harness.sink.deliveredTexts.isEmpty)
+        }
+
+        await runner.run("Recognition finalizer updates refining state correctly") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 0
+            harness.refiner.delayCompletion = true
+            
+            harness.generation = 1
+            harness.finish("hello")
+            
+            try expect(harness.isRefining == true)
+            
+            harness.refiner.pendingCompletion?("polished", nil)
+            try await waitForAsyncCallbacks()
+            
+            try expect(harness.isRefining == false)
+            try expect(harness.sink.deliveredTexts == ["polished"])
+        }
+
         runner.finish()
     }
 }
@@ -694,18 +745,28 @@ private final class RecognitionFinalizerHarness {
     let sink = FakeTextOutputSink()
     let settings: RecognitionFinalizerSettingsBox
     private(set) var clearedStreamCount = 0
+    var generation = 0
+    var isRefining = false
     private let finalizer: RecognitionResultFinalizer
 
     init(processors: [TextPostProcessor] = []) {
         let settings = RecognitionFinalizerSettingsBox()
         self.settings = settings
-        finalizer = RecognitionResultFinalizer(
+        let finalizer = RecognitionResultFinalizer(
             presenter: presenter,
             refiner: refiner,
             textPostProcessorRegistry: TextPostProcessorRegistry(processors: processors),
             outputSinkProvider: { [sink] in sink },
             settingsProvider: { settings.value }
         )
+        self.finalizer = finalizer
+        
+        finalizer.onRefiningStateChanged = { [weak self] refining, _ in
+            self?.isRefining = refining
+        }
+        finalizer.currentGenerationProvider = { [weak self] in
+            self?.generation ?? 0
+        }
     }
 
     func finish(
@@ -723,7 +784,8 @@ private final class RecognitionFinalizerHarness {
                 engineCode: ASREngineRegistry.appleCode,
                 liveInsertion: liveInsertion,
                 streamSession: streamSession,
-                clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 }
+                clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 },
+                generation: generation
             )
         )
     }
@@ -784,6 +846,9 @@ private final class FakeRecognitionRefiner: RecognitionTextRefining {
     var nextResult: String?
     var nextError: String?
     private(set) var requests: [String] = []
+    var delayCompletion = false
+    var pendingCompletion: ((String?, String?) -> Void)?
+    var pendingOnProgress: ((String) -> Void)?
 
     func refine(
         text: String,
@@ -791,10 +856,15 @@ private final class FakeRecognitionRefiner: RecognitionTextRefining {
         completion: @escaping (String?, String?) -> Void
     ) {
         requests.append(text)
-        if let nextProgress {
-            onProgress?(nextProgress)
+        if delayCompletion {
+            pendingCompletion = completion
+            pendingOnProgress = onProgress
+        } else {
+            if let nextProgress {
+                onProgress?(nextProgress)
+            }
+            completion(nextResult, nextError)
         }
-        completion(nextResult, nextError)
     }
 }
 

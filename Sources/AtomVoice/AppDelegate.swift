@@ -166,6 +166,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             #endif
         }
+        session.onRefiningStateChanged = { [weak self] refining in
+            guard let self else { return }
+            self.fnKeyMonitor.isRefining = refining
+        }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in
             self?.fnKeyMonitor.triggerKeyCode = keyCode
         }
