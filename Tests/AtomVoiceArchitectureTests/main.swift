@@ -133,38 +133,82 @@ struct ArchitectureTestRunner {
             try expect(registry.descriptor(for: ASREngineRegistry.sherpaCode)?.isOffline == true)
         }
 
-        await runner.run("Audio analyzer does not stop on steady speech-level input") {
+        await runner.run("ASR silence monitor fires when no text arrives within duration") {
             let oldAutoStop = AppSettings.silenceAutoStopEnabled
             let oldManualStop = AppSettings.tapModeManualStop
             let oldDuration = AppSettings.silenceDuration
-            let oldThreshold = AppSettings.silenceThreshold
             defer {
                 AppSettings.silenceAutoStopEnabled = oldAutoStop
                 AppSettings.tapModeManualStop = oldManualStop
                 AppSettings.silenceDuration = oldDuration
-                AppSettings.silenceThreshold = oldThreshold
+            }
+
+            AppSettings.silenceAutoStopEnabled = true
+            AppSettings.tapModeManualStop = false
+            AppSettings.silenceDuration = 0.7
+
+            let monitor = ASRSilenceMonitor()
+            var timeoutCount = 0
+            monitor.onTimeout = { timeoutCount += 1 }
+
+            monitor.start()
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+            monitor.stop()
+
+            try expect(timeoutCount >= 1)
+        }
+
+        await runner.run("ASR silence monitor keeps alive when text keeps growing") {
+            let oldAutoStop = AppSettings.silenceAutoStopEnabled
+            let oldManualStop = AppSettings.tapModeManualStop
+            let oldDuration = AppSettings.silenceDuration
+            defer {
+                AppSettings.silenceAutoStopEnabled = oldAutoStop
+                AppSettings.tapModeManualStop = oldManualStop
+                AppSettings.silenceDuration = oldDuration
             }
 
             AppSettings.silenceAutoStopEnabled = true
             AppSettings.tapModeManualStop = false
             AppSettings.silenceDuration = 0.5
-            AppSettings.silenceThreshold = -40.0
 
-            let analyzer = AudioAnalyzer()
+            let monitor = ASRSilenceMonitor()
             var timeoutCount = 0
-            analyzer.onSilenceTimeout = {
-                timeoutCount += 1
+            monitor.onTimeout = { timeoutCount += 1 }
+
+            monitor.start()
+            // 每 200ms 喂一次新文本，silenceDuration=0.5s 永远不会到
+            for i in 1...10 {
+                try await Task.sleep(nanoseconds: 200_000_000)
+                monitor.noteText("partial \(i)")
+            }
+            monitor.stop()
+
+            try expect(timeoutCount == 0)
+        }
+
+        await runner.run("ASR silence monitor respects manual stop setting") {
+            let oldAutoStop = AppSettings.silenceAutoStopEnabled
+            let oldManualStop = AppSettings.tapModeManualStop
+            let oldDuration = AppSettings.silenceDuration
+            defer {
+                AppSettings.silenceAutoStopEnabled = oldAutoStop
+                AppSettings.tapModeManualStop = oldManualStop
+                AppSettings.silenceDuration = oldDuration
             }
 
-            let buffer = try require(
-                makePCMBuffer(sampleRate: 16_000, frameLength: 1_600, fillValue: 0.03),
-                "buffer should be created"
-            )
-            for _ in 0..<40 {
-                analyzer.accept(buffer)
-            }
+            AppSettings.silenceAutoStopEnabled = true
+            AppSettings.tapModeManualStop = true
+            AppSettings.silenceDuration = 0.3
 
-            try await waitForAsyncCallbacks()
+            let monitor = ASRSilenceMonitor()
+            var timeoutCount = 0
+            monitor.onTimeout = { timeoutCount += 1 }
+
+            monitor.start()
+            try await Task.sleep(nanoseconds: 1_000_000_000)
+            monitor.stop()
+
             try expect(timeoutCount == 0)
         }
 
@@ -706,7 +750,12 @@ private func writeDummyFile(_ url: URL) throws {
     try Data([0x41]).write(to: url)
 }
 
-private func makePCMBuffer(sampleRate: Double, frameLength: AVAudioFrameCount, fillValue: Float? = nil) -> AVAudioPCMBuffer? {
+private func makePCMBuffer(
+    sampleRate: Double,
+    frameLength: AVAudioFrameCount,
+    fillValue: Float? = nil,
+    sine: (frequency: Double, amplitude: Float, phase: Double)? = nil
+) -> AVAudioPCMBuffer? {
     guard let format = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
         sampleRate: sampleRate,
@@ -716,8 +765,16 @@ private func makePCMBuffer(sampleRate: Double, frameLength: AVAudioFrameCount, f
     guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameLength) else { return nil }
     buffer.frameLength = frameLength
     if let channel = buffer.floatChannelData?[0] {
-        for index in 0..<Int(frameLength) {
-            channel[index] = fillValue ?? Float(index) / 100.0
+        if let sine {
+            let twoPi = 2.0 * Double.pi
+            for index in 0..<Int(frameLength) {
+                let t = Double(index) / sampleRate
+                channel[index] = sine.amplitude * Float(sin(twoPi * sine.frequency * t + sine.phase))
+            }
+        } else {
+            for index in 0..<Int(frameLength) {
+                channel[index] = fillValue ?? Float(index) / 100.0
+            }
         }
     }
     return buffer

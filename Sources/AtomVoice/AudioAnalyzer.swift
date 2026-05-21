@@ -1,22 +1,18 @@
 import AVFoundation
 import Accelerate
 
-/// 音频分析器：静音检测 + 5 段频谱可视化。
+/// 音频分析器：5 段人声频谱可视化。
 /// 订阅 AudioRouter 的 16kHz mono Float32 通道，固定 SR 让频段配置和阈值不再随设备漂移。
 /// 回调全部在内部 worker queue 触发，调用方负责切回主线程消费。
-/// (Audio analyzer: silence detection + 5-band spectrum for visualization.
+/// (Audio analyzer: 5-band voice spectrum for visualization.
 ///  Subscribes to AudioRouter's 16kHz channel; fixed SR keeps band ranges and thresholds stable.
 ///  Callbacks fire on internal worker queue; caller dispatches to main as needed.)
+///
+/// 注：静音自动停止已迁移到 ASRSilenceMonitor（基于 ASR 文本心跳），
+/// 噪声环境下的鲁棒性远胜能量域 VAD。本类不再承担静音判定。
 final class AudioAnalyzer {
-    /// 静音达到阈值时触发（在 worker queue 上）
-    var onSilenceTimeout: (() -> Void)?
     /// FFT 频段更新时触发（在 worker queue 上）
     var onBands: (([Float]) -> Void)?
-
-    // 静音自动停止
-    private var silenceDuration: Double = 0
-    private var recordingDuration: Double = 0
-    private let silenceGuardPeriod: Double = 0.5
 
     // FFT
     private let fftSize = 1024
@@ -52,8 +48,6 @@ final class AudioAnalyzer {
     func reset() {
         bufferQueue.sync {
             sampleBuffer = []
-            silenceDuration = 0
-            recordingDuration = 0
         }
     }
 
@@ -65,23 +59,16 @@ final class AudioAnalyzer {
 
         let samples = Array(UnsafeBufferPointer(start: channelData[0], count: count))
         let sampleRate = Float(buffer.format.sampleRate)
-        let bufferDuration = Double(count) / Double(sampleRate)
 
         bufferQueue.async { [weak self] in
-            self?.processSamplesOnWorker(samples: samples, bufferDuration: bufferDuration, sampleRate: sampleRate)
+            self?.processSamplesOnWorker(samples: samples, sampleRate: sampleRate)
         }
     }
 
     // MARK: - Worker
 
-    private func processSamplesOnWorker(samples: [Float], bufferDuration: Double, sampleRate: Float) {
+    private func processSamplesOnWorker(samples: [Float], sampleRate: Float) {
         sampleBuffer.append(contentsOf: samples)
-        recordingDuration += bufferDuration
-
-        samples.withUnsafeBufferPointer { ptr in
-            guard let base = ptr.baseAddress else { return }
-            detectSilence(channelData: base, frameCount: samples.count, bufferDuration: bufferDuration)
-        }
 
         // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率
         var offset = 0
@@ -95,37 +82,6 @@ final class AudioAnalyzer {
         }
         if offset > 0 {
             sampleBuffer.removeSubrange(0..<offset)
-        }
-    }
-
-    // MARK: - 静音检测
-
-    private func detectSilence(channelData: UnsafePointer<Float>, frameCount: Int, bufferDuration: Double) {
-        guard recordingDuration > silenceGuardPeriod else { return }
-        guard AppSettings.silenceAutoStopEnabled else { return }
-        guard !AppSettings.tapModeManualStop else { return }
-
-        let threshold = AppSettings.silenceThreshold
-        let requiredDuration = AppSettings.silenceDuration
-
-        var rms: Float = 0
-        vDSP_rmsqv(channelData, 1, &rms, vDSP_Length(frameCount))
-        let dB = 20 * log10(max(rms, 1e-7))
-
-        if Double(dB) < threshold {
-            silenceDuration += bufferDuration
-            if silenceDuration >= requiredDuration {
-                silenceDuration = 0
-                fireSilenceTimeout()
-            }
-        } else {
-            silenceDuration = 0
-        }
-    }
-
-    private func fireSilenceTimeout() {
-        DispatchQueue.main.async { [weak self] in
-            self?.onSilenceTimeout?()
         }
     }
 

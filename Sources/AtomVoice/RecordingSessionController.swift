@@ -66,6 +66,7 @@ final class RecordingSessionController {
     let sherpaPreload = SherpaPreloadCoordinator()
     let doubaoFallback = DoubaoFallbackCoordinator()
     private let audioAnalyzer = AudioAnalyzer()
+    private let asrSilenceMonitor = ASRSilenceMonitor()
     /// AudioAnalyzer 订阅 router 16kHz 的消费者 ID；session 整体 deinit 时注销。
     /// (Analyzer's router consumer; unregistered on session deinit.)
     private var analyzerConsumerID: UUID?
@@ -148,7 +149,7 @@ final class RecordingSessionController {
         analyzerConsumerID = audioEngine.router.register(format: .voice16k) { [weak self] buffer in
             self?.audioAnalyzer.accept(buffer)
         }
-        audioAnalyzer.onSilenceTimeout = { [weak self] in
+        asrSilenceMonitor.onTimeout = { [weak self] in
             self?.stop()
         }
         audioAnalyzer.onBands = { [weak self] bands in
@@ -420,6 +421,7 @@ final class RecordingSessionController {
         isStarting = false
         isRecording = true
         onRecordingStateChanged?(true)
+        asrSilenceMonitor.start()
         recordingGeneration += 1
         let generation = recordingGeneration
         currentRecordingEngine = AppSettings.normalizedRecognitionEngine
@@ -763,6 +765,8 @@ final class RecordingSessionController {
     // MARK: - 实时识别更新与状态（Real-time updates & state）
 
     private func updateRecognizedText(_ text: String) {
+        // 任何 partial / final 文本变化都喂给静音监控当心跳；只要 ASR 还在产文本就视为还在说话。
+        asrSilenceMonitor.noteText(text)
         if isCapsulePresentationDeferred {
             deferredRecognizedText = text
             return
@@ -774,6 +778,7 @@ final class RecordingSessionController {
     private func markRecordingStopped() {
         cancelPendingStart()
         isRecording = false
+        asrSilenceMonitor.stop()
         onRecordingStateChanged?(false)
         volumeController.restoreVolume()
         resetDeferredCapsulePresentation()
