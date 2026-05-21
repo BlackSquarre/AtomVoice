@@ -28,7 +28,7 @@ jobs:
 
       - name: Push to Gitee
         run: |
-          git remote add gitee git@gitee.com:lingru/AtomVoice.git
+          git remote add gitee git@gitee.com:blacksquarre/AtomVoice.git
           git push gitee --all --force
           git push gitee --tags --force
 
@@ -58,7 +58,7 @@ jobs:
           BODY=$(echo '${{ fromJson(steps.release.outputs.result).body }}' | jq -Rs .)
           PRERELEASE=${{ fromJson(steps.release.outputs.result).prerelease }}
 
-          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/lingru/AtomVoice/releases" \
+          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
@@ -86,7 +86,7 @@ jobs:
             echo "Downloading: $NAME"
             curl -sL "$URL" -o "/tmp/assets/$NAME"
             echo "Uploading: $NAME"
-            curl -s -X POST "https://gitee.com/api/v5/repos/lingru/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
+            curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
               -F "access_token=${{ secrets.GITEE_TOKEN }}" \
               -F "file=@/tmp/assets/$NAME" | jq -r '.browser_download_url // .message'
           done
