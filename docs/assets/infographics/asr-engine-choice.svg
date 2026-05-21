@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice 三种输入逻辑横版信息图</title>
+  <desc id="desc">视频用 16:9 横版信息图，按 Sherpa-ONNX、Apple Speech、豆包云端 ASR 展示三种语音输入逻辑。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="55%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#168b63"/>
+      <stop offset="50%" stop-color="#4b73bb"/>
+      <stop offset="100%" stop-color="#c56935"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .axis { font-size: 24px; font-weight: 760; fill: #24313c; }
+      .card { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
+      .badgeText { font-size: 23px; font-weight: 820; fill: #ffffff; }
+      .cardTitle { font-size: 46px; font-weight: 860; fill: #151f29; }
+      .role { font-size: 26px; font-weight: 780; fill: #394651; }
+      .body { font-size: 28px; font-weight: 590; fill: #34404b; }
+      .note { font-size: 24px; font-weight: 580; fill: #56626d; }
+      .cost { font-size: 25px; font-weight: 760; fill: #24313c; }
+      .footerStrong { font-size: 26px; font-weight: 820; fill: #17212b; }
+      .footer { font-size: 25px; font-weight: 600; fill: #4f5b66; }
+      .icon { font-size: 42px; font-weight: 800; fill: #ffffff; }
+      .arrowLine { stroke: #aeb8c2; stroke-width: 5; stroke-linecap: round; }
+      .arrowHead { fill: #aeb8c2; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice 语音输入引擎</text>
+    <text x="110" y="170" class="title">三种识别引擎怎么选</text>
+    <text x="110" y="222" class="sub">从本地离线到云端识别，隐私、便利性和准确率各有取舍。</text>
+
+    <g transform="translate(110 278)">
+      <rect x="0" y="0" width="1700" height="20" rx="10" fill="url(#rail)"/>
+      <text x="0" y="-18" class="axis">隐私最高</text>
+      <text x="850" y="-18" class="axis" text-anchor="middle">平衡默认</text>
+      <text x="1700" y="-18" class="axis" text-anchor="end">能力最强</text>
+      <text x="0" y="58" class="note">本机处理</text>
+      <text x="850" y="58" class="note" text-anchor="middle">系统识别</text>
+      <text x="1700" y="58" class="note" text-anchor="end">云端识别</text>
+    </g>
+
+    <g transform="translate(110 365)">
+      <rect class="card" x="0" y="0" width="520" height="520" rx="26" stroke="#2b9a70"/>
+      <circle cx="70" cy="56" r="38" fill="#218b63"/>
+      <text x="70" y="71" class="icon" text-anchor="middle">1</text>
+      <rect x="126" y="34" width="160" height="44" rx="22" fill="#218b63"/>
+      <text x="206" y="64" class="badgeText" text-anchor="middle">隐私优先</text>
+      <text x="44" y="150" class="cardTitle">Sherpa-ONNX</text>
+      <text x="44" y="194" class="role">本地模型识别</text>
+      <text x="44" y="250" class="cost">优点：</text>
+      <text x="118" y="250" class="body">音频不出电脑，离线可用</text>
+      <text x="118" y="295" class="body">不需要 API Key 或云端账号</text>
+      <text x="118" y="340" class="body">可选模型，适合隐私敏感输入</text>
+      <text x="44" y="424" class="cost">代价：</text>
+      <text x="118" y="424" class="cost">要下载模型，内存用量较高</text>
+      <text x="118" y="464" class="cost">效果受模型影响</text>
+    </g>
+
+    <g transform="translate(700 365)">
+      <rect class="card" x="0" y="0" width="520" height="520" rx="26" stroke="#5a7dc7"/>
+      <circle cx="70" cy="56" r="38" fill="#4f74bd"/>
+      <text x="70" y="71" class="icon" text-anchor="middle">2</text>
+      <rect x="126" y="34" width="160" height="44" rx="22" fill="#4f74bd"/>
+      <text x="206" y="64" class="badgeText" text-anchor="middle">默认平衡</text>
+      <text x="44" y="150" class="cardTitle">Apple Speech</text>
+      <text x="44" y="194" class="role">macOS 系统识别</text>
+      <text x="44" y="250" class="cost">优点：</text>
+      <text x="118" y="250" class="body">开箱即用，系统集成度高</text>
+      <text x="118" y="295" class="body">支持流式识别和实时上屏</text>
+      <text x="118" y="340" class="body">可选本机识别，适合日常多语言</text>
+      <text x="44" y="424" class="cost">代价：</text>
+      <text x="118" y="424" class="cost">依赖系统服务、权限状态</text>
+      <text x="118" y="464" class="cost">和语言支持</text>
+    </g>
+
+    <g transform="translate(1290 365)">
+      <rect class="card" x="0" y="0" width="520" height="520" rx="26" stroke="#c67646"/>
+      <circle cx="70" cy="56" r="38" fill="#bd6637"/>
+      <text x="70" y="71" class="icon" text-anchor="middle">3</text>
+      <rect x="126" y="34" width="160" height="44" rx="22" fill="#bd6637"/>
+      <text x="206" y="64" class="badgeText" text-anchor="middle">能力优先</text>
+      <text x="44" y="150" class="cardTitle">豆包云端 ASR</text>
+      <text x="44" y="194" class="role">火山引擎云端识别</text>
+      <text x="44" y="250" class="cost">优点：</text>
+      <text x="118" y="250" class="body">中文长句更稳</text>
+      <text x="118" y="295" class="body">标点、数字处理更自然</text>
+      <text x="118" y="340" class="body">适合准确率优先的输入</text>
+      <text x="44" y="424" class="cost">代价：</text>
+      <text x="118" y="424" class="cost">需要 API Key，依赖网络</text>
+      <text x="118" y="464" class="cost">音频会发送到云端</text>
+    </g>
+
+    <line x1="650" y1="625" x2="666" y2="625" class="arrowLine"/>
+    <polygon points="666,610 686,625 666,640" class="arrowHead"/>
+    <line x1="1240" y1="625" x2="1256" y2="625" class="arrowLine"/>
+    <polygon points="1256,610 1276,625 1256,640" class="arrowHead"/>
+
+  </g>
+</svg>

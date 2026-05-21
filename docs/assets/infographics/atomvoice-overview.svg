@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice 总体能力图</title>
+  <desc id="desc">展示 AtomVoice 从触发方式、语音识别、隐私选择、LLM 润色到直接输入当前 Mac 应用的总体工作方式。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="52%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#18212b"/>
+      <stop offset="100%" stop-color="#0b0f14"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#168b63"/>
+      <stop offset="45%" stop-color="#4b73bb"/>
+      <stop offset="75%" stop-color="#7b72c8"/>
+      <stop offset="100%" stop-color="#c56935"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <filter id="coreShadow" x="-12%" y="-12%" width="124%" height="132%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#17212b" flood-opacity="0.24"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
+      .cardTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
+      .body { font-size: 25px; font-weight: 600; fill: #34404b; }
+      .small { font-size: 22px; font-weight: 650; fill: #56626d; }
+      .badge { font-size: 20px; font-weight: 820; fill: #ffffff; }
+      .coreTitle { font-size: 62px; font-weight: 880; fill: #ffffff; }
+      .coreSub { font-size: 28px; font-weight: 650; fill: #cdd7e1; }
+      .coreText { font-size: 26px; font-weight: 700; fill: #ffffff; }
+      .coreTextDark { font-size: 26px; font-weight: 760; fill: #17212b; }
+      .arrow { stroke: #aeb8c2; stroke-width: 5; stroke-linecap: round; fill: none; }
+      .ring { fill: none; stroke: #d8e0e7; stroke-width: 3; stroke-dasharray: 10 12; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice 总览</text>
+    <text x="110" y="170" class="title">把语音输入变成 Mac 的系统级工作流</text>
+    <text x="110" y="222" class="sub">一个常驻菜单栏工具，负责触发、识别、可选润色和直接上屏，而不是又开一个转写窗口。</text>
+
+    <g transform="translate(625 318)">
+      <circle cx="335" cy="260" r="250" fill="#ffffff" opacity="0.7"/>
+      <circle cx="335" cy="260" r="300" class="ring"/>
+      <image href="../../../localdoc/原子微语图标.svg" x="145" y="42" width="380" height="380" preserveAspectRatio="xMidYMid meet" filter="url(#coreShadow)"/>
+      <text x="335" y="486" class="coreTextDark" text-anchor="middle">直接输入到当前 App</text>
+    </g>
+
+    <g transform="translate(110 310)">
+      <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#218b63"/>
+      <rect x="34" y="32" width="132" height="38" rx="19" fill="#218b63"/>
+      <text x="100" y="58" class="badge" text-anchor="middle">触发方式</text>
+      <text x="34" y="115" class="cardTitle">想说就说</text>
+      <text x="34" y="158" class="body">快捷键按住 / 轻触</text>
+      <text x="34" y="194" class="small">菜单栏、耳机控制 Beta 可选</text>
+    </g>
+
+    <g transform="translate(110 610)">
+      <rect x="0" y="0" width="430" height="242" rx="28" class="card" stroke="#4f74bd"/>
+      <rect x="34" y="32" width="132" height="38" rx="19" fill="#4f74bd"/>
+      <text x="100" y="58" class="badge" text-anchor="middle">识别引擎</text>
+      <text x="34" y="115" class="cardTitle">按场景选 ASR</text>
+      <text x="34" y="158" class="body">Apple Speech：默认平衡</text>
+      <text x="34" y="194" class="body">Sherpa：本地离线</text>
+      <text x="34" y="230" class="body">豆包：云端能力优先</text>
+    </g>
+
+    <g transform="translate(1380 310)">
+      <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#7b72c8"/>
+      <rect x="34" y="32" width="132" height="38" rx="19" fill="#7b72c8"/>
+      <text x="100" y="58" class="badge" text-anchor="middle">文本增强</text>
+      <text x="34" y="115" class="cardTitle">可选 LLM 润色</text>
+      <text x="34" y="158" class="body">修正口语、错词和标点</text>
+      <text x="34" y="194" class="small">只发送识别后的文本</text>
+    </g>
+
+    <g transform="translate(1380 610)">
+      <rect x="0" y="0" width="430" height="242" rx="28" class="card" stroke="#bd6637"/>
+      <rect x="34" y="32" width="132" height="38" rx="19" fill="#bd6637"/>
+      <text x="100" y="58" class="badge" text-anchor="middle">系统集成</text>
+      <text x="34" y="115" class="cardTitle">不打断当前工作</text>
+      <text x="34" y="158" class="body">文字进入当前光标位置</text>
+      <text x="34" y="194" class="body">支持多语言和输入法兼容</text>
+      <text x="34" y="230" class="small">菜单栏常驻，空闲时很轻</text>
+    </g>
+
+    <path d="M 545 420 C 620 420, 650 460, 700 500" class="arrow"/>
+    <polygon points="701,482 722,518 682,508" fill="#aeb8c2"/>
+    <path d="M 545 730 C 620 730, 650 680, 704 640" class="arrow"/>
+    <polygon points="687,635 725,624 706,660" fill="#aeb8c2"/>
+    <path d="M 1375 420 C 1300 420, 1270 460, 1220 500" class="arrow"/>
+    <polygon points="1238,508 1198,518 1219,482" fill="#aeb8c2"/>
+    <path d="M 1375 730 C 1300 730, 1270 680, 1216 640" class="arrow"/>
+    <polygon points="1214,660 1195,624 1233,635" fill="#aeb8c2"/>
+
+    <g transform="translate(190 925)">
+      <rect x="0" y="0" width="1540" height="82" rx="26" fill="#ffffff" stroke="#d8e0e7" stroke-width="2" filter="url(#softShadow)"/>
+      <rect x="0" y="0" width="1540" height="12" rx="6" fill="url(#rail)"/>
+      <text x="40" y="55" class="body">一句话总结：AtomVoice 把“录音转写”收进系统输入链路，让语音像键盘一样进入任何 Mac App。</text>
+    </g>
+  </g>
+</svg>

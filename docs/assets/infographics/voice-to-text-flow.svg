@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice 从说话到上屏流程图</title>
+  <desc id="desc">展示 AtomVoice 如何从触发、录音、识别、可选 LLM 优化，到把文字输入当前 Mac 应用。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="52%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#168b63"/>
+      <stop offset="45%" stop-color="#4b73bb"/>
+      <stop offset="100%" stop-color="#c56935"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
+      .num { font-size: 28px; font-weight: 860; fill: #ffffff; }
+      .icon { font-size: 54px; font-weight: 800; fill: #17212b; }
+      .stepTitle { font-size: 38px; font-weight: 860; fill: #151f29; }
+      .body { font-size: 25px; font-weight: 590; fill: #34404b; }
+      .note { font-size: 24px; font-weight: 660; fill: #56626d; }
+      .calloutTitle { font-size: 34px; font-weight: 860; fill: #17212b; }
+      .callout { font-size: 26px; font-weight: 610; fill: #4f5b66; }
+      .arrowLine { stroke: #aeb8c2; stroke-width: 6; stroke-linecap: round; }
+      .arrowHead { fill: #aeb8c2; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice 输入链路</text>
+    <text x="110" y="170" class="title">一句话怎样变成当前 App 里的文字</text>
+    <text x="110" y="222" class="sub">AtomVoice 不要求你切窗口：触发后说话，识别结果直接进入正在输入的位置。</text>
+
+    <g transform="translate(150 330)">
+      <rect x="0" y="0" width="260" height="360" rx="28" class="card" stroke="#218b63"/>
+      <circle cx="56" cy="56" r="32" fill="#218b63"/>
+      <text x="56" y="66" class="num" text-anchor="middle">1</text>
+      <text x="130" y="132" class="icon" text-anchor="middle">⌘</text>
+      <text x="36" y="205" class="stepTitle">触发输入</text>
+      <text x="36" y="260" class="body">按住或轻触快捷键</text>
+      <text x="36" y="300" class="body">也可用菜单栏或耳机</text>
+    </g>
+
+    <g transform="translate(470 330)">
+      <rect x="0" y="0" width="260" height="360" rx="28" class="card" stroke="#2e9f83"/>
+      <circle cx="56" cy="56" r="32" fill="#2e9f83"/>
+      <text x="56" y="66" class="num" text-anchor="middle">2</text>
+      <text x="130" y="132" class="icon" text-anchor="middle">◖◗</text>
+      <text x="36" y="205" class="stepTitle">采集语音</text>
+      <text x="36" y="260" class="body">选择系统麦克风</text>
+      <text x="36" y="300" class="body">胶囊显示录音状态</text>
+    </g>
+
+    <g transform="translate(790 330)">
+      <rect x="0" y="0" width="260" height="360" rx="28" class="card" stroke="#4f74bd"/>
+      <circle cx="56" cy="56" r="32" fill="#4f74bd"/>
+      <text x="56" y="66" class="num" text-anchor="middle">3</text>
+      <text x="130" y="132" class="icon" text-anchor="middle">ASR</text>
+      <text x="36" y="205" class="stepTitle">转成文本</text>
+      <text x="36" y="260" class="body">Apple / Sherpa / 豆包</text>
+      <text x="36" y="300" class="body">按场景选择引擎</text>
+    </g>
+
+    <g transform="translate(1110 330)">
+      <rect x="0" y="0" width="260" height="360" rx="28" class="card" stroke="#7b72c8"/>
+      <circle cx="56" cy="56" r="32" fill="#7b72c8"/>
+      <text x="56" y="66" class="num" text-anchor="middle">4</text>
+      <text x="130" y="132" class="icon" text-anchor="middle">AI</text>
+      <text x="36" y="205" class="stepTitle">可选润色</text>
+      <text x="36" y="260" class="body">只发送识别后的文本</text>
+      <text x="36" y="300" class="body">修正口语、标点和语气</text>
+    </g>
+
+    <g transform="translate(1430 330)">
+      <rect x="0" y="0" width="340" height="360" rx="28" class="card" stroke="#bd6637"/>
+      <circle cx="56" cy="56" r="32" fill="#bd6637"/>
+      <text x="56" y="66" class="num" text-anchor="middle">5</text>
+      <text x="170" y="132" class="icon" text-anchor="middle">▣</text>
+      <text x="36" y="205" class="stepTitle">直接上屏</text>
+      <text x="36" y="260" class="body">输出到当前光标位置</text>
+      <text x="36" y="300" class="body">不用打开独立编辑器</text>
+    </g>
+
+    <line x1="422" y1="510" x2="452" y2="510" class="arrowLine"/>
+    <polygon points="452,493 476,510 452,527" class="arrowHead"/>
+    <line x1="742" y1="510" x2="772" y2="510" class="arrowLine"/>
+    <polygon points="772,493 796,510 772,527" class="arrowHead"/>
+    <line x1="1062" y1="510" x2="1092" y2="510" class="arrowLine"/>
+    <polygon points="1092,493 1116,510 1092,527" class="arrowHead"/>
+    <line x1="1382" y1="510" x2="1412" y2="510" class="arrowLine"/>
+    <polygon points="1412,493 1436,510 1412,527" class="arrowHead"/>
+
+    <g transform="translate(150 778)">
+      <rect x="0" y="0" width="1620" height="122" rx="28" fill="#ffffff" stroke="#d8e0e7" stroke-width="2" filter="url(#softShadow)"/>
+      <rect x="0" y="0" width="1620" height="12" rx="6" fill="url(#rail)"/>
+      <text x="42" y="62" class="calloutTitle">核心体验：语音输入发生在你原本工作的地方</text>
+      <text x="42" y="99" class="callout">写邮件、回复聊天、记笔记、写 prompt 或 issue，都不需要先切到另一个转写窗口。</text>
+    </g>
+  </g>
+</svg>

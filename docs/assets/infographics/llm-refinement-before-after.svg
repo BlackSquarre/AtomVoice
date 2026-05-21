@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice LLM 润色前后对比图</title>
+  <desc id="desc">展示 AtomVoice 的 LLM Refinement 如何把口语化识别文本整理成可直接发送的文字。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="55%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4f74bd"/>
+      <stop offset="100%" stop-color="#7b72c8"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .panel { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
+      .panelTitle { font-size: 42px; font-weight: 860; fill: #151f29; }
+      .label { font-size: 22px; font-weight: 820; fill: #ffffff; }
+      .quote { font-size: 34px; font-weight: 620; fill: #293540; }
+      .mutedQuote { font-size: 34px; font-weight: 580; fill: #68737e; }
+      .body { font-size: 26px; font-weight: 610; fill: #4f5b66; }
+      .strong { font-size: 30px; font-weight: 860; fill: #17212b; }
+      .arrow { stroke: #aeb8c2; stroke-width: 6; stroke-linecap: round; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice LLM Refinement Beta</text>
+    <text x="110" y="170" class="title">不是把话变长，而是把口语变成可发送文本</text>
+    <text x="110" y="222" class="sub">LLM 润色只处理识别后的文字，用来修正口语、标点、错词和语气。</text>
+
+    <g transform="translate(130 330)">
+      <rect x="0" y="0" width="720" height="420" rx="30" class="panel" stroke="#9aa8b5"/>
+      <rect x="46" y="42" width="176" height="42" rx="21" fill="#7b8794"/>
+      <text x="134" y="70" class="label" text-anchor="middle">原始识别</text>
+      <text x="46" y="142" class="panelTitle">像口头草稿</text>
+      <text x="46" y="218" class="mutedQuote">“帮我写个消息说我今天会晚</text>
+      <text x="46" y="270" class="mutedQuote">一点到然后让他们先开始不用等我”</text>
+      <text x="46" y="350" class="body">信息完整，但缺少标点、层次和合适语气。</text>
+    </g>
+
+    <g transform="translate(1070 330)">
+      <rect x="0" y="0" width="720" height="420" rx="30" class="panel" stroke="#7b72c8"/>
+      <rect x="46" y="42" width="200" height="42" rx="21" fill="#7b72c8"/>
+      <text x="146" y="70" class="label" text-anchor="middle">润色后输出</text>
+      <text x="46" y="142" class="panelTitle">可以直接发送</text>
+      <text x="46" y="218" class="quote">“我今天会晚一点到，</text>
+      <text x="46" y="270" class="quote">你们可以先开始，不用等我。”</text>
+      <text x="46" y="350" class="body">保留原意，同时补齐标点、语气和可读性。</text>
+    </g>
+
+    <path d="M 880 540 C 930 540, 990 540, 1040 540" class="arrow"/>
+    <polygon points="1040,522 1068,540 1040,558" fill="#aeb8c2"/>
+    <circle cx="960" cy="540" r="58" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5" filter="url(#softShadow)"/>
+    <text x="960" y="553" text-anchor="middle" style="font-size: 34px; font-weight: 860; fill: #7b72c8;">AI</text>
+
+    <g transform="translate(160 815)">
+      <rect x="0" y="0" width="1600" height="104" rx="28" fill="#ffffff" stroke="#d8e0e7" stroke-width="2" filter="url(#softShadow)"/>
+      <rect x="0" y="0" width="1600" height="12" rx="6" fill="url(#rail)"/>
+      <text x="42" y="60" class="strong">适合：邮件、聊天回复、笔记、prompt、issue 描述</text>
+      <text x="925" y="60" class="body">也可以跳过润色，直接插入原始识别文本。</text>
+    </g>
+  </g>
+</svg>
