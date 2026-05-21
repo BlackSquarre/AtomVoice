@@ -4,12 +4,14 @@ on:
   push:
     branches: [ main, 'release/**' ]
     tags: [ 'v*' ]
+  release:
+    types: [ published ]
   delete:
     branches: [ '*' ]
   workflow_dispatch:
 
 jobs:
-  sync:
+  sync-code:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,3 +31,62 @@ jobs:
           git remote add gitee git@gitee.com:lingru/AtomVoice.git
           git push gitee --all --force
           git push gitee --tags --force
+
+  sync-release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get release info
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = context.payload.release;
+            return {
+              tag: release.tag_name,
+              name: release.name,
+              body: release.body || '',
+              prerelease: release.prerelease,
+              assets: release.assets.map(a => ({ name: a.name, url: a.browser_download_url }))
+            };
+
+      - name: Create Gitee release
+        id: gitee
+        run: |
+          TAG="${{ fromJson(steps.release.outputs.result).tag }}"
+          NAME="${{ fromJson(steps.release.outputs.result).name }}"
+          BODY=$(echo '${{ fromJson(steps.release.outputs.result).body }}' | jq -Rs .)
+          PRERELEASE=${{ fromJson(steps.release.outputs.result).prerelease }}
+
+          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/lingru/AtomVoice/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
+              \"tag_name\": \"$TAG\",
+              \"name\": \"$NAME\",
+              \"body\": $BODY,
+              \"target_commitish\": \"main\",
+              \"prerelease\": $PRERELEASE
+            }")
+
+          RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
+          if [ -z "$RELEASE_ID" ]; then
+            echo "Error: $(echo "$RESP" | jq -r '.messages // .message')"
+            exit 1
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+
+      - name: Download and upload assets
+        run: |
+          mkdir -p /tmp/assets
+          ASSETS='${{ toJson(fromJson(steps.release.outputs.result).assets) }}'
+          echo "$ASSETS" | jq -c '.[]' | while read -r asset; do
+            NAME=$(echo "$asset" | jq -r '.name')
+            URL=$(echo "$asset" | jq -r '.url')
+            echo "Downloading: $NAME"
+            curl -sL "$URL" -o "/tmp/assets/$NAME"
+            echo "Uploading: $NAME"
+            curl -s -X POST "https://gitee.com/api/v5/repos/lingru/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
+              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+              -F "file=@/tmp/assets/$NAME" | jq -r '.browser_download_url // .message'
+          done
