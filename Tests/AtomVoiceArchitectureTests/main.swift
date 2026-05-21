@@ -133,6 +133,41 @@ struct ArchitectureTestRunner {
             try expect(registry.descriptor(for: ASREngineRegistry.sherpaCode)?.isOffline == true)
         }
 
+        await runner.run("Audio analyzer does not stop on steady speech-level input") {
+            let oldAutoStop = AppSettings.silenceAutoStopEnabled
+            let oldManualStop = AppSettings.tapModeManualStop
+            let oldDuration = AppSettings.silenceDuration
+            let oldThreshold = AppSettings.silenceThreshold
+            defer {
+                AppSettings.silenceAutoStopEnabled = oldAutoStop
+                AppSettings.tapModeManualStop = oldManualStop
+                AppSettings.silenceDuration = oldDuration
+                AppSettings.silenceThreshold = oldThreshold
+            }
+
+            AppSettings.silenceAutoStopEnabled = true
+            AppSettings.tapModeManualStop = false
+            AppSettings.silenceDuration = 0.5
+            AppSettings.silenceThreshold = -40.0
+
+            let analyzer = AudioAnalyzer()
+            var timeoutCount = 0
+            analyzer.onSilenceTimeout = {
+                timeoutCount += 1
+            }
+
+            let buffer = try require(
+                makePCMBuffer(sampleRate: 16_000, frameLength: 1_600, fillValue: 0.03),
+                "buffer should be created"
+            )
+            for _ in 0..<40 {
+                analyzer.accept(buffer)
+            }
+
+            try await waitForAsyncCallbacks()
+            try expect(timeoutCount == 0)
+        }
+
         await runner.run("Text processor registry stops at first handler") {
             let first = FakeTextProcessor(id: "first", output: nil)
             let second = FakeTextProcessor(id: "second", output: "handled")
@@ -671,7 +706,7 @@ private func writeDummyFile(_ url: URL) throws {
     try Data([0x41]).write(to: url)
 }
 
-private func makePCMBuffer(sampleRate: Double, frameLength: AVAudioFrameCount) -> AVAudioPCMBuffer? {
+private func makePCMBuffer(sampleRate: Double, frameLength: AVAudioFrameCount, fillValue: Float? = nil) -> AVAudioPCMBuffer? {
     guard let format = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
         sampleRate: sampleRate,
@@ -682,7 +717,7 @@ private func makePCMBuffer(sampleRate: Double, frameLength: AVAudioFrameCount) -
     buffer.frameLength = frameLength
     if let channel = buffer.floatChannelData?[0] {
         for index in 0..<Int(frameLength) {
-            channel[index] = Float(index) / 100.0
+            channel[index] = fillValue ?? Float(index) / 100.0
         }
     }
     return buffer

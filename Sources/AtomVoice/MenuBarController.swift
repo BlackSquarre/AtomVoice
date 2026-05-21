@@ -186,25 +186,6 @@ final class MenuBarController {
                     )
                 )
             }
-            inputModeMenu.addItem(.separator())
-            inputModeMenu.addItem(makeSectionLabel(loc("menu.steadyNoise.sensitivity"), toolTip: loc("tooltip.menu.steadyNoise")))
-            let currentSensitivity = AppSettings.steadyNoiseSensitivity
-            for (title, value, tooltip) in [
-                (loc("menu.steadyNoise.low"), 0, loc("tooltip.steadyNoise.low")),
-                (loc("menu.steadyNoise.medium"), 1, loc("tooltip.steadyNoise.medium")),
-                (loc("menu.steadyNoise.high"), 2, loc("tooltip.steadyNoise.high"))
-            ] {
-                inputModeMenu.addItem(
-                    makeMenuItem(
-                        title: title,
-                        action: #selector(selectSteadyNoiseSensitivity(_:)),
-                        state: currentSensitivity == value ? .on : .off,
-                        representedObject: value,
-                        indentationLevel: 1,
-                        toolTip: tooltip
-                    )
-                )
-            }
         }
         inputModeItem.submenu = inputModeMenu
         menu.addItem(inputModeItem)
@@ -729,12 +710,6 @@ final class MenuBarController {
 
     @objc private func selectManualStop(_ sender: NSMenuItem) {
         AppSettings.tapModeManualStop = true
-        rebuildMenu()
-    }
-
-    @objc private func selectSteadyNoiseSensitivity(_ sender: NSMenuItem) {
-        guard let sensitivity = sender.representedObject as? Int else { return }
-        AppSettings.steadyNoiseSensitivity = sensitivity
         rebuildMenu()
     }
 

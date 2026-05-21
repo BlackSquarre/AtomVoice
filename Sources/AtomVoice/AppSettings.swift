@@ -34,7 +34,6 @@ enum AppSettings {
         static let silenceAutoStopEnabled = "silenceAutoStopEnabled"
         static let silenceDuration = "silenceDuration"
         static let silenceThreshold = "silenceThreshold"
-        static let steadyNoiseSensitivity = "steadyNoiseSensitivity"
         static let triggerKeyCode = "triggerKeyCode"
         static let lowerVolumeOnRecording = "lowerVolumeOnRecording"
         static let audioInputDeviceUID = "audioInputDeviceUID"
@@ -113,7 +112,6 @@ enum AppSettings {
             Keys.silenceAutoStopEnabled: false,
             Keys.silenceDuration: 2.0,
             Keys.silenceThreshold: -40.0,
-            Keys.steadyNoiseSensitivity: 1,
             Keys.triggerKeyCode: Int(defaultTriggerKeyCode),
             Keys.lowerVolumeOnRecording: true,
             Keys.includeBetaUpdates: false,
@@ -237,11 +235,6 @@ enum AppSettings {
     static var silenceThreshold: Double {
         get { defaults.double(forKey: Keys.silenceThreshold) }
         set { defaults.set(newValue, forKey: Keys.silenceThreshold) }
-    }
-
-    static var steadyNoiseSensitivity: Int {
-        get { defaults.integer(forKey: Keys.steadyNoiseSensitivity) }
-        set { defaults.set(newValue, forKey: Keys.steadyNoiseSensitivity) }
     }
 
     static var triggerKeyCode: UInt16 {

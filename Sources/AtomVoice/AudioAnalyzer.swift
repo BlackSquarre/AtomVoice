@@ -1,14 +1,14 @@
 import AVFoundation
 import Accelerate
 
-/// 音频分析器：静音/持续噪声检测 + 5 段频谱可视化。
+/// 音频分析器：静音检测 + 5 段频谱可视化。
 /// 订阅 AudioRouter 的 16kHz mono Float32 通道，固定 SR 让频段配置和阈值不再随设备漂移。
 /// 回调全部在内部 worker queue 触发，调用方负责切回主线程消费。
-/// (Audio analyzer: silence/steady-noise detection + 5-band spectrum for visualization.
+/// (Audio analyzer: silence detection + 5-band spectrum for visualization.
 ///  Subscribes to AudioRouter's 16kHz channel; fixed SR keeps band ranges and thresholds stable.
 ///  Callbacks fire on internal worker queue; caller dispatches to main as needed.)
 final class AudioAnalyzer {
-    /// 静音/持续噪声达到阈值时触发（在 worker queue 上）
+    /// 静音达到阈值时触发（在 worker queue 上）
     var onSilenceTimeout: (() -> Void)?
     /// FFT 频段更新时触发（在 worker queue 上）
     var onBands: (([Float]) -> Void)?
@@ -17,12 +17,6 @@ final class AudioAnalyzer {
     private var silenceDuration: Double = 0
     private var recordingDuration: Double = 0
     private let silenceGuardPeriod: Double = 0.5
-
-    // 持续噪声检测
-    private var rmsHistory: [Float] = []
-    private let rmsHistorySize = 30
-    private var steadyNoiseDuration: Double = 0
-    private var steadyNoiseThreshold: Float = 0.001
 
     // FFT
     private let fftSize = 1024
@@ -59,8 +53,6 @@ final class AudioAnalyzer {
         bufferQueue.sync {
             sampleBuffer = []
             silenceDuration = 0
-            steadyNoiseDuration = 0
-            rmsHistory = []
             recordingDuration = 0
         }
     }
@@ -116,41 +108,18 @@ final class AudioAnalyzer {
         let threshold = AppSettings.silenceThreshold
         let requiredDuration = AppSettings.silenceDuration
 
-        let sensitivity = AppSettings.steadyNoiseSensitivity
-        switch sensitivity {
-        case 0: steadyNoiseThreshold = 0.0005
-        case 2: steadyNoiseThreshold = 0.003
-        default: steadyNoiseThreshold = 0.001
-        }
-
         var rms: Float = 0
         vDSP_rmsqv(channelData, 1, &rms, vDSP_Length(frameCount))
         let dB = 20 * log10(max(rms, 1e-7))
 
-        rmsHistory.append(rms)
-        if rmsHistory.count > rmsHistorySize {
-            rmsHistory.removeFirst()
-        }
-
-        let isSteadyNoise = rmsHistory.count >= rmsHistorySize && detectSteadyNoise(rmsHistory: rmsHistory, currentRMS: rms)
-
         if Double(dB) < threshold {
             silenceDuration += bufferDuration
-            steadyNoiseDuration = 0
             if silenceDuration >= requiredDuration {
                 silenceDuration = 0
                 fireSilenceTimeout()
             }
-        } else if isSteadyNoise {
-            silenceDuration = 0
-            steadyNoiseDuration += bufferDuration
-            if steadyNoiseDuration >= requiredDuration {
-                steadyNoiseDuration = 0
-                fireSilenceTimeout()
-            }
         } else {
             silenceDuration = 0
-            steadyNoiseDuration = 0
         }
     }
 
@@ -158,22 +127,6 @@ final class AudioAnalyzer {
         DispatchQueue.main.async { [weak self] in
             self?.onSilenceTimeout?()
         }
-    }
-
-    private func detectSteadyNoise(rmsHistory: [Float], currentRMS: Float) -> Bool {
-        guard currentRMS > 0.005 else { return false }
-
-        var mean: Float = 0
-        vDSP_meanv(rmsHistory, 1, &mean, vDSP_Length(rmsHistory.count))
-
-        var variance: Float = 0
-        var squaredDiffs = [Float](repeating: 0, count: rmsHistory.count)
-        let meanVec = [Float](repeating: mean, count: rmsHistory.count)
-        vDSP_vsub(rmsHistory, 1, meanVec, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
-        vDSP_vsq(squaredDiffs, 1, &squaredDiffs, 1, vDSP_Length(rmsHistory.count))
-        vDSP_meanv(squaredDiffs, 1, &variance, vDSP_Length(rmsHistory.count))
-
-        return variance < steadyNoiseThreshold
     }
 
     // MARK: - FFT
