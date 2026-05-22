@@ -36,6 +36,9 @@ let package = Package(
                 "AppIcon-1024.png",
                 "AppIcon-source-chromakey.png",
                 "AppIcon.iconset",
+                "Debug/SherpaMemoryProbe",
+                "Debug/SherpaMemoryBenchmark",
+                "Debug/Tools",
             ]
         ),
         .executableTarget(
@@ -46,12 +49,12 @@ let package = Package(
         .executableTarget(
             name: "SherpaMemoryProbe",
             dependencies: ["SherpaOnnxShim"],
-            path: "Sources/SherpaMemoryProbe"
+            path: "Sources/AtomVoice/Debug/SherpaMemoryProbe"
         ),
         .executableTarget(
             name: "SherpaMemoryBenchmark",
             dependencies: [],
-            path: "Sources/SherpaMemoryBenchmark"
+            path: "Sources/AtomVoice/Debug/SherpaMemoryBenchmark"
         ),
         .target(
             name: "SherpaOnnxShim",
