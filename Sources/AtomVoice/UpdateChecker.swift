@@ -30,7 +30,6 @@ final class UpdateChecker: NSObject {
     /// 检查更新（Check for updates）
     /// - Parameter silent: true = 无新版时不弹提示，启动时后台静默检查用（true = no alert when up-to-date, for silent background check on launch）
     func checkForUpdates(silent: Bool = false) {
-        #if !DEBUG_BUILD
         guard state == .idle else {
             if state == .checking, !silent {
                 pendingUserVisibleCheck = true
@@ -45,7 +44,12 @@ final class UpdateChecker: NSObject {
         pendingUserVisibleCheck = !silent
 
         let includeBeta = AppSettings.includeBetaUpdates
-        fetchLatestRelease(includeBeta: includeBeta) { [weak self] result in
+        #if DEBUG_BUILD
+        let preferDebugBuild = AppSettings.updateToDebugBuilds
+        #else
+        let preferDebugBuild = false
+        #endif
+        fetchLatestRelease(includeBeta: includeBeta, preferDebugBuild: preferDebugBuild) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self, self.state == .checking else { return }
                 let shouldShowResult = self.pendingUserVisibleCheck
@@ -63,7 +67,6 @@ final class UpdateChecker: NSObject {
                 }
             }
         }
-        #endif
     }
 
     // MARK: - 获取最新 Release
@@ -74,9 +77,10 @@ final class UpdateChecker: NSObject {
         let assetName: String
         let checksumsURL: URL
         let isPreRelease: Bool
+        let isDebugBuild: Bool
     }
 
-    private func fetchLatestRelease(includeBeta: Bool, completion: @escaping (Result<Release, Error>) -> Void) {
+    private func fetchLatestRelease(includeBeta: Bool, preferDebugBuild: Bool, completion: @escaping (Result<Release, Error>) -> Void) {
         // includeBeta 时拉取列表取第一条（含 pre-release），否则只取正式最新版
         // (When includeBeta is true, fetch the list and take the first entry including pre-release; otherwise fetch only the latest stable release)
         let urlStr = includeBeta
@@ -106,13 +110,18 @@ final class UpdateChecker: NSObject {
                 let isPreRelease = json["prerelease"] as? Bool ?? false
                 let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
 
-                // 按当前架构精确匹配资产；Universal 仅在架构专属包缺失时作为兜底
-                // (Match the asset for the current architecture; Universal is only a fallback when arch-specific build is missing.)
-                #if arch(arm64)
-                let preferred = ["AppleSilicon", "Universal"]
-                #else
-                let preferred = ["Intel", "Universal"]
-                #endif
+                // 按当前更新通道匹配资产：普通通道排除 Debug 包；Debug 通道只取 Debug Universal。
+                // (Match by update channel: normal channel excludes Debug assets; Debug channel only takes Debug Universal.)
+                let preferred: [String]
+                if preferDebugBuild {
+                    preferred = ["Debug-Universal", "DebugUniversal", "Debug"]
+                } else {
+                    #if arch(arm64)
+                    preferred = ["AppleSilicon", "Universal"]
+                    #else
+                    preferred = ["Intel", "Universal"]
+                    #endif
+                }
 
                 // 校验文件 SHA256SUMS.txt 与 release 一起发布
                 // (Checksum file SHA256SUMS.txt is published with each release.)
@@ -125,8 +134,10 @@ final class UpdateChecker: NSObject {
 
                 for suffix in preferred {
                     if let asset = assets.first(where: {
-                           ($0["name"] as? String)?.contains(suffix) == true &&
-                           ($0["name"] as? String)?.hasSuffix(".zip") == true
+                           guard let name = $0["name"] as? String else { return false }
+                           guard name.contains(suffix), name.hasSuffix(".zip") else { return false }
+                           let isDebugAsset = name.localizedCaseInsensitiveContains("debug")
+                           return preferDebugBuild ? isDebugAsset : !isDebugAsset
                        }),
                        let assetName = asset["name"] as? String,
                        let dlStr = asset["browser_download_url"] as? String,
@@ -135,7 +146,8 @@ final class UpdateChecker: NSObject {
                                                     downloadURL: dlURL,
                                                     assetName: assetName,
                                                     checksumsURL: checksumsURL,
-                                                    isPreRelease: isPreRelease)))
+                                                    isPreRelease: isPreRelease,
+                                                    isDebugBuild: preferDebugBuild)))
                         return
                     }
                 }
@@ -159,9 +171,13 @@ final class UpdateChecker: NSObject {
             return
         }
 
-        let displayVersion = release.isPreRelease
-            ? "\(release.version) (\(loc("update.beta")))"
-            : release.version
+        let badges = [
+            release.isPreRelease ? loc("update.beta") : nil,
+            release.isDebugBuild ? loc("update.debug") : nil,
+        ].compactMap { $0 }
+        let displayVersion = badges.isEmpty
+            ? release.version
+            : "\(release.version) (\(badges.joined(separator: ", ")))"
 
         let alert = NSAlert()
         alert.messageText = loc("update.available.title")

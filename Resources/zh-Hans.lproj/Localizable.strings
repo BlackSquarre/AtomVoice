@@ -228,6 +228,7 @@
 /* Update */
 "menu.checkForUpdates" = "检查更新...";
 "menu.betaUpdates" = "包含测试版";
+"menu.debugUpdates" = "更新到 Debug 版本";
 "update.available.title" = "有新版本";
 "update.available.message" = "原子微语 %@ 已发布（当前版本 %@），是否立即安装？";
 "update.upToDate.title" = "已是最新版本";
@@ -245,6 +246,7 @@
 "update.error.download" = "下载失败：%@";
 "update.error.install" = "安装失败：%@";
 "update.beta" = "测试版";
+"update.debug" = "Debug 版";
 "menu.lowerVolumeOnRecording" = "录音时降低系统音量";
 "menu.lowerVolumeOnRecording.tooltip" = "录音期间将系统音量降低 80%";
 

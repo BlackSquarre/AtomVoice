@@ -227,6 +227,7 @@
 /* Update */
 "menu.checkForUpdates" = "Rechercher des mises à jour...";
 "menu.betaUpdates" = "Inclure les versions bêta";
+"menu.debugUpdates" = "Mettre à jour vers les builds Debug";
 "update.available.title" = "Mise à jour disponible";
 "update.available.message" = "AtomVoice %@ est disponible (tu as %@). Installer maintenant ?";
 "update.upToDate.title" = "Tu es à jour";
@@ -244,6 +245,7 @@
 "update.error.download" = "Échec du téléchargement : %@";
 "update.error.install" = "Échec de l'installation : %@";
 "update.beta" = "Bêta";
+"update.debug" = "Debug";
 "menu.lowerVolumeOnRecording" = "Réduire le volume pendant l'enregistrement";
 "menu.lowerVolumeOnRecording.tooltip" = "Réduire le volume système de 80% pendant l'enregistrement";
 

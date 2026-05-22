@@ -367,7 +367,6 @@ final class MenuBarController {
 
         m.addItem(.separator())
 
-        #if !DEBUG_BUILD
         // 检查更新（Check for updates）
         m.addItem(makeMenuItem(title: loc("menu.checkForUpdates"), action: #selector(checkForUpdates(_:)), imageName: "arrow.down.circle"))
         m.addItem(
@@ -376,6 +375,16 @@ final class MenuBarController {
                 action: #selector(toggleBetaUpdates(_:)),
                 imageName: "flask",
                 state: AppSettings.includeBetaUpdates ? .on : .off,
+                indentationLevel: 1
+            )
+        )
+        #if DEBUG_BUILD
+        m.addItem(
+            makeMenuItem(
+                title: loc("menu.debugUpdates"),
+                action: #selector(toggleDebugUpdates(_:)),
+                imageName: "ladybug",
+                state: AppSettings.updateToDebugBuilds ? .on : .off,
                 indentationLevel: 1
             )
         )
@@ -779,6 +788,12 @@ final class MenuBarController {
     @objc private func toggleBetaUpdates(_ sender: NSMenuItem) {
         toggleAndRebuild(currentValue: AppSettings.includeBetaUpdates) {
             AppSettings.includeBetaUpdates = $0
+        }
+    }
+
+    @objc private func toggleDebugUpdates(_ sender: NSMenuItem) {
+        toggleAndRebuild(currentValue: AppSettings.updateToDebugBuilds) {
+            AppSettings.updateToDebugBuilds = $0
         }
     }
 

@@ -227,6 +227,7 @@
 /* Update */
 "menu.checkForUpdates" = "檢查更新...";
 "menu.betaUpdates" = "包含測試版";
+"menu.debugUpdates" = "更新到 Debug 版本";
 "update.available.title" = "有新版本";
 "update.available.message" = "原子微語 %@ 已發布（目前版本 %@），是否立即安裝？";
 "update.upToDate.title" = "已是最新版本";
@@ -244,6 +245,7 @@
 "update.error.download" = "下載失敗：%@";
 "update.error.install" = "安裝失敗：%@";
 "update.beta" = "測試版";
+"update.debug" = "Debug 版";
 "menu.lowerVolumeOnRecording" = "錄音時降低系統音量";
 "menu.lowerVolumeOnRecording.tooltip" = "錄音期間將系統音量降低 80%";
 

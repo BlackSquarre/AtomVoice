@@ -227,6 +227,7 @@
 /* Update */
 "menu.checkForUpdates" = "アップデートを確認...";
 "menu.betaUpdates" = "ベータ版を含む";
+"menu.debugUpdates" = "Debug ビルドに更新";
 "update.available.title" = "アップデートがあります";
 "update.available.message" = "AtomVoice %@ が利用可能です（現在のバージョン：%@）。今すぐインストールしますか？";
 "update.upToDate.title" = "最新バージョンです";
@@ -244,6 +245,7 @@
 "update.error.download" = "ダウンロードに失敗しました：%@";
 "update.error.install" = "インストールに失敗しました：%@";
 "update.beta" = "ベータ";
+"update.debug" = "Debug";
 "menu.lowerVolumeOnRecording" = "録音中にシステム音量を下げる";
 "menu.lowerVolumeOnRecording.tooltip" = "録音中にシステム音量を80%下げる";
 

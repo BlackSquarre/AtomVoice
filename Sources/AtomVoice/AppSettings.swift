@@ -38,6 +38,7 @@ enum AppSettings {
         static let lowerVolumeOnRecording = "lowerVolumeOnRecording"
         static let audioInputDeviceUID = "audioInputDeviceUID"
         static let includeBetaUpdates = "includeBetaUpdates"
+        static let updateToDebugBuilds = "updateToDebugBuilds"
         static let sherpaAutoUnloadEnabled = "sherpaAutoUnloadEnabled"
         static let sherpaAutoUnloadIdleMinutes = "sherpaAutoUnloadIdleMinutes"
         static let sherpaProvider = "sherpaProvider"
@@ -115,6 +116,7 @@ enum AppSettings {
             Keys.triggerKeyCode: Int(defaultTriggerKeyCode),
             Keys.lowerVolumeOnRecording: true,
             Keys.includeBetaUpdates: false,
+            Keys.updateToDebugBuilds: false,
             Keys.sherpaAutoUnloadEnabled: true,
             Keys.sherpaAutoUnloadIdleMinutes: 15,
             Keys.sherpaProvider: defaultSherpaProvider,
@@ -255,6 +257,11 @@ enum AppSettings {
     static var includeBetaUpdates: Bool {
         get { defaults.bool(forKey: Keys.includeBetaUpdates) }
         set { defaults.set(newValue, forKey: Keys.includeBetaUpdates) }
+    }
+
+    static var updateToDebugBuilds: Bool {
+        get { defaults.bool(forKey: Keys.updateToDebugBuilds) }
+        set { defaults.set(newValue, forKey: Keys.updateToDebugBuilds) }
     }
 
     static var sherpaAutoUnloadEnabled: Bool {
