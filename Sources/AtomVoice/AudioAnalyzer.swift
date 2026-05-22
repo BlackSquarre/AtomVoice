@@ -20,6 +20,9 @@ final class AudioAnalyzer {
     private var hannWindow: [Float] = []
     private var sampleBuffer: [Float] = []
     private let bufferQueue = DispatchQueue(label: "com.atomvoice.audioAnalyzer")
+    #if DEBUG_BUILD
+    private var lastBandsProbeLogTime: CFAbsoluteTime = 0
+    #endif
 
     // 频段配置（针对 16kHz 固定 SR）：只用人声核心频率范围，避免低频震动 / 高频噪声推起整体波形。
     private let bandFreqRanges: [(Float, Float)] = [
@@ -77,6 +80,9 @@ final class AudioAnalyzer {
                 guard let base = bufPtr.baseAddress else { return [Float](repeating: 0, count: 5) }
                 return computeBands(samplesPointer: base.advanced(by: offset), sampleRate: sampleRate)
             }
+            #if DEBUG_BUILD
+            logBandsIfNeeded(bands, sampleRate: sampleRate)
+            #endif
             offset += fftSize / 2
             onBands?(bands)
         }
@@ -180,4 +186,15 @@ final class AudioAnalyzer {
     private func normalizedDecibels(_ dB: Float, floor: Float, range: Float) -> Float {
         max(0, min(1, (dB - floor) / range))
     }
+
+    #if DEBUG_BUILD
+    private func logBandsIfNeeded(_ bands: [Float], sampleRate: Float) {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastBandsProbeLogTime >= 0.5 else { return }
+        lastBandsProbeLogTime = now
+        let maxBand = bands.max() ?? 0
+        let text = bands.map { String(format: "%.3f", $0) }.joined(separator: ",")
+        DebugLog.info(String(format: "[AudioAnalyzer] bands max=%.3f sr=%.0f values=[%@]", maxBand, sampleRate, text))
+    }
+    #endif
 }

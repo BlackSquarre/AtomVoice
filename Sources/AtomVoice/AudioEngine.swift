@@ -25,6 +25,9 @@ final class AudioEngineController {
     /// 标记：真实路由变化后 engine 实例已不可用，下次 start() 前必须重建。
     /// (Flag: real route-change occurred; engine is corrupted, must rebuild before next start().)
     private var needsEngineRebuild = false
+    #if DEBUG_BUILD
+    private var lastInputProbeLogTime: CFAbsoluteTime = 0
+    #endif
 
     private func nextRouteRecoveryToken() -> Int {
         routeRecoveryLock.lock()
@@ -140,7 +143,24 @@ final class AudioEngineController {
             if wasActive {
                 let token = self.nextRouteRecoveryToken()
                 self.scheduleRouteRecovery(token: token)
+            } else {
+                let token = self.nextRouteRecoveryToken()
+                self.scheduleIdleRouteRebuild(token: token)
             }
+        }
+    }
+
+    private func scheduleIdleRouteRebuild(token: Int) {
+        DebugLog.info("[AudioEngine] 空闲路由变化后安排重建 token=\(token)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self, self.isCurrentRouteRecovery(token) else { return }
+            guard self.needsEngineRebuild else {
+                self.completeRouteRecovery(token: token)
+                return
+            }
+            self.rebuildEngine()
+            self.completeRouteRecovery(token: token)
+            DebugLog.info("[AudioEngine] 空闲路由变化后已预重建")
         }
     }
 
@@ -234,6 +254,50 @@ final class AudioEngineController {
         )
         return status == noErr && deviceID != 0 ? deviceID : nil
     }
+
+    #if DEBUG_BUILD
+    private func audioDeviceName(_ deviceID: AudioDeviceID?) -> String {
+        guard let deviceID else { return "nil" }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceNameCFString,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var name: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>>.size)
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &name)
+        guard status == noErr else { return "\(deviceID)(status=\(status))" }
+        return name?.takeUnretainedValue() as String? ?? "\(deviceID)"
+    }
+
+    private func logInputLevelIfNeeded(_ buffer: AVAudioPCMBuffer) {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastInputProbeLogTime >= 0.5 else { return }
+        lastInputProbeLogTime = now
+
+        guard let channelData = buffer.floatChannelData else {
+            DebugLog.info("[AudioEngine] input-level: no floatChannelData format=\(buffer.format)")
+            return
+        }
+        let frames = Int(buffer.frameLength)
+        let channels = Int(buffer.format.channelCount)
+        guard frames > 0, channels > 0 else { return }
+
+        var sumSquares: Float = 0
+        var peak: Float = 0
+        for channel in 0..<channels {
+            let samples = channelData[channel]
+            for i in 0..<frames {
+                let sample = samples[i]
+                sumSquares += sample * sample
+                peak = max(peak, abs(sample))
+            }
+        }
+        let count = Float(frames * channels)
+        let rms = sqrt(sumSquares / max(count, 1))
+        DebugLog.info(String(format: "[AudioEngine] input-level rms=%.6f peak=%.6f frames=%d sr=%.0f ch=%d", rms, peak, frames, buffer.format.sampleRate, channels))
+    }
+    #endif
 
     // MARK: - 输入设备管理
 
@@ -481,6 +545,10 @@ final class AudioEngineController {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         DebugLog.info("[AudioEngine] \(context): format sr=\(format.sampleRate) ch=\(format.channelCount)")
+        #if DEBUG_BUILD
+        DebugLog.info("[AudioEngine] \(context): boundInput=\(audioDeviceName(currentAudioUnitInputDeviceID())) defaultInput=\(audioDeviceName(systemDefaultInputDeviceID())) selectedUID=\(AppSettings.audioInputDeviceUID.isEmpty ? "system-default" : AppSettings.audioInputDeviceUID)")
+        lastInputProbeLogTime = 0
+        #endif
         guard format.sampleRate > 0, format.channelCount > 0 else {
             DebugLog.error("[AudioEngine] \(context): 输入格式无效")
             needsEngineRebuild = true
@@ -490,6 +558,9 @@ final class AudioEngineController {
         let tapBlock: AVAudioNodeTapBlock = { [weak self] buffer, _ in
             // tap 唯一职责：把 buffer 交给 router，由 router 按消费者目标 format 分发。
             // (Tap's sole job: hand buffer to router for fan-out by target format.)
+            #if DEBUG_BUILD
+            self?.logInputLevelIfNeeded(buffer)
+            #endif
             self?.router.receive(buffer)
         }
 
