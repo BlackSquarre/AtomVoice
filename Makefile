@@ -1,6 +1,6 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.10.4-Beta-1
+VERSION     = 0.10.4-Beta-2
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
@@ -43,8 +43,8 @@ sherpa-memory:
 	swift build -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
 	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
 
-# ── Release：构建三个架构并打包 zip ──────────────────────────────────
-release: clean-dist build-arm64 build-x86_64 build-universal sha256sums
+# ── Release：构建三个正式包 + 一个 Debug Universal 包并打包 zip ───────
+release: clean-dist build-arm64 build-x86_64 build-universal build-debug-universal sha256sums
 	@echo "\n✓ Release artifacts in $(DIST_DIR)/"
 	@ls -lh $(DIST_DIR)/
 
@@ -85,6 +85,20 @@ build-universal:
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-Universal.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Universal done"
+
+build-debug-universal:
+	@echo "→ Building Debug Universal (Apple Silicon + Intel)..."
+	swift build -c release --product $(APP_NAME) --arch arm64 -Xswiftc -DDEBUG_BUILD
+	swift build -c release --product $(APP_NAME) --arch x86_64 -Xswiftc -DDEBUG_BUILD
+	lipo -create \
+		.build/arm64-apple-macosx/release/$(APP_NAME) \
+		.build/x86_64-apple-macosx/release/$(APP_NAME) \
+		-output $(DIST_DIR)/$(APP_NAME)-debug-universal-bin
+	$(call bundle_app,$(DIST_DIR)/$(APP_NAME)-debug-universal-bin,$(DIST_DIR)/$(APP_NAME).app)
+	rm -f $(DIST_DIR)/$(APP_NAME)-debug-universal-bin
+	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-Debug-Universal.zip" $(APP_NAME).app
+	rm -rf $(DIST_DIR)/$(APP_NAME).app
+	@echo "  Debug Universal done"
 
 # ── 通用 bundle 函数：$(1)=二进制路径, $(2)=.app目标路径 ─────────────
 define bundle_app
