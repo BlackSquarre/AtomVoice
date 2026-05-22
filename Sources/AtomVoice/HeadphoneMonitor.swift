@@ -4,8 +4,7 @@ import Cocoa
 ///
 /// 拦截条件：
 ///   1. AppSettings.headphoneControlEnabled == true
-///   2. AudioOutputProbe.isHeadphoneOutputActive() == true
-///   3. HID 来源证明为可信非键盘 Consumer Control 设备
+///   2. HID 来源证明为可信非键盘 Consumer Control 设备
 ///
 /// 手势：
 ///   - 长按（> 250ms 未松开）：触发 onLongPressStart，松开时触发 onLongPressEnd
@@ -28,8 +27,10 @@ final class HeadphoneMonitor {
     ///  instead of two play/pause events. Return true to consume the event.)
     var onAuxMouseButton: () -> Bool = { false }
 
-    /// 由外部根据「开关 + 当前输出设备」综合决定是否拦截
-    var isInterceptEnabled: () -> Bool
+    /// 由外部提供耳机按钮功能开关状态。
+    var isFeatureEnabled: () -> Bool
+    /// 辅助鼠标按钮兼容路径没有 HID Play/Pause 来源证明，继续由外部用更保守条件控制。
+    var isAuxMouseInterceptEnabled: () -> Bool
     /// 由外部提供最近 Play/Pause 是否来自可信 HID 来源
     var hasTrustedPlayPauseSource: () -> Bool
 
@@ -69,14 +70,16 @@ final class HeadphoneMonitor {
         onDoubleTap: @escaping () -> Void,
         onLongPressStart: @escaping () -> Void,
         onLongPressEnd: @escaping () -> Void,
-        isInterceptEnabled: @escaping () -> Bool,
+        isFeatureEnabled: @escaping () -> Bool,
+        isAuxMouseInterceptEnabled: @escaping () -> Bool,
         hasTrustedPlayPauseSource: @escaping () -> Bool
     ) {
         self.onSingleTap = onSingleTap
         self.onDoubleTap = onDoubleTap
         self.onLongPressStart = onLongPressStart
         self.onLongPressEnd = onLongPressEnd
-        self.isInterceptEnabled = isInterceptEnabled
+        self.isFeatureEnabled = isFeatureEnabled
+        self.isAuxMouseInterceptEnabled = isAuxMouseInterceptEnabled
         self.hasTrustedPlayPauseSource = hasTrustedPlayPauseSource
     }
 
@@ -149,7 +152,7 @@ final class HeadphoneMonitor {
         // 辅助鼠标按钮事件：仅当业务方在窗口期内处理（如录音中）时才吞掉，避免误伤普通鼠标侧键
         // (Aux-mouse-button events: only swallow when the callback consumes them within an active window.)
         if nsEvent.subtype.rawValue == HeadphoneMonitor.nxSubtypeAuxMouseButtons && data1 == 1 {
-            guard isInterceptEnabled() else {
+            guard isAuxMouseInterceptEnabled() else {
                 return Unmanaged.passUnretained(event)
             }
             // 事件 tap 已挂在 main runloop 上，回调直接同步执行
@@ -167,8 +170,9 @@ final class HeadphoneMonitor {
             return Unmanaged.passUnretained(event)
         }
 
-        // 综合开关 + 当前输出设备判断
-        guard isInterceptEnabled() else {
+        // Play/Pause 已有 HID 来源证明，不再依赖当前默认输出设备；
+        // USB DAC/耳机可能不是默认输出，但中键仍是可信 Consumer Control 来源。
+        guard isFeatureEnabled() else {
             return Unmanaged.passUnretained(event)
         }
 

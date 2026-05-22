@@ -6,7 +6,7 @@ import Foundation
 ///   - 拥有 HeadphoneMonitor 的生命周期
 ///   - 按当前输入模式（单击说话 / 长按说话）把单击、长按映射成 session.start / stop / toggle
 ///   - 双击恒定发送回车
-///   - 通过 `isInterceptEnabled` 把 "开关 + 输出设备" 的条件聚合给 monitor
+///   - 通过开关和可信 HID 来源控制标准 Play/Pause 路径
 final class HeadphoneInputCoordinator {
     private let session: RecordingSessionController
     private let cancelSherpaAutoUnload: () -> Void
@@ -44,7 +44,10 @@ final class HeadphoneInputCoordinator {
             onDoubleTap: placeholderVoid,
             onLongPressStart: placeholderVoid,
             onLongPressEnd: placeholderVoid,
-            isInterceptEnabled: {
+            isFeatureEnabled: {
+                AppSettings.headphoneControlEnabled
+            },
+            isAuxMouseInterceptEnabled: {
                 AppSettings.headphoneControlEnabled && AudioOutputProbe.isHeadphoneOutputActive()
             },
             hasTrustedPlayPauseSource: {
