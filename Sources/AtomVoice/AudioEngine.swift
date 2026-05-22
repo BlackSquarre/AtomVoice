@@ -379,39 +379,43 @@ final class AudioEngineController {
     /// (Async-wait until input path is ready: non-empty device list + valid inputNode format.
     ///  Tolerates audio-route transitions from AirPods hot-plug without blocking the main thread.)
     func waitForInputReady(timeout: TimeInterval, completion: @escaping (Bool) -> Void) {
-        // 若 engine 因路由变化标记为需重建，跳过 preflight：start() 内会重建后再做正式校验。
-        // 不在这里操作旧 engine，避免在损坏实例上读 format / 写 AU property。
-        // (If engine is flagged for rebuild, skip preflight — start() will rebuild and validate.)
-        if needsEngineRebuild {
-            DebugLog.info("[AudioEngine] waitForInputReady: 跳过（engine 待重建）")
-            DispatchQueue.main.async { completion(true) }
-            return
-        }
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-            let started = Date()
-            let pollInterval: TimeInterval = 0.05
-            let deadline = started.addingTimeInterval(timeout)
-            var attempts = 0
-            while Date() < deadline {
-                attempts += 1
-                if self.isInputReady() {
-                    let elapsed = Date().timeIntervalSince(started) * 1000
-                    DebugLog.info("[AudioEngine] waitForInputReady ✓ ready after \(Int(elapsed))ms (attempts=\(attempts))")
-                    DispatchQueue.main.async { completion(true) }
+        let started = Date()
+        let deadline = started.addingTimeInterval(timeout)
+        let pollInterval: TimeInterval = 0.05
+
+        func poll(attempt: Int) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    completion(false)
                     return
                 }
-                Thread.sleep(forTimeInterval: pollInterval)
+
+                if self.needsEngineRebuild {
+                    DebugLog.info("[AudioEngine] waitForInputReady: engine 待重建，先重建")
+                    self.rebuildEngine()
+                }
+
+                if self.isInputReady() {
+                    let elapsed = Date().timeIntervalSince(started) * 1000
+                    DebugLog.info("[AudioEngine] waitForInputReady ✓ ready after \(Int(elapsed))ms (attempts=\(attempt))")
+                    completion(true)
+                    return
+                }
+
+                guard Date() < deadline else {
+                    let elapsed = Date().timeIntervalSince(started) * 1000
+                    DebugLog.info("[AudioEngine] waitForInputReady ✗ final after \(Int(elapsed))ms (attempts=\(attempt))")
+                    completion(false)
+                    return
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + pollInterval) {
+                    poll(attempt: attempt + 1)
+                }
             }
-            attempts += 1
-            let ok = self.isInputReady()
-            let elapsed = Date().timeIntervalSince(started) * 1000
-            DebugLog.info("[AudioEngine] waitForInputReady \(ok ? "✓" : "✗") final after \(Int(elapsed))ms (attempts=\(attempts))")
-            DispatchQueue.main.async { completion(ok) }
         }
+
+        poll(attempt: 1)
     }
 
     /// 单次检查输入路径是否就绪（Single-shot check that input path is ready）
