@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - 流式 SSE 接收委托
 
-private final class StreamDelegate: NSObject, URLSessionDataDelegate {
+final class StreamDelegate: NSObject, URLSessionDataDelegate {
     // 取消标志：被 LLMRefiner.cancel() 置 true 后，所有后续回调（包括已 enqueue
     // 到主线程的 onProgress / onComplete）都应静默丢弃，避免污染新一次录音的胶囊。
     // (Cancel flag: once set to true by LLMRefiner.cancel(), all subsequent callbacks — including
