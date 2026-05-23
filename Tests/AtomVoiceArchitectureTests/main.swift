@@ -266,6 +266,335 @@ struct ArchitectureTestRunner {
             try expect(state.liveInsertion.committedText.isEmpty)
         }
 
+        await runner.run("Recording state machine starts idle requests") {
+            let result = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: true)
+            )
+
+            try expect(result.state.phase == .starting)
+            try expect(result.state.startRequestGeneration == 1)
+            try expect(result.state.deferredCapsule.isDeferred)
+            try expect(result.sideEffects == [.waitForInputReady(request: 1)])
+        }
+
+        await runner.run("Recording state machine ignores duplicate start while starting") {
+            let first = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let duplicate = RecordingStateMachine.reduce(
+                first.state,
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+
+            try expect(duplicate.state.startRequestGeneration == 1)
+            try expect(duplicate.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine validates ready input preflight") {
+            let start = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let ready = RecordingStateMachine.reduce(
+                start.state,
+                .inputPreflightCompleted(request: 1, ready: true)
+            )
+
+            try expect(ready.state.phase == .starting)
+            try expect(ready.sideEffects == [.validateStart(request: 1)])
+        }
+
+        await runner.run("Recording state machine errors failed input preflight") {
+            let start = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let failed = RecordingStateMachine.reduce(
+                start.state,
+                .inputPreflightCompleted(request: 1, ready: false)
+            )
+
+            try expect(failed.state.phase == .errored)
+            try expect(failed.sideEffects == [
+                .showCapsule(.initial, ensurePanel: true),
+                .showCapsule(.error(message: loc("error.noInputDevice"), dismissAfter: 5), ensurePanel: true),
+            ])
+        }
+
+        await runner.run("Recording state machine ignores stale preflight") {
+            let start = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let stale = RecordingStateMachine.reduce(
+                start.state,
+                .inputPreflightCompleted(request: 99, ready: true)
+            )
+
+            try expect(stale.state.phase == .starting)
+            try expect(stale.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine requests external Sherpa download") {
+            let start = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let missing = RecordingStateMachine.reduce(
+                start.state,
+                .externalModelDownloadRequired(redownload: false)
+            )
+
+            try expect(missing.state.phase == .idle)
+            try expect(missing.sideEffects == [.requestSherpaModelDownload(redownload: false, delay: 0)])
+        }
+
+        await runner.run("Recording state machine starts capturing and side effects") {
+            let start = RecordingStateMachine.reduce(
+                RecordingSessionState(),
+                .triggerPressed(deferCapsulePresentation: false)
+            )
+            let capturing = RecordingStateMachine.reduce(
+                start.state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: true
+                )
+            )
+
+            try expect(capturing.state.phase == .capturing)
+            try expect(capturing.state.recordingGeneration == 1)
+            try expect(capturing.state.currentRecordingEngine == ASREngineRegistry.appleCode)
+            try expect(capturing.sideEffects.contains(.cancelLLM))
+            try expect(capturing.sideEffects.contains(.notifyRecording(true)))
+            try expect(capturing.sideEffects.contains(.lowerVolume))
+            try expect(capturing.sideEffects.contains(.startSession(generation: 1)))
+        }
+
+        await runner.run("Recording state machine delivers pending Doubao and refinement text on new start") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            state.beginDoubaoFinalWait()
+            state.pendingRefinementText = "old llm"
+            state.markRefiningForReducerTest(true)
+
+            let result = RecordingStateMachine.reduce(
+                state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: "cloud text",
+                    pendingRefinementText: "old llm",
+                    lowerVolume: false
+                )
+            )
+
+            try expect(!result.state.isWaitingForDoubaoFinalResult)
+            try expect(!result.state.isRefining)
+            try expect(result.sideEffects.contains(.deliverText("cloud text")))
+            try expect(result.sideEffects.contains(.deliverText("old llm")))
+            try expect(result.sideEffects.contains(.notifyRefining(false)))
+        }
+
+        await runner.run("Recording state machine stops normal recording") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let stopped = RecordingStateMachine.reduce(state, .triggerReleased)
+
+            try expect(stopped.state.phase == .stopping)
+            try expect(stopped.sideEffects.contains(.stopSession(generation: generation, immediate: false, appending: nil)))
+            try expect(stopped.sideEffects.contains(.notifyRecording(false)))
+            try expect(stopped.sideEffects.contains(.restoreVolume))
+        }
+
+        await runner.run("Recording state machine stops immediate with punctuation") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let stopped = RecordingStateMachine.reduce(state, .immediateStop(appending: "?"))
+
+            try expect(stopped.state.phase == .stopping)
+            try expect(stopped.sideEffects.contains(.stopSession(generation: generation, immediate: true, appending: "?")))
+        }
+
+        await runner.run("Recording state machine cancels capturing") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            state.liveInsertion.isActive = true
+            state.pendingRefinementText = "pending"
+
+            let cancelled = RecordingStateMachine.reduce(state, .cancelRequested)
+
+            try expect(cancelled.state.phase == .cancelled)
+            try expect(cancelled.state.recordingGeneration == 2)
+            try expect(!cancelled.state.liveInsertion.isActive)
+            try expect(cancelled.sideEffects.contains(.cancelSession(stopAudioEngine: true)))
+            try expect(cancelled.sideEffects.contains(.dismissCapsule))
+            try expect(cancelled.sideEffects.contains(.notifySessionDidEnd))
+        }
+
+        await runner.run("Recording state machine handles audio route failure") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let failed = RecordingStateMachine.reduce(state, .audioRouteRecoveryFailed)
+
+            try expect(failed.state.phase == .errored)
+            try expect(failed.sideEffects.contains(.abandonAudioRouteRecovery))
+            try expect(failed.sideEffects.contains(.cancelSession(stopAudioEngine: false)))
+            try expect(failed.sideEffects.contains(.notifySessionDidEnd))
+        }
+
+        await runner.run("Recording state machine tracks Doubao final wait") {
+            var state = RecordingSessionState()
+            let waiting = RecordingStateMachine.reduce(state, .doubaoFinalWaitStarted)
+            state = waiting.state
+            try expect(state.isWaitingForDoubaoFinalResult)
+
+            let ended = RecordingStateMachine.reduce(state, .doubaoFinalWaitEnded)
+            try expect(!ended.state.isWaitingForDoubaoFinalResult)
+        }
+
+        await runner.run("Recording state machine switches fallback engine") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            _ = state.transitionToRecording(engine: VolcengineASRSettings.engineCode)
+
+            let fallback = RecordingStateMachine.reduce(state, .fallbackStarted(engine: ASREngineRegistry.appleCode))
+
+            try expect(fallback.state.currentRecordingEngine == ASREngineRegistry.appleCode)
+            try expect(fallback.sideEffects == [
+                .showCapsule(.progress(text: loc("menu.recognitionEngine.apple"), hidesWaveform: true), ensurePanel: false)
+            ])
+        }
+
+        await runner.run("Recording state machine stores deferred partial text") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: true)
+            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let partial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello", isFinal: false))
+
+            try expect(partial.state.deferredCapsule.recognizedText == "hello")
+            try expect(partial.sideEffects.contains(.noteASRText("hello")))
+            try expect(!partial.sideEffects.contains(.updateCapsuleText("hello")))
+        }
+
+        await runner.run("Recording state machine updates visible partial text") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let partial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello", isFinal: false))
+
+            try expect(partial.sideEffects.contains(.updateCapsuleText("hello")))
+            try expect(partial.sideEffects.contains(.noteASRText("hello")))
+        }
+
+        await runner.run("Recording state machine controls text output activation") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+
+            let activated = RecordingStateMachine.reduce(state, .textOutputActivated(liveInsertion: true))
+            try expect(activated.state.textOutputActivated)
+            try expect(activated.state.liveInsertion.isActive)
+
+            let duplicate = RecordingStateMachine.reduce(activated.state, .textOutputActivated(liveInsertion: false))
+            try expect(duplicate.state.liveInsertion.isActive)
+            try expect(duplicate.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine stores deferred capsule presentation") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: true)
+
+            let progress = RecordingStateMachine.reduce(
+                state,
+                .capsulePresentationRequested(.progress(text: "loading", hidesWaveform: true))
+            )
+
+            try expect(progress.state.deferredCapsule.pendingPresentation == .progress(text: "loading", hidesWaveform: true))
+            try expect(progress.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine emits visible capsule presentation") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: false)
+
+            let progress = RecordingStateMachine.reduce(
+                state,
+                .capsulePresentationRequested(.progress(text: "loading", hidesWaveform: true))
+            )
+
+            try expect(progress.sideEffects == [.showCapsule(.progress(text: "loading", hidesWaveform: true), ensurePanel: false)])
+        }
+
+        await runner.run("Recording state machine tracks shimmer in deferred mode") {
+            var state = RecordingSessionState()
+            _ = state.beginStart(deferredCapsulePresentation: true)
+
+            let shimmer = RecordingStateMachine.reduce(state, .shimmerChanged(true))
+
+            try expect(shimmer.state.deferredCapsule.pendingShimmer)
+            try expect(shimmer.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine commits live insertion segment") {
+            var state = RecordingSessionState()
+            state.liveInsertion.latestText = "hello"
+
+            let committed = RecordingStateMachine.reduce(
+                state,
+                .liveInsertionCommitted(segment: "hello.", latestText: "hello.")
+            )
+
+            try expect(committed.state.liveInsertion.committedText == "hello.")
+            try expect(committed.state.liveInsertion.latestText == "hello.")
+            try expect(committed.state.liveInsertion.pasteInFlight)
+            try expect(committed.sideEffects == [.deliverText("hello.")])
+        }
+
+        await runner.run("Recording state machine clears live insertion after paste") {
+            var state = RecordingSessionState()
+            state.liveInsertion.pasteInFlight = true
+
+            let finished = RecordingStateMachine.reduce(state, .liveInsertionCommitFinished)
+
+            try expect(!finished.state.liveInsertion.pasteInFlight)
+        }
+
+        await runner.run("Recording state machine records LLM result") {
+            var state = RecordingSessionState()
+            state.beginRefining(text: "draft")
+
+            let result = RecordingStateMachine.reduce(state, .llmResult(text: "polished"))
+
+            try expect(result.state.phase == .idle)
+            try expect(!result.state.isRefining)
+            try expect(result.sideEffects.contains(.notifyRefining(false)))
+            try expect(result.sideEffects.contains(.deliverText("polished")))
+        }
+
+        await runner.run("Recording state machine records LLM error") {
+            var state = RecordingSessionState()
+            state.beginRefining(text: "draft")
+
+            let result = RecordingStateMachine.reduce(state, .llmError(message: "bad"))
+
+            try expect(result.state.phase == .errored)
+            try expect(!result.state.isRefining)
+            try expect(result.sideEffects.contains(.showCapsule(.error(message: "bad", dismissAfter: 3), ensurePanel: false)))
+        }
+
         await runner.run("Recording session presentation reveal emits ordered events") {
             try expect(
                 RecordingSessionPresentationEvent.revealEvents(
