@@ -14,7 +14,14 @@ struct LLMConnectionSettings {
 }
 
 enum AppSettings {
-    private static let defaults = UserDefaults.standard
+    static let backend: SettingsBackend = UserDefaultsBackend(defaults: .standard)
+    static let recognition = RecognitionSettings(backend: backend)
+    static let llm = LLMSettings(backend: backend)
+    static let audio = AudioSettings(backend: backend)
+    static let oobe = OOBESettings(backend: backend)
+    static let update = UpdateSettings(backend: backend)
+    static let interface = InterfaceSettings(backend: backend)
+
     static let recognitionEngineSettingsDidChangeNotification = Notification.Name("AppSettings.recognitionEngineSettingsDidChange")
     static let recognitionEngineSettingsChangedKey = "key"
 
@@ -100,7 +107,7 @@ enum AppSettings {
     }
 
     static func registerDefaults() {
-        defaults.register(defaults: [
+        backend.register(defaults: [
             Keys.selectedLanguage: systemDefaultLanguage,
             Keys.recognitionEngine: ASREngineRegistry.appleCode,
             Keys.appleLiveInsertionEnabled: false,
@@ -143,224 +150,182 @@ enum AppSettings {
     }
 
     static var selectedLanguage: String {
-        get { defaults.string(forKey: Keys.selectedLanguage) ?? systemDefaultLanguage }
-        set { defaults.set(newValue, forKey: Keys.selectedLanguage) }
+        get { recognition.selectedLanguage }
+        set { recognition.selectedLanguage = newValue }
     }
 
     static var recognitionEngine: String {
-        get { defaults.string(forKey: Keys.recognitionEngine) ?? ASREngineRegistry.appleCode }
-        set {
-            let oldValue = recognitionEngine
-            defaults.set(newValue, forKey: Keys.recognitionEngine)
-            postRecognitionEngineSettingsDidChange(key: Keys.recognitionEngine, oldValue: oldValue, newValue: recognitionEngine)
-        }
+        get { recognition.engine }
+        set { recognition.engine = newValue }
     }
 
     static var normalizedRecognitionEngine: String {
-        ASREngineRegistry.shared.normalizedCode(for: recognitionEngine)
+        recognition.normalizedEngine
     }
 
     static var appleLiveInsertionEnabled: Bool {
-        get { defaults.bool(forKey: Keys.appleLiveInsertionEnabled) }
-        set { defaults.set(newValue, forKey: Keys.appleLiveInsertionEnabled) }
+        get { audio.appleLiveInsertionEnabled }
+        set { audio.appleLiveInsertionEnabled = newValue }
     }
 
     static var llmEnabled: Bool {
-        get { defaults.bool(forKey: Keys.llmEnabled) }
-        set { defaults.set(newValue, forKey: Keys.llmEnabled) }
+        get { llm.enabled }
+        set { llm.enabled = newValue }
     }
 
     static var llmAPIBaseURL: String {
-        get { defaults.string(forKey: Keys.llmAPIBaseURL) ?? defaultLLMBaseURL }
-        set { defaults.set(newValue, forKey: Keys.llmAPIBaseURL) }
+        get { llm.apiBaseURL }
+        set { llm.apiBaseURL = newValue }
     }
 
     static var llmAPIKey: String {
-        get { defaults.string(forKey: Keys.llmAPIKey) ?? "" }
-        set { defaults.set(newValue, forKey: Keys.llmAPIKey) }
+        get { llm.apiKey }
+        set { llm.apiKey = newValue }
     }
 
     static var llmModel: String {
-        get { defaults.string(forKey: Keys.llmModel) ?? defaultLLMModel }
-        set { defaults.set(newValue, forKey: Keys.llmModel) }
+        get { llm.model }
+        set { llm.model = newValue }
     }
 
     static var llmSystemPrompt: String {
-        get { defaults.string(forKey: Keys.llmSystemPrompt) ?? "" }
-        set { defaults.set(newValue, forKey: Keys.llmSystemPrompt) }
+        get { llm.systemPrompt }
+        set { llm.systemPrompt = newValue }
     }
 
     static var llmResultDelay: Double {
-        get { defaults.double(forKey: Keys.llmResultDelay) }
-        set { defaults.set(newValue, forKey: Keys.llmResultDelay) }
+        get { llm.resultDelay }
+        set { llm.resultDelay = newValue }
     }
 
     static var llmConnection: LLMConnectionSettings {
-        get {
-            LLMConnectionSettings(
-                baseURL: llmAPIBaseURL,
-                apiKey: llmAPIKey,
-                model: llmModel
-            )
-        }
-        set {
-            llmAPIBaseURL = newValue.baseURL
-            llmAPIKey = newValue.apiKey
-            llmModel = newValue.model
-        }
+        get { llm.connection }
+        set { llm.connection = newValue }
     }
 
     static var autoPunctuationEnabled: Bool {
-        get { defaults.bool(forKey: Keys.autoPunctuationEnabled) }
-        set { defaults.set(newValue, forKey: Keys.autoPunctuationEnabled) }
+        get { recognition.autoPunctuationEnabled }
+        set { recognition.autoPunctuationEnabled = newValue }
     }
 
     static var appleOnDeviceRecognitionEnabled: Bool {
-        get { defaults.bool(forKey: Keys.appleOnDeviceRecognitionEnabled) }
-        set { defaults.set(newValue, forKey: Keys.appleOnDeviceRecognitionEnabled) }
+        get { recognition.appleOnDeviceRecognitionEnabled }
+        set { recognition.appleOnDeviceRecognitionEnabled = newValue }
     }
 
     static var animationStyle: String {
-        get { defaults.string(forKey: Keys.animationStyle) ?? defaultAnimationStyle }
-        set { defaults.set(newValue, forKey: Keys.animationStyle) }
+        get { interface.animationStyle }
+        set { interface.animationStyle = newValue }
     }
 
     static var animationSpeed: String {
-        get { defaults.string(forKey: Keys.animationSpeed) ?? defaultAnimationSpeed }
-        set { defaults.set(newValue, forKey: Keys.animationSpeed) }
+        get { interface.animationSpeed }
+        set { interface.animationSpeed = newValue }
     }
 
     static var silenceAutoStopEnabled: Bool {
-        get { defaults.bool(forKey: Keys.silenceAutoStopEnabled) }
-        set { defaults.set(newValue, forKey: Keys.silenceAutoStopEnabled) }
+        get { audio.silenceAutoStopEnabled }
+        set { audio.silenceAutoStopEnabled = newValue }
     }
 
     static var silenceDuration: Double {
-        get { defaults.double(forKey: Keys.silenceDuration) }
-        set { defaults.set(newValue, forKey: Keys.silenceDuration) }
+        get { audio.silenceDuration }
+        set { audio.silenceDuration = newValue }
     }
 
     static var silenceThreshold: Double {
-        get { defaults.double(forKey: Keys.silenceThreshold) }
-        set { defaults.set(newValue, forKey: Keys.silenceThreshold) }
+        get { audio.silenceThreshold }
+        set { audio.silenceThreshold = newValue }
     }
 
     static var triggerKeyCode: UInt16 {
-        get { UInt16(defaults.integer(forKey: Keys.triggerKeyCode)) }
-        set { defaults.set(Int(newValue), forKey: Keys.triggerKeyCode) }
+        get { interface.triggerKeyCode }
+        set { interface.triggerKeyCode = newValue }
     }
 
     static var lowerVolumeOnRecording: Bool {
-        get { defaults.bool(forKey: Keys.lowerVolumeOnRecording) }
-        set { defaults.set(newValue, forKey: Keys.lowerVolumeOnRecording) }
+        get { audio.lowerVolumeOnRecording }
+        set { audio.lowerVolumeOnRecording = newValue }
     }
 
     static var audioInputDeviceUID: String {
-        get { defaults.string(forKey: Keys.audioInputDeviceUID) ?? "" }
-        set { defaults.set(newValue, forKey: Keys.audioInputDeviceUID) }
+        get { audio.audioInputDeviceUID }
+        set { audio.audioInputDeviceUID = newValue }
     }
 
     static var includeBetaUpdates: Bool {
-        get { defaults.bool(forKey: Keys.includeBetaUpdates) }
-        set { defaults.set(newValue, forKey: Keys.includeBetaUpdates) }
+        get { update.includeBetaUpdates }
+        set { update.includeBetaUpdates = newValue }
     }
 
     static var updateToDebugBuilds: Bool {
-        get { defaults.bool(forKey: Keys.updateToDebugBuilds) }
-        set { defaults.set(newValue, forKey: Keys.updateToDebugBuilds) }
+        get { update.updateToDebugBuilds }
+        set { update.updateToDebugBuilds = newValue }
     }
 
     static var sherpaAutoUnloadEnabled: Bool {
-        get { defaults.bool(forKey: Keys.sherpaAutoUnloadEnabled) }
-        set { defaults.set(newValue, forKey: Keys.sherpaAutoUnloadEnabled) }
+        get { recognition.sherpaAutoUnloadEnabled }
+        set { recognition.sherpaAutoUnloadEnabled = newValue }
     }
 
     static var sherpaAutoUnloadIdleMinutes: Int {
-        get { max(1, defaults.integer(forKey: Keys.sherpaAutoUnloadIdleMinutes)) }
-        set { defaults.set(max(1, newValue), forKey: Keys.sherpaAutoUnloadIdleMinutes) }
+        get { recognition.sherpaAutoUnloadIdleMinutes }
+        set { recognition.sherpaAutoUnloadIdleMinutes = newValue }
     }
 
     static var sherpaProvider: String {
-        get { defaults.string(forKey: Keys.sherpaProvider) ?? defaultSherpaProvider }
-        set {
-            let oldValue = sherpaProvider
-            defaults.set(newValue, forKey: Keys.sherpaProvider)
-            postRecognitionEngineSettingsDidChange(key: Keys.sherpaProvider, oldValue: oldValue, newValue: sherpaProvider)
-        }
+        get { recognition.sherpaProvider }
+        set { recognition.sherpaProvider = newValue }
     }
 
     static var sherpaModelPresetID: String {
-        get { defaults.string(forKey: Keys.sherpaModelPresetID) ?? SherpaModelPreset.defaultModelID }
-        set {
-            let oldValue = sherpaModelPresetID
-            defaults.set(newValue, forKey: Keys.sherpaModelPresetID)
-            postRecognitionEngineSettingsDidChange(key: Keys.sherpaModelPresetID, oldValue: oldValue, newValue: sherpaModelPresetID)
-        }
+        get { recognition.sherpaModelPresetID }
+        set { recognition.sherpaModelPresetID = newValue }
     }
 
     static var sherpaRecognitionLanguage: String {
-        get { SherpaModelPreset.recognitionLanguage }
-        set {
-            let oldValue = sherpaRecognitionLanguage
-            defaults.set(newValue, forKey: SherpaModelPreset.recognitionLanguageKey)
-            postRecognitionEngineSettingsDidChange(
-                key: SherpaModelPreset.recognitionLanguageKey,
-                oldValue: oldValue,
-                newValue: sherpaRecognitionLanguage
-            )
-        }
+        get { recognition.sherpaRecognitionLanguage }
+        set { recognition.sherpaRecognitionLanguage = newValue }
     }
 
     static var doubaoASRPrivacyAccepted: Bool {
-        get { defaults.bool(forKey: Keys.doubaoASRPrivacyAccepted) }
-        set { defaults.set(newValue, forKey: Keys.doubaoASRPrivacyAccepted) }
+        get { recognition.doubaoASRPrivacyAccepted }
+        set { recognition.doubaoASRPrivacyAccepted = newValue }
     }
 
     static var doubaoASRLowLatencyDefaultApplied: Bool {
-        get { defaults.bool(forKey: Keys.doubaoASRLowLatencyDefaultApplied) }
-        set { defaults.set(newValue, forKey: Keys.doubaoASRLowLatencyDefaultApplied) }
+        get { recognition.doubaoASRLowLatencyDefaultApplied }
+        set { recognition.doubaoASRLowLatencyDefaultApplied = newValue }
     }
 
     /// 粘贴后等待目标 App 真正读取剪贴板的延迟，调过 0.15s→0.25s 修复 Electron。
     /// (Post-paste delay so the target app finishes reading the clipboard. Bumped from 0.15s to 0.25s for Electron.)
     static var pasteDelay: Double {
-        get {
-            let v = defaults.double(forKey: Keys.pasteDelay)
-            return v > 0 ? v : defaultPasteDelay
-        }
-        set { defaults.set(newValue, forKey: Keys.pasteDelay) }
+        get { audio.pasteDelay }
+        set { audio.pasteDelay = newValue }
     }
 
     /// 单击说话模式下：true 表示禁用静音自动停止，必须再点一次触发键才结束。
     /// (Tap-to-talk mode: when true, silence auto-stop is disabled — only a 2nd trigger-key tap stops recording.)
     static var tapModeManualStop: Bool {
-        get { defaults.bool(forKey: Keys.tapModeManualStop) }
-        set { defaults.set(newValue, forKey: Keys.tapModeManualStop) }
+        get { audio.tapModeManualStop }
+        set { audio.tapModeManualStop = newValue }
     }
 
     /// 使用耳机线控按钮控制录音（单击/长按按当前输入模式匹配，双击回车）。
     /// (Use headphone remote button to control recording — single/long press matches input mode, double tap sends Return.)
     static var headphoneControlEnabled: Bool {
-        get { defaults.bool(forKey: Keys.headphoneControlEnabled) }
-        set { defaults.set(newValue, forKey: Keys.headphoneControlEnabled) }
+        get { interface.headphoneControlEnabled }
+        set { interface.headphoneControlEnabled = newValue }
     }
 
     static var headphoneControlAlertShown: Bool {
-        get { defaults.bool(forKey: Keys.headphoneControlAlertShown) }
-        set { defaults.set(newValue, forKey: Keys.headphoneControlAlertShown) }
+        get { oobe.headphoneControlAlertShown }
+        set { oobe.headphoneControlAlertShown = newValue }
     }
 
     static var hasCompletedOOBE: Bool {
-        get { defaults.bool(forKey: OOBEWindowController.completionDefaultsKey) }
-        set { defaults.set(newValue, forKey: OOBEWindowController.completionDefaultsKey) }
-    }
-
-    private static func postRecognitionEngineSettingsDidChange(key: String, oldValue: String, newValue: String) {
-        guard oldValue != newValue else { return }
-        NotificationCenter.default.post(
-            name: recognitionEngineSettingsDidChangeNotification,
-            object: defaults,
-            userInfo: [recognitionEngineSettingsChangedKey: key]
-        )
+        get { oobe.hasCompletedOOBE }
+        set { oobe.hasCompletedOOBE = newValue }
     }
 }
