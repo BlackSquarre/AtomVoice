@@ -67,6 +67,6 @@ jobs:
 
       - name: Verify release build compiles
         if: steps.sdk.outputs.compatible == 'true'
-        run: swift build -c release
+        run: swift build -c release --product AtomVoice
         env:
           CODE_SIGN_IDENTITY: "-"
