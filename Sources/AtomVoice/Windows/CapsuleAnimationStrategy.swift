@@ -189,48 +189,101 @@ enum CapsuleSpotlightKeyframes {
     }
 }
 
-protocol CapsuleAnimationStrategy {
-    func animateIn(
-        controller: CapsuleWindowController,
-        panel: NSPanel,
-        container: NSView,
-        targetFrame: NSRect
-    )
-
-    func dismiss(
-        controller: CapsuleWindowController,
-        panel: NSPanel,
-        completion: (() -> Void)?
-    )
+struct CapsuleAnimationHost {
+    let panel: NSPanel
+    let container: NSView
+    let animationSurface: NSView?
+    let waveformView: WaveformView?
+    let targetFrame: NSRect
+    let presentationID: Int
+    let motion: CapsuleSpotlightMotion
+    let usesSingleBounceSpotlightAnimation: Bool
+    let spotlightFrameInterval: TimeInterval
+    let waveformVisible: () -> Bool
+    let isCurrent: (NSPanel, Int) -> Bool
+    let panelFrame: (NSRect) -> NSRect
+    let layoutAnimationSurface: (NSPanel) -> Void
+    let cleanup: () -> Void
 }
 
-protocol CapsuleShimmerStrategy {
-    func apply(to controller: CapsuleWindowController)
-    func updateFrame(in controller: CapsuleWindowController)
-    func stop(in controller: CapsuleWindowController)
+struct CapsuleDismissHost {
+    let panel: NSPanel
+    let contentView: NSView?
+    let animationSurface: NSView?
+    let motion: CapsuleSpotlightMotion
+    let usesSingleBounceSpotlightAnimation: Bool
+    let spotlightFrameInterval: TimeInterval
+    let isCurrent: (NSPanel) -> Bool
+    let panelFrame: (NSRect) -> NSRect
+    let layoutAnimationSurface: (NSPanel) -> Void
+    let cleanup: () -> Void
+    let completion: (() -> Void)?
+}
+
+struct ShimmerHost {
+    let animationSurface: NSView
+    let cornerRadius: CGFloat
+    let capsuleHeight: CGFloat
 }
 
 #if DEBUG_BUILD
-protocol CapsuleElapsedTimerStrategy {
-    func start(in controller: CapsuleWindowController)
+struct CapsuleElapsedTimerHost {
+    let container: NSView
 }
 #endif
 
-private struct CapsuleNoneAnimationStrategy: CapsuleAnimationStrategy {
-    func animateIn(controller: CapsuleWindowController, panel: NSPanel, container: NSView, targetFrame: NSRect) {
-        controller.contentView?.layer?.filters = nil
-        controller.contentView?.layer?.removeAllAnimations()
-        controller.contentView?.alphaValue = 1
-        controller.waveformView?.alphaValue = controller.waveformVisible ? 1 : 0
-        if controller.waveformVisible {
-            controller.waveformView?.restartAnimating()
+protocol CapsuleAnimationStrategy: AnyObject {
+    var currentInset: CGFloat { get }
+
+    func animateIn(host: CapsuleAnimationHost)
+    func dismiss(host: CapsuleDismissHost)
+    func stop()
+}
+
+protocol CapsuleShimmerStrategy: AnyObject {
+    func apply(to host: ShimmerHost)
+    func updateFrame(in host: ShimmerHost)
+    func stop()
+}
+
+#if DEBUG_BUILD
+protocol CapsuleElapsedTimerStrategy: AnyObject {
+    func start(in host: CapsuleElapsedTimerHost)
+    func stop()
+}
+#endif
+
+enum CapsuleAnimationStrategyFactory {
+    static func make(selection: CapsuleAnimationSelection) -> any CapsuleAnimationStrategy {
+        switch selection.style {
+        case .none:
+            return CapsuleNoneAnimationStrategy()
+        case .minimal:
+            return CapsuleMinimalAnimationStrategy()
+        case .spotlight:
+            let inset = selection.appliesSpotlightInset ? CapsuleSpotlightAnimationStrategy.defaultInset : 0
+            return CapsuleSpotlightAnimationStrategy(currentInset: inset)
+        }
+    }
+}
+
+final class CapsuleNoneAnimationStrategy: CapsuleAnimationStrategy {
+    let currentInset: CGFloat = 0
+
+    func animateIn(host: CapsuleAnimationHost) {
+        host.container.layer?.filters = nil
+        host.container.layer?.removeAllAnimations()
+        host.container.alphaValue = 1
+        host.waveformView?.alphaValue = host.waveformVisible() ? 1 : 0
+        if host.waveformVisible() {
+            host.waveformView?.restartAnimating()
         } else {
-            controller.waveformView?.stopAnimating()
+            host.waveformView?.stopAnimating()
         }
 
-        panel.setFrame(controller.panelFrame(forVisualFrame: targetFrame), display: false)
-        controller.layoutAnimationSurface(in: panel)
-        panel.alphaValue = 1
+        host.panel.setFrame(host.panelFrame(host.targetFrame), display: false)
+        host.layoutAnimationSurface(host.panel)
+        host.panel.alphaValue = 1
 
         // 三重禁用：CATransaction + NSAnimationContext + animator duration
         CATransaction.begin()
@@ -239,127 +292,148 @@ private struct CapsuleNoneAnimationStrategy: CapsuleAnimationStrategy {
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = 0
         NSAnimationContext.current.allowsImplicitAnimation = false
-        panel.orderFrontRegardless()
-        panel.display()
+        host.panel.orderFrontRegardless()
+        host.panel.display()
         NSAnimationContext.endGrouping()
         CATransaction.commit()
     }
 
-    func dismiss(controller: CapsuleWindowController, panel: NSPanel, completion: (() -> Void)?) {
+    func dismiss(host: CapsuleDismissHost) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         CATransaction.setAnimationDuration(0)
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = 0
         NSAnimationContext.current.allowsImplicitAnimation = false
-        panel.orderOut(nil)
+        host.panel.orderOut(nil)
         NSAnimationContext.endGrouping()
         CATransaction.commit()
-        controller.cleanup()
-        completion?()
+        host.cleanup()
+        host.completion?()
     }
+
+    func stop() {}
 }
 
-private struct CapsuleMinimalAnimationStrategy: CapsuleAnimationStrategy {
-    func animateIn(controller: CapsuleWindowController, panel: NSPanel, container: NSView, targetFrame: NSRect) {
-        let currentPresentationID = controller.presentationID
-        panel.contentView?.wantsLayer = true
-        controller.animationSurfaceView?.wantsLayer = true
-        panel.alphaValue = 0
-        controller.contentView?.alphaValue = 0
-        var start = controller.panelFrame(forVisualFrame: targetFrame)
+final class CapsuleMinimalAnimationStrategy: CapsuleAnimationStrategy {
+    let currentInset: CGFloat = 0
+
+    func animateIn(host: CapsuleAnimationHost) {
+        let currentPresentationID = host.presentationID
+        host.panel.contentView?.wantsLayer = true
+        host.animationSurface?.wantsLayer = true
+        host.panel.alphaValue = 0
+        host.container.alphaValue = 0
+        var start = host.panelFrame(host.targetFrame)
         start.origin.y -= 8
-        panel.setFrame(start, display: false)
-        controller.layoutAnimationSurface(in: panel)
-        controller.animationSurfaceView?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
-        panel.orderFrontRegardless()
+        host.panel.setFrame(start, display: false)
+        host.layoutAnimationSurface(host.panel)
+        host.animationSurface?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
+        host.panel.orderFrontRegardless()
 
         // 延迟一帧，让 visual effect view 先采样背景
-        DispatchQueue.main.async { [weak controller] in
-            guard let controller,
-                  controller.panel === panel,
-                  controller.presentationID == currentPresentationID
+        DispatchQueue.main.async { [weak panel = host.panel, weak container = host.container, weak animationSurface = host.animationSurface, weak waveformView = host.waveformView] in
+            guard let panel,
+                  host.isCurrent(panel, currentPresentationID)
             else { return }
-            if controller.waveformVisible {
-                controller.waveformView?.restartAnimating()
+            if host.waveformVisible() {
+                waveformView?.restartAnimating()
             } else {
-                controller.waveformView?.stopAnimating()
-                controller.waveformView?.alphaValue = 0
+                waveformView?.stopAnimating()
+                waveformView?.alphaValue = 0
             }
             NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.2
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 ctx.allowsImplicitAnimation = true
                 panel.animator().alphaValue = 1
-                controller.contentView?.animator().alphaValue = 1
-                controller.waveformView?.animator().alphaValue = controller.waveformVisible ? 1 : 0
-                panel.animator().setFrame(controller.panelFrame(forVisualFrame: targetFrame), display: true)
-                controller.animationSurfaceView?.layer?.transform = CATransform3DIdentity
+                container?.animator().alphaValue = 1
+                waveformView?.animator().alphaValue = host.waveformVisible() ? 1 : 0
+                panel.animator().setFrame(host.panelFrame(host.targetFrame), display: true)
+                animationSurface?.layer?.transform = CATransform3DIdentity
             })
         }
     }
 
-    func dismiss(controller: CapsuleWindowController, panel: NSPanel, completion: (() -> Void)?) {
-        var end = panel.frame
+    func dismiss(host: CapsuleDismissHost) {
+        var end = host.panel.frame
         end.origin.y -= 8
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             ctx.allowsImplicitAnimation = true
-            panel.animator().alphaValue = 0
-            panel.animator().setFrame(end, display: true)
-            controller.animationSurfaceView?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
-        }, completionHandler: { [weak controller] in
-            guard let controller, controller.panel === panel else { return }
+            host.panel.animator().alphaValue = 0
+            host.panel.animator().setFrame(end, display: true)
+            host.animationSurface?.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1.0)
+        }, completionHandler: { [weak panel = host.panel] in
+            guard let panel, host.isCurrent(panel) else { return }
             panel.orderOut(nil)
-            controller.cleanup()
-            completion?()
+            host.cleanup()
+            host.completion?()
         })
     }
+
+    func stop() {}
 }
 
-private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
-    func animateIn(controller: CapsuleWindowController, panel: NSPanel, container: NSView, targetFrame: NSRect) {
-        let motion = controller.spotlightMotion
-        let initialScales = CapsuleSpotlightKeyframes.inScales(progress: 0, singleBounce: controller.usesSingleBounceSpotlightAnimation)
+final class CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
+    static let defaultInset: CGFloat = 18
+
+    let currentInset: CGFloat
+    var springTimer: Timer?
+
+    private let inBlurRadius: CGFloat = 14
+    private let outBlurRadius: CGFloat = 10
+
+    init(currentInset: CGFloat) {
+        self.currentInset = currentInset
+    }
+
+    var hasActiveTimer: Bool {
+        springTimer != nil
+    }
+
+    func animateIn(host: CapsuleAnimationHost) {
+        let motion = host.motion
+        let initialScales = CapsuleSpotlightKeyframes.inScales(progress: 0, singleBounce: host.usesSingleBounceSpotlightAnimation)
         let initialFrame = CapsuleSpotlightKeyframes.visualFrame(
-            targetFrame,
+            host.targetFrame,
             widthScale: initialScales.width,
             heightScale: initialScales.height
         )
-        panel.setFrame(controller.panelFrame(forVisualFrame: initialFrame), display: false)
-        panel.alphaValue = 0
-        container.alphaValue = 0
+        host.panel.setFrame(host.panelFrame(initialFrame), display: false)
+        host.panel.alphaValue = 0
+        host.container.alphaValue = 0
 
-        panel.contentView?.wantsLayer = true
-        let surface = controller.animationSurfaceView ?? panel.contentView
+        host.panel.contentView?.wantsLayer = true
+        let surface = host.animationSurface ?? host.panel.contentView
         surface?.wantsLayer = true
         surface?.layer?.masksToBounds = false
         surface?.layer?.transform = CATransform3DIdentity
-        container.wantsLayer = true
-        controller.layoutAnimationSurface(in: panel)
+        host.container.wantsLayer = true
+        host.layoutAnimationSurface(host.panel)
 
         if let blur = CIFilter(name: "CIGaussianBlur") {
-            blur.setValue(controller.spotlightInBlurRadius, forKey: kCIInputRadiusKey)
-            container.layer?.filters = [blur]
-            container.layer?.masksToBounds = false
+            blur.setValue(inBlurRadius, forKey: kCIInputRadiusKey)
+            host.container.layer?.filters = [blur]
+            host.container.layer?.masksToBounds = false
         }
 
-        panel.orderFrontRegardless()
-        panel.invalidateShadow()
+        host.panel.orderFrontRegardless()
+        host.panel.invalidateShadow()
 
         // 延迟一帧，让 glass/effect view 先采样背景，避免首帧白色 fallback
-        DispatchQueue.main.async { [weak controller, weak panel] in
-            guard let controller, let panel, controller.panel === panel else { return }
-            if controller.waveformVisible {
-                controller.waveformView?.restartAnimating()
+        DispatchQueue.main.async { [weak self, weak panel = host.panel, weak container = host.container, weak waveformView = host.waveformView] in
+            guard let self, let panel, let container, host.isCurrent(panel, host.presentationID) else { return }
+            if host.waveformVisible() {
+                waveformView?.restartAnimating()
             } else {
-                controller.waveformView?.stopAnimating()
-                controller.waveformView?.alphaValue = 0
+                waveformView?.stopAnimating()
+                waveformView?.alphaValue = 0
             }
 
             let blurAnim = CABasicAnimation(keyPath: "filters.CIGaussianBlur.inputRadius")
-            blurAnim.fromValue = controller.spotlightInBlurRadius
+            blurAnim.fromValue = self.inBlurRadius
             blurAnim.toValue = 0.0
             blurAnim.duration = motion.blurIn
             blurAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -367,12 +441,12 @@ private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
             blurAnim.isRemovedOnCompletion = false
             container.layer?.add(blurAnim, forKey: "spotlightBlurIn")
 
-            controller.springTimer?.invalidate()
+            self.springTimer?.invalidate()
             let startedAt = CACurrentMediaTime()
-            let duration = controller.usesSingleBounceSpotlightAnimation ? min(motion.scaleIn, 0.22) : motion.scaleIn
-            let dt = controller.spotlightFrameInterval
-            controller.springTimer = Timer(timeInterval: dt, repeats: true) { [weak controller, weak panel] timer in
-                guard let controller, let panel, controller.panel === panel else {
+            let duration = host.usesSingleBounceSpotlightAnimation ? min(motion.scaleIn, 0.22) : motion.scaleIn
+            let dt = host.spotlightFrameInterval
+            self.springTimer = Timer(timeInterval: dt, repeats: true) { [weak self, weak panel, weak container, weak waveformView] timer in
+                guard let self, let panel, let container, host.isCurrent(panel, host.presentationID) else {
                     timer.invalidate()
                     return
                 }
@@ -381,47 +455,49 @@ private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
                 let progress = min(1, CGFloat(elapsed / duration))
                 let scales = CapsuleSpotlightKeyframes.inScales(
                     progress: progress,
-                    singleBounce: controller.usesSingleBounceSpotlightAnimation
+                    singleBounce: host.usesSingleBounceSpotlightAnimation
                 )
                 let visualFrame = CapsuleSpotlightKeyframes.visualFrame(
-                    targetFrame,
+                    host.targetFrame,
                     widthScale: scales.width,
                     heightScale: scales.height
                 )
-                panel.setFrame(controller.panelFrame(forVisualFrame: visualFrame), display: false)
-                controller.layoutAnimationSurface(in: panel)
+                panel.setFrame(host.panelFrame(visualFrame), display: false)
+                host.layoutAnimationSurface(panel)
 
                 panel.alphaValue = min(1, CGFloat(elapsed / motion.fadeIn))
                 let contentDelay: TimeInterval = 0.025
                 let contentFade = max(0, CGFloat((elapsed - contentDelay) / max(0.001, motion.fadeIn)))
                 container.alphaValue = min(1, contentFade)
-                controller.waveformView?.alphaValue = controller.waveformVisible ? container.alphaValue : 0
+                waveformView?.alphaValue = host.waveformVisible() ? container.alphaValue : 0
 
                 if progress >= 1 {
                     timer.invalidate()
-                    controller.springTimer = nil
-                    panel.setFrame(controller.panelFrame(forVisualFrame: targetFrame), display: false)
-                    controller.layoutAnimationSurface(in: panel)
+                    self.springTimer = nil
+                    panel.setFrame(host.panelFrame(host.targetFrame), display: false)
+                    host.layoutAnimationSurface(panel)
                     panel.alphaValue = 1
                     container.alphaValue = 1
-                    controller.waveformView?.alphaValue = controller.waveformVisible ? 1 : 0
+                    waveformView?.alphaValue = host.waveformVisible() ? 1 : 0
                     container.layer?.filters = nil
                     container.layer?.removeAnimation(forKey: "spotlightBlurIn")
                     panel.invalidateShadow()
                 }
             }
-            RunLoop.main.add(controller.springTimer!, forMode: .default)
+            if let springTimer = self.springTimer {
+                RunLoop.main.add(springTimer, forMode: .default)
+            }
         }
     }
 
-    func dismiss(controller: CapsuleWindowController, panel: NSPanel, completion: (() -> Void)?) {
-        let motion = controller.spotlightMotion
-        let container = controller.contentView
+    func dismiss(host: CapsuleDismissHost) {
+        let motion = host.motion
+        let container = host.contentView
 
-        panel.contentView?.wantsLayer = true
-        controller.animationSurfaceView?.wantsLayer = true
-        controller.animationSurfaceView?.layer?.removeAllAnimations()
-        controller.animationSurfaceView?.layer?.transform = CATransform3DIdentity
+        host.panel.contentView?.wantsLayer = true
+        host.animationSurface?.wantsLayer = true
+        host.animationSurface?.layer?.removeAllAnimations()
+        host.animationSurface?.layer?.transform = CATransform3DIdentity
         container?.layer?.removeAnimation(forKey: "spotlightBlurIn")
 
         if let container, let blur = CIFilter(name: "CIGaussianBlur") {
@@ -432,7 +508,7 @@ private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
 
             let blurAnim = CABasicAnimation(keyPath: "filters.CIGaussianBlur.inputRadius")
             blurAnim.fromValue = 0.0
-            blurAnim.toValue = controller.spotlightOutBlurRadius
+            blurAnim.toValue = outBlurRadius
             blurAnim.duration = motion.fadeOut
             blurAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
             blurAnim.fillMode = .forwards
@@ -440,13 +516,13 @@ private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
             container.layer?.add(blurAnim, forKey: "spotlightBlurOut")
         }
 
-        let startFrame = panel.frame.insetBy(dx: controller.activeAnimationInset, dy: controller.activeAnimationInset)
-        controller.springTimer?.invalidate()
+        let startFrame = host.panel.frame.insetBy(dx: currentInset, dy: currentInset)
+        springTimer?.invalidate()
         let startedAt = CACurrentMediaTime()
-        let duration = controller.usesSingleBounceSpotlightAnimation ? min(motion.scaleOut, 0.09) : motion.scaleOut
-        let dt = controller.spotlightFrameInterval
-        controller.springTimer = Timer(timeInterval: dt, repeats: true) { [weak controller, weak panel] timer in
-            guard let controller, let panel, controller.panel === panel else {
+        let duration = host.usesSingleBounceSpotlightAnimation ? min(motion.scaleOut, 0.09) : motion.scaleOut
+        let dt = host.spotlightFrameInterval
+        springTimer = Timer(timeInterval: dt, repeats: true) { [weak self, weak panel = host.panel] timer in
+            guard let self, let panel, host.isCurrent(panel) else {
                 timer.invalidate()
                 return
             }
@@ -455,40 +531,54 @@ private struct CapsuleSpotlightAnimationStrategy: CapsuleAnimationStrategy {
             let progress = min(1, CGFloat(elapsed / duration))
             let scale = CapsuleSpotlightKeyframes.outScale(
                 progress: progress,
-                singleBounce: controller.usesSingleBounceSpotlightAnimation,
+                singleBounce: host.usesSingleBounceSpotlightAnimation,
                 motion: motion
             )
             let visualFrame = CapsuleSpotlightKeyframes.visualFrame(startFrame, scaledBy: scale)
-            panel.setFrame(controller.panelFrame(forVisualFrame: visualFrame), display: false)
-            controller.layoutAnimationSurface(in: panel)
+            panel.setFrame(host.panelFrame(visualFrame), display: false)
+            host.layoutAnimationSurface(panel)
             panel.alphaValue = max(0, 1 - CGFloat(elapsed / motion.fadeOut))
 
             if progress >= 1 {
                 timer.invalidate()
-                controller.springTimer = nil
+                self.springTimer = nil
                 panel.alphaValue = 0
                 panel.orderOut(nil)
-                controller.cleanup()
-                completion?()
+                host.cleanup()
+                host.completion?()
             }
         }
-        RunLoop.main.add(controller.springTimer!, forMode: .default)
+        if let springTimer {
+            RunLoop.main.add(springTimer, forMode: .default)
+        }
+    }
+
+    func stop() {
+        springTimer?.invalidate()
+        springTimer = nil
     }
 }
 
-private struct CapsuleDefaultShimmerStrategy: CapsuleShimmerStrategy {
-    func apply(to controller: CapsuleWindowController) {
-        guard let cv = controller.animationSurfaceView ?? controller.panel?.contentView else { return }
+final class CapsuleDefaultShimmerStrategy: CapsuleShimmerStrategy {
+    private(set) var shimmerLayer: CAGradientLayer?
+    private(set) var shimmerClipLayer: CALayer?
+
+    var hasActiveLayer: Bool {
+        shimmerLayer != nil || shimmerClipLayer != nil
+    }
+
+    func apply(to host: ShimmerHost) {
+        let cv = host.animationSurface
         cv.wantsLayer = true
         guard let rootLayer = cv.layer else { return }
-        stop(in: controller)
+        stop()
 
-        let geometry = CapsuleShimmerGeometry.make(capsuleWidth: cv.bounds.width, capsuleHeight: controller.capsuleHeight)
+        let geometry = CapsuleShimmerGeometry.make(capsuleWidth: cv.bounds.width, capsuleHeight: host.capsuleHeight)
 
         // clipLayer 与胶囊完全重叠，负责把光带裁剪成胶囊形状
         let clip = CALayer()
         clip.frame = geometry.clipFrame
-        clip.cornerRadius = controller.cornerRadius
+        clip.cornerRadius = host.cornerRadius
         clip.cornerCurve = .continuous
         clip.masksToBounds = true
 
@@ -516,19 +606,18 @@ private struct CapsuleDefaultShimmerStrategy: CapsuleShimmerStrategy {
         clip.addSublayer(sl)
         rootLayer.addSublayer(clip)
 
-        controller.shimmerLayer = sl
-        controller.shimmerClipLayer = clip
+        shimmerLayer = sl
+        shimmerClipLayer = clip
     }
 
-    func updateFrame(in controller: CapsuleWindowController) {
-        guard let cv = controller.animationSurfaceView ?? controller.panel?.contentView,
-              let clip = controller.shimmerClipLayer,
-              let sl = controller.shimmerLayer
+    func updateFrame(in host: ShimmerHost) {
+        guard let clip = shimmerClipLayer,
+              let sl = shimmerLayer
         else { return }
 
         let geometry = CapsuleShimmerGeometry.make(
-            capsuleWidth: cv.bounds.width,
-            capsuleHeight: controller.capsuleHeight,
+            capsuleWidth: host.animationSurface.bounds.width,
+            capsuleHeight: host.capsuleHeight,
             minimumBandWidth: 1
         )
         CATransaction.begin()
@@ -538,29 +627,66 @@ private struct CapsuleDefaultShimmerStrategy: CapsuleShimmerStrategy {
         CATransaction.commit()
     }
 
-    func stop(in controller: CapsuleWindowController) {
-        controller.shimmerLayer?.removeAllAnimations()
-        controller.shimmerClipLayer?.removeFromSuperlayer()
-        controller.shimmerLayer = nil
-        controller.shimmerClipLayer = nil
+    func stop() {
+        shimmerLayer?.removeAllAnimations()
+        shimmerClipLayer?.removeFromSuperlayer()
+        shimmerLayer = nil
+        shimmerClipLayer = nil
     }
 }
 
 #if DEBUG_BUILD
-private struct CapsuleDebugElapsedTimerStrategy: CapsuleElapsedTimerStrategy {
-    func start(in controller: CapsuleWindowController) {
-        controller.recordingStartTime = Date()
-        controller.elapsedTimer?.invalidate()
-        controller.elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak controller] _ in
-            guard let controller, let start = controller.recordingStartTime else { return }
+final class CapsuleDebugElapsedTimerStrategy: CapsuleElapsedTimerStrategy {
+    private var timerLabel: NSTextField?
+    private var elapsedTimer: Timer?
+    private var recordingStartTime: Date?
+    private let timerLabelWidth: CGFloat = 34
+
+    var isRunning: Bool {
+        elapsedTimer != nil
+    }
+
+    func start(in host: CapsuleElapsedTimerHost) {
+        stop()
+
+        // 计时器标签：作为底层半透明叠层显示在右侧，不占据布局宽度
+        // (Timer label: shown as a translucent underlay on the right; takes no layout width.)
+        let timerLbl = NSTextField(labelWithString: "0s")
+        timerLbl.translatesAutoresizingMaskIntoConstraints = false
+        timerLbl.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        timerLbl.textColor = .tertiaryLabelColor
+        timerLbl.alphaValue = 0.55
+        timerLbl.alignment = .right
+        // 放在所有子视图最底层，文字变长时会盖住计时器（Place beneath all siblings so long recognized text covers it.）
+        host.container.addSubview(timerLbl, positioned: .below, relativeTo: nil)
+        NSLayoutConstraint.activate([
+            timerLbl.trailingAnchor.constraint(equalTo: host.container.trailingAnchor),
+            timerLbl.centerYAnchor.constraint(equalTo: host.container.centerYAnchor),
+            timerLbl.widthAnchor.constraint(equalToConstant: timerLabelWidth),
+        ])
+
+        timerLabel = timerLbl
+        recordingStartTime = Date()
+        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self, let start = self.recordingStartTime else { return }
             let elapsed = Int(Date().timeIntervalSince(start))
             if elapsed < 60 {
-                controller.timerLabel?.stringValue = "\(elapsed)s"
+                self.timerLabel?.stringValue = "\(elapsed)s"
             } else {
-                controller.timerLabel?.stringValue = "\(elapsed / 60):\(String(format: "%02d", elapsed % 60))"
+                self.timerLabel?.stringValue = "\(elapsed / 60):\(String(format: "%02d", elapsed % 60))"
             }
         }
-        RunLoop.main.add(controller.elapsedTimer!, forMode: .default)
+        if let elapsedTimer {
+            RunLoop.main.add(elapsedTimer, forMode: .default)
+        }
+    }
+
+    func stop() {
+        elapsedTimer?.invalidate()
+        elapsedTimer = nil
+        timerLabel?.removeFromSuperview()
+        timerLabel = nil
+        recordingStartTime = nil
     }
 }
 #endif
@@ -569,31 +695,6 @@ extension CapsuleWindowController {
     var currentAnimationSelection: CapsuleAnimationSelection {
         CapsuleAnimationSelection.resolve(styleCode: UserDefaults.standard.string(forKey: "animationStyle"))
     }
-
-    var currentAnimationStyle: CapsuleAnimationStyle {
-        currentAnimationSelection.style
-    }
-
-    var currentAnimationStrategy: any CapsuleAnimationStrategy {
-        switch currentAnimationStyle {
-        case .none:
-            return CapsuleNoneAnimationStrategy()
-        case .minimal:
-            return CapsuleMinimalAnimationStrategy()
-        case .spotlight:
-            return CapsuleSpotlightAnimationStrategy()
-        }
-    }
-
-    var shimmerStrategy: any CapsuleShimmerStrategy {
-        CapsuleDefaultShimmerStrategy()
-    }
-
-    #if DEBUG_BUILD
-    var elapsedTimerStrategy: any CapsuleElapsedTimerStrategy {
-        CapsuleDebugElapsedTimerStrategy()
-    }
-    #endif
 
     var spotlightMotion: CapsuleSpotlightMotion {
         CapsuleSpotlightMotion.resolve(speedCode: UserDefaults.standard.string(forKey: "animationSpeed"))
@@ -610,7 +711,7 @@ extension CapsuleWindowController {
     func layoutAnimationSurface(in panel: NSPanel) {
         guard let surface = animationSurfaceView, let host = panel.contentView else { return }
         host.layoutSubtreeIfNeeded()
-        let frame = host.bounds.insetBy(dx: activeAnimationInset, dy: activeAnimationInset)
+        let frame = host.bounds.insetBy(dx: animationInset, dy: animationInset)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -657,20 +758,22 @@ extension CapsuleWindowController {
     // MARK: - 全胶囊扫光，仿 iOS 滑动解锁
 
     func applyShimmerToCapsule() {
-        shimmerStrategy.apply(to: self)
+        guard let host = makeShimmerHost() else { return }
+        shimmerStrategy.apply(to: host)
     }
 
     func updateShimmerFrame() {
-        shimmerStrategy.updateFrame(in: self)
+        guard let host = makeShimmerHost() else { return }
+        shimmerStrategy.updateFrame(in: host)
     }
 
     func stopShimmer() {
-        shimmerStrategy.stop(in: self)
+        shimmerStrategy.stop()
     }
 
     #if DEBUG_BUILD
-    func startElapsedTimer() {
-        elapsedTimerStrategy.start(in: self)
+    func startElapsedTimer(in container: NSView) {
+        elapsedTimerStrategy.start(in: CapsuleElapsedTimerHost(container: container))
     }
     #endif
 }

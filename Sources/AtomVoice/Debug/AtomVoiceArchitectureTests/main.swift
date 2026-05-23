@@ -1,5 +1,6 @@
 import Darwin
 import AVFoundation
+import Cocoa
 import Foundation
 import Security
 @testable import AtomVoiceCore
@@ -212,6 +213,38 @@ struct ArchitectureTestRunner {
             try expect(!unknownSelection.usesDynamicFrameCurve)
         }
 
+        await runner.run("Capsule animation factory creates no-animation strategy") {
+            let selection = CapsuleAnimationSelection.resolve(styleCode: "none")
+            let strategy = CapsuleAnimationStrategyFactory.make(selection: selection)
+
+            try expect(strategy is CapsuleNoneAnimationStrategy)
+            try expect(strategy.currentInset == 0)
+        }
+
+        await runner.run("Capsule animation factory creates minimal strategy") {
+            let selection = CapsuleAnimationSelection.resolve(styleCode: "minimal")
+            let strategy = CapsuleAnimationStrategyFactory.make(selection: selection)
+
+            try expect(strategy is CapsuleMinimalAnimationStrategy)
+            try expect(strategy.currentInset == 0)
+        }
+
+        await runner.run("Capsule animation factory creates spotlight inset strategy") {
+            let selection = CapsuleAnimationSelection.resolve(styleCode: "dynamicIsland")
+            let strategy = CapsuleAnimationStrategyFactory.make(selection: selection)
+
+            try expect(strategy is CapsuleSpotlightAnimationStrategy)
+            try expect(strategy.currentInset == CapsuleSpotlightAnimationStrategy.defaultInset)
+        }
+
+        await runner.run("Capsule animation factory preserves unknown-style no-inset fallback") {
+            let selection = CapsuleAnimationSelection.resolve(styleCode: "future")
+            let strategy = CapsuleAnimationStrategyFactory.make(selection: selection)
+
+            try expect(strategy is CapsuleSpotlightAnimationStrategy)
+            try expect(strategy.currentInset == 0)
+        }
+
         await runner.run("Capsule spotlight motion resolves menu speed values") {
             let medium = CapsuleSpotlightMotion.resolve(speedCode: nil)
             try expect(approximatelyEqual(medium.inScale, 0.78))
@@ -261,6 +294,58 @@ struct ArchitectureTestRunner {
             try expect(approximatelyEqual(minimumGeometry.bandWidth, 1))
             try expect(approximatelyEqual(minimumGeometry.bandFrame, CGRect(x: -1, y: 0, width: 1, height: 42)))
         }
+
+        await runner.run("Capsule spotlight strategies keep independent state") {
+            let first = CapsuleSpotlightAnimationStrategy(currentInset: CapsuleSpotlightAnimationStrategy.defaultInset)
+            let second = CapsuleSpotlightAnimationStrategy(currentInset: 0)
+
+            first.springTimer = Timer(timeInterval: 10, repeats: false) { _ in }
+
+            try expect(first.currentInset == CapsuleSpotlightAnimationStrategy.defaultInset)
+            try expect(second.currentInset == 0)
+            try expect(first.hasActiveTimer)
+            try expect(!second.hasActiveTimer)
+
+            first.stop()
+            try expect(!first.hasActiveTimer)
+            try expect(!second.hasActiveTimer)
+        }
+
+        await runner.run("Capsule shimmer strategy reapplies without leaking layers") {
+            let view = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 42))
+            view.wantsLayer = true
+            let strategy = CapsuleDefaultShimmerStrategy()
+            let host = ShimmerHost(animationSurface: view, cornerRadius: 21, capsuleHeight: 42)
+
+            strategy.apply(to: host)
+            try expect(strategy.hasActiveLayer)
+            try expect(view.layer?.sublayers?.count == 1)
+
+            strategy.stop()
+            try expect(!strategy.hasActiveLayer)
+            try expect(view.layer?.sublayers?.isEmpty ?? true)
+
+            strategy.apply(to: host)
+            try expect(strategy.hasActiveLayer)
+            try expect(view.layer?.sublayers?.count == 1)
+            strategy.stop()
+            try expect(view.layer?.sublayers?.isEmpty ?? true)
+        }
+
+        #if DEBUG_BUILD
+        await runner.run("Capsule debug elapsed timer stops cleanly") {
+            let container = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 42))
+            let strategy = CapsuleDebugElapsedTimerStrategy()
+
+            strategy.start(in: CapsuleElapsedTimerHost(container: container))
+            try expect(strategy.isRunning)
+            try expect(!container.subviews.isEmpty)
+
+            strategy.stop()
+            try expect(!strategy.isRunning)
+            try expect(container.subviews.isEmpty)
+        }
+        #endif
 
         await runner.run("ASR registry normalizes unknown engine codes") {
             let registry = ASREngineRegistry(descriptors: [.sherpaOnnx, .apple, .volcengine])

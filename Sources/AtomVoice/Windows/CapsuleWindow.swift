@@ -23,22 +23,17 @@ final class CapsuleWindowController {
     var contentView: NSView?
     var animationSurfaceView: NSView?
     private var downloadTintLayer: CALayer?
-    var springTimer: Timer?
-    var shimmerLayer: CAGradientLayer?
-    var shimmerClipLayer: CALayer?  // 裁剪为胶囊形状的容器层（Clipping container layer shaped as capsule）
-    var activeAnimationInset: CGFloat = 0
     var waveformVisible = true
     var presentationID = 0
     private(set) var isShowingError = false
     private var displayMode: DisplayMode = .normal
     var recordingClickEnabled = false
     var onRecordingClick: (() -> Void)?
+    var animationStrategy: any CapsuleAnimationStrategy = CapsuleSpotlightAnimationStrategy(currentInset: CapsuleSpotlightAnimationStrategy.defaultInset)
+    let shimmerStrategy: any CapsuleShimmerStrategy = CapsuleDefaultShimmerStrategy()
 
     #if DEBUG_BUILD
-    var timerLabel: NSTextField?
-    var elapsedTimer: Timer?
-    var recordingStartTime: Date?
-    let timerLabelWidth: CGFloat = 34
+    let elapsedTimerStrategy: any CapsuleElapsedTimerStrategy = CapsuleDebugElapsedTimerStrategy()
     #endif
 
     let capsuleHeight: CGFloat = 42
@@ -56,9 +51,6 @@ final class CapsuleWindowController {
     /// (Compact status mode: enabled during streaming; capsule narrows, shows only a fixed status string,
     ///  updateText ignores live text)
     private var compactStatusKey: String?
-    let spotlightAnimationInset: CGFloat = 18
-    let spotlightInBlurRadius: CGFloat = 14
-    let spotlightOutBlurRadius: CGFloat = 10
 
     // MARK: - 布局计算
 
@@ -73,7 +65,71 @@ final class CapsuleWindowController {
     }
 
     func panelFrame(forVisualFrame visualFrame: NSRect) -> NSRect {
-        visualFrame.insetBy(dx: -activeAnimationInset, dy: -activeAnimationInset)
+        visualFrame.insetBy(dx: -animationStrategy.currentInset, dy: -animationStrategy.currentInset)
+    }
+
+    var animationInset: CGFloat {
+        animationStrategy.currentInset
+    }
+
+    func makeAnimationHost(panel: NSPanel, container: NSView, targetFrame: NSRect) -> CapsuleAnimationHost {
+        CapsuleAnimationHost(
+            panel: panel,
+            container: container,
+            animationSurface: animationSurfaceView,
+            waveformView: waveformView,
+            targetFrame: targetFrame,
+            presentationID: presentationID,
+            motion: spotlightMotion,
+            usesSingleBounceSpotlightAnimation: usesSingleBounceSpotlightAnimation,
+            spotlightFrameInterval: spotlightFrameInterval,
+            waveformVisible: { [weak self] in self?.waveformVisible == true },
+            isCurrent: { [weak self] panel, presentationID in
+                self?.panel === panel && self?.presentationID == presentationID
+            },
+            panelFrame: { [weak self] visualFrame in
+                self?.panelFrame(forVisualFrame: visualFrame) ?? visualFrame
+            },
+            layoutAnimationSurface: { [weak self] panel in
+                self?.layoutAnimationSurface(in: panel)
+            },
+            cleanup: { [weak self] in
+                self?.cleanup()
+            }
+        )
+    }
+
+    func makeDismissHost(panel: NSPanel, completion: (() -> Void)?) -> CapsuleDismissHost {
+        CapsuleDismissHost(
+            panel: panel,
+            contentView: contentView,
+            animationSurface: animationSurfaceView,
+            motion: spotlightMotion,
+            usesSingleBounceSpotlightAnimation: usesSingleBounceSpotlightAnimation,
+            spotlightFrameInterval: spotlightFrameInterval,
+            isCurrent: { [weak self] panel in
+                self?.panel === panel
+            },
+            panelFrame: { [weak self] visualFrame in
+                self?.panelFrame(forVisualFrame: visualFrame) ?? visualFrame
+            },
+            layoutAnimationSurface: { [weak self] panel in
+                self?.layoutAnimationSurface(in: panel)
+            },
+            cleanup: { [weak self] in
+                self?.cleanup()
+            },
+            completion: completion
+        )
+    }
+
+    func makeShimmerHost() -> ShimmerHost? {
+        guard let surface = animationSurfaceView ?? panel?.contentView else { return nil }
+        return ShimmerHost(
+            animationSurface: surface,
+            cornerRadius: cornerRadius,
+            capsuleHeight: capsuleHeight
+        )
     }
 
     // MARK: - Show
@@ -115,7 +171,7 @@ final class CapsuleWindowController {
         let target = targetFrame(width: fw)
         let animationSelection = currentAnimationSelection
         let animationStyle = animationSelection.style
-        activeAnimationInset = animationSelection.appliesSpotlightInset ? spotlightAnimationInset : 0
+        animationStrategy = CapsuleAnimationStrategyFactory.make(selection: animationSelection)
 
         let panel = NSPanel(
             contentRect: panelFrame(forVisualFrame: target),
@@ -136,7 +192,7 @@ final class CapsuleWindowController {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
 
-        let surface = NSView(frame: panel.contentView!.bounds.insetBy(dx: activeAnimationInset, dy: activeAnimationInset))
+        let surface = NSView(frame: panel.contentView!.bounds.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset))
         surface.autoresizingMask = [.width, .height]
         surface.wantsLayer = true
         surface.layer?.masksToBounds = false
@@ -258,23 +314,7 @@ final class CapsuleWindowController {
 
         #if DEBUG_BUILD
         if showRecordingTimer {
-            // 计时器标签：作为底层半透明叠层显示在右侧，不占据布局宽度
-            // (Timer label: shown as a translucent underlay on the right; takes no layout width.)
-            let timerLbl = NSTextField(labelWithString: "0s")
-            timerLbl.translatesAutoresizingMaskIntoConstraints = false
-            timerLbl.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-            timerLbl.textColor = .tertiaryLabelColor
-            timerLbl.alphaValue = 0.55
-            timerLbl.alignment = .right
-            // 放在所有子视图最底层，文字变长时会盖住计时器（Place beneath all siblings so long recognized text covers it.）
-            container.addSubview(timerLbl, positioned: .below, relativeTo: nil)
-            NSLayoutConstraint.activate([
-                timerLbl.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                timerLbl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-                timerLbl.widthAnchor.constraint(equalToConstant: timerLabelWidth),
-            ])
-            self.timerLabel = timerLbl
-            startElapsedTimer()
+            startElapsedTimer(in: container)
         }
         #endif
 
@@ -288,7 +328,7 @@ final class CapsuleWindowController {
             applyDownloadAppearance()
         }
 
-        currentAnimationStrategy.animateIn(controller: self, panel: panel, container: container, targetFrame: target)
+        animationStrategy.animateIn(host: makeAnimationHost(panel: panel, container: container, targetFrame: target))
     }
 
     private func initialTextWidth(_ text: String) -> CGFloat {
@@ -333,7 +373,7 @@ final class CapsuleWindowController {
         let totalWidth = fullWidth(forTextWidth: tw)
 
         let screen = NSScreen.main?.visibleFrame ?? .zero
-        var visualFrame = panel.frame.insetBy(dx: activeAnimationInset, dy: activeAnimationInset)
+        var visualFrame = panel.frame.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset)
         visualFrame.size.width = totalWidth
         visualFrame.origin.x = screen.midX - totalWidth / 2
         let frame = panelFrame(forVisualFrame: visualFrame)
@@ -491,7 +531,7 @@ final class CapsuleWindowController {
         let totalWidth = tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
 
         let screen = NSScreen.main?.visibleFrame ?? .zero
-        var visualFrameRect = panel.frame.insetBy(dx: activeAnimationInset, dy: activeAnimationInset)
+        var visualFrameRect = panel.frame.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset)
         visualFrameRect.size.width = totalWidth
         visualFrameRect.origin.x = screen.midX - totalWidth / 2
         let frame = panelFrame(forVisualFrame: visualFrameRect)
@@ -504,9 +544,8 @@ final class CapsuleWindowController {
     func dismiss(completion: (() -> Void)? = nil) {
         guard let panel = panel else { completion?(); return }
         isShowingError = false
-        springTimer?.invalidate()
-        springTimer = nil
-        currentAnimationStrategy.dismiss(controller: self, panel: panel, completion: completion)
+        animationStrategy.stop()
+        animationStrategy.dismiss(host: makeDismissHost(panel: panel, completion: completion))
     }
 
     // MARK: - Debug 计时器
@@ -516,17 +555,13 @@ final class CapsuleWindowController {
     func cleanup() {
         panel?.orderOut(nil)
         stopShimmer()
+        animationStrategy.stop()
         downloadTintLayer?.removeFromSuperlayer()
         downloadTintLayer = nil
         isShowingError = false
         presentationID += 1
-        springTimer?.invalidate()
-        springTimer = nil
         #if DEBUG_BUILD
-        elapsedTimer?.invalidate()
-        elapsedTimer = nil
-        timerLabel = nil
-        recordingStartTime = nil
+        elapsedTimerStrategy.stop()
         #endif
         waveformView?.stopAnimating()
         waveformView = nil
@@ -534,7 +569,6 @@ final class CapsuleWindowController {
         refiningLabel = nil
         contentView = nil
         animationSurfaceView = nil
-        activeAnimationInset = 0
         waveformVisible = true
         compactStatusKey = nil
         displayMode = .normal
