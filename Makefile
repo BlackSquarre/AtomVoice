@@ -1,6 +1,6 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.10.4-Beta-2
+VERSION     = 0.10.4-Beta-3
 BUILD_DIR   = .build/release
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
