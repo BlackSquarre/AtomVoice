@@ -52,22 +52,33 @@ jobs:
 
       - name: Create Gitee release
         id: gitee
+        env:
+          RELEASE_INFO: ${{ steps.release.outputs.result }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          TAG="${{ fromJson(steps.release.outputs.result).tag }}"
-          NAME="${{ fromJson(steps.release.outputs.result).name }}"
-          BODY=$(echo '${{ fromJson(steps.release.outputs.result).body }}' | jq -Rs .)
-          PRERELEASE=${{ fromJson(steps.release.outputs.result).prerelease }}
+          printf '%s' "$RELEASE_INFO" > /tmp/release-info.json
+          TAG=$(jq -r '.tag' /tmp/release-info.json)
+          NAME=$(jq -r '.name' /tmp/release-info.json)
+          BODY=$(jq -c '.body' /tmp/release-info.json)
+          PRERELEASE=$(jq -r '.prerelease' /tmp/release-info.json)
 
-          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases" \
+          RESP=$(jq -n \
+            --arg token "$GITEE_TOKEN" \
+            --arg tag "$TAG" \
+            --arg name "$NAME" \
+            --argjson body "$BODY" \
+            --arg target "main" \
+            --argjson prerelease "$PRERELEASE" \
+            '{
+              access_token: $token,
+              tag_name: $tag,
+              name: $name,
+              body: $body,
+              target_commitish: $target,
+              prerelease: $prerelease
+            }' | curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
-              \"tag_name\": \"$TAG\",
-              \"name\": \"$NAME\",
-              \"body\": $BODY,
-              \"target_commitish\": \"main\",
-              \"prerelease\": $PRERELEASE
-            }")
+            -d @-)
 
           RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
           if [ -z "$RELEASE_ID" ]; then
@@ -77,9 +88,13 @@ jobs:
           echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
 
       - name: Download and upload assets
+        env:
+          RELEASE_INFO: ${{ steps.release.outputs.result }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           mkdir -p /tmp/assets
-          ASSETS='${{ toJson(fromJson(steps.release.outputs.result).assets) }}'
+          printf '%s' "$RELEASE_INFO" > /tmp/release-info.json
+          ASSETS=$(jq -c '.assets' /tmp/release-info.json)
           echo "$ASSETS" | jq -c '.[]' | while read -r asset; do
             NAME=$(echo "$asset" | jq -r '.name')
             URL=$(echo "$asset" | jq -r '.url')
@@ -87,6 +102,6 @@ jobs:
             curl -sL "$URL" -o "/tmp/assets/$NAME"
             echo "Uploading: $NAME"
             curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
-              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+              -F "access_token=$GITEE_TOKEN" \
               -F "file=@/tmp/assets/$NAME" | jq -r '.browser_download_url // .message'
           done
