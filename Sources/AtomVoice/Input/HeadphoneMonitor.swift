@@ -1,18 +1,24 @@
 import Cocoa
 
 /// 监听耳机线控按钮（EarPods/AirPods 上的 play/pause 键），转化为单击 / 双击 / 长按手势。
+/// (Monitors headphone inline-control play/pause buttons and maps them to single tap, double tap, and long press gestures.)
 ///
-/// 拦截条件：
+/// 拦截条件（Intercept conditions）：
 ///   1. AppSettings.headphoneControlEnabled == true
 ///   2. HID 来源证明为可信非键盘 Consumer Control 设备
+///      (HID source proves it is a trusted non-keyboard Consumer Control device.)
 ///
-/// 手势：
+/// 手势（Gestures）：
 ///   - 长按（> 250ms 未松开）：触发 onLongPressStart，松开时触发 onLongPressEnd
+///     (Long press: trigger onLongPressStart after 250ms, then onLongPressEnd on release.)
 ///   - 双击（< 280ms 内再次按下并松开）：触发 onDoubleTap
+///     (Double tap: trigger onDoubleTap when the second press and release lands within 280ms.)
 ///   - 单击：先尝试 onOptimisticSingleTap 低延迟处理；若业务不接管，则等双击窗口落定后触发 onSingleTap。
 ///     如果单击回调返回 false，则把原 play/pause 事件补发给系统，让音乐照常播放/暂停。
+///     (Single tap: try low-latency onOptimisticSingleTap first; if not handled, wait for the double-tap window before onSingleTap.
+///      If the callback returns false, repost the original play/pause event so system media playback keeps working.)
 final class HeadphoneMonitor {
-    var onSingleTap: () -> Bool        // 返回 true 表示已处理，无需补发 play/pause
+    var onSingleTap: () -> Bool        // 返回 true 表示已处理，无需补发 play/pause（Return true when handled; no play/pause repost needed）
     var onOptimisticSingleTap: () -> Bool = { false }
     var onCancelOptimisticSingleTap: () -> Void = {}
     var onOptimisticSingleTapSettled: () -> Void = {}
@@ -27,43 +33,44 @@ final class HeadphoneMonitor {
     ///  instead of two play/pause events. Return true to consume the event.)
     var onAuxMouseButton: () -> Bool = { false }
 
-    /// 由外部提供耳机按钮功能开关状态。
+    /// 由外部提供耳机按钮功能开关状态。（Feature-enabled state is supplied by the owner.）
     var isFeatureEnabled: () -> Bool
     /// 辅助鼠标按钮兼容路径没有 HID Play/Pause 来源证明，继续由外部用更保守条件控制。
+    /// (The aux-mouse compatibility path has no HID Play/Pause source proof, so the owner gates it more conservatively.)
     var isAuxMouseInterceptEnabled: () -> Bool
-    /// 由外部提供最近 Play/Pause 是否来自可信 HID 来源
+    /// 由外部提供最近 Play/Pause 是否来自可信 HID 来源（The owner reports whether the latest Play/Pause came from a trusted HID source）
     var hasTrustedPlayPauseSource: () -> Bool
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    // MARK: - 手势状态
+    // MARK: - 手势状态（Gesture state）
 
     private enum State {
         case idle
-        case pressed                 // 按下未达到长按阈值
-        case longPressActive         // 长按已触发，等待松开
-        case awaitingSecondTap       // 第一次快速点击完成，等待 280ms 看是否双击
+        case pressed                 // 按下未达到长按阈值（Pressed but below long-press threshold）
+        case longPressActive         // 长按已触发，等待松开（Long press fired; waiting for release）
+        case awaitingSecondTap       // 第一次快速点击完成，等待 280ms 看是否双击（First quick tap done; waiting 280ms for a double tap）
     }
     private var state: State = .idle
     private var longPressTimer: Timer?
     private var doubleTapTimer: Timer?
-    private var pendingPlayPauseEvent: CGEvent?  // 等待是否补发的原始事件副本
-    private var isSecondPress = false            // 当前 .pressed 是否来自双击的第二次按下
-    private var optimisticSingleHandled = false  // 第一下是否已经被业务乐观消费
+    private var pendingPlayPauseEvent: CGEvent?  // 等待是否补发的原始事件副本（Original event copy waiting for a possible repost）
+    private var isSecondPress = false            // 当前 .pressed 是否来自双击的第二次按下（Whether current .pressed is the second press of a double tap）
+    private var optimisticSingleHandled = false  // 第一下是否已经被业务乐观消费（Whether the first tap was optimistically consumed）
     private var trustedPlayPausePressActive = false
 
     private static let longPressThreshold: TimeInterval = 0.25
     private static let doubleTapWindow: TimeInterval = 0.28
 
-    // MARK: - 媒体键常量
+    // MARK: - 媒体键常量（Media-key constants）
 
     private static let nxSysDefinedType: UInt32 = 14
     private static let nxSubtypeAuxControlButtons: Int16 = 8
     private static let nxSubtypeAuxMouseButtons: Int16 = 7   // NX_SUBTYPE_AUX_MOUSE_BUTTONS
     private static let nxKeyTypePlay: Int32 = 16   // NX_KEYTYPE_PLAY
 
-    // MARK: - 生命周期
+    // MARK: - 生命周期（Lifecycle）
 
     init(
         onSingleTap: @escaping () -> Bool,
@@ -128,7 +135,7 @@ final class HeadphoneMonitor {
         DebugLog.info("[HeadphoneMonitor] 已停止")
     }
 
-    // MARK: - 事件处理
+    // MARK: - 事件处理（Event handling）
 
     private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
@@ -163,7 +170,7 @@ final class HeadphoneMonitor {
             return handled ? nil : Unmanaged.passUnretained(event)
         }
 
-        // 只处理 AUX 控制按钮中的 PLAY 键
+        // 只处理 AUX 控制按钮中的 PLAY 键（Only handle the PLAY key from AUX control buttons）
         guard nsEvent.subtype.rawValue == HeadphoneMonitor.nxSubtypeAuxControlButtons else {
             return Unmanaged.passUnretained(event)
         }
@@ -174,6 +181,8 @@ final class HeadphoneMonitor {
 
         // Play/Pause 已有 HID 来源证明，不再依赖当前默认输出设备；
         // USB DAC/耳机可能不是默认输出，但中键仍是可信 Consumer Control 来源。
+        // (Play/Pause already has HID source proof, so it no longer depends on the default output device.)
+        // (A USB DAC/headset may not be the default output, but its middle button can still be trusted Consumer Control input.)
         guard isFeatureEnabled() else {
             return Unmanaged.passUnretained(event)
         }
@@ -196,6 +205,7 @@ final class HeadphoneMonitor {
         }
 
         // 拷贝事件以便后续可能补发（必须在返回 nil 之前）
+        // (Copy the event for a possible later repost; must happen before returning nil.)
         let copy = event.copy()
 
         DispatchQueue.main.async { [weak self] in
@@ -206,7 +216,7 @@ final class HeadphoneMonitor {
                 self.handlePlayKeyUp()
             }
         }
-        return nil   // 吞掉原事件
+        return nil   // 吞掉原事件（Swallow the original event）
     }
 
     private func handlePlayKeyDown(originalCopy: CGEvent?) {
@@ -266,7 +276,7 @@ final class HeadphoneMonitor {
             guard let self else { return }
             guard self.state == .pressed else { return }
             self.state = .longPressActive
-            self.pendingPlayPauseEvent = nil   // 长按已确认，不再补发 play/pause
+            self.pendingPlayPauseEvent = nil   // 长按已确认，不再补发 play/pause（Long press confirmed; do not repost play/pause）
             self.onLongPressStart()
         }
     }
@@ -276,7 +286,7 @@ final class HeadphoneMonitor {
         doubleTapTimer = Timer.scheduledTimer(withTimeInterval: HeadphoneMonitor.doubleTapWindow, repeats: false) { [weak self] _ in
             guard let self else { return }
             guard self.state == .awaitingSecondTap else { return }
-            // 单击落定
+            // 单击落定（Single tap settled）
             let cachedEvent = self.pendingPlayPauseEvent
             self.pendingPlayPauseEvent = nil
             self.state = .idle
@@ -287,6 +297,7 @@ final class HeadphoneMonitor {
             let handled = self.onSingleTap()
             if !handled, let event = cachedEvent {
                 // 单击未被业务消化 → 把 play/pause 还给系统，让音乐照常控制
+                // (Single tap was not consumed by business logic; return play/pause to the system for normal media control.)
                 event.post(tap: .cgSessionEventTap)
             }
         }
@@ -309,7 +320,7 @@ final class HeadphoneMonitor {
             down.flags = []
             up.flags = []
             down.post(tap: .cghidEventTap)
-            Thread.sleep(forTimeInterval: 0.01) // 保证目标 App 更稳定地收到 keyUp
+            Thread.sleep(forTimeInterval: 0.01) // 保证目标 App 更稳定地收到 keyUp（Helps the target app receive keyUp reliably）
             up.post(tap: .cghidEventTap)
         }
     }

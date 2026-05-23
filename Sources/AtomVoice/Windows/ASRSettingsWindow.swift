@@ -58,30 +58,30 @@ final class ASRSettingsWindowController: NSObject {
         guard let cv = w.contentView else { return }
         let pad: CGFloat = 24
 
-        // 创建 TabView
+        // 创建 TabView（Create TabView）
         tabView = NSTabView()
         tabView.translatesAutoresizingMaskIntoConstraints = false
         tabView.delegate = self
 
-        // 标签页 1：Sherpa 本地识别
+        // 标签页 1：Sherpa 本地识别（Tab 1: Sherpa local recognition）
         let sherpaTab = NSTabViewItem(identifier: "sherpa")
         sherpaTab.label = loc("asrSettings.tab.sherpa")
         sherpaTab.view = buildSherpaTab()
         tabView.addTabViewItem(sherpaTab)
 
-        // 标签页 2：Apple 离线识别
+        // 标签页 2：Apple 离线识别（Tab 2: Apple offline recognition）
         let appleTab = NSTabViewItem(identifier: "apple")
         appleTab.label = loc("asrSettings.tab.apple")
         appleTab.view = buildAppleTab()
         tabView.addTabViewItem(appleTab)
 
-        // 标签页 3：豆包云端识别
+        // 标签页 3：豆包云端识别（Tab 3: Doubao cloud recognition）
         let doubaoTab = NSTabViewItem(identifier: "doubao")
         doubaoTab.label = loc("asrSettings.tab.doubao")
         doubaoTab.view = buildDoubaoTab()
         tabView.addTabViewItem(doubaoTab)
 
-        // 底部按钮
+        // 底部按钮（Bottom buttons）
         statusLabel = SettingsUI.makeSecondaryLabel()
 
         let cancelBtn = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
@@ -91,7 +91,7 @@ final class ASRSettingsWindowController: NSObject {
 
         let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [cancelBtn, saveBtn])
 
-        // 布局
+        // 布局（Layout）
         cv.addSubview(tabView)
         cv.addSubview(bottomRow)
 
@@ -263,7 +263,7 @@ final class ASRSettingsWindowController: NSObject {
         providerPopup.target = self
         providerPopup.action = #selector(sherpaProviderChanged(_:))
 
-        // 把语言和后端选择放在同一行，后端右对齐
+        // 把语言和后端选择放在同一行，后端右对齐（Place language and backend controls on one row, right-aligning the backend）
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -282,7 +282,7 @@ final class ASRSettingsWindowController: NSObject {
         sherpaRadioStack.translatesAutoresizingMaskIntoConstraints = false
         rebuildSherpaModelList()
 
-        // 下载状态
+        // 下载状态（Download status）
         sherpaStatusLabel = NSTextField(labelWithString: "")
         sherpaStatusLabel.font = .systemFont(ofSize: 12)
         sherpaStatusLabel.textColor = .secondaryLabelColor
@@ -484,7 +484,7 @@ final class ASRSettingsWindowController: NSObject {
         descLabel.maximumNumberOfLines = 0
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // 当前状态
+        // 当前状态（Current status）
         let currentLang = AppSettings.selectedLanguage
         let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
 
@@ -493,14 +493,14 @@ final class ASRSettingsWindowController: NSObject {
         appleStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         updateAppleStatus()
 
-        // 启用复选框
+        // 启用复选框（Enable checkbox）
         let isEnabled = AppSettings.appleOnDeviceRecognitionEnabled
         appleEnableCheckbox = SettingsUI.makeCheckbox(title: loc("asrSettings.apple.enable"), tooltip: "")
         appleEnableCheckbox.state = isEnabled ? .on : .off
         appleEnableCheckbox.isEnabled = isSupported
         appleEnableCheckbox.translatesAutoresizingMaskIntoConstraints = false
 
-        // 注意事项
+        // 注意事项（Notes）
         let noteLabel = NSTextField(labelWithString: loc("asrSettings.apple.note"))
         noteLabel.font = .systemFont(ofSize: 12)
         noteLabel.textColor = .secondaryLabelColor
@@ -508,7 +508,7 @@ final class ASRSettingsWindowController: NSObject {
         noteLabel.maximumNumberOfLines = 0
         noteLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // 打开系统设置按钮
+        // 打开系统设置按钮（Open System Settings button）
         let openSettingsButton = SettingsUI.makeButton(loc("asrSettings.apple.openSettings"), target: self, action: #selector(openAppleSettings(_:)))
         openSettingsButton.translatesAutoresizingMaskIntoConstraints = false
 
@@ -543,7 +543,7 @@ final class ASRSettingsWindowController: NSObject {
     // MARK: - 辅助方法（Helper methods）
 
     private func refreshFields() {
-        // 豆包设置
+        // 豆包设置（Doubao settings）
         let doubaoSettings = VolcengineASRSettings.load()
         doubaoAPIKeyField?.stringValue = doubaoSettings.apiKey
         let currentKind = DoubaoModelKind.from(resourceID: doubaoSettings.resourceID)
@@ -556,15 +556,15 @@ final class ASRSettingsWindowController: NSObject {
         doubaoNonstreamCheckbox?.state = doubaoSettings.enableNonstream ? .on : .off
         doubaoGlobalInfoLabel?.stringValue = doubaoSettings.globalSummary
 
-        // Sherpa 设置
+        // Sherpa 设置（Sherpa settings）
         rebuildSherpaModelList()
         updateSherpaAutoUnloadControls()
         updateSherpaStatus()
 
-        // Apple 设置
+        // Apple 设置（Apple settings）
         updateAppleStatus()
 
-        // 状态
+        // 状态（Status）
         statusLabel?.stringValue = ""
     }
 
@@ -751,11 +751,11 @@ final class ASRSettingsWindowController: NSObject {
     }
 
     @objc private func downloadSherpaModel(_ sender: NSButton) {
-        // 获取选中的模型 ID
+        // 获取选中的模型 ID（Get selected model ID）
         let selectedID = sherpaRadioButtons.first(where: { $0.state == .on }).flatMap { sherpaButtonModelIDs[$0] } ?? SherpaModelPreset.current.id
         guard let preset = SherpaModelPreset.allPresets.first(where: { $0.id == selectedID }) else { return }
 
-        // 确认下载
+        // 确认下载（Confirm download）
         let alert = NSAlert()
         alert.messageText = loc("sherpa.download.title")
         alert.informativeText = loc("asrSettings.sherpa.download.confirm")
@@ -833,7 +833,7 @@ final class ASRSettingsWindowController: NSObject {
             // 导入成功 → 自动选中并刷新（On success, auto-select and refresh）
             AppSettings.sherpaRecognitionLanguage = record.language
             AppSettings.sherpaModelPresetID = record.id
-            // 同步语言下拉
+            // 同步语言下拉（Sync language popup）
             if let item = self.sherpaLanguagePopup.menu?.items.first(where: { ($0.representedObject as? String) == record.language }) {
                 self.sherpaLanguagePopup.select(item)
             }
@@ -851,7 +851,7 @@ final class ASRSettingsWindowController: NSObject {
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        // 保存豆包设置
+        // 保存豆包设置（Save Doubao settings）
         guard VolcengineASRSettings.saveAPIKey(doubaoAPIKeyField.stringValue) else {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
@@ -908,7 +908,7 @@ final class ASRSettingsWindowController: NSObject {
         }
         persistSherpaAutoUnloadSettings()
 
-        // 保存 Apple 设置
+        // 保存 Apple 设置（Save Apple settings）
         persistAppleSettings()
 
         statusLabel.stringValue = loc("settings.saved")
@@ -925,7 +925,7 @@ final class ASRSettingsWindowController: NSObject {
 
 extension ASRSettingsWindowController: NSTabViewDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        // 标签页切换时刷新
+        // 标签页切换时刷新（Refresh when switching tabs）
         refreshFields()
     }
 }

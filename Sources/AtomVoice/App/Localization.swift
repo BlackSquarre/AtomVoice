@@ -1,6 +1,6 @@
 import Foundation
 
-/// 全局本地化快捷函数
+/// 全局本地化快捷函数（Global localization shortcut）
 func loc(_ key: String) -> String {
     NSLocalizedString(key, bundle: .main, comment: "")
 }

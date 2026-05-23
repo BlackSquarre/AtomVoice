@@ -38,13 +38,14 @@ struct SherpaModelPreset {
         builtIn(id: "en-standard",lang: "en-US",     archive: "sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2",     sizeMB: 296),
         // 日语（Japanese, ReazonSpeech）
         builtIn(id: "japanese",   lang: "ja-JP",     archive: "sherpa-onnx-streaming-zipformer-ja-reazonspeech-2024-06-24.tar.bz2", sizeMB: 280),
-        // 韩语 / 法语
+        // 韩语 / 法语（Korean / French）
         builtIn(id: "korean",     lang: "ko-KR",     archive: "sherpa-onnx-streaming-zipformer-korean-2024-06-16.tar.bz2", sizeMB: 399),
         builtIn(id: "french",     lang: "fr-FR",     archive: "sherpa-onnx-streaming-zipformer-fr-2023-04-14.tar.bz2",     sizeMB: 380),
         ]
 
         #if DEBUG_BUILD
         // Debug 专属候选模型，用于验证新模型兼容性；正式版不展示。
+        // (Debug-only candidate models for validating new model compatibility; hidden in release builds.)
         presets.append(contentsOf: [
             builtIn(id: "debug-zh-2025", lang: "zh-CN", archive: "sherpa-onnx-streaming-zipformer-zh-2025-06-30.tar.bz2", sizeMB: 566),
             builtIn(id: "debug-wenetspeech", lang: "zh-CN", archive: "icefall-asr-zipformer-streaming-wenetspeech-20230615.tar.bz2", sizeMB: 316),

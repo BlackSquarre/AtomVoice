@@ -63,7 +63,7 @@ func stringsFiles() -> [URL] {
         .sorted { relativePath($0) < relativePath($1) }
 }
 
-// 只移除注释,保留字符串内容,避免把字符串里的 // 或 /* 误判成注释。
+// 只移除注释,保留字符串内容,避免把字符串里的 // 或 /* 误判成注释。（Remove only comments while preserving string contents, so // or /* inside strings are not misread as comments.）
 func removingComments(from text: String) -> String {
     enum State {
         case normal

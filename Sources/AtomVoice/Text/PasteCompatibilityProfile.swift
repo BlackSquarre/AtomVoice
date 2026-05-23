@@ -14,6 +14,7 @@ enum PasteCompatibilityCategory {
     case gameStreaming
 
     /// 该类别下统一使用的粘贴延迟（秒），会与全局 AppSettings.pasteDelay 取较大值。
+    /// (Category-wide paste delay in seconds; combined with the global AppSettings.pasteDelay by taking the larger value.)
     var pasteDelay: Double {
         switch self {
         case .virtualMachine: return 0.35
@@ -24,6 +25,7 @@ enum PasteCompatibilityCategory {
 }
 
 /// 针对特定应用的粘贴兼容性条目。
+/// (Paste compatibility entry for a specific app.)
 struct PasteCompatibilityProfile {
     let bundleID: String
     let displayName: String
@@ -35,12 +37,14 @@ struct PasteCompatibilityProfile {
 enum PasteCompatibilityRegistry {
     /// 远程桌面 / VDI / 虚拟机 / 游戏串流类应用的内置兼容性清单。
     /// 这类应用键盘事件经过网络或转发层，标准粘贴延迟下会丢字符。
+    /// (Built-in compatibility list for remote desktop / VDI / virtual machine / game streaming apps.)
+    /// (Their keyboard events pass through network or forwarding layers, so the standard paste delay can lose characters.)
     private static let builtin: [PasteCompatibilityProfile] = [
-        // ── Apple 自带（远程桌面） ──
+        // ── Apple 自带（远程桌面） (Apple built-in, remote desktop) ──
         .init(bundleID: "com.apple.ScreenSharing",           displayName: "Screen Sharing",          category: .remoteDesktop),
         .init(bundleID: "com.apple.RemoteDesktop",           displayName: "Apple Remote Desktop",    category: .remoteDesktop),
 
-        // ── 国际主流远程控制 ──
+        // ── 国际主流远程控制 (major international remote-control apps) ──
         .init(bundleID: "com.microsoft.rdc.macos",           displayName: "Microsoft Remote Desktop", category: .remoteDesktop),
         .init(bundleID: "com.teamviewer.TeamViewer",         displayName: "TeamViewer",              category: .remoteDesktop),
         .init(bundleID: "com.teamviewer.TeamViewerQS",       displayName: "TeamViewer QuickSupport", category: .remoteDesktop),
@@ -59,25 +63,25 @@ enum PasteCompatibilityRegistry {
         .init(bundleID: "com.royalapps.RoyalTSX",            displayName: "Royal TSX",               category: .remoteDesktop),
         .init(bundleID: "com.devolutions.remotedesktopmanager.free.mac", displayName: "Devolutions RDM", category: .remoteDesktop),
 
-        // ── 企业 VDI / 云桌面（同远程桌面） ──
+        // ── 企业 VDI / 云桌面（同远程桌面） (enterprise VDI / cloud desktops, same as remote desktop) ──
         .init(bundleID: "com.vmware.horizon.v4.viewclient",  displayName: "VMware Horizon Client",   category: .remoteDesktop),
         .init(bundleID: "com.amazon.workspaces",             displayName: "Amazon WorkSpaces",       category: .remoteDesktop),
 
-        // ── 国内主流远控 ──
+        // ── 国内主流远控 (major China remote-control apps) ──
         .init(bundleID: "com.oray.sunlogin.SunloginClient",  displayName: "向日葵 Sunlogin",          category: .remoteDesktop),
         .init(bundleID: "com.todesk.todeskformac",           displayName: "ToDesk",                  category: .remoteDesktop),
         .init(bundleID: "com.netease.uurd",                  displayName: "网易 UU 远程",             category: .remoteDesktop),
         .init(bundleID: "com.rayvision.raylink",             displayName: "RayLink 瑞云",             category: .remoteDesktop),
         .init(bundleID: "com.gotohttp.gotohttp",             displayName: "GotoHTTP",                category: .remoteDesktop),
 
-        // ── 本地虚拟机 ──
+        // ── 本地虚拟机 (local virtual machines) ──
         .init(bundleID: "com.parallels.desktop.console",     displayName: "Parallels Desktop",       category: .virtualMachine),
         .init(bundleID: "com.parallels.client",              displayName: "Parallels Client",        category: .virtualMachine),
         .init(bundleID: "com.vmware.fusion",                 displayName: "VMware Fusion",           category: .virtualMachine),
         .init(bundleID: "com.utmapp.UTM",                    displayName: "UTM",                     category: .virtualMachine),
         .init(bundleID: "com.redhat.virt-viewer",            displayName: "virt-viewer / SPICE",     category: .virtualMachine),
 
-        // ── 游戏串流 ──
+        // ── 游戏串流 (game streaming) ──
         .init(bundleID: "com.parsec.www",                    displayName: "Parsec",                  category: .gameStreaming),
         .init(bundleID: "com.moonlight-stream.Moonlight",    displayName: "Moonlight",               category: .gameStreaming),
         .init(bundleID: "com.valvesoftware.steamlink",       displayName: "Steam Link",              category: .gameStreaming),
@@ -91,12 +95,14 @@ enum PasteCompatibilityRegistry {
     }()
 
     /// 查找当前前台应用对应的兼容性配置。返回 nil 表示走默认粘贴行为。
+    /// (Looks up the compatibility profile for the current frontmost app; nil means default paste behavior.)
     static func profile(forBundleID bundleID: String?) -> PasteCompatibilityProfile? {
         guard let bundleID, !bundleID.isEmpty else { return nil }
         return bundleIDIndex[bundleID]
     }
 
     /// 查找当前前台应用对应的兼容性配置。返回 nil 表示走默认粘贴行为。
+    /// (Looks up the compatibility profile for the current frontmost app; nil means default paste behavior.)
     static func profileForFrontmostApp() -> PasteCompatibilityProfile? {
         profile(forBundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
     }

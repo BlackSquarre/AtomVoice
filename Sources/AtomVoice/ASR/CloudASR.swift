@@ -2,7 +2,7 @@ import Accelerate
 import AVFoundation
 import Foundation
 
-// MARK: - 通用云端 ASR 协议
+// MARK: - 通用云端 ASR 协议（Common cloud ASR protocols）
 
 /// 云端 ASR 连接代理（Cloud ASR connection delegate）
 protocol CloudASRConnectionDelegate: AnyObject {
@@ -14,6 +14,7 @@ protocol CloudASRConnectionDelegate: AnyObject {
 /// 云端 ASR 连接（Cloud ASR connection）
 ///
 /// 生命周期：connect → onReady → sendAudioChunk 循环 → sendAudioChunk(isFinal) → 等待最终结果 / cancel
+/// (Lifecycle: connect -> onReady -> sendAudioChunk loop -> sendAudioChunk(isFinal) -> wait for final result / cancel)
 protocol CloudASRConnection: AnyObject {
     var delegate: CloudASRConnectionDelegate? { get set }
     func resume()
@@ -24,24 +25,25 @@ protocol CloudASRConnection: AnyObject {
 /// 云端 ASR 服务提供商（Cloud ASR provider）
 ///
 /// 每个厂商实现此协议，提供连接创建和凭据校验。
+/// (Each vendor implements this protocol to create connections and validate credentials.)
 protocol CloudASRProvider {
     var engineCode: String { get }
     var displayName: String { get }
 
-    /// 校验凭据，返回错误信息；nil 表示通过
+    /// 校验凭据，返回错误信息；nil 表示通过（Validate credentials; returns an error message, or nil on success）
     func validateCredentials() -> String?
 
-    /// 创建新连接；返回 nil 表示无法创建
+    /// 创建新连接；返回 nil 表示无法创建（Create a new connection; nil means creation failed）
     func createConnection() -> CloudASRConnection?
 
-    /// 打开设置窗口
+    /// 打开设置窗口（Open the settings window）
     func showSettings()
 
-    /// 最终结果等待超时（秒）
+    /// 最终结果等待超时（秒）（Final-result wait timeout in seconds）
     var finalResultTimeout: Double { get }
 }
 
-// MARK: - 通用音频转换器（16kHz mono pcm_s16le）
+// MARK: - 通用音频转换器（16kHz mono pcm_s16le）（Common audio converter）
 
 /// 通用云端 ASR 音频转换器：将 AVAudioPCMBuffer 转为 16kHz mono pcm_s16le
 /// (Cloud audio converter: converts AVAudioPCMBuffer to 16kHz mono pcm_s16le)
@@ -114,7 +116,7 @@ final class CloudAudioConverter {
     }
 }
 
-// MARK: - 通用云端 ASR 识别控制器
+// MARK: - 通用云端 ASR 识别控制器（Common cloud ASR recognizer controller）
 
 /// 通用云端 ASR 识别控制器，管理状态机、音频缓冲和连接生命周期
 /// (Cloud ASR recognizer controller: manages state machine, audio buffer, and connection lifecycle)
@@ -131,7 +133,7 @@ final class CloudASRRecognizerController: NSObject {
     private let queue = DispatchQueue(label: "com.atomvoice.cloudASR")
     private let lowLatencyChunkSizeBytes = 16_000 / 10 * 2  // 100ms, mono, int16
     private let standardChunkSizeBytes = 16_000 / 5 * 2  // 200ms, mono, int16
-    private let lowLatencyWindowBytes = 16_000 * 2  // 前 1 秒用小包降低首包等待时间
+    private let lowLatencyWindowBytes = 16_000 * 2  // 前 1 秒用小包降低首包等待时间（Use small packets for the first second to reduce first-packet latency）
     private let minimumUsefulAudioBytes = 16_000 / 4 * 2  // 250ms, mono, int16
 
     private var connection: CloudASRConnection?
@@ -240,7 +242,7 @@ final class CloudASRRecognizerController: NSObject {
         }
     }
 
-    // MARK: - 内部方法
+    // MARK: - 内部方法（Internal methods）
 
     private func flushBufferedAudioLocked() {
         while chunkBuffer.count >= currentChunkSizeBytesLocked() {

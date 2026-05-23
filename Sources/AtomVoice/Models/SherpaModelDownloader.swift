@@ -263,7 +263,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         try? SherpaOnnxRecognizerController.createSupportDirectories()
         self.targetVersion = version
 
-        // 构建下载列表：运行库 + 指定模型 + 标点模型
+        // 构建下载列表：运行库 + 指定模型 + 标点模型（Build download list: runtime + selected model + punctuation model）
         let runtimeItem = DownloadItem(
             name: "runtime",
             urlCandidates: SherpaModelPreset.candidateURLs(for: Self.runtimeArchiveGitHubURL(for: version)),
@@ -290,7 +290,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             archiveName: Self.punctArchiveName
         )
 
-        // 检查哪些需要下载
+        // 检查哪些需要下载（Check which items need downloading）
         itemsToDownload = []
         let runtimeMissing = Self.requiredRuntimeLibs.contains {
             !SherpaModelPreset.isUsableFile(SherpaOnnxRecognizerController.runtimeLibDirectory.appendingPathComponent($0))
@@ -515,7 +515,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         notifyComplete(false, message)
     }
 
-    // MARK: - 解压
+    // MARK: - 解压（Extraction）
 
     /// ASR 模型包的顶层目录不总是等于压缩包名；先解到临时目录，再定位真正的模型根并移动到 preset 目录。
     /// (ASR archive root isn't always archiveName without suffix; extract to temp, locate model root, then move to preset dir.)
