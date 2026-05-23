@@ -23,6 +23,9 @@ jobs:
       - name: Run architecture tests
         run: make test
 
+      - name: Lint localization keys
+        run: make lint-loc
+
       - name: Verify release build compiles
         run: swift build -c release
         env:

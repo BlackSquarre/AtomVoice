@@ -8,7 +8,7 @@ INSTALL_DIR = /Applications
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
-.PHONY: build dev run install clean release sherpa-memory test
+.PHONY: build dev run install clean release sherpa-memory test lint-loc
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
@@ -35,6 +35,9 @@ clean:
 
 test:
 	swift run -Xswiftc -enable-testing AtomVoiceArchitectureTests
+
+lint-loc:
+	swift Scripts/check_localization.swift
 
 # ── Debug-only Sherpa model memory benchmark ────────────────────────────────
 sherpa-memory:
