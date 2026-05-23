@@ -10,6 +10,10 @@ OPENCODE.md
 .claude/
 .gemini/
 .codex/
-.github/
 SHERPA_MODELS.md
 localdoc/
+
+# 本地工具与 IDE 工作区
+.sisyphus/
+.vscode/
+tmp/
