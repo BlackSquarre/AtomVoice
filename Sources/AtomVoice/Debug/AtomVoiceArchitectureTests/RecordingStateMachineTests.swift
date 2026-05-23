@@ -6,6 +6,17 @@ import Security
 
 enum RecordingStateMachineTests {
     static func run(_ runner: inout TestRunner) async {
+        func collectSnapshot(_ events: [RecordingEvent]) -> (state: RecordingSessionState, effects: [RecordingSideEffect]) {
+            var state = RecordingSessionState()
+            var effects: [RecordingSideEffect] = []
+            for event in events {
+                let result = RecordingStateMachine.reduce(state, event)
+                state = result.state
+                effects.append(contentsOf: result.sideEffects)
+            }
+            return (state, effects)
+        }
+
         await runner.run("Recording session state covers start and cancel transitions") {
             var state = RecordingSessionState()
 
@@ -483,6 +494,192 @@ enum RecordingStateMachineTests {
             try expect(result.state.phase == .errored)
             try expect(!result.state.isRefining)
             try expect(result.sideEffects.contains(.showCapsule(.error(message: "bad", dismissAfter: 3), ensurePanel: false)))
+        }
+        await runner.run("Reducer normal recording flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "hel", isFinal: false),
+                .asrPartial(text: "hello", isFinal: false),
+                .triggerReleased,
+                .asrFinal(text: "hello.", errorMessage: nil, appending: nil),
+            ])
+
+            try expect(snapshot.effects.count == 19)
+            try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
+            try expect(snapshot.effects[1] == .validateStart(request: 1))
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .updateCapsuleText("hel"))
+            try expect(snapshot.effects[18] == .stopSession(generation: 1, immediate: false, appending: nil))
+            try expect(snapshot.state.phase == .idle)
+        }
+        await runner.run("Reducer cancel recording flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "cancel me", isFinal: false),
+                .cancelRequested,
+            ])
+
+            try expect(snapshot.effects.count == 21)
+            try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .updateCapsuleText("cancel me"))
+            try expect(snapshot.effects[16] == .notifyRefining(false))
+            try expect(snapshot.effects[18] == .cancelSession(stopAudioEngine: true))
+            try expect(snapshot.effects[20] == .notifySessionDidEnd)
+            try expect(snapshot.state.phase == .cancelled)
+        }
+        await runner.run("Reducer Doubao fallback flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: VolcengineASRSettings.engineCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "cloud draft", isFinal: false),
+                .fallbackStarted(engine: ASREngineRegistry.appleCode),
+                .triggerReleased,
+                .asrFinal(text: "cloud final", errorMessage: nil, appending: nil),
+            ])
+
+            try expect(snapshot.effects.count == 18)
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .updateCapsuleText("cloud draft"))
+            try expect(snapshot.effects[11] == .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false))
+            try expect(snapshot.effects[17] == .stopSession(generation: 1, immediate: false, appending: nil))
+            try expect(snapshot.state.currentRecordingEngine == ASREngineRegistry.appleCode)
+            try expect(snapshot.state.phase == .idle)
+        }
+        await runner.run("Reducer immediate stop punctuation flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "question", isFinal: false),
+                .immediateStop(appending: "?"),
+                .asrFinal(text: "question?", errorMessage: nil, appending: "?"),
+            ])
+
+            try expect(snapshot.effects.count == 17)
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .updateCapsuleText("question"))
+            try expect(snapshot.effects[16] == .stopSession(generation: 1, immediate: true, appending: "?"))
+            try expect(snapshot.state.phase == .idle)
+        }
+        await runner.run("Reducer audio route recovery failure flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "route text", isFinal: false),
+                .audioRouteRecoveryFailed,
+            ])
+
+            try expect(snapshot.effects.count == 21)
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[11] == .stopSilenceMonitor)
+            try expect(snapshot.effects[16] == .abandonAudioRouteRecovery)
+            try expect(snapshot.effects[18] == .cancelSession(stopAudioEngine: false))
+            try expect(snapshot.effects[19] == .showCapsule(.errorKey(messageKey: "error.audioTapFailed", dismissAfter: 5), ensurePanel: false))
+            try expect(snapshot.effects[20] == .notifySessionDidEnd)
+            try expect(snapshot.state.phase == .errored)
+        }
+        await runner.run("Reducer refining interruption flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .triggerReleased,
+                .asrFinal(text: "draft", errorMessage: nil, appending: nil),
+                .refiningStarted(text: "draft"),
+                .triggerPressed(deferCapsulePresentation: false),
+            ])
+
+            try expect(snapshot.effects.count == 17)
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[14] == .stopSession(generation: 1, immediate: false, appending: nil))
+            try expect(snapshot.effects[15] == .notifyRefining(true))
+            try expect(snapshot.effects[16] == .waitForInputReady(request: 2))
+            try expect(snapshot.state.phase == .starting)
+            try expect(snapshot.state.isRefining)
+        }
+        await runner.run("Reducer deferred capsule reveal flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: true),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .asrPartial(text: "buffered", isFinal: false),
+                .deferredCapsuleReveal,
+            ])
+
+            try expect(snapshot.effects.count == 11)
+            try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .noteASRText("buffered"))
+            try expect(snapshot.effects[10] == .activateTextOutput)
+            try expect(!snapshot.effects.contains(.updateCapsuleText("buffered")))
+            try expect(!snapshot.state.deferredCapsule.isDeferred)
+            try expect(snapshot.state.phase == .capturing)
+        }
+        await runner.run("Reducer live insertion commit flow snapshot") {
+            let snapshot = collectSnapshot([
+                .triggerPressed(deferCapsulePresentation: false),
+                .inputPreflightCompleted(request: 1, ready: true),
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                ),
+                .textOutputActivated(liveInsertion: true),
+                .liveInsertionCommitted(segment: "hello", latestText: "hello"),
+                .liveInsertionCommitFinished,
+            ])
+
+            try expect(snapshot.effects.count == 10)
+            try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
+            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[9] == .deliverText("hello"))
+            try expect(snapshot.state.phase == .capturing)
+            try expect(snapshot.state.liveInsertion.isActive)
+            try expect(snapshot.state.liveInsertion.committedText == "hello")
+            try expect(!snapshot.state.liveInsertion.pasteInFlight)
         }
         await runner.run("Recording session presentation reveal emits ordered events") {
             try expect(
