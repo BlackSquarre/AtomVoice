@@ -38,13 +38,14 @@ let package = Package(
                 "AppIcon.iconset",
                 "Debug/SherpaMemoryProbe",
                 "Debug/SherpaMemoryBenchmark",
+                "Debug/AtomVoiceArchitectureTests",
                 "Debug/Tools",
             ]
         ),
         .executableTarget(
             name: "AtomVoiceArchitectureTests",
             dependencies: ["AtomVoiceCore"],
-            path: "Tests/AtomVoiceArchitectureTests"
+            path: "Sources/AtomVoice/Debug/AtomVoiceArchitectureTests"
         ),
         .executableTarget(
             name: "SherpaMemoryProbe",

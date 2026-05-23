@@ -517,6 +517,7 @@ final class RecordingSessionController {
               isRecording,
               recognitionSession?.supportsLiveInsertion == true
         else { return }
+        _ = dispatch(.liveInsertionLatestObserved(text: text))
         guard !state.liveInsertion.pasteInFlight else { return }
         guard text.hasPrefix(state.liveInsertion.committedText) else { return }
 

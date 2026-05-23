@@ -54,6 +54,7 @@ enum RecordingEvent: Equatable {
     case liveInsertionProgressCleared
     case liveInsertionReset
     case liveInsertionDeferred(text: String, isFinal: Bool)
+    case liveInsertionLatestObserved(text: String)
     case liveInsertionCommitted(segment: String, latestText: String)
     case liveInsertionCommitFinished
     case teardownCompleted
@@ -336,8 +337,9 @@ struct RecordingStateMachine {
             effects.append(.stopSession(generation: next.recordingGeneration, immediate: true, appending: punctuation))
 
         case .cancelRequested:
-            guard next.phase == .capturing || next.phase == .starting || next.isRefining else {
+            guard next.phase == .capturing || next.isRefining else {
                 if next.phase == .starting {
+                    next.phase = .cancelled
                     next.startRequestGeneration += 1
                     next.deferredCapsule.reset()
                 }
@@ -473,6 +475,10 @@ struct RecordingStateMachine {
         case .liveInsertionDeferred(let text, let isFinal):
             next.deferredCapsule.liveInsertionText = text
             next.deferredCapsule.liveInsertionIsFinal = next.deferredCapsule.liveInsertionIsFinal || isFinal
+
+        case .liveInsertionLatestObserved(let text):
+            guard next.liveInsertion.isActive else { break }
+            next.liveInsertion.latestText = text
 
         case .liveInsertionCommitted(let segment, let latestText):
             next.liveInsertion.latestText = latestText

@@ -514,6 +514,23 @@ struct ArchitectureTestRunner {
             try expect(cancelled.sideEffects.contains(.notifySessionDidEnd))
         }
 
+        await runner.run("Recording state machine lightly cancels pending start") {
+            var state = RecordingSessionState()
+            let request = try require(state.beginStart(deferredCapsulePresentation: true))
+            state.deferredCapsule.pendingPresentation = .recording
+            state.deferredCapsule.recognizedText = "pending"
+
+            let cancelled = RecordingStateMachine.reduce(state, .cancelRequested)
+
+            try expect(cancelled.state.phase == .cancelled)
+            try expect(cancelled.state.startRequestGeneration == request + 1)
+            try expect(!cancelled.state.deferredCapsule.isDeferred)
+            try expect(cancelled.sideEffects.isEmpty)
+            try expect(!cancelled.sideEffects.contains(.notifySessionDidEnd))
+            try expect(!cancelled.sideEffects.contains(.restoreVolume))
+            try expect(!cancelled.sideEffects.contains(.cancelLLM))
+        }
+
         await runner.run("Recording state machine handles audio route failure") {
             var state = RecordingSessionState()
             _ = state.beginStart(deferredCapsulePresentation: false)
@@ -620,6 +637,33 @@ struct ArchitectureTestRunner {
 
             try expect(shimmer.state.deferredCapsule.pendingShimmer)
             try expect(shimmer.sideEffects.isEmpty)
+        }
+
+        await runner.run("Recording state machine observes live insertion latest only while active") {
+            var state = RecordingSessionState()
+            state.liveInsertion.latestText = "old"
+
+            let inactive = RecordingStateMachine.reduce(state, .liveInsertionLatestObserved(text: "new"))
+            try expect(inactive.state.liveInsertion.latestText == "old")
+
+            state.liveInsertion.isActive = true
+            state.liveInsertion.committedText = "committed"
+            let active = RecordingStateMachine.reduce(state, .liveInsertionLatestObserved(text: "new"))
+            try expect(active.state.liveInsertion.latestText == "new")
+            try expect(active.state.liveInsertion.committedText == "committed")
+        }
+
+        await runner.run("Recording state machine observes latest text while paste is in flight") {
+            var state = RecordingSessionState()
+            state.liveInsertion.isActive = true
+            state.liveInsertion.latestText = "old"
+            state.liveInsertion.pasteInFlight = true
+
+            let observed = RecordingStateMachine.reduce(state, .liveInsertionLatestObserved(text: "newer partial"))
+
+            try expect(observed.state.liveInsertion.latestText == "newer partial")
+            try expect(observed.state.liveInsertion.pasteInFlight)
+            try expect(observed.sideEffects.isEmpty)
         }
 
         await runner.run("Recording state machine commits live insertion segment") {
