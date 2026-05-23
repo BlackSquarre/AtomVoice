@@ -91,10 +91,13 @@ enum PasteCompatibilityRegistry {
     }()
 
     /// 查找当前前台应用对应的兼容性配置。返回 nil 表示走默认粘贴行为。
-    static func profileForFrontmostApp() -> PasteCompatibilityProfile? {
-        guard let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else {
-            return nil
-        }
+    static func profile(forBundleID bundleID: String?) -> PasteCompatibilityProfile? {
+        guard let bundleID, !bundleID.isEmpty else { return nil }
         return bundleIDIndex[bundleID]
+    }
+
+    /// 查找当前前台应用对应的兼容性配置。返回 nil 表示走默认粘贴行为。
+    static func profileForFrontmostApp() -> PasteCompatibilityProfile? {
+        profile(forBundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
     }
 }
