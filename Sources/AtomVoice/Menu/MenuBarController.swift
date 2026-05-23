@@ -2,7 +2,7 @@ import Cocoa
 import Speech
 import ServiceManagement
 
-final class MenuBarController {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let onLanguageChanged: () -> Void
     private let asrEngineRegistry: ASREngineRegistry
@@ -20,6 +20,7 @@ final class MenuBarController {
         self.asrEngineRegistry = asrEngineRegistry
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner)
+        super.init()
         setupStatusItem()
     }
 
@@ -33,6 +34,7 @@ final class MenuBarController {
 
     private func rebuildMenu() {
         let menu = NSMenu()
+        menu.delegate = self
 
         // 顶部提示：按住/单击 [触发键] 开始语音输入（Top tip: hold/tap [trigger key] to start voice input）
         let triggerOption = TriggerKeyOption.option(for: AppSettings.triggerKeyCode)
@@ -430,16 +432,23 @@ final class MenuBarController {
 
         // Debug: 当前进程内存快照（写入 ~/Library/Logs/AtomVoice/debug.log）
         let memProbeItem = NSMenuItem(
-            title: String(format: "Memory: %.1f MB (click to log)", MemoryProbe.currentMB()),
+            title: Self.debugMemoryTitle(),
             action: #selector(debugDumpMemorySnapshot(_:)),
             keyEquivalent: ""
         )
         memProbeItem.image = icon("memorychip")
         memProbeItem.target = self
+        debugMemoryItem = memProbeItem
         m.addItem(memProbeItem)
         #endif
 
         return m
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        #if DEBUG_BUILD
+        updateDebugMemoryItem()
+        #endif
     }
 
     // MARK: - Launch at Login
@@ -648,6 +657,16 @@ final class MenuBarController {
     }
 
     #if DEBUG_BUILD
+    private weak var debugMemoryItem: NSMenuItem?
+
+    private static func debugMemoryTitle() -> String {
+        String(format: "Memory: %.1f MB (click to log)", MemoryProbe.currentMB())
+    }
+
+    private func updateDebugMemoryItem() {
+        debugMemoryItem?.title = Self.debugMemoryTitle()
+    }
+
     @objc private func debugTestOnDeviceAlert(_ sender: NSMenuItem) {
         showOnDeviceModelDownloadAlert()
     }
@@ -660,7 +679,7 @@ final class MenuBarController {
 
     @objc private func debugDumpMemorySnapshot(_ sender: NSMenuItem) {
         MemoryProbe.log("manual-dump")
-        rebuildMenu()
+        updateDebugMemoryItem()
     }
     #endif
 
