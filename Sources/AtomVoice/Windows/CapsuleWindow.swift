@@ -515,7 +515,7 @@ final class CapsuleWindowController {
                     panel.invalidateShadow()
                 }
             }
-            RunLoop.main.add(self.springTimer!, forMode: .common)
+            RunLoop.main.add(self.springTimer!, forMode: .default)
         }
     }
 
@@ -978,7 +978,7 @@ final class CapsuleWindowController {
                 completion?()
             }
         }
-        RunLoop.main.add(springTimer!, forMode: .common)
+        RunLoop.main.add(springTimer!, forMode: .default)
     }
 
     // MARK: - 简约模式退场
@@ -1015,7 +1015,7 @@ final class CapsuleWindowController {
                 self.timerLabel?.stringValue = "\(elapsed / 60):\(String(format: "%02d", elapsed % 60))"
             }
         }
-        RunLoop.main.add(elapsedTimer!, forMode: .common)
+        RunLoop.main.add(elapsedTimer!, forMode: .default)
     }
     #endif
 

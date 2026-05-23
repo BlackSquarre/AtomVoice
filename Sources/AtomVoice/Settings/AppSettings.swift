@@ -15,6 +15,8 @@ struct LLMConnectionSettings {
 
 enum AppSettings {
     private static let defaults = UserDefaults.standard
+    static let recognitionEngineSettingsDidChangeNotification = Notification.Name("AppSettings.recognitionEngineSettingsDidChange")
+    static let recognitionEngineSettingsChangedKey = "key"
 
     enum Keys {
         static let selectedLanguage = "selectedLanguage"
@@ -147,7 +149,11 @@ enum AppSettings {
 
     static var recognitionEngine: String {
         get { defaults.string(forKey: Keys.recognitionEngine) ?? ASREngineRegistry.appleCode }
-        set { defaults.set(newValue, forKey: Keys.recognitionEngine) }
+        set {
+            let oldValue = recognitionEngine
+            defaults.set(newValue, forKey: Keys.recognitionEngine)
+            postRecognitionEngineSettingsDidChange(key: Keys.recognitionEngine, oldValue: oldValue, newValue: recognitionEngine)
+        }
     }
 
     static var normalizedRecognitionEngine: String {
@@ -276,17 +282,33 @@ enum AppSettings {
 
     static var sherpaProvider: String {
         get { defaults.string(forKey: Keys.sherpaProvider) ?? defaultSherpaProvider }
-        set { defaults.set(newValue, forKey: Keys.sherpaProvider) }
+        set {
+            let oldValue = sherpaProvider
+            defaults.set(newValue, forKey: Keys.sherpaProvider)
+            postRecognitionEngineSettingsDidChange(key: Keys.sherpaProvider, oldValue: oldValue, newValue: sherpaProvider)
+        }
     }
 
     static var sherpaModelPresetID: String {
         get { defaults.string(forKey: Keys.sherpaModelPresetID) ?? SherpaModelPreset.defaultModelID }
-        set { defaults.set(newValue, forKey: Keys.sherpaModelPresetID) }
+        set {
+            let oldValue = sherpaModelPresetID
+            defaults.set(newValue, forKey: Keys.sherpaModelPresetID)
+            postRecognitionEngineSettingsDidChange(key: Keys.sherpaModelPresetID, oldValue: oldValue, newValue: sherpaModelPresetID)
+        }
     }
 
     static var sherpaRecognitionLanguage: String {
         get { SherpaModelPreset.recognitionLanguage }
-        set { defaults.set(newValue, forKey: SherpaModelPreset.recognitionLanguageKey) }
+        set {
+            let oldValue = sherpaRecognitionLanguage
+            defaults.set(newValue, forKey: SherpaModelPreset.recognitionLanguageKey)
+            postRecognitionEngineSettingsDidChange(
+                key: SherpaModelPreset.recognitionLanguageKey,
+                oldValue: oldValue,
+                newValue: sherpaRecognitionLanguage
+            )
+        }
     }
 
     static var doubaoASRPrivacyAccepted: Bool {
@@ -331,5 +353,14 @@ enum AppSettings {
     static var hasCompletedOOBE: Bool {
         get { defaults.bool(forKey: OOBEWindowController.completionDefaultsKey) }
         set { defaults.set(newValue, forKey: OOBEWindowController.completionDefaultsKey) }
+    }
+
+    private static func postRecognitionEngineSettingsDidChange(key: String, oldValue: String, newValue: String) {
+        guard oldValue != newValue else { return }
+        NotificationCenter.default.post(
+            name: recognitionEngineSettingsDidChangeNotification,
+            object: defaults,
+            userInfo: [recognitionEngineSettingsChangedKey: key]
+        )
     }
 }

@@ -100,7 +100,7 @@ final class HeadphoneMonitor {
                 let monitor = Unmanaged<HeadphoneMonitor>.fromOpaque(refcon).takeUnretainedValue()
                 return monitor.handleEvent(type: type, event: event)
             },
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
+            userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
             DebugLog.error("[HeadphoneMonitor] 无法创建事件监听（缺少辅助功能权限？）")
             return
@@ -116,6 +116,8 @@ final class HeadphoneMonitor {
     func stop() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
+            // 释放 start() 中 passRetained 的强引用（Release the retained reference from start()）
+            Unmanaged<HeadphoneMonitor>.passUnretained(self).release()
         }
         if let source = runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)

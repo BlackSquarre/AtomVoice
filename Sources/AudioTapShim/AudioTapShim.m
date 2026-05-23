@@ -1,4 +1,9 @@
 #import "AudioTapShim.h"
+#import <stdatomic.h>
+
+struct AtomVoiceAtomicFlag {
+    atomic_bool value;
+};
 
 BOOL AtomVoiceInstallAudioTap(AVAudioNode *node,
                                AVAudioNodeBus bus,
@@ -30,4 +35,34 @@ BOOL AtomVoiceInstallAudioTapWithError(AVAudioNode *node,
         }
         return NO;
     }
+}
+
+AtomVoiceAtomicFlag *AtomVoiceAtomicFlagCreate(bool initialValue) {
+    AtomVoiceAtomicFlag *flag = malloc(sizeof(AtomVoiceAtomicFlag));
+    if (!flag) {
+        return NULL;
+    }
+    atomic_init(&flag->value, initialValue);
+    return flag;
+}
+
+void AtomVoiceAtomicFlagDestroy(AtomVoiceAtomicFlag *flag) {
+    if (!flag) {
+        return;
+    }
+    free(flag);
+}
+
+bool AtomVoiceAtomicFlagLoad(AtomVoiceAtomicFlag *flag) {
+    if (!flag) {
+        return false;
+    }
+    return atomic_load_explicit(&flag->value, memory_order_acquire);
+}
+
+void AtomVoiceAtomicFlagStore(AtomVoiceAtomicFlag *flag, bool value) {
+    if (!flag) {
+        return;
+    }
+    atomic_store_explicit(&flag->value, value, memory_order_release);
 }

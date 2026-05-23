@@ -51,7 +51,10 @@ enum AudioOutputProbe {
             &size,
             &deviceID
         )
-        guard status == noErr, deviceID != 0 else { return nil }
+        guard status == noErr, deviceID != 0 else {
+            logCoreAudioFailure("defaultOutputDeviceID", status: status, deviceID: deviceID)
+            return nil
+        }
         return deviceID
     }
 
@@ -64,7 +67,11 @@ enum AudioOutputProbe {
             mElement: kAudioObjectPropertyElementMain
         )
         let status = AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &transport)
-        return status == noErr ? transport : 0
+        guard status == noErr else {
+            logCoreAudioFailure("transportType", status: status, deviceID: deviceID)
+            return 0
+        }
+        return transport
     }
 
     /// 内置音频设备的 data source 为 'hdpn' 时表示插入了 3.5mm 耳机。
@@ -78,9 +85,18 @@ enum AudioOutputProbe {
             mElement: kAudioObjectPropertyElementMain
         )
         let status = AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &dataSource)
-        guard status == noErr else { return false }
+        guard status == noErr else {
+            logCoreAudioFailure("builtInDataSource", status: status, deviceID: deviceID)
+            return false
+        }
         // 'hdpn' = headphones, 'ispk' = internal speaker
         let headphoneCode: UInt32 = 0x6864_706E // 'hdpn'
         return dataSource == headphoneCode
+    }
+
+    private static func logCoreAudioFailure(_ operation: String, status: OSStatus, deviceID: AudioDeviceID) {
+        #if DEBUG_BUILD
+        DebugLog.debug("[AudioOutputProbe] \(operation) failed status=\(status) deviceID=\(deviceID)")
+        #endif
     }
 }

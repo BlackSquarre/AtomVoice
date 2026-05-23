@@ -82,7 +82,7 @@ struct PunctuationProcessor {
 
     // MARK: - 中日韩标点检测
 
-    private static func detectCJKPunctuation(_ text: String, language: String) -> String {
+    static func detectCJKPunctuation(_ text: String, language: String) -> String {
         // 取最后几个字符分析语气（Take the last few characters to analyze tone）
         let suffix = String(text.suffix(6))
 
@@ -159,7 +159,7 @@ struct PunctuationProcessor {
 
     // MARK: - 拉丁语系标点检测
 
-    private static func detectLatinPunctuation(_ text: String, language: String) -> String {
+    static func detectLatinPunctuation(_ text: String, language: String) -> String {
         let lower = text.lowercased().trimmingCharacters(in: .whitespaces)
         let words = lower.components(separatedBy: .whitespaces)
         let firstWord = words.first ?? ""

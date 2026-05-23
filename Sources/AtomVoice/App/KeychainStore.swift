@@ -31,17 +31,34 @@ enum KeychainStore {
         let attributes: [String: Any] = [kSecValueData as String: data]
 
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecSuccess { return true }
+        return upsertResult(
+            updateStatus: updateStatus,
+            addItem: {
+                var addQuery = query
+                addQuery[kSecValueData as String] = data
+                return SecItemAdd(addQuery as CFDictionary, nil)
+            },
+            updateAfterDuplicate: {
+                SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            }
+        )
+    }
 
-        // 更新失败（可能是因为旧条目属于不同的签名身份），删除旧条目后重新创建
-        // (Update failed, possibly because old item belongs to a different signing identity; delete and recreate)
-        if updateStatus != errSecItemNotFound {
-            SecItemDelete(query as CFDictionary)
+    static func upsertResult(
+        updateStatus: OSStatus,
+        addItem: () -> OSStatus,
+        updateAfterDuplicate: () -> OSStatus
+    ) -> Bool {
+        if updateStatus == errSecSuccess { return true }
+        guard updateStatus == errSecItemNotFound else { return false }
+
+        let addStatus = addItem()
+        if addStatus == errSecSuccess { return true }
+        if addStatus == errSecDuplicateItem {
+            return updateAfterDuplicate() == errSecSuccess
         }
 
-        var addQuery = query
-        addQuery[kSecValueData as String] = data
-        return SecItemAdd(addQuery as CFDictionary, nil) == errSecSuccess
+        return false
     }
 
     static func delete(service: String, account: String) {

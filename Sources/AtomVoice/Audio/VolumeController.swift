@@ -86,14 +86,14 @@ final class VolumeController {
     // MARK: - 渐变控制
 
     private func stopFade() {
-        if Thread.isMainThread {
-            fadeTimer?.invalidate()
-            fadeTimer = nil
-        } else {
-            let timer = fadeTimer
-            DispatchQueue.main.async { timer?.invalidate() }
-            fadeTimer = nil
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.stopFade()
+            }
+            return
         }
+        fadeTimer?.invalidate()
+        fadeTimer = nil
     }
 
     /// 启动一段渐变；只有自然跑完到 progress=1.0 才会触发 onComplete，

@@ -221,7 +221,7 @@ final class OOBEWindowController: NSObject {
 
     private func finish() {
         UserDefaults.standard.set(true, forKey: Self.completionDefaultsKey)
-        UserDefaults.standard.set(selectedEngine, forKey: "recognitionEngine")
+        AppSettings.recognitionEngine = selectedEngine
         UserDefaults.standard.set(Int(selectedTriggerKeyCode), forKey: "triggerKeyCode")
         UserDefaults.standard.set(selectedSilenceAutoStop, forKey: "silenceAutoStopEnabled")
         AppSettings.headphoneControlEnabled = selectedHeadphoneControl

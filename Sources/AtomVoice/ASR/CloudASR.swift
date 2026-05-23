@@ -334,7 +334,6 @@ final class CloudASRRecognizerController: NSObject {
     }
 
     private func cancelLocked() {
-        state = .cancelled
         sessionID += 1
         finishCompletion = nil
         connection?.cancel()

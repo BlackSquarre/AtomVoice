@@ -47,6 +47,9 @@ final class SherpaOnnxRecognizerController {
     }
 
     deinit {
+        if let context {
+            AtomVoiceSherpaDestroy(context)
+        }
         if let punctuationContext {
             AtomVoiceSherpaPunctuationDestroy(punctuationContext)
         }
@@ -160,6 +163,9 @@ final class SherpaOnnxRecognizerController {
             let detail = String(cString: errorBuffer)
             let message = detail.isEmpty ? "Unknown error" : detail
             let failureKind = Self.startFailureKind(for: message)
+            #if DEBUG_BUILD
+            DebugLog.debug("[SherpaOnnx] create failed kind=\(failureKind) provider=\(Self.provider) detail=\(message)")
+            #endif
             lastStartFailureKind = failureKind
             switch failureKind {
             case .missingRuntime:
@@ -209,9 +215,17 @@ final class SherpaOnnxRecognizerController {
             let text: String? = input.samples.withUnsafeBufferPointer { samplesPtr in
                 guard let baseAddress = samplesPtr.baseAddress else { return nil }
                 guard AtomVoiceSherpaAcceptWaveform(context, input.sampleRate, baseAddress, Int32(samplesPtr.count)) != 0 else {
+                    #if DEBUG_BUILD
+                    DebugLog.debug("[SherpaOnnx] accept waveform failed sampleRate=\(input.sampleRate) sampleCount=\(samplesPtr.count)")
+                    #endif
                     return nil
                 }
-                guard let cText = AtomVoiceSherpaGetResult(context) else { return nil }
+                guard let cText = AtomVoiceSherpaGetResult(context) else {
+                    #if DEBUG_BUILD
+                    DebugLog.debug("[SherpaOnnx] get result returned nil after accept")
+                    #endif
+                    return nil
+                }
                 defer { AtomVoiceSherpaFreeString(cText) }
                 return String(cString: cText)
             }
@@ -254,6 +268,9 @@ final class SherpaOnnxRecognizerController {
 
             return trimmed.withCString { input in
                 guard let cText = AtomVoiceSherpaPunctuationAddPunct(punctuationContext, input) else {
+                    #if DEBUG_BUILD
+                    DebugLog.debug("[SherpaOnnx] punctuation add returned nil textLength=\(trimmed.count)")
+                    #endif
                     return nil
                 }
                 defer { AtomVoiceSherpaFreeString(cText) }

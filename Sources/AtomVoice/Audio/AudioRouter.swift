@@ -40,40 +40,40 @@ final class AudioRouter {
         let outputFormat: AVAudioFormat
     }
 
-    private let lock = NSLock()
+    private let consumerLock = NSLock()
+    private let converterLock = NSLock()
     private var consumers: [Consumer] = []
     /// converter cache 的 key 把"输入 format 指纹"和"目标 format"拼起来，
     /// 输入 format 变化（如设备切换导致 SR 变化）时自动重建。
     /// (Cache key combines input-format fingerprint and target format; auto-rebuilds on input change.)
     private var converterCache: [String: ConverterEntry] = [:]
+    private var converterCacheGeneration = 0
 
     func register(format: ConsumerFormat?, handler: @escaping ConsumerHandler) -> UUID {
         let consumer = Consumer(id: UUID(), format: format, handler: handler)
-        lock.lock(); defer { lock.unlock() }
+        consumerLock.lock(); defer { consumerLock.unlock() }
         consumers.append(consumer)
         return consumer.id
     }
 
     func unregister(_ id: UUID) {
-        lock.lock(); defer { lock.unlock() }
+        consumerLock.lock(); defer { consumerLock.unlock() }
         consumers.removeAll { $0.id == id }
     }
 
     /// 设备切换 / engine 重建后调用：input format 可能变化，丢掉所有缓存 converter 让下次按需重建。
     /// (Call after device/engine change to flush converters; next receive() rebuilds on demand.)
     func invalidate() {
-        lock.lock(); defer { lock.unlock() }
+        converterLock.lock(); defer { converterLock.unlock() }
         converterCache.removeAll(keepingCapacity: true)
+        converterCacheGeneration &+= 1
     }
 
     /// 来自 AudioEngine tap 的单一回调。按消费者目标 format 分发；同一目标 format 多消费者共享一次转换。
     /// (Single entry point from the AudioEngine tap. Dispatch by target format; multiple consumers
     ///  with the same target share one conversion per buffer.)
     func receive(_ buffer: AVAudioPCMBuffer) {
-        // 拍下 consumer 快照，handler 执行在锁外（避免回调里 register/unregister 死锁）。
-        lock.lock()
-        let snapshot = consumers
-        lock.unlock()
+        guard let snapshot = consumerSnapshotForReceive() else { return }
 
         guard !snapshot.isEmpty else { return }
 
@@ -98,6 +98,14 @@ final class AudioRouter {
         }
     }
 
+    private func consumerSnapshotForReceive() -> [Consumer]? {
+        // audio tap callback 不等待 register/unregister；锁忙时宁可丢弃当前帧。
+        // (Do not block the audio tap on registration churn; drop this frame if the lock is busy.)
+        guard consumerLock.try() else { return nil }
+        defer { consumerLock.unlock() }
+        return consumers
+    }
+
     // MARK: - 内部转换
 
     /// 输入 format 的"指纹"用于 cache key（SR/声道/format/interleaved 任何一项变化都要重建 converter）。
@@ -120,21 +128,7 @@ final class AudioRouter {
             return inputBuffer
         }
 
-        lock.lock()
-        let entry: ConverterEntry
-        if let cached = converterCache[key] {
-            entry = cached
-        } else {
-            guard let outputFormat = target.avFormat,
-                  let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
-                lock.unlock()
-                DebugLog.error("[AudioRouter] 无法创建 converter input=\(inputFingerprint(inputFormat)) target=\(target)")
-                return nil
-            }
-            entry = ConverterEntry(converter: converter, outputFormat: outputFormat)
-            converterCache[key] = entry
-        }
-        lock.unlock()
+        guard let entry = converterEntry(inputFormat: inputFormat, target: target, key: key) else { return nil }
 
         let ratio = entry.outputFormat.sampleRate / inputFormat.sampleRate
         let capacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 1024
@@ -160,5 +154,36 @@ final class AudioRouter {
         }
         guard status != .error, outputBuffer.frameLength > 0 else { return nil }
         return outputBuffer
+    }
+
+    private func converterEntry(
+        inputFormat: AVAudioFormat,
+        target: ConsumerFormat,
+        key: String
+    ) -> ConverterEntry? {
+        converterLock.lock()
+        if let cached = converterCache[key] {
+            converterLock.unlock()
+            return cached
+        }
+        let generation = converterCacheGeneration
+        converterLock.unlock()
+
+        guard let outputFormat = target.avFormat,
+              let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
+            DebugLog.error("[AudioRouter] 无法创建 converter input=\(inputFingerprint(inputFormat)) target=\(target)")
+            return nil
+        }
+
+        let created = ConverterEntry(converter: converter, outputFormat: outputFormat)
+        converterLock.lock()
+        defer { converterLock.unlock() }
+        if let cached = converterCache[key] {
+            return cached
+        }
+        if converterCacheGeneration == generation {
+            converterCache[key] = created
+        }
+        return created
     }
 }

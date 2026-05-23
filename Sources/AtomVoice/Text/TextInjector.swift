@@ -7,8 +7,11 @@ final class TextInjector {
         let completion: (() -> Void)?
     }
 
+    private static let injectionWatchdogTimeout: TimeInterval = 5.0
+
     private var pendingInjections: [PendingInjection] = []
     private var isInjecting = false
+    private var currentInjectionID = UUID()
 
     func inject(text: String, completion: (() -> Void)? = nil) {
         if !Thread.isMainThread {
@@ -33,10 +36,27 @@ final class TextInjector {
         }
 
         isInjecting = true
+        let injectionID = UUID()
+        currentInjectionID = injectionID
+        scheduleInjectionWatchdog(for: injectionID, text: next.text, completion: next.completion)
         performInject(text: next.text) { [weak self] in
             guard let self else { return }
+            guard self.isInjecting, self.currentInjectionID == injectionID else {
+                return
+            }
             self.isInjecting = false
             next.completion?()
+            self.processNextInjection()
+        }
+    }
+
+    private func scheduleInjectionWatchdog(for injectionID: UUID, text: String, completion: (() -> Void)?) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.injectionWatchdogTimeout) { [weak self] in
+            guard let self, self.isInjecting, self.currentInjectionID == injectionID else { return }
+            DebugLog.error("[TextInjector] 注入超时 \(Self.injectionWatchdogTimeout)s，重置状态并继续队列，textLength=\(text.count)")
+            self.isInjecting = false
+            self.currentInjectionID = UUID()
+            completion?()
             self.processNextInjection()
         }
     }

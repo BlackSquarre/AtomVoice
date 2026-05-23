@@ -210,13 +210,15 @@ final class HeadphoneHIDSourceMonitor {
         IOHIDManagerRegisterInputValueCallback(
             hidManager,
             HeadphoneHIDSourceMonitor.inputValueCallback,
-            Unmanaged.passUnretained(self).toOpaque()
+            Unmanaged.passRetained(self).toOpaque()
         )
         IOHIDManagerScheduleWithRunLoop(hidManager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
 
         let status = IOHIDManagerOpen(hidManager, IOOptionBits(kIOHIDOptionsTypeNone))
         guard status == kIOReturnSuccess else {
+            IOHIDManagerRegisterInputValueCallback(hidManager, nil, nil)
             IOHIDManagerUnscheduleFromRunLoop(hidManager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+            Unmanaged<HeadphoneHIDSourceMonitor>.passUnretained(self).release()
             DebugLog.error("[HeadphoneHIDSource] IOHIDManager 启动失败 status=\(status)")
             return
         }
@@ -230,6 +232,8 @@ final class HeadphoneHIDSourceMonitor {
         IOHIDManagerRegisterInputValueCallback(manager, nil, nil)
         IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        // 释放 start() 中 passRetained 的强引用（Release the retained reference from start()）
+        Unmanaged<HeadphoneHIDSourceMonitor>.passUnretained(self).release()
         self.manager = nil
         lastTrustedPlayPauseTime = 0
         lastTrustedSummary = nil

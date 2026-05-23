@@ -11,17 +11,9 @@ protocol RecordingSessionDelegate: AnyObject {
 /// 录音状态机：从 Fn 按下到识别结果上屏的全部流水线。
 /// (Recording state machine: full pipeline from Fn press through recognition delivery.)
 final class RecordingSessionController {
-    private enum CapsulePresentationRequest {
-        case none
-        case initial
-        case recording
-        case progress(text: String, hidesWaveform: Bool)
-        case error(message: String, dismissAfter: TimeInterval)
-    }
-
     // MARK: - 依赖（Dependencies）
     private let audioEngine: AudioEngineController
-    private let capsuleWindow: CapsuleWindowController
+    private let presenter: RecordingSessionPresenting
     private let llmRefiner: LLMRefiner
     private let textOutputSinkRegistry: TextOutputSinkRegistry
     private let volumeController: VolumeController
@@ -36,26 +28,21 @@ final class RecordingSessionController {
     var onRefiningStateChanged: ((Bool) -> Void)?
 
     // MARK: - 状态（State）
-    private(set) var isRecording = false
-    private(set) var isRefining = false
-    private var isStarting = false
-    private(set) var currentRecordingEngine = ASREngineRegistry.appleCode
-    private var recordingGeneration = 0
-    private var startRequestGeneration = 0
-    private var pendingRefinementText: String? = nil
-    private var isWaitingForDoubaoFinalResult = false
-    private var liveInsertionActive = false
-    private var liveInsertionCommittedText = ""
-    private var liveInsertionLatestText = ""
-    private var liveInsertionPasteInFlight = false
+    private var state = RecordingSessionState()
     private var streamSession: TextStreamSession?
-    private var textOutputActivated = false
-    private var isCapsulePresentationDeferred = false
-    private var pendingCapsulePresentation: CapsulePresentationRequest = .none
-    private var pendingCapsuleShimmer = false
-    private var deferredRecognizedText: String?
-    private var deferredLiveInsertionText: String?
-    private var deferredLiveInsertionIsFinal = false
+    var isRecording: Bool { state.isRecording }
+    var isRefining: Bool { state.isRefining }
+    private var isStarting: Bool { state.isStarting }
+    private(set) var currentRecordingEngine: String {
+        get { state.currentRecordingEngine }
+        set { state.currentRecordingEngine = newValue }
+    }
+    private var recordingGeneration: Int {
+        get { state.recordingGeneration }
+    }
+    private var startRequestGeneration: Int {
+        get { state.startRequestGeneration }
+    }
 
     /// 当前录音在 AudioRouter 上注册的消费者 ID（Sherpa/豆包/Apple 各家会注册自己想要的目标 format）。
     /// 任一时刻只有一个引擎在录音，所以单字段足够。markRecordingStopped 时注销。
@@ -109,14 +96,15 @@ final class RecordingSessionController {
         asrEngineProvider: ASREngineProviding
     ) {
         self.audioEngine = audioEngine
-        self.capsuleWindow = capsuleWindow
+        let presenter = RecordingSessionPresenter(capsuleWindow: capsuleWindow)
+        self.presenter = presenter
         self.llmRefiner = llmRefiner
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.volumeController = volumeController
         self.asrEngineRegistry = asrEngineRegistry
         self.asrEngineProvider = asrEngineProvider
         let finalizer = RecognitionResultFinalizer(
-            presenter: capsuleWindow,
+            presenter: presenter,
             refiner: llmRefiner,
             textPostProcessorRegistry: textPostProcessorRegistry,
             outputSinkProvider: { textOutputSinkRegistry.current() },
@@ -132,12 +120,12 @@ final class RecordingSessionController {
         self.recognitionFinalizer = finalizer
         
         finalizer.onRefiningStateChanged = { [weak self] refining, text in
-            self?.isRefining = refining
-            self?.onRefiningStateChanged?(refining)
+            guard let self else { return }
+            self.onRefiningStateChanged?(refining)
             if refining {
-                self?.pendingRefinementText = text
+                self.state.beginRefining(text: text)
             } else {
-                self?.pendingRefinementText = nil
+                _ = self.state.endRefining()
             }
         }
         finalizer.currentGenerationProvider = { [weak self] in
@@ -178,42 +166,31 @@ final class RecordingSessionController {
     func cancel() { cancelRecording() }
 
     /// 当前是否正在显示错误胶囊（Whether the error capsule is currently showing）
-    var isShowingError: Bool { capsuleWindow.isShowingError }
+    var isShowingError: Bool { presenter.isShowingError }
 
     /// 录音已经开始，或正在等待异步输入设备 preflight 完成。
     /// (Recording has started, or the async input preflight is still pending.)
     var isRecordingOrStarting: Bool { isRecording || isStarting }
 
     /// 关闭错误胶囊（Dismiss the error capsule）
-    func dismissError() { capsuleWindow.dismiss() }
+    func dismissError() { presenter.dismiss(completion: nil) }
 
     // MARK: - 胶囊延迟呈现（Deferred capsule presentation）
 
     private func beginCapsulePresentation(deferred: Bool) {
-        isCapsulePresentationDeferred = deferred
-        pendingCapsulePresentation = .none
-        pendingCapsuleShimmer = false
-        deferredRecognizedText = nil
-        deferredLiveInsertionText = nil
-        deferredLiveInsertionIsFinal = false
+        state.deferredCapsule.begin(deferred: deferred)
     }
 
     private func resetDeferredCapsulePresentation() {
-        isCapsulePresentationDeferred = false
-        pendingCapsulePresentation = .none
-        pendingCapsuleShimmer = false
-        deferredRecognizedText = nil
-        deferredLiveInsertionText = nil
-        deferredLiveInsertionIsFinal = false
+        state.resetDeferredCapsulePresentation()
     }
 
     private func activateTextOutputForRecordingIfNeeded() {
-        guard isRecording, !textOutputActivated else { return }
-        textOutputActivated = true
+        guard state.beginTextOutputActivation() else { return }
         if activeOutputSink.descriptor.supportsStreaming {
             streamSession = activeOutputSink.beginStream()
         }
-        liveInsertionActive = streamSession == nil &&
+        state.liveInsertion.isActive = streamSession == nil &&
             asrEngineRegistry.isApple(currentRecordingEngine) &&
             AppSettings.appleLiveInsertionEnabled &&
             !AppSettings.llmEnabled
@@ -221,40 +198,27 @@ final class RecordingSessionController {
     }
 
     private func revealDeferredRecordingPresentation() {
-        guard isCapsulePresentationDeferred else { return }
+        guard state.deferredCapsule.isDeferred else { return }
 
-        let presentation = pendingCapsulePresentation
-        let shouldApplyShimmer = pendingCapsuleShimmer
-        let recognizedText = deferredRecognizedText
-        let liveInsertionText = deferredLiveInsertionText
-        let liveInsertionIsFinal = deferredLiveInsertionIsFinal
+        let presentation = state.deferredCapsule.pendingPresentation
+        let shouldApplyShimmer = state.deferredCapsule.pendingShimmer
+        let recognizedText = state.deferredCapsule.recognizedText
+        let liveInsertionText = state.deferredCapsule.liveInsertionText
+        let liveInsertionIsFinal = state.deferredCapsule.liveInsertionIsFinal
 
-        isCapsulePresentationDeferred = false
-        pendingCapsulePresentation = .none
-        pendingCapsuleShimmer = false
-        deferredRecognizedText = nil
-        deferredLiveInsertionText = nil
-        deferredLiveInsertionIsFinal = false
+        state.resetDeferredCapsulePresentation()
 
         activateTextOutputForRecordingIfNeeded()
 
-        switch presentation {
-        case .none, .initial:
-            if isRecording {
-                capsuleWindow.show(compactStatusKey: streamingCompactKey)
-            }
-        case .recording:
-            capsuleWindow.show(compactStatusKey: streamingCompactKey)
-            capsuleWindow.showRecording()
-        case let .progress(text, hidesWaveform):
-            capsuleWindow.showProgress(text, hidesWaveform: hidesWaveform)
-        case let .error(message, dismissAfter):
-            capsuleWindow.show()
-            capsuleWindow.showError(message, dismissAfter: dismissAfter)
-        }
+        let events = RecordingSessionPresentationEvent.revealEvents(
+            for: presentation,
+            isRecording: isRecording,
+            compactStatusKey: streamingCompactKey
+        )
+        events.forEach { presenter.present($0) }
 
         if shouldApplyShimmer {
-            capsuleWindow.applyShimmerToCapsule()
+            presenter.present(.startShimmer)
         }
         if let recognizedText {
             updateRecognizedText(recognizedText)
@@ -265,77 +229,72 @@ final class RecordingSessionController {
     }
 
     private func showInitialCapsule() {
-        if isCapsulePresentationDeferred {
-            pendingCapsulePresentation = .initial
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingPresentation = .initial
             return
         }
-        capsuleWindow.show(compactStatusKey: streamingCompactKey)
+        presenter.present(.showInitial(compactStatusKey: streamingCompactKey))
     }
 
     private func showRecordingCapsule() {
-        if isCapsulePresentationDeferred {
-            pendingCapsulePresentation = .recording
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingPresentation = .recording
             return
         }
-        capsuleWindow.showRecording()
+        presenter.present(.showRecording)
     }
 
     private func showCapsuleProgress(_ text: String, hidesWaveform: Bool = true) {
-        if isCapsulePresentationDeferred {
-            pendingCapsulePresentation = .progress(text: text, hidesWaveform: hidesWaveform)
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingPresentation = .progress(text: text, hidesWaveform: hidesWaveform)
             return
         }
-        capsuleWindow.showProgress(text, hidesWaveform: hidesWaveform)
+        presenter.present(.showProgress(text: text, hidesWaveform: hidesWaveform))
     }
 
     private func showCapsuleError(_ message: String, dismissAfter delay: TimeInterval, ensurePanel: Bool = false) {
-        if isCapsulePresentationDeferred {
-            pendingCapsulePresentation = .error(message: message, dismissAfter: delay)
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingPresentation = .error(message: message, dismissAfter: delay)
             return
         }
-        if ensurePanel {
-            capsuleWindow.show()
-        }
-        capsuleWindow.showError(message, dismissAfter: delay)
+        presenter.present(.showError(message: message, dismissAfter: delay, ensurePanel: ensurePanel))
     }
 
     private func updateCapsuleText(_ text: String) {
-        if isCapsulePresentationDeferred {
-            deferredRecognizedText = text
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.recognizedText = text
             return
         }
-        capsuleWindow.updateText(text)
+        presenter.present(.updateText(text))
     }
 
     private func updateCapsuleBands(_ bands: [Float]) {
-        guard !isCapsulePresentationDeferred else { return }
-        capsuleWindow.updateBands(bands)
+        guard !state.deferredCapsule.isDeferred else { return }
+        presenter.present(.updateBands(bands))
     }
 
     private func applyCapsuleShimmer() {
-        if isCapsulePresentationDeferred {
-            pendingCapsuleShimmer = true
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingShimmer = true
             return
         }
-        capsuleWindow.applyShimmerToCapsule()
+        presenter.present(.startShimmer)
     }
 
     private func stopCapsuleShimmer() {
-        if isCapsulePresentationDeferred {
-            pendingCapsuleShimmer = false
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.pendingShimmer = false
             return
         }
-        capsuleWindow.stopShimmer()
+        presenter.present(.stopShimmer)
     }
 
     // MARK: - 录音启动（Recording start）
 
     private func startRecording(deferCapsulePresentation: Bool = false) {
-        guard !isRecording, !isStarting else { return }
-        beginCapsulePresentation(deferred: deferCapsulePresentation)
-        isStarting = true
-        startRequestGeneration += 1
-        let startRequest = startRequestGeneration
+        guard let startRequest = state.beginStart(deferredCapsulePresentation: deferCapsulePresentation) else {
+            return
+        }
 
         // 输入设备/格式未就绪时（如 AirPods 热插拔造成的音频路由过渡），
         // 后台异步等待最多 500ms 再继续；主线程不阻塞。
@@ -351,7 +310,7 @@ final class RecordingSessionController {
                   self.startRequestGeneration == startRequest,
                   !self.isRecording else { return }
             guard ready else {
-                self.isStarting = false
+                self.state.failStart()
                 DebugLog.error("[Session] startRecording: preflight 失败，显示错误胶囊")
                 self.showInitialCapsule()
                 self.showCapsuleError(loc("error.noInputDevice"), dismissAfter: 5, ensurePanel: true)
@@ -362,16 +321,14 @@ final class RecordingSessionController {
     }
 
     private func continueStartRecording(startRequest: Int) {
-        guard isStarting,
-              startRequestGeneration == startRequest,
-              !isRecording else { return }
+        guard state.acceptsStartRequest(startRequest) else { return }
         // Sherpa 引擎：直接按当前 preset 实读磁盘判断；isReady 内部含一次轻量自愈
         // (Sherpa engine: read disk for current preset; isReady includes one lightweight self-heal pass)
         let engine = AppSettings.normalizedRecognitionEngine
         let selectedASREngine = asrEngine(for: engine)
         if asrEngineRegistry.isSherpa(engine) {
             if !SherpaModelDownloader.isReady() {
-                isStarting = false
+                state.failStart()
                 if SherpaModelDownloader.shared.isDownloading { return }
                 DispatchQueue.main.async { [weak self] in
                     self?.delegate?.sessionRequiresSherpaModelDownload(redownload: false)
@@ -381,7 +338,7 @@ final class RecordingSessionController {
         }
         if engine == VolcengineASRSettings.engineCode {
             guard AppSettings.doubaoASRPrivacyAccepted else {
-                isStarting = false
+                state.failStart()
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     showInitialCapsule()
@@ -390,7 +347,7 @@ final class RecordingSessionController {
                 return
             }
             if let error = selectedASREngine.validate() {
-                isStarting = false
+                state.failStart()
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     showInitialCapsule()
@@ -400,39 +357,36 @@ final class RecordingSessionController {
             }
         }
 
-        if isWaitingForDoubaoFinalResult {
-            isWaitingForDoubaoFinalResult = false
+        if state.isWaitingForDoubaoFinalResult {
+            state.endDoubaoFinalWait()
             let pendingText = volcengineEngine().currentText.trimmingCharacters(in: .whitespacesAndNewlines)
             if !pendingText.isEmpty {
                 activeOutputSink.deliver(text: pendingText, completion: nil)
             }
         }
 
-        if isRefining, let pendingText = pendingRefinementText, !pendingText.isEmpty {
-            isRefining = false
-            pendingRefinementText = nil
-            activeOutputSink.deliver(text: pendingText, completion: nil)
+        if isRefining {
+            onRefiningStateChanged?(false)
+            let pendingText = state.endRefining()
+            if let pendingText, !pendingText.isEmpty {
+                activeOutputSink.deliver(text: pendingText, completion: nil)
+            }
         }
 
         // 取消正在进行的 LLM 处理，如果有（Cancel any ongoing LLM processing, if any）
         llmRefiner.cancel()
         doubaoFallback.reset()
 
-        isStarting = false
-        isRecording = true
         onRecordingStateChanged?(true)
         asrSilenceMonitor.start()
-        recordingGeneration += 1
-        let generation = recordingGeneration
-        currentRecordingEngine = AppSettings.normalizedRecognitionEngine
+        let generation = state.transitionToRecording(engine: AppSettings.normalizedRecognitionEngine)
 
         // 流式 sink：录音开始时一次性决定 AX/Paste 路径；启用后接管所有上屏，禁用 Apple live insertion
         // (Streaming sink: AX/Paste path decided once at record start; takes over on-screen output and disables Apple live insertion)
         streamSession?.cancel()
         streamSession = nil
-        textOutputActivated = false
         resetLiveInsertionState()
-        if !isCapsulePresentationDeferred {
+        if !state.deferredCapsule.isDeferred {
             activateTextOutputForRecordingIfNeeded()
         }
 
@@ -720,13 +674,8 @@ final class RecordingSessionController {
         guard isRecording else { return }
         DebugLog.error("[Session] 音频路由变化恢复失败，结束当前录音")
         markRecordingStopped()
-        let shouldStopAppleLiveFallback = doubaoFallback.cancel()
-        cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
         audioEngine.abandonAfterRouteRecoveryFailure()
-        sherpaPreload.cancel()
-        resetLiveInsertionState()
-        streamSession?.cancel()
-        streamSession = nil
+        teardownInterruptedRecordingState(stopAudioEngine: false)
         showCapsuleError(loc("error.audioTapFailed"), dismissAfter: 5)
         delegate?.sessionDidEnd()
     }
@@ -767,22 +716,20 @@ final class RecordingSessionController {
     private func updateRecognizedText(_ text: String) {
         // 任何 partial / final 文本变化都喂给静音监控当心跳；只要 ASR 还在产文本就视为还在说话。
         asrSilenceMonitor.noteText(text)
-        if isCapsulePresentationDeferred {
-            deferredRecognizedText = text
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.recognizedText = text
             return
         }
-        capsuleWindow.updateText(text)
+        presenter.present(.updateText(text))
         streamSession?.update(currentText: text)
     }
 
     private func markRecordingStopped() {
         cancelPendingStart()
-        isRecording = false
+        state.markRecordingStopped()
         asrSilenceMonitor.stop()
         onRecordingStateChanged?(false)
         volumeController.restoreVolume()
-        resetDeferredCapsulePresentation()
-        textOutputActivated = false
         // 注销本次录音在 router 上的消费者
         if let id = activeRouterConsumerID {
             audioEngine.router.unregister(id)
@@ -795,10 +742,7 @@ final class RecordingSessionController {
     }
 
     private func cancelPendingStart() {
-        guard isStarting else { return }
-        isStarting = false
-        startRequestGeneration += 1
-        resetDeferredCapsulePresentation()
+        _ = state.cancelPendingStart()
     }
 
     private func stopCurrentLocalASREngineSynchronously() -> String {
@@ -822,14 +766,30 @@ final class RecordingSessionController {
     }
 
     private func clearLiveInsertionProgress() {
-        liveInsertionCommittedText = ""
-        liveInsertionLatestText = ""
-        liveInsertionPasteInFlight = false
+        state.liveInsertion.clearProgress()
     }
 
     private func resetLiveInsertionState() {
-        liveInsertionActive = false
-        clearLiveInsertionProgress()
+        state.liveInsertion.reset()
+    }
+
+    private func teardownInterruptedRecordingState(stopAudioEngine: Bool) {
+        if isRefining {
+            onRefiningStateChanged?(false)
+        }
+
+        state.clearInterruptedState()
+        llmRefiner.cancel()
+
+        let shouldStopAppleLiveFallback = doubaoFallback.cancel()
+        cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
+        if stopAudioEngine {
+            audioEngine.stop()
+        }
+        sherpaPreload.cancel()
+        resetLiveInsertionState()
+        streamSession?.cancel()
+        streamSession = nil
     }
 
     private func copyAudioBuffer(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
@@ -884,10 +844,10 @@ final class RecordingSessionController {
             if currentRecordingEngine == VolcengineASRSettings.engineCode {
                 audioEngine.stop()
                 if consumeDoubaoFallbackIfNeeded(generation: generation) { return }
-                isWaitingForDoubaoFinalResult = true
+                state.beginDoubaoFinalWait()
                 volcengineEngine().stop { [weak self] recognizedText, errorMsg in
                     guard let self, self.recordingGeneration == generation else { return }
-                    self.isWaitingForDoubaoFinalResult = false
+                    self.state.endDoubaoFinalWait()
                     if let errorMsg {
                         self.finishDoubaoRecordingWithAppleFallback(
                             generation: generation,
@@ -915,29 +875,14 @@ final class RecordingSessionController {
             return
         }
         
-        recordingGeneration += 1
-        
-        if isRefining {
-            isRefining = false
-            onRefiningStateChanged?(false)
-        }
-        
-        isWaitingForDoubaoFinalResult = false
-        pendingRefinementText = nil
+        state.invalidateGenerationForCancel()
         
         markRecordingStopped()
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            llmRefiner.cancel()
-            let shouldStopAppleLiveFallback = doubaoFallback.cancel()
-            cancelCurrentRecognition(shouldStopAppleLiveFallback: shouldStopAppleLiveFallback)
-            audioEngine.stop()
-            sherpaPreload.cancel()
-            resetLiveInsertionState()
-            streamSession?.cancel()
-            streamSession = nil
-            capsuleWindow.dismiss()
+            teardownInterruptedRecordingState(stopAudioEngine: true)
+            presenter.dismiss(completion: nil)
             delegate?.sessionDidEnd()
         }
     }
@@ -1058,8 +1003,8 @@ final class RecordingSessionController {
                 mode: mode,
                 engineCode: currentRecordingEngine,
                 liveInsertion: RecognitionLiveInsertionSnapshot(
-                    isActive: liveInsertionActive,
-                    committedText: liveInsertionCommittedText
+                    isActive: state.liveInsertion.isActive,
+                    committedText: state.liveInsertion.committedText
                 ),
                 streamSession: streamSession,
                 clearStreamSession: { [weak self] in
@@ -1073,29 +1018,29 @@ final class RecordingSessionController {
     // MARK: - Apple live insertion 段落提交（Apple live segment commit）
 
     private func commitAppleLiveSegmentIfNeeded(from text: String, isFinal: Bool) {
-        if isCapsulePresentationDeferred {
-            deferredLiveInsertionText = text
-            deferredLiveInsertionIsFinal = deferredLiveInsertionIsFinal || isFinal
+        if state.deferredCapsule.isDeferred {
+            state.deferredCapsule.liveInsertionText = text
+            state.deferredCapsule.liveInsertionIsFinal = state.deferredCapsule.liveInsertionIsFinal || isFinal
             return
         }
-        guard liveInsertionActive, isRecording, asrEngineRegistry.isApple(currentRecordingEngine) else { return }
-        liveInsertionLatestText = text
-        guard !liveInsertionPasteInFlight else { return }
-        guard text.hasPrefix(liveInsertionCommittedText) else { return }
+        guard state.liveInsertion.isActive, isRecording, asrEngineRegistry.isApple(currentRecordingEngine) else { return }
+        state.liveInsertion.latestText = text
+        guard !state.liveInsertion.pasteInFlight else { return }
+        guard text.hasPrefix(state.liveInsertion.committedText) else { return }
 
-        let uncommitted = String(text.dropFirst(liveInsertionCommittedText.count))
+        let uncommitted = String(text.dropFirst(state.liveInsertion.committedText.count))
         guard let endIndex = committableLiveSegmentEnd(in: uncommitted, isFinal: isFinal) else { return }
 
         let segment = String(uncommitted[..<endIndex])
         guard !segment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        liveInsertionCommittedText += segment
-        liveInsertionPasteInFlight = true
+        state.liveInsertion.committedText += segment
+        state.liveInsertion.pasteInFlight = true
         activeOutputSink.deliver(text: segment) { [weak self] in
             guard let self else { return }
-            self.liveInsertionPasteInFlight = false
+            self.state.liveInsertion.pasteInFlight = false
             if self.isRecording {
-                self.commitAppleLiveSegmentIfNeeded(from: self.liveInsertionLatestText, isFinal: false)
+                self.commitAppleLiveSegmentIfNeeded(from: self.state.liveInsertion.latestText, isFinal: false)
             }
         }
     }

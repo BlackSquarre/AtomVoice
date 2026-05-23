@@ -8,24 +8,6 @@ protocol RecognitionResultPresenting: AnyObject {
     func dismissRecognition(completion: (() -> Void)?)
 }
 
-extension CapsuleWindowController: RecognitionResultPresenting {
-    func updateRecognitionText(_ text: String) {
-        updateText(text)
-    }
-
-    func showRecognitionRefining() {
-        showRefining()
-    }
-
-    func showRecognitionError(_ message: String, dismissAfter: TimeInterval) {
-        showError(message, dismissAfter: dismissAfter)
-    }
-
-    func dismissRecognition(completion: (() -> Void)?) {
-        dismiss(completion: completion)
-    }
-}
-
 // LLM 润色协议：生产代码用 LLMRefiner，测试用 fake。
 protocol RecognitionTextRefining: AnyObject {
     func refine(
@@ -307,7 +289,7 @@ final class RecognitionResultFinalizer {
         return !(skipWhenLiveInsertionCommitted && liveInsertion.hasCommittedText)
     }
 
-    private func remainingTextAfterLiveInsertion(
+    func remainingTextAfterLiveInsertion(
         _ text: String,
         liveInsertion: RecognitionLiveInsertionSnapshot
     ) -> String {
@@ -324,14 +306,42 @@ final class RecognitionResultFinalizer {
         }
 
         let commonPrefixEnd = commonPrefixEndIndex(in: text, with: liveInsertion.committedText)
-        let commonPrefixLength = text.distance(from: text.startIndex, to: commonPrefixEnd)
+        let safeSuffixStart = liveInsertionSuffixStartIndex(in: text, commonPrefixEnd: commonPrefixEnd)
+        let commonPrefixLength = text.distance(from: text.startIndex, to: safeSuffixStart)
         if commonPrefixLength > 0 {
             DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不完全一致，从共同前缀后继续注入")
-            return String(text[commonPrefixEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            return String(text[safeSuffixStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
         DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不一致，注入完整最终文本以避免丢字")
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func liveInsertionSuffixStartIndex(in text: String, commonPrefixEnd: String.Index) -> String.Index {
+        guard commonPrefixEnd > text.startIndex, commonPrefixEnd < text.endIndex else {
+            return commonPrefixEnd
+        }
+
+        let previous = text[text.index(before: commonPrefixEnd)]
+        let next = text[commonPrefixEnd]
+        guard previous.isASCII,
+              next.isASCII,
+              (previous.isLetter || previous.isNumber),
+              (next.isLetter || next.isNumber) else {
+            return commonPrefixEnd
+        }
+
+        var index = commonPrefixEnd
+        while index > text.startIndex {
+            let previousIndex = text.index(before: index)
+            let character = text[previousIndex]
+            if character.isWhitespace || PunctuationProcessor.isUserTypedPunctuation(character) {
+                return index
+            }
+            index = previousIndex
+        }
+
+        return text.startIndex
     }
 
     private func commonPrefixEndIndex(in text: String, with prefix: String) -> String.Index {

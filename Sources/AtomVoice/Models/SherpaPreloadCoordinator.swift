@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioTapShim
 
 /// Sherpa 模型预加载协调器：模型未加载时缓存音频，加载完成后排空缓冲并切换到直推模式。
 /// (Sherpa preload coordinator: buffers audio while model is loading, then drains and hands off to live mode.)
@@ -9,14 +10,18 @@ import AVFoundation
 ///    再 enqueue 一次清空任务捕获这部分 stragglers，避免丢字。
 final class SherpaPreloadCoordinator {
     private let queue = DispatchQueue(label: "com.atomvoice.sherpaPreload")
+    private let activeFlag = AtomVoiceAtomicFlagCreate(false)
     private var buffers: [AVAudioPCMBuffer] = []
-    private var isActive = false
+
+    deinit {
+        AtomVoiceAtomicFlagDestroy(activeFlag)
+    }
 
     /// 标记预加载开始，清空残留缓冲（Mark preload as active and clear any residual buffers）
     func begin() {
         queue.sync {
-            isActive = true
             buffers.removeAll(keepingCapacity: false)
+            AtomVoiceAtomicFlagStore(activeFlag, true)
         }
     }
 
@@ -25,23 +30,23 @@ final class SherpaPreloadCoordinator {
     @discardableResult
     func appendIfActive(_ buffer: AVAudioPCMBuffer,
                         copyBuffer: (AVAudioPCMBuffer) -> AVAudioPCMBuffer?) -> Bool {
-        queue.sync {
-            guard isActive else { return false }
-            guard let copy = copyBuffer(buffer) else { return true }
-            buffers.append(copy)
-            return true
+        guard AtomVoiceAtomicFlagLoad(activeFlag) else { return false }
+        guard let copy = copyBuffer(buffer) else { return true }
+        queue.async { [weak self] in
+            self?.buffers.append(copy)
         }
+        return true
     }
 
     /// 模型加载成功后排空全部缓冲；含二次排空。`onComplete` 在二次排空完成后回调（在内部 queue 上下文，调用方自行切回主线程）。
     /// (Drain all buffered audio after model load. Second drain captures stragglers; onComplete fires on the internal queue.)
     func drain(accept: @escaping (AVAudioPCMBuffer) -> Void,
                onComplete: @escaping () -> Void) {
+        AtomVoiceAtomicFlagStore(activeFlag, false)
         queue.async { [weak self] in
             guard let self else { return }
             let buffered = self.buffers
             self.buffers = []
-            self.isActive = false
 
             DebugLog.info("[SherpaPreload] drain 第一轮 count=\(buffered.count)")
             for buf in buffered {
@@ -49,7 +54,7 @@ final class SherpaPreloadCoordinator {
             }
 
             // 二次排空：处理 flag 切换瞬间积压的零星缓冲（Second drain for stragglers during flag transition）
-            self.queue.async { [weak self] in
+            self.queue.asyncAfter(deadline: .now() + 0.02) { [weak self] in
                 guard let self else { return }
                 let stragglers = self.buffers
                 self.buffers = []
@@ -64,8 +69,8 @@ final class SherpaPreloadCoordinator {
 
     /// 取消预加载并清空缓冲（Cancel preload and clear buffers）
     func cancel() {
+        AtomVoiceAtomicFlagStore(activeFlag, false)
         queue.sync {
-            isActive = false
             buffers.removeAll(keepingCapacity: false)
         }
     }

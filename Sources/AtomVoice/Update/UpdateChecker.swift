@@ -218,59 +218,79 @@ final class UpdateChecker: NSObject {
                 }
 
                 self.updateProgressLabel(loc("update.verifying"))
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        try self.verifyChecksum(zipURL: tmpURL, release: release)
-                        DispatchQueue.main.async { self.updateProgressLabel(loc("update.installing")) }
-                        let newApp = try self.extractZip(tmpURL)
-                        try self.validateDownloadedApp(newApp, expectedVersion: release.version)
-                        DispatchQueue.main.async {
-                            guard self.state == .downloading else { return }
-                            self.closeProgress()
-                            self.promptRestart(version: release.version, newAppURL: newApp)
-                        }
-                    } catch {
+                self.verifyChecksum(zipURL: tmpURL, release: release) { result in
+                    switch result {
+                    case let .failure(error):
                         DispatchQueue.main.async {
                             self.closeProgress()
                             self.state = .idle
                             self.showAlert(title: loc("update.error.title"),
                                            message: loc("update.error.install", error.localizedDescription))
                         }
+                    case .success:
+                        self.installVerifiedUpdate(zipURL: tmpURL, release: release)
                     }
                 }
             }
         }.resume()
     }
 
+    private func installVerifiedUpdate(zipURL: URL, release: Release) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                DispatchQueue.main.async { self.updateProgressLabel(loc("update.installing")) }
+                let newApp = try self.extractZip(zipURL)
+                try self.validateDownloadedApp(newApp, expectedVersion: release.version)
+                DispatchQueue.main.async {
+                    guard self.state == .downloading else { return }
+                    self.closeProgress()
+                    self.promptRestart(version: release.version, newAppURL: newApp)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.closeProgress()
+                    self.state = .idle
+                    self.showAlert(title: loc("update.error.title"),
+                                   message: loc("update.error.install", error.localizedDescription))
+                }
+            }
+        }
+    }
+
     // MARK: - 校验 SHA256
 
     /// 下载 SHA256SUMS.txt，根据资产名查 hash 并与下载到本地的 zip 文件比对。
     /// (Download SHA256SUMS.txt, look up the hash by asset name, and compare against the downloaded zip.)
-    private func verifyChecksum(zipURL: URL, release: Release) throws {
+    private func verifyChecksum(zipURL: URL, release: Release, completion: @escaping (Result<Void, Error>) -> Void) {
         var req = URLRequest(url: release.checksumsURL, timeoutInterval: 15)
         req.setValue("text/plain", forHTTPHeaderField: "Accept")
 
-        let (data, error) = synchronousData(for: req)
-        if let error { throw UpdateError.checksumFetchFailed(error.localizedDescription) }
-        guard let data, let listing = String(data: data, encoding: .utf8) else {
-            throw UpdateError.checksumFetchFailed("empty response")
-        }
-
-        // 每行格式：<sha256>  <filename>（shasum -a 256 输出格式）
-        // (Each line: "<sha256>  <filename>" — output format of `shasum -a 256`.)
-        var expectedHash: String?
-        for raw in listing.split(separator: "\n", omittingEmptySubsequences: true) {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            let parts = line.split(separator: " ", omittingEmptySubsequences: true)
-            guard parts.count >= 2 else { continue }
-            let name = parts.last!.trimmingCharacters(in: CharacterSet(charactersIn: "*"))
-            if name == release.assetName {
-                expectedHash = String(parts[0]).lowercased()
-                break
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            if let error {
+                completion(.failure(UpdateError.checksumFetchFailed(error.localizedDescription)))
+                return
             }
-        }
-        guard let expectedHash else {
-            throw UpdateError.checksumMissing(release.assetName)
+            guard let self,
+                  let data,
+                  let listing = String(data: data, encoding: .utf8) else {
+                completion(.failure(UpdateError.checksumFetchFailed("empty response")))
+                return
+            }
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    try self.verifyChecksum(zipURL: zipURL, listing: listing, assetName: release.assetName)
+                    completion(.success(()))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }.resume()
+    }
+
+    private func verifyChecksum(zipURL: URL, listing: String, assetName: String) throws {
+        guard let expectedHash = expectedChecksum(in: listing, assetName: assetName) else {
+            throw UpdateError.checksumMissing(assetName)
         }
 
         let fileHandle = try FileHandle(forReadingFrom: zipURL)
@@ -289,17 +309,19 @@ final class UpdateChecker: NSObject {
         }
     }
 
-    private func synchronousData(for request: URLRequest) -> (Data?, Error?) {
-        let semaphore = DispatchSemaphore(value: 0)
-        var resultData: Data?
-        var resultError: Error?
-        URLSession.shared.dataTask(with: request) { data, _, error in
-            resultData = data
-            resultError = error
-            semaphore.signal()
-        }.resume()
-        semaphore.wait()
-        return (resultData, resultError)
+    func expectedChecksum(in listing: String, assetName: String) -> String? {
+        // 每行格式：<sha256>  <filename>（shasum -a 256 输出格式）
+        // (Each line: "<sha256>  <filename>" — output format of `shasum -a 256`.)
+        for raw in listing.split(separator: "\n", omittingEmptySubsequences: true) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            let parts = line.split(separator: " ", omittingEmptySubsequences: true)
+            guard parts.count >= 2 else { continue }
+            let name = parts.last!.trimmingCharacters(in: CharacterSet(charactersIn: "*"))
+            if name == assetName {
+                return String(parts[0]).lowercased()
+            }
+        }
+        return nil
     }
 
     // MARK: - 解压
@@ -567,14 +589,14 @@ final class UpdateChecker: NSObject {
         AlertPresenter.shared.runModalAlert(alert)
     }
 
-    private struct ParsedVersion {
+    struct ParsedVersion {
         let numbers: [Int]
         let preRelease: [String]?
     }
 
     /// 解析版本号，兼容 GitHub tag 的 "0.10.1-Beta-2" 和 Info.plist 的 "0.10.1 Beta 2"。
     /// (Parse version string, compatible with GitHub tag format "0.10.1-Beta-2" and Info.plist format "0.10.1 Beta 2".)
-    private func parseVersion(_ version: String) -> ParsedVersion {
+    func parseVersion(_ version: String) -> ParsedVersion {
         var normalized = version.trimmingCharacters(in: .whitespacesAndNewlines)
         if normalized.lowercased().hasPrefix("v") {
             normalized.removeFirst()
@@ -604,7 +626,7 @@ final class UpdateChecker: NSObject {
     /// 规则：基础版本号更大 → 更新；基础相同时 stable > pre-release；pre-release 按标识符比较。
     /// (Compare two version numbers (supports pre-release formats like 0.9.5-beta.1 / 0.9.5 Beta 1).
     /// Rules: higher base version → newer; same base: stable > pre-release; pre-release compared by identifiers.)
-    private func isNewer(_ version: String, than current: String) -> Bool {
+    func isNewer(_ version: String, than current: String) -> Bool {
         let version = parseVersion(version)
         let current = parseVersion(current)
 
@@ -626,7 +648,7 @@ final class UpdateChecker: NSObject {
         }
     }
 
-    private func comparePreRelease(_ lhs: [String], _ rhs: [String]) -> ComparisonResult {
+    func comparePreRelease(_ lhs: [String], _ rhs: [String]) -> ComparisonResult {
         for i in 0..<max(lhs.count, rhs.count) {
             guard i < lhs.count else { return .orderedAscending }
             guard i < rhs.count else { return .orderedDescending }

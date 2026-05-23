@@ -572,6 +572,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private func extractArchive(at archiveURL: URL, to targetDir: URL) -> Bool {
         try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
 
+        guard validateArchiveEntries(archiveURL) else {
+            return false
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
         process.arguments = ["-xjf", archiveURL.path, "-C", targetDir.path]
@@ -584,6 +588,52 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             return process.terminationStatus == 0
         } catch {
             DebugLog.error("[下载] 解压进程启动失败: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func validateArchiveEntries(_ archiveURL: URL) -> Bool {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        process.arguments = ["-tjf", archiveURL.path]
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else {
+                DebugLog.error("[下载] tar 条目列表失败 status=\(process.terminationStatus)")
+                return false
+            }
+
+            let output = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let listing = String(data: output, encoding: .utf8) else {
+                DebugLog.error("[下载] tar 条目列表不是合法 UTF-8")
+                return false
+            }
+
+            let entries = listing.components(separatedBy: "\n")
+            for (index, entry) in entries.enumerated() {
+                let path = entry.trimmingCharacters(in: .newlines)
+                if path.isEmpty, index == entries.count - 1 {
+                    continue
+                }
+                guard !path.isEmpty else {
+                    DebugLog.error("[下载] 拒绝空 tar 条目")
+                    return false
+                }
+                let components = path.split(separator: "/", omittingEmptySubsequences: false)
+                if path.hasPrefix("/") || components.contains("..") || path.contains("\0") {
+                    DebugLog.error("[下载] 拒绝不安全 tar 条目: \(path)")
+                    return false
+                }
+            }
+
+            return true
+        } catch {
+            DebugLog.error("[下载] tar 条目列表进程启动失败: \(error.localizedDescription)")
             return false
         }
     }

@@ -1,6 +1,7 @@
 import Darwin
 import AVFoundation
 import Foundation
+import Security
 @testable import AtomVoiceCore
 
 @main
@@ -131,6 +132,165 @@ struct ArchitectureTestRunner {
             try expect(!registry.isCloud(ASREngineRegistry.sherpaCode))
             try expect(registry.descriptor(for: VolcengineASRSettings.engineCode)?.requiresCredential == true)
             try expect(registry.descriptor(for: ASREngineRegistry.sherpaCode)?.isOffline == true)
+        }
+
+        await runner.run("App settings posts precise recognition engine notifications") {
+            let defaults = UserDefaults.standard
+            let oldEngine = defaults.object(forKey: AppSettings.Keys.recognitionEngine)
+            let oldProvider = defaults.object(forKey: AppSettings.Keys.sherpaProvider)
+            let unrelatedKey = "AtomVoiceArchitectureTests.unrelatedDefaultsKey"
+            defer {
+                restoreDefaultsObject(oldEngine, forKey: AppSettings.Keys.recognitionEngine)
+                restoreDefaultsObject(oldProvider, forKey: AppSettings.Keys.sherpaProvider)
+                defaults.removeObject(forKey: unrelatedKey)
+            }
+
+            var changedKeys: [String] = []
+            let token = NotificationCenter.default.addObserver(
+                forName: AppSettings.recognitionEngineSettingsDidChangeNotification,
+                object: defaults,
+                queue: nil
+            ) { notification in
+                if let key = notification.userInfo?[AppSettings.recognitionEngineSettingsChangedKey] as? String {
+                    changedKeys.append(key)
+                }
+            }
+            defer { NotificationCenter.default.removeObserver(token) }
+
+            AppSettings.recognitionEngine = ASREngineRegistry.appleCode
+            changedKeys.removeAll()
+
+            defaults.set("unrelated", forKey: unrelatedKey)
+            AppSettings.recognitionEngine = ASREngineRegistry.sherpaCode
+            AppSettings.recognitionEngine = ASREngineRegistry.sherpaCode
+            AppSettings.sherpaProvider = "cpu"
+
+            try expect(changedKeys == [AppSettings.Keys.recognitionEngine, AppSettings.Keys.sherpaProvider])
+        }
+
+        await runner.run("Recording session state covers start and cancel transitions") {
+            var state = RecordingSessionState()
+
+            let firstRequest = try require(state.beginStart(deferredCapsulePresentation: true))
+            try expect(state.isStarting)
+            try expect(state.isRecordingOrStarting)
+            try expect(state.deferredCapsule.isDeferred)
+            try expect(state.beginStart(deferredCapsulePresentation: false) == nil)
+            try expect(state.acceptsStartRequest(firstRequest))
+
+            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            try expect(generation == 1)
+            try expect(state.isRecording)
+            try expect(!state.isStarting)
+            try expect(state.currentRecordingEngine == ASREngineRegistry.appleCode)
+
+            state.liveInsertion.isActive = true
+            state.liveInsertion.committedText = "hello"
+            state.invalidateGenerationForCancel()
+            state.markRecordingStopped()
+
+            try expect(!state.isRecordingOrStarting)
+            try expect(state.recordingGeneration == 2)
+            try expect(!state.deferredCapsule.isDeferred)
+        }
+
+        await runner.run("Recording session state clears refining and Doubao wait") {
+            var state = RecordingSessionState()
+
+            state.beginRefining(text: "pending")
+            try expect(state.isRefining)
+            try expect(state.endRefining() == "pending")
+            try expect(!state.isRefining)
+            try expect(state.pendingRefinementText == nil)
+
+            state.beginDoubaoFinalWait()
+            try expect(state.isWaitingForDoubaoFinalResult)
+            state.liveInsertion.isActive = true
+            state.liveInsertion.committedText = "live"
+            state.clearInterruptedState()
+
+            try expect(!state.isWaitingForDoubaoFinalResult)
+            try expect(!state.liveInsertion.isActive)
+            try expect(state.liveInsertion.committedText.isEmpty)
+        }
+
+        await runner.run("Recording session presentation reveal emits ordered events") {
+            try expect(
+                RecordingSessionPresentationEvent.revealEvents(
+                    for: .none,
+                    isRecording: false,
+                    compactStatusKey: "capsule.streaming.typing"
+                ).isEmpty
+            )
+            try expect(
+                RecordingSessionPresentationEvent.revealEvents(
+                    for: .initial,
+                    isRecording: true,
+                    compactStatusKey: "capsule.streaming.typing"
+                ) == [.showInitial(compactStatusKey: "capsule.streaming.typing")]
+            )
+            try expect(
+                RecordingSessionPresentationEvent.revealEvents(
+                    for: .recording,
+                    isRecording: true,
+                    compactStatusKey: nil
+                ) == [.showInitial(compactStatusKey: nil), .showRecording]
+            )
+            try expect(
+                RecordingSessionPresentationEvent.revealEvents(
+                    for: .error(message: "failed", dismissAfter: 2),
+                    isRecording: true,
+                    compactStatusKey: nil
+                ) == [.showError(message: "failed", dismissAfter: 2, ensurePanel: true)]
+            )
+        }
+
+        await runner.run("Keychain upsert updates, adds, and recovers duplicate add") {
+            var operations: [String] = []
+
+            let updated = KeychainStore.upsertResult(
+                updateStatus: errSecSuccess,
+                addItem: {
+                    operations.append("add")
+                    return errSecSuccess
+                },
+                updateAfterDuplicate: {
+                    operations.append("updateAfterDuplicate")
+                    return errSecSuccess
+                }
+            )
+            try expect(updated)
+            try expect(operations.isEmpty)
+
+            operations.removeAll()
+            let added = KeychainStore.upsertResult(
+                updateStatus: errSecItemNotFound,
+                addItem: {
+                    operations.append("add")
+                    return errSecSuccess
+                },
+                updateAfterDuplicate: {
+                    operations.append("updateAfterDuplicate")
+                    return errSecSuccess
+                }
+            )
+            try expect(added)
+            try expect(operations == ["add"])
+
+            operations.removeAll()
+            let recoveredDuplicate = KeychainStore.upsertResult(
+                updateStatus: errSecItemNotFound,
+                addItem: {
+                    operations.append("add")
+                    return errSecDuplicateItem
+                },
+                updateAfterDuplicate: {
+                    operations.append("updateAfterDuplicate")
+                    return errSecSuccess
+                }
+            )
+            try expect(recoveredDuplicate)
+            try expect(operations == ["add", "updateAfterDuplicate"])
         }
 
         await runner.run("ASR silence monitor fires when no text arrives within duration") {
@@ -344,6 +504,35 @@ struct ArchitectureTestRunner {
             try expect(harness.clearedStreamCount == 1)
         }
 
+        await runner.run("Recognition finalizer computes live insertion remainder") {
+            let harness = RecognitionFinalizerHarness()
+
+            try expect(
+                harness.remainingText(
+                    "Hello world again",
+                    committedText: "Hello world"
+                ) == "again"
+            )
+            try expect(
+                harness.remainingText(
+                    "Hello world again",
+                    committedText: "Hello world "
+                ) == "again"
+            )
+            try expect(
+                harness.remainingText(
+                    "Hello brave world",
+                    committedText: "Hello basic"
+                ) == "brave world"
+            )
+            try expect(
+                harness.remainingText(
+                    "Unrelated final",
+                    committedText: "Hello"
+                ) == "Unrelated final"
+            )
+        }
+
         await runner.run("Cloud fallback text merge removes overlap") {
             let merged = DoubaoFallbackCoordinator.combinedText(
                 prefix: "hello world",
@@ -352,6 +541,30 @@ struct ArchitectureTestRunner {
             )
 
             try expect(merged == "hello world from cache again")
+        }
+
+        await runner.run("Cloud fallback text merge handles spacing and CJK") {
+            try expect(
+                DoubaoFallbackCoordinator.combinedText(
+                    prefix: "hello",
+                    cachedText: "there",
+                    liveText: ""
+                ) == "hello there"
+            )
+            try expect(
+                DoubaoFallbackCoordinator.combinedText(
+                    prefix: "你好",
+                    cachedText: "世界",
+                    liveText: ""
+                ) == "你好世界"
+            )
+            try expect(
+                DoubaoFallbackCoordinator.combinedText(
+                    prefix: "hello.",
+                    cachedText: "world",
+                    liveText: ""
+                ) == "hello. world"
+            )
         }
 
         await runner.run("Apple speech rolling merge inserts Latin spacing") {
@@ -379,6 +592,71 @@ struct ArchitectureTestRunner {
             )
 
             try expect(merged == "你好世界继续说")
+        }
+
+        await runner.run("Punctuation processor adds language-aware endings") {
+            try expect(PunctuationProcessor.process("你好世界", language: "zh-CN") == "你好世界。")
+            try expect(PunctuationProcessor.process("你好吗", language: "zh-CN") == "你好吗？")
+            try expect(PunctuationProcessor.process("what time is it", language: "en-US") == "what time is it?")
+            try expect(PunctuationProcessor.process("wow this works", language: "en-US") == "wow this works!")
+            try expect(PunctuationProcessor.process("hello.", language: "en-US") == "hello.")
+        }
+
+        await runner.run("Punctuation detector exposes CJK and Latin decisions") {
+            try expect(PunctuationProcessor.detectCJKPunctuation("可以吗", language: "zh-CN") == "？")
+            try expect(PunctuationProcessor.detectCJKPunctuation("太好了", language: "zh-CN") == "！")
+            try expect(PunctuationProcessor.detectCJKPunctuation("文件等等", language: "zh-CN") == "……")
+            try expect(PunctuationProcessor.detectLatinPunctuation("is this ready", language: "en-US") == "?")
+            try expect(PunctuationProcessor.detectLatinPunctuation("this is perfect", language: "en-US") == "!")
+            try expect(PunctuationProcessor.detectLatinPunctuation("this is ready", language: "en-US") == ".")
+        }
+
+        await runner.run("Update checker parses versions and compares pre-release") {
+            let checker = UpdateChecker.shared
+            let parsed = checker.parseVersion("v0.10.4-Beta-2")
+
+            try expect(parsed.numbers == [0, 10, 4])
+            try expect(parsed.preRelease == ["beta", "2"])
+            try expect(checker.isNewer("0.10.5", than: "0.10.4"))
+            try expect(checker.isNewer("0.10.4", than: "0.10.4-Beta-2"))
+            try expect(checker.isNewer("0.10.4-Beta-3", than: "0.10.4-Beta-2"))
+            try expect(!checker.isNewer("0.10.4-Beta-2", than: "0.10.4"))
+            try expect(checker.comparePreRelease(["beta", "10"], ["beta", "2"]) == .orderedDescending)
+            try expect(checker.comparePreRelease(["beta"], ["beta", "1"]) == .orderedAscending)
+        }
+
+        await runner.run("Update checker extracts checksum by asset name") {
+            let checker = UpdateChecker.shared
+            let listing = """
+            0123456789ABCDEF  AtomVoice-0.10.4.zip
+            abcdef0123456789 *AtomVoice-0.10.4-Debug.zip
+            """
+
+            try expect(checker.expectedChecksum(in: listing, assetName: "AtomVoice-0.10.4.zip") == "0123456789abcdef")
+            try expect(checker.expectedChecksum(in: listing, assetName: "AtomVoice-0.10.4-Debug.zip") == "abcdef0123456789")
+            try expect(checker.expectedChecksum(in: listing, assetName: "missing.zip") == nil)
+        }
+
+        await runner.run("LLM refiner builds provider endpoints") {
+            try expect(LLMRefiner.buildURL(base: "https://api.openai.com/v1") == "https://api.openai.com/v1/chat/completions")
+            try expect(LLMRefiner.buildURL(base: "https://api.openai.com/v1/chat") == "https://api.openai.com/v1/chat/completions")
+            try expect(LLMRefiner.buildURL(base: "https://api.openai.com/v1/chat/completions/") == "https://api.openai.com/v1/chat/completions")
+            try expect(LLMRefiner.buildURL(base: "https://api.anthropic.com/v1") == "https://api.anthropic.com/v1/messages")
+            try expect(LLMRefiner.buildURL(base: "https://api.anthropic.com/v1/messages") == "https://api.anthropic.com/v1/messages")
+            try expect(LLMRefiner.buildCompletionsURL(base: "https://example.com/api/") == "https://example.com/api/chat/completions")
+        }
+
+        await runner.run("LLM refiner finds trailing UTF-8 boundary") {
+            let complete = Data("hello你".utf8)
+            let cjkBytes = Array("你".utf8)
+            let splitCJK = Data("hello".utf8) + Data(cjkBytes.prefix(2))
+            let emojiBytes = Array("🙂".utf8)
+            let splitEmoji = Data("hello".utf8) + Data(emojiBytes.prefix(3))
+
+            try expect(LLMRefiner.validUTF8PrefixLength(complete) == complete.count)
+            try expect(LLMRefiner.validUTF8PrefixLength(splitCJK) == 5)
+            try expect(LLMRefiner.validUTF8PrefixLength(splitEmoji) == 5)
+            try expect(LLMRefiner.validUTF8PrefixLength(Data([0xE4])) == 0)
         }
 
         await runner.run("Headphone HID trusts non-keyboard USB consumer control") {
@@ -598,6 +876,31 @@ struct ArchitectureTestRunner {
             try expect(manifest.isComplete(in: root))
         }
 
+        await runner.run("Sherpa preload drains buffered audio in order") {
+            let coordinator = SherpaPreloadCoordinator()
+            let first = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 16, fillValue: 0.1))
+            let second = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 16, fillValue: 0.2))
+
+            coordinator.begin()
+            try expect(coordinator.appendIfActive(first) { $0 })
+            try expect(coordinator.appendIfActive(second) { $0 })
+            try await waitForAsyncCallbacks()
+
+            var drained: [AVAudioPCMBuffer] = []
+            var completed = false
+            coordinator.drain(
+                accept: { drained.append($0) },
+                onComplete: { completed = true }
+            )
+            try await waitForAsyncCallbacks()
+
+            try expect(completed)
+            try expect(drained.count == 2)
+            try expect(drained[0] === first)
+            try expect(drained[1] === second)
+            try expect(!coordinator.appendIfActive(first) { $0 })
+        }
+
         await runner.run("Audio router unregisters native consumers") {
             let router = AudioRouter()
             let buffer = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 32), "buffer should be created")
@@ -618,6 +921,23 @@ struct ArchitectureTestRunner {
             try expect(firstCount == 1)
             try expect(secondCount == 2)
             try expect(secondID != firstID)
+        }
+
+        await runner.run("Audio router shares converted buffer for matching target consumers") {
+            let router = AudioRouter()
+            let input = try require(makePCMBuffer(sampleRate: 48_000, frameLength: 480), "buffer should be created")
+            var firstBuffer: AVAudioPCMBuffer?
+            var secondBuffer: AVAudioPCMBuffer?
+
+            _ = router.register(format: .voice16k) { firstBuffer = $0 }
+            _ = router.register(format: .voice16k) { secondBuffer = $0 }
+
+            router.receive(input)
+
+            try expect(firstBuffer != nil)
+            try expect(firstBuffer === secondBuffer)
+            try expect(firstBuffer?.format.sampleRate == 16_000)
+            try expect(firstBuffer?.format.channelCount == 1)
         }
 
         await runner.run("Recognition finalizer ignores LLM results from old generation") {
@@ -737,6 +1057,14 @@ private func require<T>(
 
 private func waitForAsyncCallbacks() async throws {
     try await Task.sleep(nanoseconds: 80_000_000)
+}
+
+private func restoreDefaultsObject(_ object: Any?, forKey key: String) {
+    if let object {
+        UserDefaults.standard.set(object, forKey: key)
+    } else {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
 }
 
 private func makeTemporaryDirectory() throws -> URL {
@@ -879,6 +1207,13 @@ private final class RecognitionFinalizerHarness {
                 clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 },
                 generation: generation
             )
+        )
+    }
+
+    func remainingText(_ text: String, committedText: String) -> String {
+        finalizer.remainingTextAfterLiveInsertion(
+            text,
+            liveInsertion: RecognitionLiveInsertionSnapshot(isActive: true, committedText: committedText)
         )
     }
 }

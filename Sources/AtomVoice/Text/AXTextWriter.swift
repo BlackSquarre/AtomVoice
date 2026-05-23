@@ -33,7 +33,12 @@ final class AXTextWriter {
         let systemWide = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard status == .success, let focused else { return nil }
+        guard status == .success, let focused else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] copy focused element failed status=\(status.rawValue)")
+            #endif
+            return nil
+        }
         return (focused as! AXUIElement)
     }
 
@@ -49,6 +54,11 @@ final class AXTextWriter {
         guard let element = copyFocusedElement() else { return false }
         var settable: DarwinBoolean = false
         let status = AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable)
+        #if DEBUG_BUILD
+        if status != .success || !settable.boolValue {
+            DebugLog.debug("[AXTextWriter] selected text not settable status=\(status.rawValue) settable=\(settable.boolValue)")
+        }
+        #endif
         return status == .success && settable.boolValue
     }
 
@@ -58,9 +68,19 @@ final class AXTextWriter {
         guard let element = copyFocusedElement() else { return nil }
         var rangeRef: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef)
-        guard status == .success, let rangeRef else { return nil }
+        guard status == .success, let rangeRef else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] copy selected range failed status=\(status.rawValue)")
+            #endif
+            return nil
+        }
         var range = CFRange()
-        AXValueGetValue(rangeRef as! AXValue, .cfRange, &range)
+        guard AXValueGetValue(rangeRef as! AXValue, .cfRange, &range) else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] read selected range value failed")
+            #endif
+            return nil
+        }
         return range.location
     }
 
@@ -70,6 +90,11 @@ final class AXTextWriter {
     static func insertAtCaret(_ text: String) -> Bool {
         guard let element = copyFocusedElement() else { return false }
         let status = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString)
+        #if DEBUG_BUILD
+        if status != .success {
+            DebugLog.debug("[AXTextWriter] insert selected text failed status=\(status.rawValue) textLength=\(text.count)")
+        }
+        #endif
         return status == .success
     }
 
@@ -85,12 +110,27 @@ final class AXTextWriter {
         guard let element = copyFocusedElement() else { return false }
 
         var range = CFRange(location: location, length: length)
-        guard let rangeValue = AXValueCreate(.cfRange, &range) else { return false }
+        guard let rangeValue = AXValueCreate(.cfRange, &range) else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] create AX range failed location=\(location) length=\(length)")
+            #endif
+            return false
+        }
 
         let selectStatus = AXUIElementSetAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, rangeValue)
-        guard selectStatus == .success else { return false }
+        guard selectStatus == .success else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] set selected range failed status=\(selectStatus.rawValue) location=\(location) length=\(length)")
+            #endif
+            return false
+        }
 
         let replaceStatus = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, newText as CFString)
+        #if DEBUG_BUILD
+        if replaceStatus != .success {
+            DebugLog.debug("[AXTextWriter] replace selected text failed status=\(replaceStatus.rawValue) textLength=\(newText.count)")
+        }
+        #endif
         return replaceStatus == .success
     }
 }

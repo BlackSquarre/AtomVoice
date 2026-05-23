@@ -100,12 +100,8 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate {
         // 只解析合法部分，剩余字节保留到下次。
         // (Network chunks may split mid-UTF-8 sequence — especially with CJK content.
         //  Fall back to the last valid UTF-8 boundary; keep the remainder for next call.)
-        var validEnd = buffer.count
-        while validEnd > 0 {
-            if String(data: buffer[0..<validEnd], encoding: .utf8) != nil { break }
-            validEnd -= 1
-        }
-        guard validEnd > 0, let text = String(data: buffer[0..<validEnd], encoding: .utf8) else { return }
+        let validEnd = LLMRefiner.validUTF8PrefixLength(buffer)
+        guard validEnd > 0, let text = String(data: buffer.prefix(validEnd), encoding: .utf8) else { return }
         let remainder = Data(buffer[validEnd...])
         let lines = text.components(separatedBy: "\n")
         // 末尾不完整的行留在 buffer，拼上 UTF-8 截断的剩余字节
@@ -331,6 +327,56 @@ final class LLMRefiner {
         if b.hasSuffix("/chat/completions") { return b }
         if b.hasSuffix("/chat") { return b + "/completions" }
         return b + "/chat/completions"
+    }
+
+    /// 返回尾部 UTF-8 不完整序列之前的边界；调用方假设网络流此前缀本身合法。
+    /// (Return the prefix boundary before an incomplete trailing UTF-8 sequence.)
+    static func validUTF8PrefixLength(_ data: Data) -> Int {
+        guard !data.isEmpty else { return 0 }
+        let bytes = [UInt8](data)
+        let count = bytes.count
+        let last = bytes[count - 1]
+
+        if last < 0x80 {
+            return count
+        }
+        if isUTF8LeadByte(last) {
+            return count - 1
+        }
+
+        var continuationCount = 0
+        var index = count - 1
+        while index >= 0, continuationCount < 3, isUTF8ContinuationByte(bytes[index]) {
+            continuationCount += 1
+            if index == 0 { break }
+            index -= 1
+        }
+
+        let leadIndex = count - continuationCount - 1
+        guard leadIndex >= 0 else { return 0 }
+        let expectedLength = utf8SequenceLength(forLeadByte: bytes[leadIndex])
+        guard expectedLength > 0 else { return leadIndex }
+
+        let availableLength = continuationCount + 1
+        return availableLength >= expectedLength ? count : leadIndex
+    }
+
+    private static func isUTF8ContinuationByte(_ byte: UInt8) -> Bool {
+        (byte & 0b1100_0000) == 0b1000_0000
+    }
+
+    private static func isUTF8LeadByte(_ byte: UInt8) -> Bool {
+        (byte & 0b1110_0000) == 0b1100_0000 ||
+            (byte & 0b1111_0000) == 0b1110_0000 ||
+            (byte & 0b1111_1000) == 0b1111_0000
+    }
+
+    private static func utf8SequenceLength(forLeadByte byte: UInt8) -> Int {
+        if byte < 0x80 { return 1 }
+        if (byte & 0b1110_0000) == 0b1100_0000 { return 2 }
+        if (byte & 0b1111_0000) == 0b1110_0000 { return 3 }
+        if (byte & 0b1111_1000) == 0b1111_0000 { return 4 }
+        return 0
     }
 
     private static func setAuth(request: inout URLRequest, apiKey: String, isAnthropic: Bool) {

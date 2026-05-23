@@ -241,7 +241,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(recognitionEngineDefaultsDidChange),
-            name: UserDefaults.didChangeNotification,
+            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
             object: UserDefaults.standard
         )
     }
