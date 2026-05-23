@@ -9,6 +9,7 @@ protocol ASREngineProviding: AnyObject {
     func appleEngine() -> AppleSpeechASREngine
     func sherpaEngine() -> SherpaOnnxASREngine
     func volcengineEngine() -> VolcengineASREngine
+    func recognitionSession(for code: String, audioEngine: AudioEngineController) -> any RecognitionSession
     func releaseSherpaEngine()
 }
 
@@ -20,6 +21,10 @@ final class ASREngineProvider: ASREngineProviding {
     private var appleASREngine: AppleSpeechASREngine?
     private var sherpaASREngine: SherpaOnnxASREngine?
     private var volcengineASREngine: VolcengineASREngine?
+    private weak var recognitionSessionAudioEngine: AudioEngineController?
+    private var appleRecognitionSession: AppleRecognitionSession?
+    private var sherpaRecognitionSession: SherpaRecognitionSession?
+    private var doubaoRecognitionSession: DoubaoRecognitionSession?
 
     var hasSherpaEngine: Bool {
         sherpaASREngine != nil
@@ -57,6 +62,34 @@ final class ASREngineProvider: ASREngineProviding {
         return engine
     }
 
+    func recognitionSession(for code: String, audioEngine: AudioEngineController) -> any RecognitionSession {
+        resetRecognitionSessionsIfNeeded(for: audioEngine)
+        switch code {
+        case VolcengineASRSettings.engineCode:
+            if let doubaoRecognitionSession { return doubaoRecognitionSession }
+            let session = DoubaoRecognitionSession(
+                cloudEngine: volcengineEngine(),
+                appleEngine: appleEngine(),
+                speechRecognizerProvider: { [weak self] in
+                    self?.speechRecognizer() ?? SpeechRecognizerController()
+                },
+                audioEngine: audioEngine
+            )
+            doubaoRecognitionSession = session
+            return session
+        case ASREngineRegistry.sherpaCode:
+            if let sherpaRecognitionSession { return sherpaRecognitionSession }
+            let session = SherpaRecognitionSession(engine: sherpaEngine(), audioEngine: audioEngine)
+            sherpaRecognitionSession = session
+            return session
+        default:
+            if let appleRecognitionSession { return appleRecognitionSession }
+            let session = AppleRecognitionSession(engine: appleEngine(), audioEngine: audioEngine)
+            appleRecognitionSession = session
+            return session
+        }
+    }
+
     func releaseSherpaEngine() {
         guard sherpaASREngine != nil || sherpaRecognizer != nil else { return }
         if sherpaASREngine?.isModelLoaded == true {
@@ -65,6 +98,7 @@ final class ASREngineProvider: ASREngineProviding {
         }
         sherpaASREngine = nil
         sherpaRecognizer = nil
+        sherpaRecognitionSession = nil
 
         // 提示 libsystem_malloc 归还空闲 arena 页：Sherpa 峰值占用 600MB+，free 后这些脏页不会自动返还 OS。
         // 实测在 Sequoia 上只能回收约 16KB（残留主要是 ONNX runtime 的 C++ 静态全局，dlclose 后仍驻留），保留这行
@@ -95,5 +129,13 @@ final class ASREngineProvider: ASREngineProviding {
         let recognizer = CloudASRRecognizerController(provider: volcengineASRProvider())
         cloudRecognizer = recognizer
         return recognizer
+    }
+
+    private func resetRecognitionSessionsIfNeeded(for audioEngine: AudioEngineController) {
+        guard recognitionSessionAudioEngine !== audioEngine else { return }
+        appleRecognitionSession = nil
+        sherpaRecognitionSession = nil
+        doubaoRecognitionSession = nil
+        recognitionSessionAudioEngine = audioEngine
     }
 }

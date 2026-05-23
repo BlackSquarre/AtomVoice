@@ -116,6 +116,58 @@ struct ArchitectureTestRunner {
             try expect(engine === provider.volcengineEngine())
         }
 
+        await runner.run("ASR provider returns stable RecognitionSession wrappers") {
+            let provider = ASREngineProvider()
+            let audioEngine = AudioEngineController()
+
+            let apple = provider.recognitionSession(for: ASREngineRegistry.appleCode, audioEngine: audioEngine)
+            let appleAgain = provider.recognitionSession(for: ASREngineRegistry.appleCode, audioEngine: audioEngine)
+            let sherpa = provider.recognitionSession(for: ASREngineRegistry.sherpaCode, audioEngine: audioEngine)
+            let doubao = provider.recognitionSession(for: VolcengineASRSettings.engineCode, audioEngine: audioEngine)
+
+            try expect((apple as AnyObject) === (appleAgain as AnyObject))
+            try expect(apple.code == ASREngineRegistry.appleCode)
+            try expect(apple.preferredAudioFormat == nil)
+            try expect(apple.supportsLiveInsertion)
+            try expect(!apple.supportsServerFallback)
+            try expect(sherpa.preferredAudioFormat == .voice16k)
+            try expect(!sherpa.supportsLiveInsertion)
+            try expect(doubao.preferredAudioFormat == .voice16k)
+            try expect(doubao.supportsServerFallback)
+        }
+
+        await runner.run("ASR provider rebuilds Sherpa RecognitionSession on release") {
+            let provider = ASREngineProvider()
+            let audioEngine = AudioEngineController()
+
+            let session = provider.recognitionSession(for: ASREngineRegistry.sherpaCode, audioEngine: audioEngine)
+            provider.releaseSherpaEngine()
+            let recreated = provider.recognitionSession(for: ASREngineRegistry.sherpaCode, audioEngine: audioEngine)
+
+            try expect((session as AnyObject) !== (recreated as AnyObject))
+            try expect(!provider.isSherpaModelLoaded)
+        }
+
+        await runner.run("RecognitionSession callbacks separate generation from active recording") {
+            var generation = 1
+            var isRecording = true
+            let callbacks = makeRecognitionSessionCallbacks(
+                generationProvider: { generation },
+                isRecordingProvider: { isRecording }
+            )
+
+            try expect(callbacks.isCurrent())
+            try expect(callbacks.isRecordingCurrent())
+
+            isRecording = false
+            try expect(callbacks.isCurrent())
+            try expect(!callbacks.isRecordingCurrent())
+
+            generation = 2
+            try expect(!callbacks.isCurrent())
+            try expect(!callbacks.isRecordingCurrent())
+        }
+
         await runner.run("ASR registry normalizes unknown engine codes") {
             let registry = ASREngineRegistry(descriptors: [.sherpaOnnx, .apple, .volcengine])
 
@@ -1106,6 +1158,33 @@ private func makePCMBuffer(
         }
     }
     return buffer
+}
+
+private func makeRecognitionSessionCallbacks(
+    generationProvider: @escaping () -> Int = { 1 },
+    isRecordingProvider: @escaping () -> Bool = { true },
+    targetGeneration: Int = 1
+) -> RecognitionSessionCallbacks {
+    RecognitionSessionCallbacks(
+        isCurrent: {
+            generationProvider() == targetGeneration
+        },
+        isRecordingCurrent: {
+            isRecordingProvider() && generationProvider() == targetGeneration
+        },
+        copyAudioBuffer: { buffer in buffer },
+        onPartialResult: { _, _ in },
+        onError: { _ in },
+        onShowInitial: {},
+        onShowRecording: {},
+        onProgress: { _, _ in },
+        onDisplayText: { _ in },
+        onShimmerChanged: { _ in },
+        onEffectiveEngineChanged: { _ in },
+        onStartFailure: { _ in },
+        onWaitingForFinalResultChanged: { _ in },
+        onResetLiveInsertion: {}
+    )
 }
 
 private final class FakePermissionAccess: PermissionAccessing {
