@@ -32,10 +32,11 @@ final class SherpaPreloadCoordinator {
                         copyBuffer: (AVAudioPCMBuffer) -> AVAudioPCMBuffer?) -> Bool {
         guard AtomVoiceAtomicFlagLoad(activeFlag) else { return false }
         guard let copy = copyBuffer(buffer) else { return true }
-        queue.async { [weak self] in
-            self?.buffers.append(copy)
+        return queue.sync {
+            guard AtomVoiceAtomicFlagLoad(activeFlag) else { return false }
+            buffers.append(copy)
+            return true
         }
-        return true
     }
 
     /// 模型加载成功后排空全部缓冲；含二次排空。`onComplete` 在二次排空完成后回调（在内部 queue 上下文，调用方自行切回主线程）。
