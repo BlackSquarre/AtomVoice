@@ -26,8 +26,12 @@ enum RecordingSessionPresentationEvent: Equatable {
             ]
         case let .progress(text, hidesWaveform):
             return [.showProgress(text: text, hidesWaveform: hidesWaveform)]
+        case let .progressKey(messageKey, hidesWaveform):
+            return [.showProgress(text: loc(messageKey), hidesWaveform: hidesWaveform)]
         case let .error(message, dismissAfter):
             return [.showError(message: message, dismissAfter: dismissAfter, ensurePanel: true)]
+        case let .errorKey(messageKey, dismissAfter):
+            return [.showError(message: loc(messageKey), dismissAfter: dismissAfter, ensurePanel: true)]
         }
     }
 }

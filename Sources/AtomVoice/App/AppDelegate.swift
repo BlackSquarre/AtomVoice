@@ -379,7 +379,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        if session.isRecording && asrEngineRegistry.isSherpa(session.currentRecordingEngine) {
+        if session.isRecording && session.activeRecognitionSession?.requiresModelReloadOnRouteChange == true {
             pendingSherpaModelRelease = true
             return
         }
@@ -390,7 +390,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleSherpaSelectionChange() {
         guard asrEngineProvider.hasSherpaEngine else { return }
 
-        if session.isRecording && asrEngineRegistry.isSherpa(session.currentRecordingEngine) {
+        if session.isRecording && session.activeRecognitionSession?.requiresModelReloadOnRouteChange == true {
             pendingSherpaModelRelease = true
             DebugLog.info("[AppDelegate] Sherpa 预设已切换，当前录音结束后释放旧模型")
             return

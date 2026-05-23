@@ -19,6 +19,7 @@ final class RecordingSessionController {
     let volumeController: VolumeController
     private let asrEngineProvider: ASREngineProviding
     private let recognitionFinalizer: RecognitionResultFinalizer
+    private let liveInsertionAdapter = AppleLiveInsertionAdapter()
     var recognitionSession: (any RecognitionSession)?
     weak var delegate: RecordingSessionDelegate?
 
@@ -37,7 +38,7 @@ final class RecordingSessionController {
         get { state.currentRecordingEngine }
         set { state.currentRecordingEngine = newValue }
     }
-    private var recordingGeneration: Int {
+    var recordingGeneration: Int {
         get { state.recordingGeneration }
     }
     private var startRequestGeneration: Int {
@@ -55,6 +56,9 @@ final class RecordingSessionController {
     var activeOutputSink: TextOutputSink { textOutputSinkRegistry.current() }
     var streamingCompactKey: String? {
         streamSession != nil ? "capsule.streaming.typing" : nil
+    }
+    var activeRecognitionSession: (any RecognitionSession)? {
+        recognitionSession
     }
     private func recognitionSession(for code: String) -> any RecognitionSession {
         asrEngineProvider.recognitionSession(for: code, audioEngine: audioEngine)
@@ -197,19 +201,19 @@ final class RecordingSessionController {
         }
     }
 
-    private func showInitialCapsule() {
+    func showInitialCapsule() {
         _ = dispatch(.capsulePresentationRequested(.initial))
     }
 
-    private func showRecordingCapsule() {
+    func showRecordingCapsule() {
         _ = dispatch(.capsulePresentationRequested(.recording))
     }
 
-    private func showCapsuleProgress(_ text: String, hidesWaveform: Bool = true) {
+    func showCapsuleProgress(_ text: String, hidesWaveform: Bool = true) {
         _ = dispatch(.capsulePresentationRequested(.progress(text: text, hidesWaveform: hidesWaveform)))
     }
 
-    private func showCapsuleError(_ message: String, dismissAfter delay: TimeInterval, ensurePanel: Bool = false) {
+    func showCapsuleError(_ message: String, dismissAfter delay: TimeInterval, ensurePanel: Bool = false) {
         if state.deferredCapsule.isDeferred {
             _ = dispatch(.capsulePresentationRequested(.error(message: message, dismissAfter: delay)))
         } else {
@@ -217,7 +221,7 @@ final class RecordingSessionController {
         }
     }
 
-    private func updateCapsuleText(_ text: String) {
+    func updateCapsuleText(_ text: String) {
         _ = dispatch(.capsuleTextUpdated(text))
     }
 
@@ -226,11 +230,11 @@ final class RecordingSessionController {
         presenter.present(.updateBands(bands))
     }
 
-    private func applyCapsuleShimmer() {
+    func applyCapsuleShimmer() {
         _ = dispatch(.shimmerChanged(true))
     }
 
-    private func stopCapsuleShimmer() {
+    func stopCapsuleShimmer() {
         _ = dispatch(.shimmerChanged(false))
     }
 
@@ -314,68 +318,6 @@ final class RecordingSessionController {
         }
     }
 
-    private func makeRecognitionSessionCallbacks(generation: Int) -> RecognitionSessionCallbacks {
-        RecognitionSessionCallbacks(
-            isCurrent: { [weak self] in
-                self?.recordingGeneration == generation
-            },
-            isRecordingCurrent: { [weak self] in
-                guard let self else { return false }
-                return self.isRecording && self.recordingGeneration == generation
-            },
-            copyAudioBuffer: { [weak self] buffer in
-                self?.copyAudioBuffer(buffer)
-            },
-            onPartialResult: { [weak self] text, isFinal in
-                guard let self else { return }
-                self.dispatch(.asrPartial(text: text, isFinal: isFinal))
-                self.commitAppleLiveSegmentIfNeeded(from: text, isFinal: isFinal)
-            },
-            onError: { [weak self] message in
-                self?.showCapsuleError(message, dismissAfter: 5)
-            },
-            onShowInitial: { [weak self] in
-                self?.showInitialCapsule()
-            },
-            onShowRecording: { [weak self] in
-                self?.showRecordingCapsule()
-            },
-            onProgress: { [weak self] text, hidesWaveform in
-                self?.showCapsuleProgress(text, hidesWaveform: hidesWaveform)
-            },
-            onDisplayText: { [weak self] text in
-                self?.updateCapsuleText(text)
-            },
-            onShimmerChanged: { [weak self] active in
-                active ? self?.applyCapsuleShimmer() : self?.stopCapsuleShimmer()
-            },
-            onEffectiveEngineChanged: { [weak self] code in
-                self?.dispatch(.fallbackStarted(engine: code))
-            },
-            onStartFailure: { [weak self] failure in
-                self?.dispatch(
-                    .sessionStartFailed(
-                        message: failure.message,
-                        dismissAfter: failure.dismissAfter,
-                        stopAudioEngine: failure.stopAudioEngine,
-                        recovery: failure.recovery.map {
-                            switch $0 {
-                            case .requestSherpaModelDownload(let redownload, let delay):
-                                return .requestSherpaModelDownload(redownload: redownload, delay: delay)
-                            }
-                        }
-                    )
-                )
-            },
-            onWaitingForFinalResultChanged: { [weak self] waiting in
-                self?.dispatch(waiting ? .doubaoFinalWaitStarted : .doubaoFinalWaitEnded)
-            },
-            onResetLiveInsertion: { [weak self] in
-                self?.dispatch(.liveInsertionReset)
-            }
-        )
-    }
-
     // MARK: - 启动失败处理（Start-failure handlers）
 
     private func handleAudioRouteRecoveryFailed() {
@@ -389,7 +331,7 @@ final class RecordingSessionController {
         _ = dispatch(.cancelRequested)
     }
 
-    private func copyAudioBuffer(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+    func copyAudioBuffer(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
         guard let copy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength) else {
             return nil
         }
@@ -508,7 +450,7 @@ final class RecordingSessionController {
 
     // MARK: - Apple live insertion 段落提交（Apple live segment commit）
 
-    private func commitAppleLiveSegmentIfNeeded(from text: String, isFinal: Bool) {
+    func commitAppleLiveSegmentIfNeeded(from text: String, isFinal: Bool) {
         if state.deferredCapsule.isDeferred {
             _ = dispatch(.liveInsertionDeferred(text: text, isFinal: isFinal))
             return
@@ -519,48 +461,19 @@ final class RecordingSessionController {
         else { return }
         _ = dispatch(.liveInsertionLatestObserved(text: text))
         guard !state.liveInsertion.pasteInFlight else { return }
-        guard text.hasPrefix(state.liveInsertion.committedText) else { return }
+        guard let decision = liveInsertionAdapter.nextCommitDecision(
+            latestPartial: text,
+            committedText: state.liveInsertion.committedText,
+            isFinal: isFinal
+        ) else { return }
 
-        let uncommitted = String(text.dropFirst(state.liveInsertion.committedText.count))
-        guard let endIndex = committableLiveSegmentEnd(in: uncommitted, isFinal: isFinal) else { return }
-
-        let segment = String(uncommitted[..<endIndex])
-        guard !segment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
-        _ = dispatch(.liveInsertionCommitted(segment: segment, latestText: text))
-        activeOutputSink.deliver(text: segment) { [weak self] in
+        _ = dispatch(.liveInsertionCommitted(segment: decision.segment, latestText: text))
+        activeOutputSink.deliver(text: decision.segment) { [weak self] in
             guard let self else { return }
             self.dispatch(.liveInsertionCommitFinished)
             if self.isRecording {
                 self.commitAppleLiveSegmentIfNeeded(from: self.state.liveInsertion.latestText, isFinal: false)
             }
         }
-    }
-
-    private func committableLiveSegmentEnd(in text: String, isFinal: Bool) -> String.Index? {
-        var sentenceEnds: [String.Index] = []
-        var index = text.startIndex
-
-        while index < text.endIndex {
-            let next = text.index(after: index)
-            if PunctuationProcessor.isSentenceEndingPunctuation(text[index]) {
-                var end = next
-                while end < text.endIndex, text[end].isWhitespace {
-                    end = text.index(after: end)
-                }
-                sentenceEnds.append(end)
-            }
-            index = next
-        }
-
-        for end in sentenceEnds.reversed() {
-            let candidate = String(text[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
-            let trailing = String(text[end...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            if candidate.count >= 3, isFinal || trailing.count >= 3 {
-                return end
-            }
-        }
-
-        return nil
     }
 }

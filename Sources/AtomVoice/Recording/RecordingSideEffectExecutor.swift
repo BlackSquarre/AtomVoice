@@ -98,8 +98,12 @@ extension RecordingSessionController {
             presenter.present(.showRecording)
         case .progress(let text, let hidesWaveform):
             presenter.present(.showProgress(text: text, hidesWaveform: hidesWaveform))
+        case .progressKey(let messageKey, let hidesWaveform):
+            presenter.present(.showProgress(text: loc(messageKey), hidesWaveform: hidesWaveform))
         case .error(let message, let dismissAfter):
             presenter.present(.showError(message: message, dismissAfter: dismissAfter, ensurePanel: ensurePanel))
+        case .errorKey(let messageKey, let dismissAfter):
+            presenter.present(.showError(message: loc(messageKey), dismissAfter: dismissAfter, ensurePanel: ensurePanel))
         }
     }
 }

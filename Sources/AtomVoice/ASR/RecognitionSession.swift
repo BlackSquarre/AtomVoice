@@ -62,6 +62,7 @@ protocol RecognitionSession: AnyObject {
     var supportsLiveInsertion: Bool { get }
     var supportsServerFallback: Bool { get }
     var supportsSilenceMonitoring: Bool { get }
+    var requiresModelReloadOnRouteChange: Bool { get }
     var preferredAudioFormat: AudioRouter.ConsumerFormat? { get }
 
     func preflight() -> RecognitionSessionPreflightResult
@@ -80,6 +81,7 @@ protocol RecognitionSession: AnyObject {
 
 extension RecognitionSession {
     var supportsSilenceMonitoring: Bool { true }
+    var requiresModelReloadOnRouteChange: Bool { false }
     func preflight() -> RecognitionSessionPreflightResult { .ready }
 }
 
@@ -176,6 +178,7 @@ final class SherpaRecognitionSession: RecognitionSession {
     let code = ASREngineRegistry.sherpaCode
     let supportsLiveInsertion = false
     let supportsServerFallback = false
+    let requiresModelReloadOnRouteChange = true
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
 
     private let engine: SherpaOnnxASREngine

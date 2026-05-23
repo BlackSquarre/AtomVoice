@@ -5,7 +5,9 @@ enum RecordingCapsulePresentationRequest: Equatable {
     case initial
     case recording
     case progress(text: String, hidesWaveform: Bool)
+    case progressKey(messageKey: String, hidesWaveform: Bool)
     case error(message: String, dismissAfter: TimeInterval)
+    case errorKey(messageKey: String, dismissAfter: TimeInterval)
 }
 
 enum RecordingPhase: Equatable {
@@ -151,79 +153,8 @@ struct RecordingSessionState: Equatable {
     var isStarting: Bool { phase == .starting }
     var isRecordingOrStarting: Bool { isRecording || isStarting }
 
-    mutating func beginStart(deferredCapsulePresentation: Bool) -> Int? {
-        let before = self
-        let result = RecordingStateMachine.reduce(self, .triggerPressed(deferCapsulePresentation: deferredCapsulePresentation))
-        self = result.state
-        guard before.startRequestGeneration != startRequestGeneration else { return nil }
-        return startRequestGeneration
-    }
-
     func acceptsStartRequest(_ request: Int) -> Bool {
         phase == .starting && startRequestGeneration == request
-    }
-
-    mutating func failStart() {
-        self = RecordingStateMachine.reduce(self, .startPreflightFailed(message: "", ensurePanel: false)).state
-    }
-
-    mutating func cancelPendingStart() -> Bool {
-        guard phase == .starting else { return false }
-        self = RecordingStateMachine.reduce(self, .cancelRequested).state
-        return true
-    }
-
-    mutating func transitionToRecording(engine: String) -> Int {
-        self = RecordingStateMachine.reduce(
-            self,
-            .startValidated(engine: engine, pendingDoubaoText: nil, pendingRefinementText: nil, lowerVolume: false)
-        ).state
-        return recordingGeneration
-    }
-
-    mutating func markRecordingStopped() {
-        self = RecordingStateMachine.reduce(self, .triggerReleased).state
-    }
-
-    mutating func invalidateGenerationForCancel() {
-        recordingGeneration += 1
-    }
-
-    mutating func beginRefining(text: String?) {
-        self = RecordingStateMachine.reduce(self, .refiningStarted(text: text)).state
-    }
-
-    mutating func markRefiningForReducerTest(_ refining: Bool) {
-        isRefining = refining
-    }
-
-    @discardableResult
-    mutating func endRefining() -> String? {
-        let pending = pendingRefinementText
-        self = RecordingStateMachine.reduce(self, .refiningFinished).state
-        return pending
-    }
-
-    mutating func beginDoubaoFinalWait() {
-        isWaitingForDoubaoFinalResult = true
-    }
-
-    mutating func endDoubaoFinalWait() {
-        isWaitingForDoubaoFinalResult = false
-    }
-
-    mutating func clearInterruptedState() {
-        clearVolatileState()
-    }
-
-    mutating func resetDeferredCapsulePresentation() {
-        deferredCapsule.reset()
-    }
-
-    mutating func beginTextOutputActivation() -> Bool {
-        guard phase == .capturing, !textOutputActivated else { return false }
-        textOutputActivated = true
-        return true
     }
 }
 
@@ -252,7 +183,7 @@ struct RecordingStateMachine {
             } else {
                 next.phase = .errored
                 effects.append(.showCapsule(.initial, ensurePanel: true))
-                effects.append(.showCapsule(.error(message: loc("error.noInputDevice"), dismissAfter: 5), ensurePanel: true))
+                effects.append(.showCapsule(.errorKey(messageKey: "error.noInputDevice", dismissAfter: 5), ensurePanel: true))
             }
 
         case .startPreflightFailed(let message, let ensurePanel):
@@ -367,7 +298,7 @@ struct RecordingStateMachine {
                 .abandonAudioRouteRecovery,
                 .cancelLLM,
                 .cancelSession(stopAudioEngine: false),
-                .showCapsule(.error(message: loc("error.audioTapFailed"), dismissAfter: 5), ensurePanel: false),
+                .showCapsule(.errorKey(messageKey: "error.audioTapFailed", dismissAfter: 5), ensurePanel: false),
                 .notifySessionDidEnd,
             ])
 
@@ -388,7 +319,7 @@ struct RecordingStateMachine {
 
         case .fallbackStarted(let engine):
             next.currentRecordingEngine = engine
-            effects.append(.showCapsule(.progress(text: loc("menu.recognitionEngine.apple"), hidesWaveform: true), ensurePanel: false))
+            effects.append(.showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false))
 
         case .teardownCompleted:
             next.phase = .idle

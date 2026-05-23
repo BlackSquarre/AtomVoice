@@ -4,6 +4,13 @@ import Foundation
 import Security
 @testable import AtomVoiceCore
 
+@discardableResult
+private func step(_ state: inout RecordingSessionState, _ event: RecordingEvent) -> [RecordingSideEffect] {
+    let result = RecordingStateMachine.reduce(state, event)
+    state = result.state
+    return result.sideEffects
+}
+
 @main
 struct ArchitectureTestRunner {
     static func main() async {
@@ -134,6 +141,19 @@ struct ArchitectureTestRunner {
             try expect(!sherpa.supportsLiveInsertion)
             try expect(doubao.preferredAudioFormat == .voice16k)
             try expect(doubao.supportsServerFallback)
+        }
+
+        await runner.run("RecognitionSession capabilities expose route-change reload needs") {
+            let provider = ASREngineProvider()
+            let audioEngine = AudioEngineController()
+
+            let apple = provider.recognitionSession(for: ASREngineRegistry.appleCode, audioEngine: audioEngine)
+            let sherpa = provider.recognitionSession(for: ASREngineRegistry.sherpaCode, audioEngine: audioEngine)
+            let doubao = provider.recognitionSession(for: VolcengineASRSettings.engineCode, audioEngine: audioEngine)
+
+            try expect(!apple.requiresModelReloadOnRouteChange)
+            try expect(sherpa.requiresModelReloadOnRouteChange)
+            try expect(!doubao.requiresModelReloadOnRouteChange)
         }
 
         await runner.run("ASR provider rebuilds Sherpa RecognitionSession on release") {
@@ -297,14 +317,26 @@ struct ArchitectureTestRunner {
         await runner.run("Recording session state covers start and cancel transitions") {
             var state = RecordingSessionState()
 
-            let firstRequest = try require(state.beginStart(deferredCapsulePresentation: true))
+            step(&state, .triggerPressed(deferCapsulePresentation: true))
+            let firstRequest = state.startRequestGeneration
             try expect(state.isStarting)
             try expect(state.isRecordingOrStarting)
             try expect(state.deferredCapsule.isDeferred)
-            try expect(state.beginStart(deferredCapsulePresentation: false) == nil)
+            let duplicateStartEffects = step(&state, .triggerPressed(deferCapsulePresentation: false))
+            try expect(duplicateStartEffects.isEmpty)
+            try expect(state.startRequestGeneration == firstRequest)
             try expect(state.acceptsStartRequest(firstRequest))
 
-            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+            let generation = state.recordingGeneration
             try expect(generation == 1)
             try expect(state.isRecording)
             try expect(!state.isStarting)
@@ -312,8 +344,7 @@ struct ArchitectureTestRunner {
 
             state.liveInsertion.isActive = true
             state.liveInsertion.committedText = "hello"
-            state.invalidateGenerationForCancel()
-            state.markRecordingStopped()
+            step(&state, .cancelRequested)
 
             try expect(!state.isRecordingOrStarting)
             try expect(state.recordingGeneration == 2)
@@ -323,17 +354,28 @@ struct ArchitectureTestRunner {
         await runner.run("Recording session state clears refining and Doubao wait") {
             var state = RecordingSessionState()
 
-            state.beginRefining(text: "pending")
+            step(&state, .refiningStarted(text: "pending"))
             try expect(state.isRefining)
-            try expect(state.endRefining() == "pending")
+            try expect(state.pendingRefinementText == "pending")
+            step(&state, .refiningFinished)
             try expect(!state.isRefining)
             try expect(state.pendingRefinementText == nil)
 
-            state.beginDoubaoFinalWait()
+            step(&state, .doubaoFinalWaitStarted)
             try expect(state.isWaitingForDoubaoFinalResult)
             state.liveInsertion.isActive = true
             state.liveInsertion.committedText = "live"
-            state.clearInterruptedState()
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+            step(&state, .cancelRequested)
 
             try expect(!state.isWaitingForDoubaoFinalResult)
             try expect(!state.liveInsertion.isActive)
@@ -393,7 +435,7 @@ struct ArchitectureTestRunner {
             try expect(failed.state.phase == .errored)
             try expect(failed.sideEffects == [
                 .showCapsule(.initial, ensurePanel: true),
-                .showCapsule(.error(message: loc("error.noInputDevice"), dismissAfter: 5), ensurePanel: true),
+                .showCapsule(.errorKey(messageKey: "error.noInputDevice", dismissAfter: 5), ensurePanel: true),
             ])
         }
 
@@ -451,10 +493,9 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine delivers pending Doubao and refinement text on new start") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            state.beginDoubaoFinalWait()
-            state.pendingRefinementText = "old llm"
-            state.markRefiningForReducerTest(true)
+            step(&state, .refiningStarted(text: "old llm"))
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(&state, .doubaoFinalWaitStarted)
 
             let result = RecordingStateMachine.reduce(
                 state,
@@ -475,8 +516,17 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine stops normal recording") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+            let generation = state.recordingGeneration
 
             let stopped = RecordingStateMachine.reduce(state, .triggerReleased)
 
@@ -488,8 +538,17 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine stops immediate with punctuation") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            let generation = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+            let generation = state.recordingGeneration
 
             let stopped = RecordingStateMachine.reduce(state, .immediateStop(appending: "?"))
 
@@ -499,8 +558,16 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine cancels capturing") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
             state.liveInsertion.isActive = true
             state.pendingRefinementText = "pending"
 
@@ -516,7 +583,8 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine lightly cancels pending start") {
             var state = RecordingSessionState()
-            let request = try require(state.beginStart(deferredCapsulePresentation: true))
+            step(&state, .triggerPressed(deferCapsulePresentation: true))
+            let request = state.startRequestGeneration
             state.deferredCapsule.pendingPresentation = .recording
             state.deferredCapsule.recognizedText = "pending"
 
@@ -533,8 +601,16 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine handles audio route failure") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
 
             let failed = RecordingStateMachine.reduce(state, .audioRouteRecoveryFailed)
 
@@ -556,21 +632,37 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine switches fallback engine") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            _ = state.transitionToRecording(engine: VolcengineASRSettings.engineCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: VolcengineASRSettings.engineCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
 
             let fallback = RecordingStateMachine.reduce(state, .fallbackStarted(engine: ASREngineRegistry.appleCode))
 
             try expect(fallback.state.currentRecordingEngine == ASREngineRegistry.appleCode)
             try expect(fallback.sideEffects == [
-                .showCapsule(.progress(text: loc("menu.recognitionEngine.apple"), hidesWaveform: true), ensurePanel: false)
+                .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false)
             ])
         }
 
         await runner.run("Recording state machine stores deferred partial text") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: true)
-            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: true))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
 
             let partial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello", isFinal: false))
 
@@ -581,8 +673,16 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine updates visible partial text") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
 
             let partial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello", isFinal: false))
 
@@ -592,8 +692,16 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine controls text output activation") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
-            _ = state.transitionToRecording(engine: ASREngineRegistry.appleCode)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
 
             let activated = RecordingStateMachine.reduce(state, .textOutputActivated(liveInsertion: true))
             try expect(activated.state.textOutputActivated)
@@ -606,7 +714,7 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine stores deferred capsule presentation") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: true)
+            step(&state, .triggerPressed(deferCapsulePresentation: true))
 
             let progress = RecordingStateMachine.reduce(
                 state,
@@ -619,7 +727,7 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine emits visible capsule presentation") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: false)
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
 
             let progress = RecordingStateMachine.reduce(
                 state,
@@ -631,7 +739,7 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine tracks shimmer in deferred mode") {
             var state = RecordingSessionState()
-            _ = state.beginStart(deferredCapsulePresentation: true)
+            step(&state, .triggerPressed(deferCapsulePresentation: true))
 
             let shimmer = RecordingStateMachine.reduce(state, .shimmerChanged(true))
 
@@ -692,7 +800,7 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine records LLM result") {
             var state = RecordingSessionState()
-            state.beginRefining(text: "draft")
+            step(&state, .refiningStarted(text: "draft"))
 
             let result = RecordingStateMachine.reduce(state, .llmResult(text: "polished"))
 
@@ -704,7 +812,7 @@ struct ArchitectureTestRunner {
 
         await runner.run("Recording state machine records LLM error") {
             var state = RecordingSessionState()
-            state.beginRefining(text: "draft")
+            step(&state, .refiningStarted(text: "draft"))
 
             let result = RecordingStateMachine.reduce(state, .llmError(message: "bad"))
 
@@ -1108,6 +1216,44 @@ struct ArchitectureTestRunner {
             try expect(PunctuationProcessor.detectLatinPunctuation("is this ready", language: "en-US") == "?")
             try expect(PunctuationProcessor.detectLatinPunctuation("this is perfect", language: "en-US") == "!")
             try expect(PunctuationProcessor.detectLatinPunctuation("this is ready", language: "en-US") == ".")
+        }
+
+        await runner.run("Apple live insertion adapter commits only stable segments") {
+            let adapter = AppleLiveInsertionAdapter()
+
+            let first = try require(
+                adapter.nextCommitDecision(
+                    latestPartial: "hello. wor",
+                    committedText: "",
+                    isFinal: false
+                )
+            )
+            try expect(first == AppleLiveSegmentDecision(segment: "hello. ", updatedCommittedText: "hello. "))
+
+            try expect(
+                adapter.nextCommitDecision(
+                    latestPartial: "hello. wo",
+                    committedText: "",
+                    isFinal: false
+                ) == nil
+            )
+
+            let final = try require(
+                adapter.nextCommitDecision(
+                    latestPartial: "hello.",
+                    committedText: "",
+                    isFinal: true
+                )
+            )
+            try expect(final == AppleLiveSegmentDecision(segment: "hello.", updatedCommittedText: "hello."))
+
+            try expect(
+                adapter.nextCommitDecision(
+                    latestPartial: "hello world. next",
+                    committedText: "hello wor",
+                    isFinal: false
+                ) == nil
+            )
         }
 
         await runner.run("Update checker parses versions and compares pre-release") {
