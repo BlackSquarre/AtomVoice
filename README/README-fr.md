@@ -22,10 +22,10 @@ Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Le runtim
 ## Fonctionnalités
 
 ### Enregistrement et déclenchement
-- **Maintenir pour parler** ou **appuyer pour parler** — au choix, avec arrêt automatique sur silence en option
+- **Maintenir pour parler** ou **appuyer pour parler** — au choix, avec arrêt automatique sur silence piloté par le texte reconnu pour réduire les coupures à tort avec une voix faible ou un environnement bruyant
 - **Touche de déclenchement personnalisable** — choisis le modificateur qui te convient
 - **Raccourcis pendant l'enregistrement** — annuler la prise, insérer immédiatement en sautant le LLM, ou clore avec un signe de ponctuation en une seule touche
-- **Contrôle vocal au casque (Beta)** — utilisez le bouton lecture/pause du casque pour la saisie vocale : appui simple selon le mode choisi, appui long pour parler, double appui pour envoyer Return
+- **Contrôle vocal au casque (Beta)** — utilisez le bouton lecture/pause du casque pour la saisie vocale ; vérifié avec les commandes de casques USB / DAC et les boutons de casques 3,5 mm : appui simple selon le mode choisi, appui long pour parler, double appui pour envoyer Return
 - **Annulation automatique au changement d'app** (mode maintenir uniquement)
 
 ### Moteurs de reconnaissance
@@ -53,7 +53,7 @@ Bundle compact, CPU quasi nul au repos, aucun démon en arrière-plan. Le runtim
 - **Sélecteur de périphérique d'entrée** — choisis n'importe quel micro du système
 - **Résilience audio** — l'enregistrement peut récupérer lors du branchement/retrait d'un casque, d'AirPods ou d'un changement d'entrée ; l'audio est rééchantillonné pour chaque moteur
 - **Baisse du volume système pendant l'enregistrement** (optionnel)
-- **Protection contre les doublons d'instance** — l'ancienne instance est fermée automatiquement au démarrage
+- **Protection contre les doublons d'instance** — l'ancienne instance est fermée automatiquement au démarrage, ce qui réduit la concurrence entre plusieurs copies pour les événements du bouton du casque
 
 ## Configuration requise
 
@@ -82,11 +82,14 @@ make dev
 open dist/Test/AtomVoice.app
 ```
 
-Pour les vérifications d'architecture :
+Pour les vérifications d'architecture et de couverture de localisation :
 
 ```bash
 make test
+make lint-loc
 ```
+
+`make lint-loc` compare les usages de `loc("key")` aux 8 dossiers de localisation afin de repérer les traductions d'interface manquantes.
 
 Le Makefile empaquette et signe l'app avec l'identité Apple Development configurée dans `Makefile` ; change-la si tu construis sur un autre Mac.
 

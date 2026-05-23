@@ -22,10 +22,10 @@ Bundle pequeño, uso de CPU casi nulo en reposo, sin demonios en segundo plano. 
 ## Funciones
 
 ### Grabación y activación
-- **Mantener para hablar** o **pulsar para hablar** — a tu elección, con parada automática por silencio opcional
+- **Mantener para hablar** o **pulsar para hablar** — a tu elección, con parada automática por silencio basada en el texto reconocido para reducir cortes falsos con voz baja o entornos ruidosos
 - **Tecla de activación personalizable** — elige el modificador que mejor se adapte a tu teclado
 - **Atajos durante la grabación** — cancelar la toma, insertar de inmediato saltándose el LLM o cerrar con un signo de puntuación con una sola tecla
-- **Control de voz con auriculares (Beta)** — usa el botón reproducir/pausa de los auriculares para la entrada por voz: pulsación simple según tu modo, pulsación larga para hablar, doble pulsación para enviar Return
+- **Control de voz con auriculares (Beta)** — usa el botón reproducir/pausa de los auriculares para la entrada por voz; verificado con controles de auriculares USB / DAC y botones de auriculares de 3,5 mm: pulsación simple según tu modo, pulsación larga para hablar, doble pulsación para enviar Return
 - **Cancelación automática al cambiar de app** (solo modo mantener)
 
 ### Motores de reconocimiento
@@ -53,7 +53,7 @@ Bundle pequeño, uso de CPU casi nulo en reposo, sin demonios en segundo plano. 
 - **Selector de dispositivo de entrada** — elige cualquier micrófono del sistema
 - **Resiliencia de ruta de audio** — la grabación puede recuperarse al conectar/desconectar auriculares, AirPods o cambiar dispositivo de entrada; el audio se remuestrea por motor
 - **Bajar el volumen del sistema mientras grabas** (opcional)
-- **Protección de instancia única** — la instancia anterior se cierra automáticamente al iniciar
+- **Protección de instancia única** — la instancia anterior se cierra automáticamente al iniciar, reduciendo que varias copias compitan por los eventos del botón de los auriculares
 
 ## Requisitos
 
@@ -82,11 +82,14 @@ make dev
 open dist/Test/AtomVoice.app
 ```
 
-Para comprobaciones de arquitectura:
+Para comprobaciones de arquitectura y cobertura de localización:
 
 ```bash
 make test
+make lint-loc
 ```
+
+`make lint-loc` compara los usos de `loc("key")` con los 8 directorios de localización para detectar traducciones de UI faltantes.
 
 El Makefile empaqueta y firma la app con la identidad Apple Development configurada en `Makefile`; cámbiala si compilas en otro Mac.
 

@@ -22,10 +22,10 @@ Small app bundle, near-zero CPU when idle, no background daemons. Sherpa runtime
 ## Features
 
 ### Recording & input
-- **Hold-to-talk or tap-to-talk** — your choice, with optional silence-based auto-stop
+- **Hold-to-talk or tap-to-talk** — your choice, with optional ASR-text-driven silence auto-stop to reduce false cutoffs for quiet speech or noisy rooms
 - **Customizable trigger key** — pick whichever modifier fits your keyboard
 - **In-recording shortcuts** — cancel the take, inject immediately and skip LLM polish, or end with a punctuation in one keypress
-- **Headphone Voice Control (Beta)** — use the headphone play/pause button for voice input: single press follows your input mode, long press talks, double press sends Return
+- **Headphone Voice Control (Beta)** — use the headphone play/pause button for voice input; verified with USB headset / DAC controls and 3.5 mm headset buttons: single press follows your input mode, long press talks, double press sends Return
 - **Auto-cancel on app switch** (hold mode only)
 
 ### Recognition engines
@@ -53,7 +53,7 @@ Small app bundle, near-zero CPU when idle, no background daemons. Sherpa runtime
 - **Audio input device picker** — choose any system microphone
 - **Audio route resilience** — recording can recover when headphones, AirPods, or input devices change mid-session; audio is resampled per recognition engine
 - **Lower system volume while recording** (optional)
-- **Single-instance protection** — old instance is terminated automatically on launch
+- **Single-instance protection** — old instance is terminated automatically on launch, reducing multiple app copies competing for headphone button events
 
 ## Requirements
 
@@ -82,11 +82,14 @@ make dev
 open dist/Test/AtomVoice.app
 ```
 
-For architecture checks, run:
+For architecture and localization coverage checks, run:
 
 ```bash
 make test
+make lint-loc
 ```
+
+`make lint-loc` scans `loc("key")` usage against the 8 localization directories to catch missing UI translations.
 
 The Makefile bundles and signs the app with the Apple Development identity configured in `Makefile`; change that identity if you build on another Mac.
 

@@ -22,10 +22,10 @@ Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons.
 ## Funktionen
 
 ### Aufnahme und Auslöser
-- **Halten zum Sprechen** oder **Tippen zum Sprechen** — deine Wahl, mit optionalem Stille-Auto-Stopp
+- **Halten zum Sprechen** oder **Tippen zum Sprechen** — deine Wahl, mit ASR-textgesteuertem Stille-Auto-Stopp, um falsche Abbrüche bei leiser Sprache oder lauter Umgebung zu reduzieren
 - **Anpassbare Auslösetaste** — wähle den Modifier, der zu deiner Tastatur passt
 - **Tastenkürzel während der Aufnahme** — Aufnahme abbrechen, sofort einfügen ohne LLM, oder mit einem Satzzeichen abschließen — alles per Einzeltastendruck
-- **Kopfhörer-Sprachsteuerung (Beta)** — nutze die Play/Pause-Taste der Kopfhörer für Spracheingabe: einfacher Druck folgt deinem Eingabemodus, langer Druck startet Aufnahme, Doppeldruck sendet Return
+- **Kopfhörer-Sprachsteuerung (Beta)** — nutze die Play/Pause-Taste der Kopfhörer für Spracheingabe; verifiziert mit USB-Headset- / DAC-Bedienelementen und 3,5-mm-Headset-Tasten: einfacher Druck folgt deinem Eingabemodus, langer Druck startet Aufnahme, Doppeldruck sendet Return
 - **Auto-Abbruch beim App-Wechsel** (nur Halten-Modus)
 
 ### Erkennungs-Engines
@@ -53,7 +53,7 @@ Kleines App-Bundle, nahezu null CPU-Last im Leerlauf, keine Hintergrund-Daemons.
 - **Audio-Eingabegerät auswählen** — beliebiges Systemmikrofon möglich
 - **Robuste Audio-Routen** — Aufnahmen können sich erholen, wenn Kopfhörer, AirPods oder Eingabegeräte währenddessen wechseln; Audio wird pro Engine neu abgetastet
 - **Systemlautstärke beim Aufnehmen senken** (optional)
-- **Single-Instance-Schutz** — alte Instanzen werden beim Start automatisch beendet
+- **Single-Instance-Schutz** — alte Instanzen werden beim Start automatisch beendet, damit mehrere App-Kopien seltener um Kopfhörer-Tastenereignisse konkurrieren
 
 ## Anforderungen
 
@@ -82,11 +82,14 @@ make dev
 open dist/Test/AtomVoice.app
 ```
 
-Für Architekturprüfungen:
+Für Architektur- und Lokalisierungsabdeckungsprüfungen:
 
 ```bash
 make test
+make lint-loc
 ```
+
+`make lint-loc` gleicht `loc("key")`-Verwendungen mit den 8 Lokalisierungsordnern ab, um fehlende UI-Übersetzungen zu finden.
 
 Das Makefile bündelt und signiert die App mit der in `Makefile` konfigurierten Apple-Development-Identität; passe sie an, wenn du auf einem anderen Mac baust.
 
