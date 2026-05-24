@@ -66,7 +66,7 @@ final class SherpaOnnxRecognizerController {
                 AtomVoiceSherpaPunctuationDestroy(punctuationContext)
                 self.punctuationContext = nil
             }
-            DebugLog.info("[SherpaOnnx] 已释放模型上下文")
+            DebugLog.info("[SherpaOnnx] Released model context")
         }
     }
 
@@ -98,7 +98,7 @@ final class SherpaOnnxRecognizerController {
 
     static func openSupportDirectory() {
         do { try createSupportDirectories() }
-        catch { DebugLog.error("[SherpaOnnx] 创建目录失败: \(error)") }
+        catch { DebugLog.error("[SherpaOnnx] Failed to create directory: \(error)") }
         NSWorkspace.shared.open(supportDirectory)
     }
 
@@ -136,7 +136,7 @@ final class SherpaOnnxRecognizerController {
             lastStartFailureKind = .missingModel
             return loc("error.sherpaModelMissing", preset.modelDirectory.path)
         }
-        DebugLog.info("[SherpaOnnx] 加载 \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens) provider=\(Self.provider)")
+        DebugLog.info("[SherpaOnnx] Loading \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens) provider=\(Self.provider)")
 
         var errorBuffer = [CChar](repeating: 0, count: 2048)
         let providerStr = Self.provider
@@ -248,7 +248,7 @@ final class SherpaOnnxRecognizerController {
             }
             // 重置 stream 以备下次录音，但保留识别器上下文避免重复加载模型（Reset stream for next recording, but keep recognizer context to avoid reloading model）
             if AtomVoiceSherpaResetStream(context) == 0 {
-                DebugLog.error("[SherpaOnnx] 重置 stream 失败，销毁上下文下次重建")
+                DebugLog.error("[SherpaOnnx] Failed to reset stream, destroying context for next rebuild")
                 AtomVoiceSherpaDestroy(context)
                 self.context = nil
             }
@@ -287,7 +287,7 @@ final class SherpaOnnxRecognizerController {
               FileManager.default.fileExists(atPath: Self.runtimeLibDirectory.appendingPathComponent("libonnxruntime.1.24.4.dylib").path),
               FileManager.default.fileExists(atPath: Self.punctuationModelDirectory.appendingPathComponent("model.int8.onnx").path)
         else {
-            DebugLog.info("[SherpaOnnx] 标点模型或运行库不存在，跳过本地标点")
+            DebugLog.info("[SherpaOnnx] Punctuation model or runtime is missing, skipping local punctuation")
             return false
         }
 
@@ -305,7 +305,7 @@ final class SherpaOnnxRecognizerController {
 
         guard let created else {
             let detail = String(cString: errorBuffer)
-            DebugLog.error("[SherpaOnnx] 标点模型加载失败: \(detail.isEmpty ? "Unknown error" : detail)")
+            DebugLog.error("[SherpaOnnx] Failed to load punctuation model: \(detail.isEmpty ? "Unknown error" : detail)")
             return false
         }
 

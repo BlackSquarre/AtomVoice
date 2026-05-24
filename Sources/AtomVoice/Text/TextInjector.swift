@@ -53,7 +53,7 @@ final class TextInjector {
     private func scheduleInjectionWatchdog(for injectionID: UUID, text: String, completion: (() -> Void)?) {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.injectionWatchdogTimeout) { [weak self] in
             guard let self, self.isInjecting, self.currentInjectionID == injectionID else { return }
-            DebugLog.error("[TextInjector] 注入超时 \(Self.injectionWatchdogTimeout)s，重置状态并继续队列，textLength=\(text.count)")
+            DebugLog.error("[TextInjector] Injection timed out after \(Self.injectionWatchdogTimeout)s, resetting state and continuing queue, textLength=\(text.count)")
             self.isInjecting = false
             self.currentInjectionID = UUID()
             completion?()

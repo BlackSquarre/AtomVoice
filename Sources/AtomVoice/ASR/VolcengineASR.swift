@@ -267,7 +267,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession,
                     webSocketTask: URLSessionWebSocketTask,
                     didOpenWithProtocol protocol: String?) {
-        DebugLog.info("[VolcengineASR] WebSocket 已连接, protocol=\(`protocol` ?? "nil")")
+        DebugLog.info("[VolcengineASR] WebSocket connected, protocol=\(`protocol` ?? "nil")")
         queue.async { [weak self] in
             guard let self else { return }
             guard !self.isCancelled else {
@@ -294,7 +294,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
     }
 
     func cancel() {
-        DebugLog.info("[VolcengineASR] 取消连接")
+        DebugLog.info("[VolcengineASR] Canceling connection")
         queue.async { [weak self] in
             guard let self, !self.isCancelled else { return }
             self.isCancelled = true

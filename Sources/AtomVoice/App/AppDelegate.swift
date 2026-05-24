@@ -221,7 +221,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         memoryPressureSource?.setEventHandler { [weak self] in
             guard let self else { return }
             guard !self.session.isRecording else { return }
-            DebugLog.info("[AppDelegate] 系统内存压力，释放 Sherpa 模型")
+            DebugLog.info("[AppDelegate] Critical memory pressure, releasing Sherpa model")
             self.releaseSherpaModelsIfNeeded()
         }
         memoryPressureSource?.resume()
@@ -271,13 +271,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 菜单栏应用不应该多开；新实例启动时清理旧实例，避免多个事件 tap 同时抢耳机线控。
         otherApps.forEach { app in
-            DebugLog.info("[AppDelegate] 正在退出旧实例 pid=\(app.processIdentifier)")
+            DebugLog.info("[AppDelegate] Terminating older instance pid=\(app.processIdentifier)")
             app.terminate()
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             otherApps.filter { !$0.isTerminated }.forEach { app in
-                DebugLog.info("[AppDelegate] 旧实例未正常退出，强制结束 pid=\(app.processIdentifier)")
+                DebugLog.info("[AppDelegate] Older instance did not terminate cleanly, force terminating pid=\(app.processIdentifier)")
                 app.forceTerminate()
             }
         }
@@ -288,11 +288,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         guard Darwin.kill(pid, 0) == 0 else { return }
         guard let app = NSRunningApplication(processIdentifier: pid) else { return }
 
-        DebugLog.info("[AppDelegate] PID 文件发现旧实例 pid=\(pid)")
+        DebugLog.info("[AppDelegate] PID file points to older instance pid=\(pid)")
         app.terminate()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             if !app.isTerminated {
-                DebugLog.info("[AppDelegate] PID 文件旧实例未正常退出，强制结束 pid=\(pid)")
+                DebugLog.info("[AppDelegate] PID-file instance did not terminate cleanly, force terminating pid=\(pid)")
                 app.forceTerminate()
             }
         }
@@ -307,7 +307,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         } catch {
-            DebugLog.error("[AppDelegate] 创建单实例 PID 目录失败: \(error.localizedDescription)")
+            DebugLog.error("[AppDelegate] Failed to create single-instance PID directory: \(error.localizedDescription)")
             return nil
         }
         return directory.appendingPathComponent("AtomVoice.pid")
@@ -327,7 +327,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try String(pid).write(to: url, atomically: true, encoding: .utf8)
         } catch {
-            DebugLog.error("[AppDelegate] 写入单实例 PID 文件失败: \(error.localizedDescription)")
+            DebugLog.error("[AppDelegate] Failed to write single-instance PID file: \(error.localizedDescription)")
         }
     }
 
@@ -392,11 +392,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if session.isRecording && session.activeRecognitionSession?.requiresModelReloadOnRouteChange == true {
             pendingSherpaModelRelease = true
-            DebugLog.info("[AppDelegate] Sherpa 预设已切换，当前录音结束后释放旧模型")
+            DebugLog.info("[AppDelegate] Sherpa preset changed, releasing old model after current recording")
             return
         }
 
-        DebugLog.info("[AppDelegate] Sherpa 预设已切换，释放旧模型")
+        DebugLog.info("[AppDelegate] Sherpa preset changed, releasing old model")
         releaseSherpaModelsIfNeeded()
     }
 
@@ -426,7 +426,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             guard !self.session.isRecording,
                   self.selectedRecognitionEngineCode == ASREngineRegistry.sherpaCode,
                   self.asrEngineProvider.isSherpaModelLoaded else { return }
-            DebugLog.info("[AppDelegate] Sherpa 模型空闲超时，自动释放本地模型")
+            DebugLog.info("[AppDelegate] Sherpa idle timeout reached, auto-releasing local model")
             self.releaseSherpaModelsIfNeeded()
         }
         sherpaAutoUnloadWorkItem = workItem
@@ -520,7 +520,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let pool = SherpaModelPreset.presets(forRecognitionLanguage: lang)
         if let alt = pool.first(where: { $0.isDownloaded }) {
             defaults.set(alt.id, forKey: AppSettings.Keys.sherpaModelPresetID)
-            DebugLog.info("[SherpaOnnx] 启动迁移: \(savedID) 未下载，自动切到已下载的 \(alt.id)")
+            DebugLog.info("[SherpaOnnx] Launch migration: \(savedID) is not downloaded, switching to downloaded preset \(alt.id)")
         }
         // 若同语言下都没有已下载的，保留原值；下次切到 sherpa 引擎时会触发下载提示
         // (If nothing downloaded in this language, keep original; next sherpa switch will prompt download)

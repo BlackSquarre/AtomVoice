@@ -309,11 +309,11 @@ final class RecognitionResultFinalizer {
         let safeSuffixStart = liveInsertionSuffixStartIndex(in: text, commonPrefixEnd: commonPrefixEnd)
         let commonPrefixLength = text.distance(from: text.startIndex, to: safeSuffixStart)
         if commonPrefixLength > 0 {
-            DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不完全一致，从共同前缀后继续注入")
+            DebugLog.info("[LiveInsertion] Final text differs from committed prefix, injecting from common-prefix suffix")
             return String(text[safeSuffixStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        DebugLog.info("[LiveInsertion] 最终文本与已上屏前缀不一致，注入完整最终文本以避免丢字")
+        DebugLog.info("[LiveInsertion] Final text does not match committed prefix, injecting full final text to avoid dropped characters")
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

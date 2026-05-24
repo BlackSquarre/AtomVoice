@@ -76,7 +76,7 @@ final class AudioEngineController {
     /// 销毁当前 engine 并新建一个：真实路由变化后唯一可靠的恢复路径。
     /// (Tear down current engine and create a fresh one — the only reliable recovery after real route changes.)
     private func rebuildEngine() {
-        DebugLog.info("[AudioEngine] 重建 AVAudioEngine 实例 (start)")
+        DebugLog.info("[AudioEngine] Rebuilding AVAudioEngine instance (start)")
         NotificationCenter.default.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: engine)
         if tapInstalled {
             DebugLog.info("[AudioEngine] rebuild: removeTap")
@@ -87,14 +87,14 @@ final class AudioEngineController {
             DebugLog.info("[AudioEngine] rebuild: engine.stop")
             engine.stop()
         }
-        DebugLog.info("[AudioEngine] rebuild: 实例化新 AVAudioEngine")
+        DebugLog.info("[AudioEngine] rebuild: creating new AVAudioEngine")
         engine = AVAudioEngine()
         registerConfigurationChangeObserver()
         needsEngineRebuild = false
         lastStartSucceededAt = nil
         // 新 engine 的 input format 通常与旧的不同，丢弃 router 里所有 converter cache
         router.invalidate()
-        DebugLog.info("[AudioEngine] 重建 AVAudioEngine 实例 (done)")
+        DebugLog.info("[AudioEngine] Rebuilding AVAudioEngine instance (done)")
     }
 
     deinit {
@@ -102,7 +102,7 @@ final class AudioEngineController {
     }
 
     @objc private func handleConfigurationChange(_ note: Notification) {
-        DebugLog.info("[AudioEngine] 收到 AVAudioEngineConfigurationChange")
+        DebugLog.info("[AudioEngine] Received AVAudioEngineConfigurationChange")
         // 通知可能在任意线程；统一切回主线程操作 engine 状态。
         // Apple 行为：configuration change 时 engine 会自动 stop 自己；这里只需清掉 tap 状态，
         // 让下次 start() 走干净路径。不调用 engine.reset() —— 它会让 inputNode 的格式与 AU 配置不一致，
@@ -122,12 +122,12 @@ final class AudioEngineController {
             if let last = self.lastStartSucceededAt,
                Date().timeIntervalSince(last) < 1.0,
                self.engine.isRunning {
-                DebugLog.info("[AudioEngine] 忽略 start 后 \(Int(Date().timeIntervalSince(last)*1000))ms 内的自触发 ConfigurationChange")
+                DebugLog.info("[AudioEngine] Ignoring self-triggered ConfigurationChange \(Int(Date().timeIntervalSince(last)*1000))ms after start")
                 return
             }
             let wasActive = self.tapInstalled
             NSLog("[ATOMVOICE] route-change handler PRE-cleanup wasActive=%d", wasActive ? 1 : 0)
-            DebugLog.info("[AudioEngine] 检测到真实路由变化，wasActive=\(wasActive)")
+            DebugLog.info("[AudioEngine] Detected real route change, wasActive=\(wasActive)")
             // 清掉旧 engine 状态
             if self.tapInstalled {
                 self.engine.inputNode.removeTap(onBus: 0)
@@ -156,7 +156,7 @@ final class AudioEngineController {
     }
 
     private func scheduleIdleRouteRebuild(token: Int) {
-        DebugLog.info("[AudioEngine] 空闲路由变化后安排重建 token=\(token)")
+        DebugLog.info("[AudioEngine] Scheduled idle route rebuild token=\(token)")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let self, self.isCurrentRouteRecovery(token) else { return }
             guard self.needsEngineRebuild else {
@@ -165,18 +165,18 @@ final class AudioEngineController {
             }
             self.rebuildEngine()
             self.completeRouteRecovery(token: token)
-            DebugLog.info("[AudioEngine] 空闲路由变化后已预重建")
+            DebugLog.info("[AudioEngine] Pre-rebuilt after idle route change")
         }
     }
 
     private func scheduleRouteRecovery(token: Int) {
-        DebugLog.info("[AudioEngine] 路由变化恢复已转入后台队列 token=\(token)")
+        DebugLog.info("[AudioEngine] Route-change recovery moved to background queue token=\(token)")
         routeRecoveryQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.recoverRouteAfterActiveChange(token: token)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self, self.isCurrentRouteRecovery(token) else { return }
-            DebugLog.error("[AudioEngine] 路由变化恢复 watchdog 超时，结束当前录音 token=\(token)")
+            DebugLog.error("[AudioEngine] Route-change recovery watchdog timed out, ending current recording token=\(token)")
             self.completeRouteRecovery(token: token)
             self.onRouteRecoveryFailed?()
         }
@@ -199,7 +199,7 @@ final class AudioEngineController {
                 guard isCurrentRouteRecovery(token) else { return }
                 rebuildEngine()
                 guard isCurrentRouteRecovery(token) else { return }
-                DebugLog.info("[AudioEngine] 路由变化后台重启尝试 \(attempt)")
+                DebugLog.info("[AudioEngine] Route-change background restart attempt \(attempt)")
                 armSuccess = armEngineWithCurrentHandlers(context: "route-change re-arm")
             }
 
@@ -213,7 +213,7 @@ final class AudioEngineController {
                 }
                 completeRouteRecovery(token: token)
                 NSLog("[ATOMVOICE] route-change AFTER re-arm OK")
-                DebugLog.info("[AudioEngine] 路由变化后无缝切到新设备成功")
+                DebugLog.info("[AudioEngine] Seamlessly switched to new device after route change")
                 return
             }
 
@@ -221,7 +221,7 @@ final class AudioEngineController {
         }
 
         guard isCurrentRouteRecovery(token) else { return }
-        DebugLog.error("[AudioEngine] 路由变化后台重启超时，结束当前录音")
+        DebugLog.error("[AudioEngine] Route-change background restart timed out, ending current recording")
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isCurrentRouteRecovery(token) else { return }
             self.onRouteRecoveryFailed?()
@@ -396,7 +396,7 @@ final class AudioEngineController {
                 }
 
                 if self.needsEngineRebuild {
-                    DebugLog.info("[AudioEngine] waitForInputReady: engine 待重建，先重建")
+                    DebugLog.info("[AudioEngine] waitForInputReady: engine needs rebuild, rebuilding first")
                     self.rebuildEngine()
                 }
 
@@ -427,17 +427,17 @@ final class AudioEngineController {
     private func isInputReady() -> Bool {
         let devices = AudioEngineController.availableInputDevices()
         guard !devices.isEmpty else {
-            DebugLog.info("[AudioEngine] isInputReady: 设备列表为空")
+            DebugLog.info("[AudioEngine] isInputReady: no input devices")
             return false
         }
         applySelectedInputDevice()
         var format = engine.inputNode.outputFormat(forBus: 0)
         if format.sampleRate <= 0 || format.channelCount <= 0 {
             let names = devices.map { $0.name }.joined(separator: ",")
-            DebugLog.info("[AudioEngine] isInputReady: format 无效 sr=\(format.sampleRate) ch=\(format.channelCount), 设备数=\(devices.count) 名单=\(names)，尝试 forceRebind")
+            DebugLog.info("[AudioEngine] isInputReady: invalid format sr=\(format.sampleRate) ch=\(format.channelCount), deviceCount=\(devices.count) names=\(names), trying forceRebind")
             forceRebindDefaultInputDevice()
             format = engine.inputNode.outputFormat(forBus: 0)
-            DebugLog.info("[AudioEngine] isInputReady: forceRebind 后 format sr=\(format.sampleRate) ch=\(format.channelCount)")
+            DebugLog.info("[AudioEngine] isInputReady: format after forceRebind sr=\(format.sampleRate) ch=\(format.channelCount)")
         }
         return format.sampleRate > 0 && format.channelCount > 0
     }
@@ -467,9 +467,9 @@ final class AudioEngineController {
             UInt32(MemoryLayout<AudioDeviceID>.size)
         )
         if status != noErr {
-            DebugLog.error("[AudioEngine] 强制重绑默认输入设备失败 status=\(status) deviceID=\(deviceID)")
+            DebugLog.error("[AudioEngine] Failed to force-rebind default input device status=\(status) deviceID=\(deviceID)")
         } else {
-            DebugLog.info("[AudioEngine] 强制重绑默认输入设备成功 deviceID=\(deviceID)")
+            DebugLog.info("[AudioEngine] Force-rebound default input device deviceID=\(deviceID)")
         }
     }
 
@@ -480,12 +480,12 @@ final class AudioEngineController {
 
         let devices = AudioEngineController.availableInputDevices()
         guard let device = devices.first(where: { $0.uid == savedUID }) else {
-            DebugLog.info("[AudioEngine] 保存的输入设备 \(savedUID) 不可用，使用系统默认")
+            DebugLog.info("[AudioEngine] Saved input device \(savedUID) is unavailable, using system default")
             return
         }
 
         guard let audioUnit = engine.inputNode.audioUnit else {
-            DebugLog.error("[AudioEngine] 输入节点不可用，无法切换输入设备")
+            DebugLog.error("[AudioEngine] Input node unavailable, cannot switch input device")
             return
         }
         var deviceID = device.id
@@ -498,9 +498,9 @@ final class AudioEngineController {
             UInt32(MemoryLayout<AudioDeviceID>.size)
         )
         if status == noErr {
-            DebugLog.info("[AudioEngine] 输入设备已切换为: \(device.name)")
+            DebugLog.info("[AudioEngine] Switched input device to: \(device.name)")
         } else {
-            DebugLog.error("[AudioEngine] 切换输入设备失败: \(status)")
+            DebugLog.error("[AudioEngine] Failed to switch input device: \(status)")
         }
     }
 
@@ -560,7 +560,7 @@ final class AudioEngineController {
         lastInputProbeLogTime = 0
         #endif
         guard format.sampleRate > 0, format.channelCount > 0 else {
-            DebugLog.error("[AudioEngine] \(context): 输入格式无效")
+            DebugLog.error("[AudioEngine] \(context): invalid input format")
             needsEngineRebuild = true
             return false
         }
@@ -577,7 +577,7 @@ final class AudioEngineController {
         var tapError: NSString?
         let installed = AtomVoiceInstallAudioTapWithError(inputNode, 0, 1024, format, tapBlock, &tapError)
         guard installed else {
-            DebugLog.error("[AudioEngine] \(context): 装 tap 失败: \(tapError as String? ?? "unknown")")
+            DebugLog.error("[AudioEngine] \(context): failed to install tap: \(tapError as String? ?? "unknown")")
             needsEngineRebuild = true
             return false
         }
@@ -586,10 +586,10 @@ final class AudioEngineController {
         do {
             try engine.start()
             lastStartSucceededAt = Date()
-            DebugLog.info("[AudioEngine] \(context): engine.start 成功")
+            DebugLog.info("[AudioEngine] \(context): engine.start succeeded")
             return true
         } catch {
-            DebugLog.error("[AudioEngine] \(context): engine.start 抛异常 \(error)")
+            DebugLog.error("[AudioEngine] \(context): engine.start threw \(error)")
             if tapInstalled {
                 inputNode.removeTap(onBus: 0)
                 tapInstalled = false
@@ -624,16 +624,16 @@ final class AudioEngineController {
 
         idleHardwareReleaseToken += 1
         let token = idleHardwareReleaseToken
-        DebugLog.info(String(format: "[AudioEngine] 安排空闲释放输入硬件 %.1fs token=%d", delay, token))
+        DebugLog.info(String(format: "[AudioEngine] Scheduled idle input-hardware release %.1fs token=%d", delay, token))
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, self.idleHardwareReleaseToken == token else { return }
             self.idleHardwareReleaseToken += 1
             guard !self.tapInstalled, !self.engine.isRunning else {
-                DebugLog.info("[AudioEngine] 跳过空闲释放：engine 已重新活跃")
+                DebugLog.info("[AudioEngine] Skipping idle release: engine is active again")
                 return
             }
             self.rebuildEngine()
-            DebugLog.info("[AudioEngine] 空闲输入硬件已释放")
+            DebugLog.info("[AudioEngine] Released idle input hardware")
         }
     }
 

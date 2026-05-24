@@ -248,7 +248,7 @@ final class LLMRefiner {
         let startTime = Date()
         let delegate = StreamDelegate(isAnthropic: isAnthropic, onProgress: onProgress) { [weak self] result, error in
             let elapsed = String(format: "%.2f", Date().timeIntervalSince(startTime))
-            DebugLog.info("[LLMRefiner] 完成 \(elapsed)s")
+            DebugLog.info("[LLMRefiner] Completed in \(elapsed)s")
             self?.streamSession?.finishTasksAndInvalidate()
             completion(result, error)
         }

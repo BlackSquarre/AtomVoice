@@ -149,7 +149,7 @@ final class AudioRouter {
         }
 
         if let error {
-            DebugLog.error("[AudioRouter] convert 失败: \(error.localizedDescription)")
+            DebugLog.error("[AudioRouter] convert failed: \(error.localizedDescription)")
             return nil
         }
         guard status != .error, outputBuffer.frameLength > 0 else { return nil }
@@ -171,7 +171,7 @@ final class AudioRouter {
 
         guard let outputFormat = target.avFormat,
               let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
-            DebugLog.error("[AudioRouter] 无法创建 converter input=\(inputFingerprint(inputFormat)) target=\(target)")
+            DebugLog.error("[AudioRouter] Failed to create converter input=\(inputFingerprint(inputFormat)) target=\(target)")
             return nil
         }
 

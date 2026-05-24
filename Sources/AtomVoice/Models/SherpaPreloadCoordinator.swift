@@ -49,7 +49,7 @@ final class SherpaPreloadCoordinator {
             let buffered = self.buffers
             self.buffers = []
 
-            DebugLog.info("[SherpaPreload] drain 第一轮 count=\(buffered.count)")
+            DebugLog.info("[SherpaPreload] drain first pass count=\(buffered.count)")
             for buf in buffered {
                 accept(buf)
             }
@@ -59,7 +59,7 @@ final class SherpaPreloadCoordinator {
                 guard let self else { return }
                 let stragglers = self.buffers
                 self.buffers = []
-                DebugLog.info("[SherpaPreload] drain 二次 count=\(stragglers.count)")
+                DebugLog.info("[SherpaPreload] drain second pass count=\(stragglers.count)")
                 for buf in stragglers {
                     accept(buf)
                 }

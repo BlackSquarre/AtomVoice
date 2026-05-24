@@ -205,10 +205,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     try FileManager.default.removeItem(at: target)
                 }
                 try FileManager.default.copyItem(at: source, to: target)
-                DebugLog.info("[SherpaOnnx] 已修复运行库路径: \(target.path)")
+                DebugLog.info("[SherpaOnnx] Repaired runtime library path: \(target.path)")
             }
         } catch {
-            DebugLog.error("[SherpaOnnx] 修复运行库路径失败: \(error)")
+            DebugLog.error("[SherpaOnnx] Failed to repair runtime library path: \(error)")
             return false
         }
 
@@ -218,20 +218,20 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     static func printMissingRequiredFiles(for preset: SherpaModelPreset = SherpaModelPreset.current) {
         var problems: [String] = []
         for f in runtimeRequiredFiles() where !SherpaModelPreset.isUsableFile(f.url) {
-            problems.append("运行库 \(f.name): \(f.url.path)")
+            problems.append("runtime \(f.name): \(f.url.path)")
         }
         if preset.resolveManifest() == nil {
-            problems.append("ASR 模型目录无法解析: \(preset.modelDirectory.path)")
+            problems.append("ASR model directory could not be resolved: \(preset.modelDirectory.path)")
         }
         let punct = punctuationRequiredFile()
         if !SherpaModelPreset.isUsableFile(punct) {
-            problems.append("标点模型: \(punct.path)")
+            problems.append("punctuation model: \(punct.path)")
         }
         if problems.isEmpty {
-            DebugLog.info("[SherpaOnnx] 必需文件都存在，但模型仍无法加载，可能是文件损坏或版本不兼容")
+            DebugLog.info("[SherpaOnnx] Required files exist, but the model still cannot load; files may be corrupt or incompatible")
             return
         }
-        DebugLog.error("[SherpaOnnx] 必需文件缺失或损坏：")
+        DebugLog.error("[SherpaOnnx] Required files are missing or corrupt:")
         for line in problems { DebugLog.error("[SherpaOnnx] - \(line)") }
     }
 
@@ -354,7 +354,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private func failCurrentCandidate() {
         if currentCandidateRetry < Self.maxRetriesPerCandidate {
             currentCandidateRetry += 1
-            DebugLog.info("[下载] 第 \(self.currentCandidateRetry) 次重试当前镜像")
+            DebugLog.info("[Download] Retry \(self.currentCandidateRetry) for current mirror")
         } else {
             currentCandidateIndex += 1
             currentCandidateRetry = 0
@@ -378,7 +378,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             targetVersion = nil
             let success = runtimeOnly || Self.isReady(for: preset)
             if success {
-                DebugLog.info("[下载] 所有模型验证通过")
+                DebugLog.info("[Download] All models validated")
             } else {
                 Self.printMissingRequiredFiles(for: preset)
             }
@@ -396,7 +396,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let url = item.urlCandidates[currentCandidateIndex]
         let num = currentItemIndex + 1
         let host = url.host ?? "unknown"
-        DebugLog.info("[下载] \(item.name) (\(num)/\(self.totalItems)) 来源 \(host) 候选 \(self.currentCandidateIndex + 1)/\(item.urlCandidates.count) 重试 \(self.currentCandidateRetry)/\(Self.maxRetriesPerCandidate)")
+        DebugLog.info("[Download] \(item.name) (\(num)/\(self.totalItems)) source \(host) candidate \(self.currentCandidateIndex + 1)/\(item.urlCandidates.count) retry \(self.currentCandidateRetry)/\(Self.maxRetriesPerCandidate)")
 
         let overall = computeOverallProgress(itemProgress: 0)
         let percent = Int(overall * 100)
@@ -419,12 +419,12 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         // 校验响应状态码（Validate response status code）
         if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            DebugLog.error("[下载] \(item.name) HTTP \(http.statusCode)")
+            DebugLog.error("[Download] \(item.name) HTTP \(http.statusCode)")
             failCurrentCandidate()
             return
         }
 
-        DebugLog.info("[下载] 完成下载 \(item.name)")
+        DebugLog.info("[Download] Finished downloading \(item.name)")
 
         let tmpDir = tempDir()
         try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -437,7 +437,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             }
             try FileManager.default.moveItem(at: location, to: archiveURL)
         } catch {
-            DebugLog.error("[下载] 移动下载文件失败: \(error.localizedDescription)")
+            DebugLog.error("[Download] Failed to move downloaded file: \(error.localizedDescription)")
             finishWithError(loc("sherpa.download.error.moveFailed", error.localizedDescription))
             return
         }
@@ -460,20 +460,20 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.isDownloading else { return }
                 if extractSuccess {
-                    DebugLog.info("[下载] 解压成功 \(item.name)")
+                    DebugLog.info("[Download] Extracted \(item.name)")
                     // ASR 模型解压后立即扫盘写 manifest，避免后续运行时再扫
                     // (After extracting ASR archive, scan and write manifest immediately)
                     if item.name == "asr", let preset = self.targetPreset {
                         if let manifest = ModelManifest.discover(in: preset.modelDirectory) {
                             try? manifest.save(to: preset.modelDirectory)
-                            DebugLog.info("[下载] manifest 写入: encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner)")
+                            DebugLog.info("[Download] Wrote manifest: encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner)")
                         } else {
-                            DebugLog.error("[下载] 解压后无法识别模型文件 \(preset.modelDirectory.path)")
+                            DebugLog.error("[Download] Could not recognize model files after extraction \(preset.modelDirectory.path)")
                         }
                     } else if item.name == "runtime", let version = self.targetVersion {
                         // 写入版本文件 (Write version.txt)
                         try? version.write(to: Self.runtimeVersionFileURL, atomically: true, encoding: .utf8)
-                        DebugLog.info("[下载] 运行时版本已保存: \(version)")
+                        DebugLog.info("[Download] Saved runtime version: \(version)")
                     }
                     self.advanceToNextItem()
                 } else {
@@ -501,7 +501,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         // 失败：先尝试重试当前镜像，再切下一个（Failed: retry current mirror first, then next）
         let item = itemsToDownload[currentItemIndex]
-        DebugLog.error("[下载] \(item.name) 失败: \(error.localizedDescription)")
+        DebugLog.error("[Download] \(item.name) failed: \(error.localizedDescription)")
         failCurrentCandidate()
     }
 
@@ -525,7 +525,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
         guard extractArchive(at: archiveURL, to: tempRoot),
               let modelRoot = locateModelRoot(in: tempRoot) else {
-            DebugLog.error("[下载] ASR 解压后未找到可识别模型根: \(archiveURL.lastPathComponent)")
+            DebugLog.error("[Download] No recognizable ASR model root after extraction: \(archiveURL.lastPathComponent)")
             return false
         }
 
@@ -541,7 +541,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             }
             return true
         } catch {
-            DebugLog.error("[下载] ASR 模型归位失败: \(error.localizedDescription)")
+            DebugLog.error("[Download] Failed to place ASR model: \(error.localizedDescription)")
             return false
         }
     }
@@ -587,7 +587,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             process.waitUntilExit()
             return process.terminationStatus == 0
         } catch {
-            DebugLog.error("[下载] 解压进程启动失败: \(error.localizedDescription)")
+            DebugLog.error("[Download] Failed to start extraction process: \(error.localizedDescription)")
             return false
         }
     }
@@ -604,13 +604,13 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
             try process.run()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else {
-                DebugLog.error("[下载] tar 条目列表失败 status=\(process.terminationStatus)")
+                DebugLog.error("[Download] Failed to list tar entries status=\(process.terminationStatus)")
                 return false
             }
 
             let output = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let listing = String(data: output, encoding: .utf8) else {
-                DebugLog.error("[下载] tar 条目列表不是合法 UTF-8")
+                DebugLog.error("[Download] Tar entry listing is not valid UTF-8")
                 return false
             }
 
@@ -621,19 +621,19 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     continue
                 }
                 guard !path.isEmpty else {
-                    DebugLog.error("[下载] 拒绝空 tar 条目")
+                    DebugLog.error("[Download] Rejected empty tar entry")
                     return false
                 }
                 let components = path.split(separator: "/", omittingEmptySubsequences: false)
                 if path.hasPrefix("/") || components.contains("..") || path.contains("\0") {
-                    DebugLog.error("[下载] 拒绝不安全 tar 条目: \(path)")
+                    DebugLog.error("[Download] Rejected unsafe tar entry: \(path)")
                     return false
                 }
             }
 
             return true
         } catch {
-            DebugLog.error("[下载] tar 条目列表进程启动失败: \(error.localizedDescription)")
+            DebugLog.error("[Download] Failed to start tar listing process: \(error.localizedDescription)")
             return false
         }
     }

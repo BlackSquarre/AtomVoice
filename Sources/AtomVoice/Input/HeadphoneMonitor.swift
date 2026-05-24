@@ -109,7 +109,7 @@ final class HeadphoneMonitor {
             },
             userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
-            DebugLog.error("[HeadphoneMonitor] 无法创建事件监听（缺少辅助功能权限？）")
+            DebugLog.error("[HeadphoneMonitor] Failed to create event tap (missing Accessibility permission?)")
             return
         }
 
@@ -117,7 +117,7 @@ final class HeadphoneMonitor {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        DebugLog.info("[HeadphoneMonitor] 已启动")
+        DebugLog.info("[HeadphoneMonitor] Started")
     }
 
     func stop() {
@@ -132,7 +132,7 @@ final class HeadphoneMonitor {
         eventTap = nil
         runLoopSource = nil
         resetGesture()
-        DebugLog.info("[HeadphoneMonitor] 已停止")
+        DebugLog.info("[HeadphoneMonitor] Stopped")
     }
 
     // MARK: - 事件处理（Event handling）
@@ -175,7 +175,7 @@ final class HeadphoneMonitor {
             return Unmanaged.passUnretained(event)
         }
         guard keyCode == HeadphoneMonitor.nxKeyTypePlay else {
-            DebugLog.info("[HeadphoneMonitor] 放行非 PLAY 媒体键 keyCode=\(keyCode) subtype=\(nsEvent.subtype.rawValue)")
+            DebugLog.info("[HeadphoneMonitor] Passing through non-PLAY media key keyCode=\(keyCode) subtype=\(nsEvent.subtype.rawValue)")
             return Unmanaged.passUnretained(event)
         }
 
@@ -193,7 +193,7 @@ final class HeadphoneMonitor {
 
         if isKeyDown {
             guard hasTrustedPlayPauseSource() else {
-                DebugLog.info("[HeadphoneMonitor] 放行 PLAY：缺少可信 HID 来源证明")
+                DebugLog.info("[HeadphoneMonitor] Passing through PLAY: missing trusted HID source proof")
                 return Unmanaged.passUnretained(event)
             }
             trustedPlayPausePressActive = true
@@ -227,7 +227,7 @@ final class HeadphoneMonitor {
             pendingPlayPauseEvent = optimisticSingleHandled ? nil : originalCopy
             state = .pressed
             if optimisticSingleHandled {
-                DebugLog.info("[HeadphoneMonitor] 单击已乐观处理，等待双击窗口")
+                DebugLog.info("[HeadphoneMonitor] Single tap handled optimistically, waiting for double-tap window")
             } else {
                 scheduleLongPressTimer()
             }
@@ -329,7 +329,7 @@ final class HeadphoneMonitor {
         guard optimisticSingleHandled else { return }
         optimisticSingleHandled = false
         if cancel {
-            DebugLog.info("[HeadphoneMonitor] 双击成立，撤销乐观单击")
+            DebugLog.info("[HeadphoneMonitor] Double tap confirmed, canceling optimistic single tap")
             onCancelOptimisticSingleTap()
         } else {
             onOptimisticSingleTapSettled()

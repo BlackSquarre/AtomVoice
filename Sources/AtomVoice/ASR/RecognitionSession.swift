@@ -414,7 +414,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
         audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks
     ) -> RecognitionSessionStartResult {
-        DebugLog.info("[Session] 启动豆包录音")
+        DebugLog.info("[Session] Starting Doubao recording")
         fallback.beginWaitingForFirstResult()
         callbacks.onShowInitial()
         callbacks.onShowRecording()
@@ -443,7 +443,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
             fallback.reset()
             usingAppleStartFallback = true
             callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
-            DebugLog.error("[Doubao] 启动失败，回退到 Apple Speech: \(error)")
+            DebugLog.error("[Doubao] Start failed, falling back to Apple Speech: \(error)")
             let result = appleSession.start(audioFormat: nil, callbacks: callbacks)
             callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
             return result
@@ -548,7 +548,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
         let visibleError = isBenignSilenceError ? "" : message
         guard fallback.recordError(visibleError, currentText: cloudEngine.currentText) else { return }
 
-        DebugLog.error("[Session] 豆包识别错误: \(message)")
+        DebugLog.error("[Session] Doubao recognition error: \(message)")
         cloudEngine.cancel()
         callbacks.onResetLiveInsertion()
 
@@ -565,11 +565,11 @@ final class DoubaoRecognitionSession: RecognitionSession {
         })
         guard let initialText else { return }
 
-        DebugLog.info("[Session] 启动 Apple 实时回退 (豆包错误后)")
+        DebugLog.info("[Session] Starting Apple live fallback after Doubao error")
         callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
         callbacks.onShimmerChanged(false)
         callbacks.onProgress(initialText, false)
-        DebugLog.error("[Doubao] 识别失败，录音结束后将回退到 Apple Speech: \(message)")
+        DebugLog.error("[Doubao] Recognition failed, will fall back to Apple Speech when recording stops: \(message)")
     }
 
     private func consumeFallbackIfNeeded(

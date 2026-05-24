@@ -79,7 +79,7 @@ final class FnKeyMonitor {
             },
             userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
-            DebugLog.error("[FnKeyMonitor] 无法创建事件监听。请在系统设置 > 隐私与安全性 > 辅助功能中授权本应用。")
+            DebugLog.error("[FnKeyMonitor] Failed to create event tap. Grant Accessibility permission in System Settings > Privacy & Security > Accessibility.")
             return
         }
 
@@ -87,7 +87,7 @@ final class FnKeyMonitor {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        DebugLog.info("[FnKeyMonitor] 事件监听已启动")
+        DebugLog.info("[FnKeyMonitor] Event tap started")
     }
 
     func stop() {
@@ -105,7 +105,7 @@ final class FnKeyMonitor {
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            DebugLog.info("[FnKeyMonitor] 事件 tap 被系统禁用，正在重启...")
+            DebugLog.info("[FnKeyMonitor] Event tap was disabled by the system, restarting...")
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
                 if !CGEvent.tapIsEnabled(tap: tap) {
@@ -129,12 +129,12 @@ final class FnKeyMonitor {
                 let keyCode = (data1 & 0xFFFF0000) >> 16
                 DebugLog.info("[FnKeyMonitor] NX_SYSDEFINED subtype=\(subtype) data1=\(data1) keyCode=\(keyCode) flags=\(event.flags.rawValue)")
                 if subtype == 211 {
-                    DebugLog.info("[FnKeyMonitor] 拦截 NX_SYSDEFINED subtype=211 (系统辅助控制)")
+                    DebugLog.info("[FnKeyMonitor] Intercepted NX_SYSDEFINED subtype=211 (system auxiliary control)")
                     return nil
                 }
             }
             if event.flags.contains(.maskSecondaryFn) {
-                DebugLog.info("[FnKeyMonitor] 拦截 NX_SYSDEFINED (Fn flag 检测)")
+                DebugLog.info("[FnKeyMonitor] Intercepted NX_SYSDEFINED (Fn flag detection)")
                 return nil
             }
             return Unmanaged.passUnretained(event)
@@ -150,11 +150,11 @@ final class FnKeyMonitor {
             if triggerKeyCode == FnKeyMonitor.fnKeyCode && keyCode == FnKeyMonitor.fnKeyCode {
                 if type == .keyDown && !triggerIsDown {
                     triggerIsDown = true
-                    DebugLog.info("[FnKeyMonitor] >>> 触发键按下 (keyDown keyCode=63)")
+                    DebugLog.info("[FnKeyMonitor] >>> trigger key down (keyDown keyCode=63)")
                     onFnDown()
                 } else if type == .keyUp && triggerIsDown {
                     triggerIsDown = false
-                    DebugLog.info("[FnKeyMonitor] >>> 触发键松开 (keyUp keyCode=63)")
+                    DebugLog.info("[FnKeyMonitor] >>> trigger key up (keyUp keyCode=63)")
                     onFnUp()
                 }
                 return nil
@@ -165,21 +165,21 @@ final class FnKeyMonitor {
                 if isRecording {
                     switch keyCode {
                     case FnKeyMonitor.escKeyCode:
-                        DebugLog.info("[FnKeyMonitor] >>> ESC 取消录音")
+                        DebugLog.info("[FnKeyMonitor] >>> ESC canceled recording")
                         DispatchQueue.main.async { [weak self] in
                             self?.onEscPressed?()
                         }
                         return nil
 
                     case FnKeyMonitor.returnKeyCode:
-                        DebugLog.info("[FnKeyMonitor] >>> Return 确认结束录音")
+                        DebugLog.info("[FnKeyMonitor] >>> Return committed recording stop")
                         DispatchQueue.main.async { [weak self] in
                             self?.onCommitStop?()
                         }
                         return nil
 
                     case FnKeyMonitor.spaceKeyCode, FnKeyMonitor.backspaceKeyCode:
-                        DebugLog.info("[FnKeyMonitor] >>> Space/Backspace 立即上屏")
+                        DebugLog.info("[FnKeyMonitor] >>> Space/Backspace immediate commit")
                         DispatchQueue.main.async { [weak self] in
                             self?.onImmediateStop?(nil)
                         }
@@ -187,7 +187,7 @@ final class FnKeyMonitor {
 
                     default:
                         if let punctuation = typedPunctuation(from: event) {
-                            DebugLog.info("[FnKeyMonitor] >>> 标点立即上屏: \(punctuation)")
+                            DebugLog.info("[FnKeyMonitor] >>> punctuation immediate commit: \(punctuation)")
                             DispatchQueue.main.async { [weak self] in
                                 self?.onImmediateStop?(punctuation)
                             }
@@ -198,7 +198,7 @@ final class FnKeyMonitor {
                 } else if isRefining {
                     // 润色期间仅拦截 ESC 键，不影响用户输入其他内容（Only intercept ESC during refining, doesn't affect other user inputs）
                     if keyCode == FnKeyMonitor.escKeyCode {
-                        DebugLog.info("[FnKeyMonitor] >>> ESC 取消润色")
+                        DebugLog.info("[FnKeyMonitor] >>> ESC canceled refinement")
                         DispatchQueue.main.async { [weak self] in
                             self?.onEscPressed?()
                         }
@@ -225,12 +225,12 @@ final class FnKeyMonitor {
 
                 if isActive && !triggerIsDown && !hasOtherMods {
                     triggerIsDown = true
-                    DebugLog.info("[FnKeyMonitor] >>> 触发键按下 (flagsChanged keyCode=\(keyCode))")
+                    DebugLog.info("[FnKeyMonitor] >>> trigger key down (flagsChanged keyCode=\(keyCode))")
                     onFnDown()
                     return nil
                 } else if !isActive && triggerIsDown {
                     triggerIsDown = false
-                    DebugLog.info("[FnKeyMonitor] >>> 触发键松开 (flagsChanged keyCode=\(keyCode))")
+                    DebugLog.info("[FnKeyMonitor] >>> trigger key up (flagsChanged keyCode=\(keyCode))")
                     onFnUp()
                     return nil
                 }
@@ -245,12 +245,12 @@ final class FnKeyMonitor {
 
                 if hasFn && !triggerIsDown && !hasOtherModifiers {
                     triggerIsDown = true
-                    DebugLog.info("[FnKeyMonitor] >>> Fn 按下 (flagsChanged flags-only 备用)")
+                    DebugLog.info("[FnKeyMonitor] >>> Fn down (flagsChanged flags-only fallback)")
                     onFnDown()
                     return nil
                 } else if !hasFn && triggerIsDown {
                     triggerIsDown = false
-                    DebugLog.info("[FnKeyMonitor] >>> Fn 松开 (flagsChanged flags-only 备用)")
+                    DebugLog.info("[FnKeyMonitor] >>> Fn up (flagsChanged flags-only fallback)")
                     onFnUp()
                     return nil
                 }

@@ -321,7 +321,7 @@ final class RecordingSessionController {
     // MARK: - 启动失败处理（Start-failure handlers）
 
     private func handleAudioRouteRecoveryFailed() {
-        DebugLog.error("[Session] 音频路由变化恢复失败，结束当前录音")
+        DebugLog.error("[Session] Audio route recovery failed, ending current recording")
         _ = dispatch(.audioRouteRecoveryFailed)
     }
 

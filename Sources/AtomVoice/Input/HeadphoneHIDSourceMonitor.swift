@@ -219,12 +219,12 @@ final class HeadphoneHIDSourceMonitor {
             IOHIDManagerRegisterInputValueCallback(hidManager, nil, nil)
             IOHIDManagerUnscheduleFromRunLoop(hidManager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
             Unmanaged<HeadphoneHIDSourceMonitor>.passUnretained(self).release()
-            DebugLog.error("[HeadphoneHIDSource] IOHIDManager 启动失败 status=\(status)")
+            DebugLog.error("[HeadphoneHIDSource] IOHIDManager failed to start status=\(status)")
             return
         }
 
         manager = hidManager
-        DebugLog.info("[HeadphoneHIDSource] 已启动 Consumer Control 来源监视")
+        DebugLog.info("[HeadphoneHIDSource] Consumer Control source monitor started")
     }
 
     func stop() {
@@ -238,7 +238,7 @@ final class HeadphoneHIDSourceMonitor {
         lastTrustedPlayPauseTime = 0
         lastTrustedSummary = nil
         lastRejectedSummary = nil
-        DebugLog.info("[HeadphoneHIDSource] 已停止")
+        DebugLog.info("[HeadphoneHIDSource] Stopped")
     }
 
     func hasRecentTrustedPlayPauseEvent(within interval: TimeInterval) -> Bool {
@@ -246,9 +246,9 @@ final class HeadphoneHIDSourceMonitor {
         let age = CFAbsoluteTimeGetCurrent() - lastTrustedPlayPauseTime
         let recent = age <= interval
         if recent {
-            DebugLog.info("[HeadphoneHIDSource] 命中可信来源窗口 age=\(String(format: "%.3f", age))s source=\(lastTrustedSummary ?? "nil")")
+            DebugLog.info("[HeadphoneHIDSource] Trusted source window hit age=\(String(format: "%.3f", age))s source=\(lastTrustedSummary ?? "nil")")
         } else {
-            DebugLog.info("[HeadphoneHIDSource] 未命中可信来源窗口 age=\(String(format: "%.3f", age))s lastTrusted=\(lastTrustedSummary ?? "nil") lastRejected=\(lastRejectedSummary ?? "nil")")
+            DebugLog.info("[HeadphoneHIDSource] Trusted source window miss age=\(String(format: "%.3f", age))s lastTrusted=\(lastTrustedSummary ?? "nil") lastRejected=\(lastRejectedSummary ?? "nil")")
         }
         return recent
     }
@@ -276,10 +276,10 @@ final class HeadphoneHIDSourceMonitor {
         if decision.isTrusted {
             lastTrustedPlayPauseTime = CFAbsoluteTimeGetCurrent()
             lastTrustedSummary = descriptor.diagnosticSummary
-            DebugLog.info("[HeadphoneHIDSource] 可信 Play/Pause 来源：reason=\(decision.reason) \(descriptor.diagnosticSummary)")
+            DebugLog.info("[HeadphoneHIDSource] Trusted Play/Pause source: reason=\(decision.reason) \(descriptor.diagnosticSummary)")
         } else {
             lastRejectedSummary = "\(decision.reason) \(descriptor.diagnosticSummary)"
-            DebugLog.info("[HeadphoneHIDSource] 拒绝 Play/Pause 来源：reason=\(decision.reason) \(descriptor.diagnosticSummary)")
+            DebugLog.info("[HeadphoneHIDSource] Rejected Play/Pause source: reason=\(decision.reason) \(descriptor.diagnosticSummary)")
         }
     }
 

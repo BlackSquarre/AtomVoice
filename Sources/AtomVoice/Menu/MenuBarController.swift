@@ -674,7 +674,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func debugSelectPasteDelay(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? Double else { return }
         AppSettings.pasteDelay = value
-        DebugLog.info("[Debug] Paste delay 调整为 \(value)s")
+        DebugLog.info("[Debug] Paste delay changed to \(value)s")
     }
 
     @objc private func debugDumpMemorySnapshot(_ sender: NSMenuItem) {

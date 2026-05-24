@@ -93,7 +93,7 @@ final class ASREngineProvider: ASREngineProviding {
     func releaseSherpaEngine() {
         guard sherpaASREngine != nil || sherpaRecognizer != nil else { return }
         if sherpaASREngine?.isModelLoaded == true {
-            DebugLog.info("[ASREngineProvider] 释放 Sherpa 本地模型")
+            DebugLog.info("[ASREngineProvider] Releasing Sherpa local model")
             sherpaASREngine?.releaseModels()
         }
         sherpaASREngine = nil
@@ -107,7 +107,7 @@ final class ASREngineProvider: ASREngineProviding {
         //  the residual RSS is ONNX runtime's static C++ globals that dlclose can't tear down. Kept anyway: harmless,
         //  cheap, and may help on future macOS. Full reclamation requires moving Sherpa into a subprocess.)
         _ = malloc_zone_pressure_relief(nil, 0)
-        DebugLog.info("[ASREngineProvider] 已释放 Sherpa 引擎实例")
+        DebugLog.info("[ASREngineProvider] Released Sherpa engine instance")
     }
 
     private func sherpaRecognizerController() -> SherpaOnnxRecognizerController {
