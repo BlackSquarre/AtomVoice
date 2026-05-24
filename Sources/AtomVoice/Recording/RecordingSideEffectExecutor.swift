@@ -27,6 +27,7 @@ extension RecordingSessionController {
             recognitionSession?.cancel()
             if stopAudioEngine {
                 audioEngine.stop()
+                audioEngine.releaseHardwareAfterIdle()
             }
         case .showCapsule(let presentation, let ensurePanel):
             presentCapsule(presentation, ensurePanel: ensurePanel)

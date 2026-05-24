@@ -9,6 +9,7 @@ final class AudioEngineController {
     private let routeRecoveryQueue = DispatchQueue(label: "com.atomvoice.audioEngine.routeRecovery", qos: .userInitiated)
     private let routeRecoveryLock = NSLock()
     private var routeRecoveryToken = 0
+    private var idleHardwareReleaseToken = 0
     var onRouteRecoveryFailed: (() -> Void)?
 
     /// 音频路由：tap 收到的 buffer 经 router 分发到各消费者（按目标 format 自动重采样）。
@@ -38,6 +39,10 @@ final class AudioEngineController {
 
     private func invalidateRouteRecovery() {
         _ = nextRouteRecoveryToken()
+    }
+
+    private func cancelIdleHardwareRelease() {
+        idleHardwareReleaseToken += 1
     }
 
     private func completeRouteRecovery(token: Int) {
@@ -521,6 +526,7 @@ final class AudioEngineController {
 
     @discardableResult
     func start() -> Bool {
+        cancelIdleHardwareRelease()
         stop()
 
         if needsEngineRebuild {
@@ -605,10 +611,37 @@ final class AudioEngineController {
         lastStartSucceededAt = nil
     }
 
+    /// 录音收口后延迟释放输入硬件。
+    /// AirPods 这类蓝牙耳机会在输入链路存在时停留在通话/麦克风模式；但停止瞬间立即重建 engine
+    /// 又容易打断正在播放的音乐，所以等 ASR final 收口后再空闲重建一次。
+    func releaseHardwareAfterIdle(delay: TimeInterval = 1.5) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.releaseHardwareAfterIdle(delay: delay)
+            }
+            return
+        }
+
+        idleHardwareReleaseToken += 1
+        let token = idleHardwareReleaseToken
+        DebugLog.info(String(format: "[AudioEngine] 安排空闲释放输入硬件 %.1fs token=%d", delay, token))
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.idleHardwareReleaseToken == token else { return }
+            self.idleHardwareReleaseToken += 1
+            guard !self.tapInstalled, !self.engine.isRunning else {
+                DebugLog.info("[AudioEngine] 跳过空闲释放：engine 已重新活跃")
+                return
+            }
+            self.rebuildEngine()
+            DebugLog.info("[AudioEngine] 空闲输入硬件已释放")
+        }
+    }
+
     /// 路由恢复 watchdog 超时后使用：不要再同步触碰当前 AVAudioEngine。
     /// 它可能正卡在 CoreAudio 硬件查询里；这里只标脏，等待下一次 start() 新建实例。
     func abandonAfterRouteRecoveryFailure() {
         invalidateRouteRecovery()
+        cancelIdleHardwareRelease()
         tapInstalled = false
         needsEngineRebuild = true
         lastStartSucceededAt = nil

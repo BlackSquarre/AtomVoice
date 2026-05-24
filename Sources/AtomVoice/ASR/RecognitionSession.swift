@@ -152,6 +152,7 @@ final class AppleRecognitionSession: RecognitionSession {
         let text = engine.stopSynchronously()
         audioEngine.stop()
         unregisterConsumer()
+        audioEngine.releaseHardwareAfterIdle()
         completion(
             RecognitionSessionStopResult(
                 text: text,
@@ -223,6 +224,7 @@ final class SherpaRecognitionSession: RecognitionSession {
         audioEngine.stop()
         preload.cancel()
         unregisterConsumer()
+        audioEngine.releaseHardwareAfterIdle()
         completion(
             RecognitionSessionStopResult(
                 text: text,
@@ -488,6 +490,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
             let text = cloudEngine.currentText
             cloudEngine.cancel()
             fallback.reset()
+            audioEngine.releaseHardwareAfterIdle()
             completion(
                 RecognitionSessionStopResult(
                     text: text,
@@ -513,6 +516,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
                     )
                 } else {
                     self.fallback.finishSuccessfulCloudRecognition()
+                    self.audioEngine.releaseHardwareAfterIdle()
                     completion(
                         RecognitionSessionStopResult(
                             text: recognizedText,
@@ -608,6 +612,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
                 cachedText: "",
                 liveText: fallbackSnapshot.liveFallbackText
             )
+            audioEngine.releaseHardwareAfterIdle()
             completion(
                 RecognitionSessionStopResult(
                     text: text,
@@ -638,6 +643,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
                     cachedText: appleText,
                     liveText: fallbackSnapshot.liveFallbackText
                 )
+                self.audioEngine.releaseHardwareAfterIdle()
                 completion(
                     RecognitionSessionStopResult(
                         text: recognizedText,
