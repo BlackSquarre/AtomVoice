@@ -85,6 +85,7 @@ enum RecordingSideEffect: Equatable {
     case restoreVolume
     case startSilenceMonitor
     case stopSilenceMonitor
+    case extendSilenceMonitor(by: TimeInterval)
     case notifyRecording(Bool)
     case notifyRefining(Bool)
     case noteASRText(String)
@@ -319,7 +320,11 @@ struct RecordingStateMachine {
 
         case .fallbackStarted(let engine):
             next.currentRecordingEngine = engine
-            effects.append(.showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false))
+            effects.append(.showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: false), ensurePanel: false))
+            if next.phase == .capturing {
+                // 豆包弱网回退后，Apple Speech 需要额外时间产出首个 partial，避免 ASR 静音监控立刻停录。
+                effects.append(.extendSilenceMonitor(by: 3))
+            }
 
         case .teardownCompleted:
             next.phase = .idle

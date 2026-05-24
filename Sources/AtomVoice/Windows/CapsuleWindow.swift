@@ -361,6 +361,14 @@ final class CapsuleWindowController {
         // 紧凑状态模式下不展示实时识别文字，避免胶囊跟着文字变长变短
         // (In compact status mode skip live text — keeps capsule width fixed and statusy)
         if compactStatusKey != nil { completion?(); return }
+        updateVisibleText(text, completion: completion)
+    }
+
+    private func updateStatusText(_ text: String, completion: (() -> Void)? = nil) {
+        updateVisibleText(text, completion: completion)
+    }
+
+    private func updateVisibleText(_ text: String, completion: (() -> Void)? = nil) {
         guard let label = textLabel, let panel = panel else { completion?(); return }
         let currentPresentationID = presentationID
         // 确保文字颜色恢复为默认（showError 会改为红色）（Ensure text color resets to default — showError changes it to red）
@@ -402,7 +410,9 @@ final class CapsuleWindowController {
         textLabel?.isHidden = false
         if hidesWaveform { hideWaveform() }
         // 等 panel 宽度动画结束后再应用扫光，确保 clipLayer 与胶囊实际宽度一致（Wait for panel width animation to finish before applying shimmer, ensuring clipLayer matches actual capsule width）
-        updateText(text) { [weak self] in
+        // 紧凑模式仍允许进度/错误状态更新；只屏蔽普通实时识别文字，避免弱网时胶囊一直卡在旧状态。
+        let update = compactStatusKey == nil ? updateText : updateStatusText
+        update(text) { [weak self] in
             self?.applyShimmerToCapsule()
         }
     }

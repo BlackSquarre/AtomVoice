@@ -334,7 +334,8 @@ enum RecordingStateMachineTests {
 
             try expect(fallback.state.currentRecordingEngine == ASREngineRegistry.appleCode)
             try expect(fallback.sideEffects == [
-                .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false)
+                .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: false), ensurePanel: false),
+                .extendSilenceMonitor(by: 3)
             ])
         }
         await runner.run("Recording state machine stores deferred partial text") {
@@ -558,11 +559,12 @@ enum RecordingStateMachineTests {
                 .asrFinal(text: "cloud final", errorMessage: nil, appending: nil),
             ])
 
-            try expect(snapshot.effects.count == 18)
+            try expect(snapshot.effects.count == 19)
             try expect(snapshot.effects[8] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .updateCapsuleText("cloud draft"))
-            try expect(snapshot.effects[11] == .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: true), ensurePanel: false))
-            try expect(snapshot.effects[17] == .stopSession(generation: 1, immediate: false, appending: nil))
+            try expect(snapshot.effects[11] == .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: false), ensurePanel: false))
+            try expect(snapshot.effects[12] == .extendSilenceMonitor(by: 3))
+            try expect(snapshot.effects[18] == .stopSession(generation: 1, immediate: false, appending: nil))
             try expect(snapshot.state.currentRecordingEngine == ASREngineRegistry.appleCode)
             try expect(snapshot.state.phase == .idle)
         }

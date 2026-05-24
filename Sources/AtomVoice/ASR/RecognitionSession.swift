@@ -443,7 +443,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
             callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
             DebugLog.error("[Doubao] 启动失败，回退到 Apple Speech: \(error)")
             let result = appleSession.start(audioFormat: nil, callbacks: callbacks)
-            callbacks.onDisplayText(loc("menu.recognitionEngine.apple"))
+            callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
             return result
         }
 
@@ -562,8 +562,9 @@ final class DoubaoRecognitionSession: RecognitionSession {
         guard let initialText else { return }
 
         DebugLog.info("[Session] 启动 Apple 实时回退 (豆包错误后)")
+        callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
         callbacks.onShimmerChanged(false)
-        callbacks.onDisplayText(initialText)
+        callbacks.onProgress(initialText, false)
         DebugLog.error("[Doubao] 识别失败，录音结束后将回退到 Apple Speech: \(message)")
     }
 

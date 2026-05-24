@@ -82,6 +82,35 @@ enum AudioRouterTests {
 
             try expect(timeoutCount == 0)
         }
+        await runner.run("ASR silence monitor extends timeout for fallback grace") {
+            let oldAutoStop = AppSettings.silenceAutoStopEnabled
+            let oldManualStop = AppSettings.tapModeManualStop
+            let oldDuration = AppSettings.silenceDuration
+            defer {
+                AppSettings.silenceAutoStopEnabled = oldAutoStop
+                AppSettings.tapModeManualStop = oldManualStop
+                AppSettings.silenceDuration = oldDuration
+            }
+
+            AppSettings.silenceAutoStopEnabled = true
+            AppSettings.tapModeManualStop = false
+            AppSettings.silenceDuration = 0.3
+
+            let monitor = ASRSilenceMonitor()
+            var timeoutCount = 0
+            monitor.onTimeout = { timeoutCount += 1 }
+
+            monitor.start()
+            try await Task.sleep(nanoseconds: 200_000_000)
+            monitor.extendTimeout(by: 0.5)
+            try await Task.sleep(nanoseconds: 400_000_000)
+            try expect(timeoutCount == 0)
+
+            try await Task.sleep(nanoseconds: 500_000_000)
+            monitor.stop()
+
+            try expect(timeoutCount >= 1)
+        }
         await runner.run("Audio router unregisters native consumers") {
             let router = AudioRouter()
             let buffer = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 32), "buffer should be created")

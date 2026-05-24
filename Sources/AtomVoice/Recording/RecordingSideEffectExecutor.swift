@@ -55,6 +55,8 @@ extension RecordingSessionController {
             asrSilenceMonitor.start()
         case .stopSilenceMonitor:
             asrSilenceMonitor.stop()
+        case .extendSilenceMonitor(let duration):
+            asrSilenceMonitor.extendTimeout(by: duration)
         case .notifyRecording(let active):
             onRecordingStateChanged?(active)
         case .notifyRefining(let active):

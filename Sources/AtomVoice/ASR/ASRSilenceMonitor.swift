@@ -20,6 +20,7 @@ final class ASRSilenceMonitor {
     private var timer: DispatchSourceTimer?
     private var startedAt: Date?
     private var lastChangeAt: Date?
+    private var graceUntil: Date?
     private var lastText: String = ""
     private var didFire = false
 
@@ -29,6 +30,7 @@ final class ASRSilenceMonitor {
             let now = Date()
             self.startedAt = now
             self.lastChangeAt = now
+            self.graceUntil = nil
             self.lastText = ""
             self.didFire = false
 
@@ -50,8 +52,24 @@ final class ASRSilenceMonitor {
             self.timer = nil
             self.startedAt = nil
             self.lastChangeAt = nil
+            self.graceUntil = nil
             self.lastText = ""
             self.didFire = false
+        }
+    }
+
+    /// 外部识别路径切换后临时延长自动停录窗口。
+    /// 例如豆包弱网回退到 Apple 时，Apple 需要额外时间产出首个 partial。
+    func extendTimeout(by duration: TimeInterval) {
+        guard duration > 0 else { return }
+        queue.async { [weak self] in
+            guard let self, self.startedAt != nil, !self.didFire else { return }
+            let candidate = Date().addingTimeInterval(duration)
+            if let graceUntil = self.graceUntil, graceUntil >= candidate {
+                return
+            }
+            self.graceUntil = candidate
+            DebugLog.info(String(format: "[ASRSilenceMonitor] extend timeout by %.1fs", duration))
         }
     }
 
@@ -79,6 +97,7 @@ final class ASRSilenceMonitor {
         let silenceElapsed = now.timeIntervalSince(lastChangeAt)
         let required = AppSettings.silenceDuration
         guard silenceElapsed >= required else { return }
+        if let graceUntil, now < graceUntil { return }
 
         didFire = true
         let callback = onTimeout
