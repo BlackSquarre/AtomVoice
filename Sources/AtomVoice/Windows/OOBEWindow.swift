@@ -492,8 +492,8 @@ final class OOBEWindowController: NSObject {
         contentRow.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
         leftStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         headphoneCard.setContentHuggingPriority(.required, for: .horizontal)
-        headphoneCard.widthAnchor.constraint(equalToConstant: 210).isActive = true
-        headphoneCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 214).isActive = true
+        headphoneCard.widthAnchor.constraint(equalToConstant: OOBEHeadphoneControlCardLayout.cardWidth).isActive = true
+        headphoneCard.heightAnchor.constraint(equalToConstant: OOBEHeadphoneControlCardLayout.cardHeight).isActive = true
 
         return v
     }
@@ -1151,6 +1151,15 @@ final class KeyboardDiagramView: NSView {
 
 // MARK: - OOBE Headphone Control Card
 
+enum OOBEHeadphoneControlCardLayout {
+    static let cardWidth: CGFloat = 230
+    static let cardHeight: CGFloat = 270
+    static let horizontalPadding: CGFloat = 16
+    static let topPadding: CGFloat = 18
+    static let bottomPadding: CGFloat = 16
+    static let bodyTextWidth: CGFloat = cardWidth - horizontalPadding * 2
+}
+
 final class OOBEHeadphoneControlCardView: NSView {
     var onToggle: ((Bool) -> Void)?
 
@@ -1193,25 +1202,43 @@ final class OOBEHeadphoneControlCardView: NSView {
         let title = NSTextField(labelWithString: loc("oobe.trigger.headphone.title"))
         title.font = .systemFont(ofSize: 15, weight: .semibold)
         title.textColor = .labelColor
+        title.lineBreakMode = .byTruncatingTail
+        title.maximumNumberOfLines = 1
 
         let desc = NSTextField(labelWithString: loc("oobe.trigger.headphone.desc"))
         desc.font = .systemFont(ofSize: 11.5)
         desc.textColor = .secondaryLabelColor
-        desc.lineBreakMode = .byWordWrapping
-        desc.maximumNumberOfLines = 0
+        desc.lineBreakMode = .byTruncatingTail
+        desc.maximumNumberOfLines = 4
+        desc.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
 
         modeLabel.font = .systemFont(ofSize: 11)
         modeLabel.textColor = .tertiaryLabelColor
-        modeLabel.lineBreakMode = .byWordWrapping
-        modeLabel.maximumNumberOfLines = 0
+        modeLabel.lineBreakMode = .byTruncatingTail
+        modeLabel.maximumNumberOfLines = 3
+        modeLabel.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
 
         let divider = NSBox()
         divider.boxType = .separator
         divider.translatesAutoresizingMaskIntoConstraints = false
 
-        toggle.title = loc("oobe.trigger.headphone.enable")
+        toggle.title = ""
         toggle.target = self
         toggle.action = #selector(toggleChanged)
+
+        let toggleLabel = NSTextField(labelWithString: loc("oobe.trigger.headphone.enable"))
+        toggleLabel.font = .systemFont(ofSize: 13)
+        toggleLabel.textColor = .labelColor
+        toggleLabel.lineBreakMode = .byTruncatingTail
+        toggleLabel.maximumNumberOfLines = 2
+        toggleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let toggleRow = NSStackView(views: [toggle, toggleLabel])
+        toggleRow.orientation = .horizontal
+        toggleRow.alignment = .centerY
+        toggleRow.spacing = 6
+        toggleRow.translatesAutoresizingMaskIntoConstraints = false
+        toggleRow.setContentCompressionResistancePriority(.required, for: .vertical)
 
         let v = NSStackView()
         v.orientation = .vertical
@@ -1228,18 +1255,19 @@ final class OOBEHeadphoneControlCardView: NSView {
         v.setCustomSpacing(14, after: modeLabel)
         v.addArrangedSubview(divider)
         v.setCustomSpacing(12, after: divider)
-        v.addArrangedSubview(toggle)
+        v.addArrangedSubview(toggleRow)
 
         addSubview(v)
         NSLayoutConstraint.activate([
-            v.topAnchor.constraint(equalTo: topAnchor, constant: 18),
-            v.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            v.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            v.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
+            v.topAnchor.constraint(equalTo: topAnchor, constant: OOBEHeadphoneControlCardLayout.topPadding),
+            v.leadingAnchor.constraint(equalTo: leadingAnchor, constant: OOBEHeadphoneControlCardLayout.horizontalPadding),
+            v.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -OOBEHeadphoneControlCardLayout.horizontalPadding),
+            v.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -OOBEHeadphoneControlCardLayout.bottomPadding),
         ])
         desc.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
         modeLabel.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
         divider.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
+        toggleLabel.widthAnchor.constraint(lessThanOrEqualTo: v.widthAnchor, constant: -26).isActive = true
 
         updateModeDescription(selectedSilenceAutoStop: AppSettings.silenceAutoStopEnabled)
     }

@@ -351,7 +351,7 @@
 "oobe.skip" = "Skip";
 "oobe.back" = "Back";
 "oobe.next" = "Continue";
-"oobe.done" = "Get Started";
+"oobe.done" = "Get started";
 "oobe.skip.confirm.title" = "Skip onboarding?";
 "oobe.skip.confirm.message" = "You can re-run the onboarding any time from the menu bar.";
 "oobe.skip.confirm.ok" = "Skip";
@@ -361,14 +361,14 @@
 "oobe.welcome.subtitle" = "A lightweight, privacy-first voice input that works in any Mac app, with no time limit.";
 "oobe.welcome.hint" = "Let's get you set up.";
 
-"oobe.perm.heading" = "Grant Permissions";
+"oobe.perm.heading" = "Grant permissions";
 "oobe.perm.subtitle" = "AtomVoice needs three permissions to work. Click each row to grant or open System Settings.";
 
-"oobe.trigger.heading" = "Choose Your Trigger Key";
+"oobe.trigger.heading" = "Choose your trigger key";
 "oobe.trigger.subtitle" = "Hold this key to start dictation. You can change it later from the menu bar.";
 "oobe.trigger.subtitle.tap" = "Tap this key to start dictation. You can change it later from the menu bar.";
 
-"oobe.engine.heading" = "Choose a Recognition Engine";
+"oobe.engine.heading" = "Choose a recognition engine";
 "oobe.engine.subtitle" = "Cards are sorted left-to-right by privacy, from highest to lowest. You can switch later from the menu bar.";
 "oobe.engine.recommended" = "Recommended";
 "oobe.engine.attr.privacy" = "Privacy";
@@ -385,7 +385,7 @@
 "oobe.engine.cost.paid" = "Paid · API key";
 "oobe.engine.cost.local" = "Free · Model download";
 
-"oobe.engine.sherpa.title" = "Local Offline Speech";
+"oobe.engine.sherpa.title" = "Local offline speech";
 "oobe.engine.sherpa.tagline" = "No audio ever leaves your Mac.";
 "oobe.engine.sherpa.desc" = "Runs entirely on-device with Sherpa-ONNX. Slightly lower accuracy on long sentences. Requires a one-time model download.\n\nSuitable for privacy-first or completely offline environments.";
 
