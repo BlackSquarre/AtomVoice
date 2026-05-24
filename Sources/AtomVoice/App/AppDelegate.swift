@@ -159,6 +159,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             self.capsuleWindow.recordingClickEnabled = active
             self.headphoneCoordinator.notifyRecordingStateChanged(active)
             self.handleRecordingStateChangedForDownloadCapsule(active: active)
+            if !active {
+                UpdateChecker.shared.resumeDeferredRestartPromptIfPossible()
+            }
             #if DEBUG_BUILD
             MemoryProbe.log(active ? "recording-start" : "recording-stop")
             if !active {
@@ -173,6 +176,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         session.onRefiningStateChanged = { [weak self] refining in
             guard let self else { return }
             self.fnKeyMonitor.isRefining = refining
+            if !refining {
+                UpdateChecker.shared.resumeDeferredRestartPromptIfPossible()
+            }
         }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in
             self?.fnKeyMonitor.triggerKeyCode = keyCode
@@ -200,6 +206,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         if AppSettings.hasCompletedOOBE {
             headphoneCoordinator.startIfEnabled()
+        }
+
+        UpdateChecker.shared.shouldDeferRestartPrompt = { [weak self] in
+            guard let self else { return false }
+            return self.session.isRecordingOrStarting || self.session.isRefining
         }
 
         // 启动 5 秒后静默检查更新，不阻塞启动流程（Silently check for updates 5s after launch, non-blocking）

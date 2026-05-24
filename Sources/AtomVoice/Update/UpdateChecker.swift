@@ -24,6 +24,8 @@ final class UpdateChecker: NSObject {
     }
     private var state: UpdateState = .idle
     private var pendingUserVisibleCheck = false
+    private var pendingRestartPrompt: (version: String, newAppURL: URL)?
+    var shouldDeferRestartPrompt: (() -> Bool)?
 
     // MARK: - 公开 API
 
@@ -67,6 +69,15 @@ final class UpdateChecker: NSObject {
                 }
             }
         }
+    }
+
+    func resumeDeferredRestartPromptIfPossible() {
+        guard state == .readyToRestart,
+              let pendingRestartPrompt,
+              shouldDeferRestartPrompt?() != true else { return }
+
+        self.pendingRestartPrompt = nil
+        showRestartPrompt(version: pendingRestartPrompt.version, newAppURL: pendingRestartPrompt.newAppURL)
     }
 
     // MARK: - 获取最新 Release
@@ -447,6 +458,15 @@ final class UpdateChecker: NSObject {
     private func promptRestart(version: String, newAppURL: URL) {
         guard state == .downloading else { return }
         state = .readyToRestart
+        if shouldDeferRestartPrompt?() == true {
+            pendingRestartPrompt = (version: version, newAppURL: newAppURL)
+            return
+        }
+        showRestartPrompt(version: version, newAppURL: newAppURL)
+    }
+
+    private func showRestartPrompt(version: String, newAppURL: URL) {
+        guard state == .readyToRestart else { return }
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = loc("update.done.title")
