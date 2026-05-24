@@ -40,14 +40,17 @@ enum SherpaPreloadTests {
             try await waitForAsyncCallbacks()
 
             var drained: [AVAudioPCMBuffer] = []
-            var completed = false
+            let drainFinished = DispatchGroup()
+            drainFinished.enter()
             coordinator.drain(
                 accept: { drained.append($0) },
-                onComplete: { completed = true }
+                onComplete: { drainFinished.leave() }
             )
-            try await waitForAsyncCallbacks()
 
-            try expect(completed)
+            try expect(
+                drainFinished.wait(timeout: .now() + 2) == .success,
+                "Sherpa preload drain did not complete"
+            )
             try expect(drained.count == 2)
             try expect(drained[0] === first)
             try expect(drained[1] === second)
