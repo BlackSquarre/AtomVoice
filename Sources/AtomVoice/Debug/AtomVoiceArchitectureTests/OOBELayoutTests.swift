@@ -54,8 +54,8 @@ enum OOBELayoutTests {
                 let titleHeight = cappedTextHeight(title, font: .systemFont(ofSize: 15, weight: .semibold), width: availableWidth, maxLines: 1)
                 let descHeight = cappedTextHeight(desc, font: .systemFont(ofSize: 11.5), width: availableWidth, maxLines: 4)
                 let modeHeight = max(
-                    cappedTextHeight(hold, font: .systemFont(ofSize: 11), width: availableWidth, maxLines: 3),
-                    cappedTextHeight(tap, font: .systemFont(ofSize: 11), width: availableWidth, maxLines: 3)
+                    cappedTextHeight(hold, font: .systemFont(ofSize: 11), width: availableWidth, maxLines: 4),
+                    cappedTextHeight(tap, font: .systemFont(ofSize: 11), width: availableWidth, maxLines: 4)
                 )
                 let toggleHeight = max(
                     CGFloat(22),
@@ -68,6 +68,17 @@ enum OOBELayoutTests {
                     "\(language) OOBE headphone card requires \(requiredHeight)px, budget is \(cardHeight)px"
                 )
             }
+        }
+
+        await runner.run("OOBE trigger key step columns fit content width") {
+            let contentWidth = CGFloat(760 - 28 * 2)
+            let rowWidth = OOBETriggerKeyStepLayout.leftColumnWidth
+                + 18
+                + OOBEHeadphoneControlCardLayout.cardWidth
+            try expect(
+                rowWidth <= contentWidth,
+                "OOBE trigger key row requires \(rowWidth)px, budget is \(contentWidth)px"
+            )
         }
     }
 

@@ -71,12 +71,30 @@ final class MenuWindowRouter {
     /// OOBE 的业务回调（onFinish）只在创建时由调用方注入一次。
     /// (OOBE business callbacks injected once on creation via `configure`.)
     func openOOBE(configure: (OOBEWindowController) -> Void) {
+        openOOBE(initialStep: nil, configure: configure)
+    }
+
+    #if DEBUG_BUILD
+    func openOOBESnapshot(step: Int, configure: (OOBEWindowController) -> Void) {
+        openOOBE(initialStep: step, configure: configure)
+    }
+    #endif
+
+    private func openOOBE(initialStep: Int?, configure: (OOBEWindowController) -> Void) {
         if oobeWindow == nil {
             let c = OOBEWindowController()
             c.onClose = { [weak self] in DispatchQueue.main.async { self?.oobeWindow = nil } }
             configure(c)
             oobeWindow = c
         }
+        #if DEBUG_BUILD
+        if let initialStep {
+            oobeWindow?.showWindowForSnapshot(step: initialStep)
+        } else {
+            oobeWindow?.showWindow()
+        }
+        #else
         oobeWindow?.showWindow()
+        #endif
     }
 }

@@ -40,6 +40,7 @@ let package = Package(
                 "Debug/SherpaMemoryBenchmark",
                 "Debug/AtomVoiceArchitectureTests",
                 "Debug/Tools",
+                "Debug/Scripts",
             ]
         ),
         .executableTarget(

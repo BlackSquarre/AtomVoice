@@ -616,6 +616,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         windowRouter.openOOBE(configure: configure)
     }
 
+    #if DEBUG_BUILD
+    func presentOOBESnapshot(step: Int, configure: (OOBEWindowController) -> Void) {
+        windowRouter.openOOBESnapshot(step: step, configure: configure)
+    }
+    #endif
+
     @objc private func rerunOOBE(_ sender: NSMenuItem) {
         // 重置完成标志并交给 AppDelegate 展示窗口
         // (Reset completion flag and let AppDelegate present the window)

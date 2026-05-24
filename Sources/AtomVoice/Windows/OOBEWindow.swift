@@ -47,8 +47,21 @@ final class OOBEWindowController: NSObject {
     // MARK: Public
 
     func showWindow() {
+        showWindow(initialStep: nil)
+    }
+
+    #if DEBUG_BUILD
+    func showWindowForSnapshot(step: Int) {
+        showWindow(initialStep: step)
+    }
+    #endif
+
+    private func showWindow(initialStep: Int?) {
         if let w = window {
             WindowPresenter.shared.bringToFront(w)
+            if let initialStep {
+                showStep(max(0, min(totalSteps - 1, initialStep)))
+            }
             return
         }
         selectedEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
@@ -56,12 +69,12 @@ final class OOBEWindowController: NSObject {
         selectedTriggerKeyCode = (savedKey == 0) ? 61 : savedKey
         selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
         selectedHeadphoneControl = AppSettings.headphoneControlEnabled
-        buildWindow()
+        buildWindow(initialStep: initialStep)
     }
 
     // MARK: Build
 
-    private func buildWindow() {
+    private func buildWindow(initialStep: Int?) {
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
             styleMask: [.titled, .closable],
@@ -135,7 +148,7 @@ final class OOBEWindowController: NSObject {
         appearanceObservation = w.observe(\.effectiveAppearance, options: []) { [weak self] _, _ in
             DispatchQueue.main.async { self?.updateDots() }
         }
-        showStep(0)
+        showStep(max(0, min(totalSteps - 1, initialStep ?? 0)))
         w.center()
         WindowPresenter.shared.bringToFront(w)
     }
@@ -426,21 +439,16 @@ final class OOBEWindowController: NSObject {
         modeSegment.selectedSegment = selectedSilenceAutoStop ? 1 : 0
         modeSegment.segmentStyle = .rounded
         modeSegment.translatesAutoresizingMaskIntoConstraints = false
-        // "单击说话"段加宽并左对齐文字，徽标贴右；避免居中导致左侧大块留白
-        // (Widen the tap segment and left-align its label so the badge sits to its right without leaving a gap on the left)
-        modeSegment.setWidth(72, forSegment: 0)
-        modeSegment.setWidth(108, forSegment: 1)
-        modeSegment.setAlignment(.left, forSegment: 1)
+        modeSegment.setWidth(116, forSegment: 0)
+        modeSegment.setWidth(104, forSegment: 1)
 
-        // 推荐徽标叠加在第二个分段右端（依然在分段控件内部）
-        // (Overlay the recommended badge on the trailing edge of the tap segment, inside the control)
         let recommendedBadge = OOBERecommendedBadgeView(text: loc("oobe.engine.recommended"))
         recommendedBadge.translatesAutoresizingMaskIntoConstraints = false
-        modeSegment.addSubview(recommendedBadge)
-        NSLayoutConstraint.activate([
-            recommendedBadge.trailingAnchor.constraint(equalTo: modeSegment.trailingAnchor, constant: -6),
-            recommendedBadge.centerYAnchor.constraint(equalTo: modeSegment.centerYAnchor),
-        ])
+
+        let modeControlRow = NSStackView(views: [modeSegment, recommendedBadge])
+        modeControlRow.orientation = .horizontal
+        modeControlRow.alignment = .centerY
+        modeControlRow.spacing = 8
 
         let modeDesc = NSTextField(labelWithString: inputModeDescription())
         modeDesc.font = .systemFont(ofSize: 11.5)
@@ -448,10 +456,10 @@ final class OOBEWindowController: NSObject {
         modeDesc.alignment = .center
         modeDesc.lineBreakMode = .byWordWrapping
         modeDesc.maximumNumberOfLines = 0
-        modeDesc.preferredMaxLayoutWidth = 540
+        modeDesc.preferredMaxLayoutWidth = OOBETriggerKeyStepLayout.leftColumnWidth
         inputModeDescLabel = modeDesc
 
-        let modeStack = NSStackView(views: [modeHeading, modeSegment, modeDesc])
+        let modeStack = NSStackView(views: [modeHeading, modeControlRow, modeDesc])
         modeStack.orientation = .vertical
         modeStack.alignment = .centerX
         modeStack.spacing = 8
@@ -492,6 +500,7 @@ final class OOBEWindowController: NSObject {
         contentRow.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
         leftStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         headphoneCard.setContentHuggingPriority(.required, for: .horizontal)
+        leftStack.widthAnchor.constraint(equalToConstant: OOBETriggerKeyStepLayout.leftColumnWidth).isActive = true
         headphoneCard.widthAnchor.constraint(equalToConstant: OOBEHeadphoneControlCardLayout.cardWidth).isActive = true
         headphoneCard.heightAnchor.constraint(equalToConstant: OOBEHeadphoneControlCardLayout.cardHeight).isActive = true
 
@@ -1039,13 +1048,17 @@ final class EngineCardView: NSView {
 // (Render simplified bottom two rows of a Mac keyboard. The 4 candidate
 // keys are colored & clickable; the rest are decorative grey caps.)
 
+enum OOBETriggerKeyStepLayout {
+    static let leftColumnWidth: CGFloat = 390
+}
+
 final class KeyboardDiagramView: NSView {
     var onSelect: ((UInt16) -> Void)?
     private var keyCaps: [KeyCap] = []
     private var selectedCode: UInt16 = 61
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: 450, height: 138)
+        NSSize(width: OOBETriggerKeyStepLayout.leftColumnWidth, height: 126)
     }
 
     override init(frame frameRect: NSRect) {
@@ -1079,8 +1092,8 @@ final class KeyboardDiagramView: NSView {
 
     private func buildKeyboard() {
         // 顶部两排装饰键（Decorative rows: 14 + 14 caps）
-        let row1 = makeDecorativeRow(count: 14, capWidth: 25)
-        let row2 = makeDecorativeRow(count: 13, capWidth: 27, leftIndent: 14)
+        let row1 = makeDecorativeRow(count: 14, capWidth: 22)
+        let row2 = makeDecorativeRow(count: 13, capWidth: 23, leftIndent: 12)
         // 修饰键底排（Modifier row — left modifiers + space + right modifiers）
         let row3 = makeModifierRow()
 
@@ -1123,16 +1136,16 @@ final class KeyboardDiagramView: NSView {
         row.alignment = .centerY
 
         // 左侧候选键（Left: candidate keys — Fn / Control / Option）
-        let fn = makeCap(loc("menu.triggerKey.fn.symbol"), keyCode: 63, width: 32)
-        let leftCtrl = makeCap("⌃", keyCode: 59, width: 32)
-        let leftOpt  = makeCap("⌥", keyCode: 58, width: 32)
-        let leftCmd  = KeyCap(label: "⌘", keyCode: nil, width: 40)
+        let fn = makeCap(loc("menu.triggerKey.fn.symbol"), keyCode: 63, width: 30)
+        let leftCtrl = makeCap("⌃", keyCode: 59, width: 30)
+        let leftOpt  = makeCap("⌥", keyCode: 58, width: 30)
+        let leftCmd  = KeyCap(label: "⌘", keyCode: nil, width: 36)
         // Space 装饰（decorative space bar）
-        let space    = KeyCap(label: "", keyCode: nil, width: 132)
+        let space    = KeyCap(label: "", keyCode: nil, width: 105)
         // 右侧候选键（Right: candidate keys — Command / Option / Control）
-        let rightCmd = makeCap("⌘", keyCode: 54, width: 40)
-        let rightOpt = makeCap("⌥", keyCode: 61, width: 32)
-        let rightCtl = makeCap("⌃", keyCode: 62, width: 32)
+        let rightCmd = makeCap("⌘", keyCode: 54, width: 36)
+        let rightOpt = makeCap("⌥", keyCode: 61, width: 30)
+        let rightCtl = makeCap("⌃", keyCode: 62, width: 30)
 
         [fn, leftCtrl, leftOpt, leftCmd, space, rightCmd, rightOpt, rightCtl].forEach {
             row.addArrangedSubview($0)
@@ -1152,7 +1165,7 @@ final class KeyboardDiagramView: NSView {
 // MARK: - OOBE Headphone Control Card
 
 enum OOBEHeadphoneControlCardLayout {
-    static let cardWidth: CGFloat = 230
+    static let cardWidth: CGFloat = 280
     static let cardHeight: CGFloat = 270
     static let horizontalPadding: CGFloat = 16
     static let topPadding: CGFloat = 18
@@ -1208,15 +1221,15 @@ final class OOBEHeadphoneControlCardView: NSView {
         let desc = NSTextField(labelWithString: loc("oobe.trigger.headphone.desc"))
         desc.font = .systemFont(ofSize: 11.5)
         desc.textColor = .secondaryLabelColor
-        desc.lineBreakMode = .byTruncatingTail
+        desc.lineBreakMode = .byWordWrapping
         desc.maximumNumberOfLines = 4
-        desc.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        desc.preferredMaxLayoutWidth = OOBEHeadphoneControlCardLayout.bodyTextWidth
 
         modeLabel.font = .systemFont(ofSize: 11)
         modeLabel.textColor = .tertiaryLabelColor
-        modeLabel.lineBreakMode = .byTruncatingTail
-        modeLabel.maximumNumberOfLines = 3
-        modeLabel.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        modeLabel.lineBreakMode = .byWordWrapping
+        modeLabel.maximumNumberOfLines = 4
+        modeLabel.preferredMaxLayoutWidth = OOBEHeadphoneControlCardLayout.bodyTextWidth
 
         let divider = NSBox()
         divider.boxType = .separator
@@ -1229,7 +1242,7 @@ final class OOBEHeadphoneControlCardView: NSView {
         let toggleLabel = NSTextField(labelWithString: loc("oobe.trigger.headphone.enable"))
         toggleLabel.font = .systemFont(ofSize: 13)
         toggleLabel.textColor = .labelColor
-        toggleLabel.lineBreakMode = .byTruncatingTail
+        toggleLabel.lineBreakMode = .byWordWrapping
         toggleLabel.maximumNumberOfLines = 2
         toggleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 

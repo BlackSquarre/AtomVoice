@@ -238,9 +238,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         memoryPressureSource?.resume()
 
         // 首次启动展示 OOBE 引导（Show first-launch OOBE on cold start）
+        #if DEBUG_BUILD
+        if let snapshotStep = DebugOOBESnapshotArguments.current?.step {
+            DispatchQueue.main.async { [weak self] in self?.showOOBESnapshot(step: snapshotStep) }
+        } else if !AppSettings.hasCompletedOOBE {
+            DispatchQueue.main.async { [weak self] in self?.showOOBE() }
+        }
+        #else
         if !AppSettings.hasCompletedOOBE {
             DispatchQueue.main.async { [weak self] in self?.showOOBE() }
         }
+        #endif
 
         // 监听前台应用切换：录音期间切换程序则取消录音（Monitor active app change: cancel recording when switching apps）
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -566,6 +574,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
+    #if DEBUG_BUILD
+    func showOOBESnapshot(step: Int) {
+        menuBarController.presentOOBESnapshot(step: step) { controller in
+            controller.onFinish = { _, _ in }
+        }
+    }
+    #endif
 
     /// OOBE 完成后用：触发已存在的 Sherpa 下载提示流程。
     /// (Trigger existing Sherpa download prompt after OOBE.)
