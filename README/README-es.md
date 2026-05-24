@@ -15,7 +15,10 @@
 AtomVoice hace explícito cualquier uso de la nube. Sherpa-ONNX es totalmente offline, Apple Speech puede forzarse en el dispositivo cuando el idioma lo permite, y Doubao Cloud ASR / el refinamiento por LLM son opcionales. AtomVoice no opera servidores, no conserva grabaciones ni guarda historial de transcripciones.
 
 ### ⚡ Ligero
-Bundle pequeño, uso de CPU casi nulo en reposo, sin demonios en segundo plano. El runtime de Sherpa, los modelos ASR y los modelos de puntuación se descargan bajo demanda, y los modelos locales grandes pueden liberarse tras inactividad o presión crítica de memoria.
+El paquete de instalación pesa menos de 3 MB y no ejecuta demonios en segundo plano. El reconocimiento local de Sherpa-ONNX puede usar el backend CoreML para reducir la carga de CPU y el consumo de energía; el runtime de Sherpa, los modelos ASR y los modelos de puntuación se descargan bajo demanda, y los modelos locales grandes pueden liberarse tras inactividad o presión crítica de memoria.
+
+### ⌨️ Compatible con tus hábitos de escritura
+AtomVoice no toma el control del método de entrada del sistema ni cambia cómo escribes. Puedes conservar tus IME de chino/inglés, atajos y preferencias; escribe cuando quieras, habla cuando quieras. Para frases largas, añadidos rápidos o escritura entre apps, la entrada por voz puede continuar donde dejes el teclado.
 
 ---
 
@@ -30,7 +33,7 @@ Bundle pequeño, uso de CPU casi nulo en reposo, sin demonios en segundo plano. 
 
 ### Motores de reconocimiento
 - **Reconocimiento de voz de Apple** — motor del sistema con streaming, modo en el dispositivo opcional y **segmentación rodante** que rompe el límite de 1 minuto de SFSpeechRecognizer
-- **Sherpa-ONNX** — motor local totalmente offline con preajustes por idioma, backends CPU/Core ML, descargas bajo demanda de runtime/modelos ASR/puntuación, descarga automática de memoria e importación de modelos de terceros
+- **Sherpa-ONNX** — motor local totalmente offline con preajustes por idioma, backends CPU/CoreML, descargas bajo demanda de runtime/modelos ASR/puntuación, descarga automática de memoria e importación de modelos de terceros
 - **Doubao Cloud ASR** — reconocimiento cloud opcional de Volcengine con API Key guardada en el llavero, ITN, puntuación inteligente, suavizado de texto, pase final opcional y fallback a Apple Speech ante fallos cloud
 - **8 idiomas de interfaz y reconocimiento** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa también admite modelos de terceros importados para idiomas sin preajuste integrado
 
@@ -118,7 +121,7 @@ No notarizada. En la primera apertura:
 ## Configuración del motor
 
 - **Apple Speech** funciona sin configuración. Activa el reconocimiento en el dispositivo cuando el idioma seleccionado lo admite.
-- **Sherpa-ONNX** se configura en **Ajustes del motor de reconocimiento → Sherpa local**. Elige idioma, preajuste de modelo, backend CPU/Core ML, retardo de descarga automática o importa un modelo de terceros.
+- **Sherpa-ONNX** se configura en **Ajustes del motor de reconocimiento → Sherpa local**. Elige idioma, preajuste de modelo, backend CPU/CoreML, retardo de descarga automática o importa un modelo de terceros.
 - **Doubao Cloud ASR** se configura en **Ajustes del motor de reconocimiento → Doubao Cloud ASR**. Introduce tu API Key de Volcengine, elige la versión del modelo y conserva o edita el endpoint WebSocket. El primer cambio a Doubao pide confirmación de audio en la nube.
 
 ## Configuración del refinamiento por LLM (Beta)

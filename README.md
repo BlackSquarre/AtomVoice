@@ -15,7 +15,10 @@
 AtomVoice makes cloud use explicit. Sherpa-ONNX is fully offline, Apple Speech can be forced on-device when the current language supports it, and Doubao Cloud ASR / LLM Refinement are opt-in. AtomVoice itself does not run a server, keep recordings, or store transcript history.
 
 ### ⚡ Lightweight
-Small app bundle, near-zero CPU when idle, no background daemons. Sherpa runtime, ASR models, and punctuation models are downloaded on demand, and large local models can be released after idle time or critical memory pressure.
+The app bundle is under 3 MB and runs no background daemons. Sherpa-ONNX local recognition can use the CoreML backend to reduce CPU load and power usage; Sherpa runtime, ASR models, and punctuation models are downloaded on demand, and large local models can be released after idle time or critical memory pressure.
+
+### ⌨️ Input Method Friendly
+AtomVoice does not take over your system input method or change how you type. Keep your existing Chinese/English IMEs, shortcuts, and preferences; type when you want, speak when you want. For long sentences, quick additions, or cross-app writing, voice input can pick up wherever typing leaves off.
 
 ---
 
@@ -30,7 +33,7 @@ Small app bundle, near-zero CPU when idle, no background daemons. Sherpa runtime
 
 ### Recognition engines
 - **Apple Speech Recognition** — system engine with streaming, optional on-device mode, and **segmented rolling** that breaks the 1-minute SFSpeechRecognizer limit
-- **Sherpa-ONNX** — fully offline local engine with language-specific model presets, CPU/Core ML backends, on-demand runtime/model/punctuation downloads, auto-unload, and third-party model import
+- **Sherpa-ONNX** — fully offline local engine with language-specific model presets, CPU/CoreML backends, on-demand runtime/model/punctuation downloads, auto-unload, and third-party model import
 - **Doubao Cloud ASR** — optional Volcengine streaming recognition with API Key stored in Keychain, ITN, smart punctuation, text smoothing, optional final-pass recognition, and Apple Speech fallback on cloud failures
 - **8 app and recognition languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa also supports imported third-party models for languages without built-in presets
 
@@ -118,7 +121,7 @@ Not notarized. On first open:
 ## Recognition Engine Setup
 
 - **Apple Speech** works out of the box. Enable on-device recognition when the selected language supports it.
-- **Sherpa-ONNX** can be configured in **Recognition Engine Settings → Sherpa Local**. Choose language, model preset, CPU/Core ML provider, auto-unload delay, or import a third-party model package.
+- **Sherpa-ONNX** can be configured in **Recognition Engine Settings → Sherpa Local**. Choose language, model preset, CPU/CoreML provider, auto-unload delay, or import a third-party model package.
 - **Doubao Cloud ASR** can be configured in **Recognition Engine Settings → Doubao Cloud ASR**. Enter your Volcengine API Key, choose the model version, and keep or edit the WebSocket endpoint. The first switch to Doubao asks for cloud-audio confirmation.
 
 ## LLM Refinement (Beta) Setup
