@@ -18,7 +18,7 @@ final class AudioSettings {
     }
 
     var silenceDuration: Double {
-        get { backend.double(forKey: AppSettings.Keys.silenceDuration, default: 2.0) }
+        get { backend.double(forKey: AppSettings.Keys.silenceDuration, default: AppSettings.defaultSilenceDuration) }
         set { backend.set(newValue, forKey: AppSettings.Keys.silenceDuration) }
     }
 

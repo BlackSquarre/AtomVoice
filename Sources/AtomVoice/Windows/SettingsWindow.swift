@@ -13,7 +13,7 @@ final class ProviderStore {
 
     static var defaults: [LLMProvider] {
         [
-            LLMProvider(name: loc("provider.preset.openai"),    baseURL: "https://api.openai.com/v1",                         defaultModel: "gpt-4.1-mini"),
+            LLMProvider(name: loc("provider.preset.openai"),    baseURL: "https://api.openai.com/v1",                         defaultModel: AppSettings.defaultLLMModel),
             LLMProvider(name: loc("provider.preset.anthropic"), baseURL: "https://api.anthropic.com/v1",                      defaultModel: "claude-sonnet-4-6"),
             LLMProvider(name: loc("provider.preset.deepseek"),  baseURL: "https://api.deepseek.com/v1",                       defaultModel: "deepseek-v4-flash"),
             LLMProvider(name: loc("provider.preset.moonshot"),  baseURL: "https://api.moonshot.cn/v1",                        defaultModel: "kimi-latest"),
@@ -449,7 +449,7 @@ final class SettingsWindowController: NSObject {
         apiBaseURLField.toolTip = loc("tooltip.settings.baseURL")
         apiKeyField     = SettingsUI.makeSecureField(placeholder: "sk-...", delegate: self)
         apiKeyField.toolTip = loc("tooltip.settings.apiKey")
-        modelField      = SettingsUI.makeField(placeholder: "gpt-4o-mini", delegate: self)
+        modelField      = SettingsUI.makeField(placeholder: AppSettings.defaultLLMModel, delegate: self)
         modelField.toolTip = loc("tooltip.settings.model")
 
         delayPopup = NSPopUpButton()

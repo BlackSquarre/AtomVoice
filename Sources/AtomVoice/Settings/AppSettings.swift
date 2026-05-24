@@ -67,10 +67,11 @@ enum AppSettings {
 
     static let defaultPasteDelay: Double = 0.25
     static let pasteDelayOptions: [Double] = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40]
+    static let defaultSilenceDuration: Double = 3.0
 
     static let defaultLanguageCode = "zh-CN"
     static let defaultLLMBaseURL = "https://api.openai.com/v1"
-    static let defaultLLMModel = "gpt-4o-mini"
+    static let defaultLLMModel = "gpt-5.4-mini"
     static let defaultAnimationStyle = "dynamicIsland"
     static let defaultAnimationSpeed = "medium"
     static let defaultSherpaProvider = "coreml"
@@ -120,7 +121,7 @@ enum AppSettings {
             Keys.animationStyle: defaultAnimationStyle,
             Keys.animationSpeed: defaultAnimationSpeed,
             Keys.silenceAutoStopEnabled: false,
-            Keys.silenceDuration: 2.0,
+            Keys.silenceDuration: defaultSilenceDuration,
             Keys.silenceThreshold: -40.0,
             Keys.triggerKeyCode: Int(defaultTriggerKeyCode),
             Keys.lowerVolumeOnRecording: true,
