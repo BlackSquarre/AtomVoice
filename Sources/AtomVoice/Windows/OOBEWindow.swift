@@ -27,10 +27,7 @@ final class OOBEWindowController: NSObject {
     private let totalSteps = 5
 
     // 选中状态（Selection state）
-    private var selectedEngine: String = ASREngineRegistry.appleCode
-    private var selectedTriggerKeyCode: UInt16 = 61
-    private var selectedSilenceAutoStop: Bool = false
-    private var selectedHeadphoneControl: Bool = false
+    private let state = OOBESelectionState()
     private var engineCardViews: [EngineCardView] = []
     private var keyboardDiagramView: KeyboardDiagramView?
     private var triggerSubtitleLabel: NSTextField?
@@ -64,11 +61,11 @@ final class OOBEWindowController: NSObject {
             }
             return
         }
-        selectedEngine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
+        state.engine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
         let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
-        selectedTriggerKeyCode = (savedKey == 0) ? 61 : savedKey
-        selectedSilenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
-        selectedHeadphoneControl = AppSettings.headphoneControlEnabled
+        state.triggerKeyCode = (savedKey == 0) ? 61 : savedKey
+        state.silenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        state.headphoneControl = AppSettings.headphoneControlEnabled
         buildWindow(initialStep: initialStep)
     }
 
@@ -204,7 +201,7 @@ final class OOBEWindowController: NSObject {
     @objc private func nextTapped() {
         // 引擎选择步：选了 Sherpa 时插入模型选择器；其他引擎走原流程
         // (Engine step: when Sherpa is chosen, present model chooser first; other engines proceed normally)
-        if currentStep == 3 && selectedEngine == ASREngineRegistry.sherpaCode {
+        if currentStep == 3 && state.engine == ASREngineRegistry.sherpaCode {
             presentSherpaModelChooser()
             return
         }
@@ -234,18 +231,18 @@ final class OOBEWindowController: NSObject {
 
     private func finish() {
         UserDefaults.standard.set(true, forKey: Self.completionDefaultsKey)
-        AppSettings.recognitionEngine = selectedEngine
-        UserDefaults.standard.set(Int(selectedTriggerKeyCode), forKey: "triggerKeyCode")
-        UserDefaults.standard.set(selectedSilenceAutoStop, forKey: "silenceAutoStopEnabled")
-        AppSettings.headphoneControlEnabled = selectedHeadphoneControl
-        if selectedHeadphoneControl {
+        AppSettings.recognitionEngine = state.engine
+        UserDefaults.standard.set(Int(state.triggerKeyCode), forKey: "triggerKeyCode")
+        UserDefaults.standard.set(state.silenceAutoStop, forKey: "silenceAutoStopEnabled")
+        AppSettings.headphoneControlEnabled = state.headphoneControl
+        if state.headphoneControl {
             AppSettings.headphoneControlAlertShown = true
         }
-        if selectedEngine == VolcengineASRSettings.engineCode {
+        if state.engine == VolcengineASRSettings.engineCode {
             UserDefaults.standard.set(true, forKey: "doubaoASRPrivacyAccepted")
         }
-        let chosenEngine = selectedEngine
-        let chosenKey = selectedTriggerKeyCode
+        let chosenEngine = state.engine
+        let chosenKey = state.triggerKeyCode
         window?.close()
         onFinish?(chosenEngine, chosenKey)
     }
@@ -400,7 +397,7 @@ final class OOBEWindowController: NSObject {
         v.addArrangedSubview(heading)
         v.setCustomSpacing(6, after: heading)
 
-        let subLocKey = selectedSilenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
+        let subLocKey = state.silenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
         let sub = NSTextField(labelWithString: loc(subLocKey))
         sub.font = .systemFont(ofSize: 12.5)
         sub.textColor = .secondaryLabelColor
@@ -416,10 +413,10 @@ final class OOBEWindowController: NSObject {
         let diagram = KeyboardDiagramView()
         diagram.translatesAutoresizingMaskIntoConstraints = false
         diagram.onSelect = { [weak self] code in self?.triggerKeySelected(code) }
-        diagram.setSelected(selectedTriggerKeyCode)
+        diagram.setSelected(state.triggerKeyCode)
         keyboardDiagramView = diagram
 
-        let label = NSTextField(labelWithString: triggerKeyLabel(for: selectedTriggerKeyCode))
+        let label = NSTextField(labelWithString: triggerKeyLabel(for: state.triggerKeyCode))
         label.font = .systemFont(ofSize: 13, weight: .medium)
         label.textColor = .secondaryLabelColor
         label.alignment = .center
@@ -436,7 +433,7 @@ final class OOBEWindowController: NSObject {
                                               trackingMode: .selectOne,
                                               target: self,
                                               action: #selector(inputModeChanged(_:)))
-        modeSegment.selectedSegment = selectedSilenceAutoStop ? 1 : 0
+        modeSegment.selectedSegment = state.silenceAutoStop ? 1 : 0
         modeSegment.segmentStyle = .rounded
         modeSegment.translatesAutoresizingMaskIntoConstraints = false
         modeSegment.setWidth(116, forSegment: 0)
@@ -476,10 +473,10 @@ final class OOBEWindowController: NSObject {
 
         let headphoneCard = OOBEHeadphoneControlCardView()
         headphoneCard.translatesAutoresizingMaskIntoConstraints = false
-        headphoneCard.setEnabled(selectedHeadphoneControl)
-        headphoneCard.updateModeDescription(selectedSilenceAutoStop: selectedSilenceAutoStop)
+        headphoneCard.setEnabled(state.headphoneControl)
+        headphoneCard.updateModeDescription(selectedSilenceAutoStop: state.silenceAutoStop)
         headphoneCard.onToggle = { [weak self] enabled in
-            self?.selectedHeadphoneControl = enabled
+            self?.state.headphoneControl = enabled
         }
         headphoneControlCard = headphoneCard
 
@@ -508,15 +505,15 @@ final class OOBEWindowController: NSObject {
     }
 
     @objc private func inputModeChanged(_ sender: NSSegmentedControl) {
-        selectedSilenceAutoStop = sender.selectedSegment == 1
+        state.silenceAutoStop = sender.selectedSegment == 1
         inputModeDescLabel?.stringValue = inputModeDescription()
-        let subLocKey = selectedSilenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
+        let subLocKey = state.silenceAutoStop ? "oobe.trigger.subtitle.tap" : "oobe.trigger.subtitle"
         triggerSubtitleLabel?.stringValue = loc(subLocKey)
-        headphoneControlCard?.updateModeDescription(selectedSilenceAutoStop: selectedSilenceAutoStop)
+        headphoneControlCard?.updateModeDescription(selectedSilenceAutoStop: state.silenceAutoStop)
     }
 
     private func inputModeDescription() -> String {
-        selectedSilenceAutoStop
+        state.silenceAutoStop
             ? loc("oobe.trigger.mode.tap.desc")
             : loc("oobe.trigger.mode.hold.desc")
     }
@@ -527,7 +524,7 @@ final class OOBEWindowController: NSObject {
     }
 
     private func triggerKeySelected(_ code: UInt16) {
-        selectedTriggerKeyCode = code
+        state.triggerKeyCode = code
         keyboardDiagramView?.setSelected(code)
         triggerSelectionLabel?.stringValue = triggerKeyLabel(for: code)
     }
@@ -627,13 +624,13 @@ final class OOBEWindowController: NSObject {
     }
 
     private func engineSelected(_ code: String) {
-        selectedEngine = code
+        state.engine = code
         applyEngineSelection()
     }
 
     private func applyEngineSelection() {
         for card in engineCardViews {
-            card.setSelected(card.code == selectedEngine)
+            card.setSelected(card.code == state.engine)
         }
     }
 
@@ -655,8 +652,8 @@ final class OOBEWindowController: NSObject {
         title.alignment = .center
 
         // 按选中触发键动态生成引导文案（Build body using selected trigger key）
-        let opt = TriggerKeyOption.option(for: selectedTriggerKeyCode)
-        let bodyLocKey = selectedSilenceAutoStop ? "oobe.done.body.tap" : "oobe.done.body"
+        let opt = TriggerKeyOption.option(for: state.triggerKeyCode)
+        let bodyLocKey = state.silenceAutoStop ? "oobe.done.body.tap" : "oobe.done.body"
         let bodyText = String(format: loc(bodyLocKey), loc(opt.symbolKey))
         
         let font = NSFont.systemFont(ofSize: 13)
@@ -706,7 +703,7 @@ final class OOBEWindowController: NSObject {
         body.preferredMaxLayoutWidth = 540
 
         let nextStepText: String
-        switch selectedEngine {
+        switch state.engine {
         case VolcengineASRSettings.engineCode:
             nextStepText = loc("oobe.done.followup.doubao")
         case ASREngineRegistry.sherpaCode:
