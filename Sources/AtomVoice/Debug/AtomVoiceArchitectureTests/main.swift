@@ -18,5 +18,6 @@ await LLMRefinerTests.run(&runner)
 await HeadphoneHIDTests.run(&runner)
 await SherpaPreloadTests.run(&runner)
 await SingleInstanceControllerTests.run(&runner)
+await SherpaDownloadCapsulePresenterTests.run(&runner)
 
 runner.finish()

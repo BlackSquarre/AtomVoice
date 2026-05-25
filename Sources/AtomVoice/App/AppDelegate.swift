@@ -14,6 +14,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var textPostProcessorRegistry: TextPostProcessorRegistry!
     private var textOutputSinkRegistry: TextOutputSinkRegistry!
     private var volumeController: VolumeController!
+    private var sherpaDownloadCapsulePresenter: SherpaDownloadCapsulePresenter!
     private var memoryPressureSource: DispatchSourceMemoryPressure?
     private var selectedRecognitionEngineCode = ASREngineRegistry.appleCode
     private var selectedSherpaPresetID = ""
@@ -21,9 +22,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var selectedSherpaProvider = ""
     private var pendingSherpaModelRelease = false
     private var sherpaAutoUnloadWorkItem: DispatchWorkItem?
-    private var sherpaDownloadCapsuleActive = false
-    private var sherpaDownloadCapsuleMessage: String?
-    private var sherpaDownloadCapsuleLastUpdate = Date.distantPast
     private var session: RecordingSessionController!
 
     public override init() {
@@ -109,6 +107,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             asrEngineProvider: asrEngineProvider
         )
         session.delegate = self
+        sherpaDownloadCapsulePresenter = SherpaDownloadCapsulePresenter(
+            capsuleWindow: capsuleWindow,
+            isRecording: { [weak self] in self?.session.isRecording == true }
+        )
 
         menuBarController = MenuBarController(
             onLanguageChanged: { [weak self] in
@@ -163,7 +165,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             self.fnKeyMonitor.isRecording = active
             self.capsuleWindow.recordingClickEnabled = active
             self.headphoneCoordinator.notifyRecordingStateChanged(active)
-            self.handleRecordingStateChangedForDownloadCapsule(active: active)
+            self.sherpaDownloadCapsulePresenter.handleRecordingStateChanged(active: active)
             if !active {
                 UpdateChecker.shared.resumeDeferredRestartPromptIfPossible()
             }
@@ -398,42 +400,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func showSherpaDownloadCapsule(_ message: String) {
         guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-        appDelegate.updateSherpaDownloadCapsule(message, force: false)
+        appDelegate.sherpaDownloadCapsulePresenter.updateProgress(message: message, force: false)
     }
 
     static func finishSherpaDownloadCapsule(success: Bool, error: String?) {
         guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-        appDelegate.sherpaDownloadCapsuleActive = false
-        appDelegate.sherpaDownloadCapsuleMessage = nil
-        if appDelegate.session.isRecording { return }
-        if success {
-            appDelegate.capsuleWindow.updateText(loc("sherpa.download.complete"))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak appDelegate] in
-                appDelegate?.capsuleWindow.dismiss()
-            }
-        } else {
-            appDelegate.capsuleWindow.showError(loc("sherpa.download.failed", error ?? "Unknown error"), dismissAfter: 6)
-        }
-    }
-
-    private func updateSherpaDownloadCapsule(_ message: String, force: Bool) {
-        sherpaDownloadCapsuleActive = true
-        sherpaDownloadCapsuleMessage = message
-        guard !session.isRecording else { return }
-
-        let now = Date()
-        guard force || now.timeIntervalSince(sherpaDownloadCapsuleLastUpdate) >= 0.25 else { return }
-        sherpaDownloadCapsuleLastUpdate = now
-        capsuleWindow.showDownloadProgress(message)
-    }
-
-    private func handleRecordingStateChangedForDownloadCapsule(active: Bool) {
-        guard sherpaDownloadCapsuleActive else { return }
-        if active {
-            capsuleWindow.dismiss()
-        } else if let message = sherpaDownloadCapsuleMessage {
-            updateSherpaDownloadCapsule(message, force: true)
-        }
+        appDelegate.sherpaDownloadCapsulePresenter.finishDownload(success: success, error: error)
     }
 
     private func requestPermissions() {
