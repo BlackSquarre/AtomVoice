@@ -16,7 +16,6 @@
   <a href="https://www.swift.org"><img alt="Swift 5.9+" src="https://img.shields.io/badge/Swift-5.9%2B-F05138?style=for-the-badge&logo=swift&logoColor=white"></a>
   <a href="https://github.com/BlackSquarre/AtomVoice/releases"><img alt="Download Releases" src="https://img.shields.io/badge/Download-Releases-2EA44F?style=for-the-badge"></a>
   <a href="LICENSE"><img alt="License Apache 2.0" src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge"></a>
-  <a href="https://github.com/BlackSquarre/AtomVoice/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/BlackSquarre/AtomVoice?style=for-the-badge&logo=github"></a>
 </p>
 
 ### 🔒 Privacy First
