@@ -2,13 +2,17 @@ APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
 VERSION     = 0.10.5
 BUILD_DIR   = .build/release
+RELEASE_BUILD_ROOT = .build/release-artifacts
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
-.PHONY: build dev run install clean release sherpa-memory test lint-loc
+.PHONY: build dev run install clean release sherpa-memory test lint-loc \
+        clean-release-cache release-cold release-fast release-verify build-release-binaries \
+        build-release-arm64 build-release-x86_64 build-debug-arm64 build-debug-x86_64 \
+        package-arm64 package-x86_64 package-universal package-debug-universal
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
@@ -46,10 +50,25 @@ sherpa-memory:
 	swift build -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
 	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
 
-# ── Release：构建三个正式包 + 一个 Debug Universal 包并打包 zip ───────
-release: clean-dist build-arm64 build-x86_64 build-universal build-debug-universal sha256sums
+# ── Release：复用独立 scratch cache，并行构建正式/Debug 二进制，再串行打包 ───────
+release: clean-dist build-release-binaries package-arm64 package-x86_64 package-universal package-debug-universal sha256sums
 	@echo "\n✓ Release artifacts in $(DIST_DIR)/"
 	@ls -lh $(DIST_DIR)/
+
+# 需要完全冷构建时使用；普通 release 默认保留四套 scratch cache 来减少发版等待时间。
+release-cold: clean-release-cache release
+
+# 发版快速路径：测试/本地化检查和四套 release 二进制并行，打包仍串行避免 dist/AtomVoice.app 竞态。
+release-fast: clean-dist
+	@$(MAKE) -j2 build-release-binaries release-verify
+	@$(MAKE) package-arm64 package-x86_64 package-universal package-debug-universal sha256sums
+	@echo "\n✓ Release artifacts in $(DIST_DIR)/"
+	@ls -lh $(DIST_DIR)/
+
+release-verify:
+	@echo "→ Running release verification in parallel..."
+	@$(MAKE) -j2 test lint-loc
+	@echo "  Release verification done"
 
 # ── 生成 SHA256 校验文件，供客户端自动更新校验 ───────────────────────
 sha256sums:
@@ -61,27 +80,53 @@ clean-dist:
 	rm -rf $(DIST_DIR)
 	mkdir -p $(DIST_DIR)
 
-build-arm64:
+clean-release-cache:
+	rm -rf "$(RELEASE_BUILD_ROOT)"
+
+build-release-binaries:
+	@echo "→ Building release binaries in parallel..."
+	@$(MAKE) -j4 build-release-arm64 build-release-x86_64 build-debug-arm64 build-debug-x86_64
+	@echo "  Release binaries done"
+
+build-release-arm64:
 	@echo "→ Building Apple Silicon (arm64)..."
-	swift build -c release --product $(APP_NAME) --arch arm64
-	$(call bundle_app,.build/arm64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
+	swift build -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/arm64"
+	@echo "  Apple Silicon binary done"
+
+build-release-x86_64:
+	@echo "→ Building Intel (x86_64)..."
+	swift build -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/x86_64"
+	@echo "  Intel binary done"
+
+build-debug-arm64:
+	@echo "→ Building Debug Apple Silicon (arm64)..."
+	swift build -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-arm64" -Xswiftc -DDEBUG_BUILD
+	@echo "  Debug Apple Silicon binary done"
+
+build-debug-x86_64:
+	@echo "→ Building Debug Intel (x86_64)..."
+	swift build -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-x86_64" -Xswiftc -DDEBUG_BUILD
+	@echo "  Debug Intel binary done"
+
+package-arm64:
+	@echo "→ Packaging Apple Silicon (arm64)..."
+	$(call bundle_app,$(RELEASE_BUILD_ROOT)/arm64/arm64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-AppleSilicon.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Apple Silicon done"
 
-build-x86_64:
-	@echo "→ Building Intel (x86_64)..."
-	swift build -c release --product $(APP_NAME) --arch x86_64
-	$(call bundle_app,.build/x86_64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
+package-x86_64:
+	@echo "→ Packaging Intel (x86_64)..."
+	$(call bundle_app,$(RELEASE_BUILD_ROOT)/x86_64/x86_64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-Intel.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Intel done"
 
-build-universal:
-	@echo "→ Building Universal (Apple Silicon + Intel)..."
+package-universal:
+	@echo "→ Packaging Universal (Apple Silicon + Intel)..."
 	lipo -create \
-		.build/arm64-apple-macosx/release/$(APP_NAME) \
-		.build/x86_64-apple-macosx/release/$(APP_NAME) \
+		$(RELEASE_BUILD_ROOT)/arm64/arm64-apple-macosx/release/$(APP_NAME) \
+		$(RELEASE_BUILD_ROOT)/x86_64/x86_64-apple-macosx/release/$(APP_NAME) \
 		-output $(DIST_DIR)/$(APP_NAME)-universal-bin
 	$(call bundle_app,$(DIST_DIR)/$(APP_NAME)-universal-bin,$(DIST_DIR)/$(APP_NAME).app)
 	rm -f $(DIST_DIR)/$(APP_NAME)-universal-bin
@@ -89,13 +134,11 @@ build-universal:
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Universal done"
 
-build-debug-universal:
-	@echo "→ Building Debug Universal (Apple Silicon + Intel)..."
-	swift build -c release --product $(APP_NAME) --arch arm64 -Xswiftc -DDEBUG_BUILD
-	swift build -c release --product $(APP_NAME) --arch x86_64 -Xswiftc -DDEBUG_BUILD
+package-debug-universal:
+	@echo "→ Packaging Debug Universal (Apple Silicon + Intel)..."
 	lipo -create \
-		.build/arm64-apple-macosx/release/$(APP_NAME) \
-		.build/x86_64-apple-macosx/release/$(APP_NAME) \
+		$(RELEASE_BUILD_ROOT)/debug-arm64/arm64-apple-macosx/release/$(APP_NAME) \
+		$(RELEASE_BUILD_ROOT)/debug-x86_64/x86_64-apple-macosx/release/$(APP_NAME) \
 		-output $(DIST_DIR)/$(APP_NAME)-debug-universal-bin
 	$(call bundle_app,$(DIST_DIR)/$(APP_NAME)-debug-universal-bin,$(DIST_DIR)/$(APP_NAME).app)
 	rm -f $(DIST_DIR)/$(APP_NAME)-debug-universal-bin
