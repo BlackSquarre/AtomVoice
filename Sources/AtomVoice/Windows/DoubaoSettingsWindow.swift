@@ -40,8 +40,7 @@ final class DoubaoSettingsWindowController: NSObject {
         let descLabel = NSTextField(labelWithString: loc("doubao.settings.desc"))
         descLabel.font = .systemFont(ofSize: 12)
         descLabel.textColor = .secondaryLabelColor
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 0
+        SettingsUI.allowHorizontalWrapping(descLabel, preferredMaxLayoutWidth: 512)
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
         apiKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
@@ -69,8 +68,7 @@ final class DoubaoSettingsWindowController: NSObject {
         globalInfoLabel = NSTextField(labelWithString: "")
         globalInfoLabel.font = .systemFont(ofSize: 12)
         globalInfoLabel.textColor = .secondaryLabelColor
-        globalInfoLabel.lineBreakMode = .byWordWrapping
-        globalInfoLabel.maximumNumberOfLines = 0
+        SettingsUI.allowHorizontalWrapping(globalInfoLabel, preferredMaxLayoutWidth: 384)
         globalInfoLabel.toolTip = loc("tooltip.doubao.globalInfo")
 
         let form = NSStackView()

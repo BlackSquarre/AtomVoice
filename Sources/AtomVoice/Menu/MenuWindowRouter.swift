@@ -50,6 +50,17 @@ final class MenuWindowRouter {
         asrSettingsWindow?.showWindow()
     }
 
+    #if DEBUG_BUILD
+    func openASRSettingsSnapshot(tabIdentifier: String) {
+        if asrSettingsWindow == nil {
+            let c = ASRSettingsWindowController()
+            c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
+            asrSettingsWindow = c
+        }
+        asrSettingsWindow?.showWindowForSnapshot(tabIdentifier: tabIdentifier)
+    }
+    #endif
+
     func openAbout() {
         if aboutWindow == nil {
             let c = AboutWindowController()

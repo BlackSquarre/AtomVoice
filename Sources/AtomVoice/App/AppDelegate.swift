@@ -239,7 +239,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 首次启动展示 OOBE 引导（Show first-launch OOBE on cold start）
         #if DEBUG_BUILD
-        if let snapshotStep = DebugOOBESnapshotArguments.current?.step {
+        if let asrSettingsSnapshot = DebugASRSettingsSnapshotArguments.current {
+            DispatchQueue.main.async { [weak self] in
+                self?.showASRSettingsSnapshot(tabIdentifier: asrSettingsSnapshot.tabIdentifier)
+            }
+        } else if let snapshotStep = DebugOOBESnapshotArguments.current?.step {
             DispatchQueue.main.async { [weak self] in self?.showOOBESnapshot(step: snapshotStep) }
         } else if !AppSettings.hasCompletedOOBE {
             DispatchQueue.main.async { [weak self] in self?.showOOBE() }
@@ -580,6 +584,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController.presentOOBESnapshot(step: step) { controller in
             controller.onFinish = { _, _ in }
         }
+    }
+
+    private func showASRSettingsSnapshot(tabIdentifier: String) {
+        menuBarController.presentASRSettingsSnapshot(tabIdentifier: tabIdentifier)
     }
     #endif
 

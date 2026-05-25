@@ -620,6 +620,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func presentOOBESnapshot(step: Int, configure: (OOBEWindowController) -> Void) {
         windowRouter.openOOBESnapshot(step: step, configure: configure)
     }
+
+    func presentASRSettingsSnapshot(tabIdentifier: String) {
+        windowRouter.openASRSettingsSnapshot(tabIdentifier: tabIdentifier)
+    }
     #endif
 
     @objc private func rerunOOBE(_ sender: NSMenuItem) {

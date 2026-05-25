@@ -3,6 +3,7 @@ import Speech
 
 final class ASRSettingsWindowController: NSObject {
     private static let doubaoAPIKeyURLString = "https://console.volcengine.com/speech/new/setting/apikeys"
+    private static let initialContentSize = NSSize(width: 640, height: 600)
 
     var onClose: (() -> Void)?
     private var window: NSWindow?
@@ -45,9 +46,20 @@ final class ASRSettingsWindowController: NSObject {
         buildWindow()
     }
 
+    #if DEBUG_BUILD
+    func showWindowForSnapshot(tabIdentifier: String) {
+        if window == nil {
+            buildWindow()
+        }
+        selectTab(identifier: tabIdentifier)
+        window?.setContentSize(Self.initialContentSize)
+        window?.makeKeyAndOrderFront(nil)
+    }
+    #endif
+
     private func buildWindow() {
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 600),
+            contentRect: NSRect(origin: .zero, size: Self.initialContentSize),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -125,9 +137,17 @@ final class ASRSettingsWindowController: NSObject {
             tabView.selectTabViewItem(at: tabIndex)
         }
 
+        w.setContentSize(Self.initialContentSize)
         w.center()
         w.recalculateKeyViewLoop()
         WindowPresenter.shared.bringToFront(w)
+    }
+
+    private func selectTab(identifier: String) {
+        let tabIndex = tabView.indexOfTabViewItem(withIdentifier: identifier)
+        if tabIndex != NSNotFound {
+            tabView.selectTabViewItem(at: tabIndex)
+        }
     }
 
     // MARK: - 豆包标签页（Doubao Tab）
@@ -138,8 +158,7 @@ final class ASRSettingsWindowController: NSObject {
         let descLabel = NSTextField(labelWithString: loc("doubao.settings.desc"))
         descLabel.font = .systemFont(ofSize: 12)
         descLabel.textColor = .secondaryLabelColor
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 0
+        SettingsUI.allowHorizontalWrapping(descLabel, preferredMaxLayoutWidth: 560)
         descLabel.translatesAutoresizingMaskIntoConstraints = false
 
         doubaoAPIKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
@@ -164,12 +183,12 @@ final class ASRSettingsWindowController: NSObject {
         apiKeyLink.toolTip = Self.doubaoAPIKeyURLString
         apiKeyLink.translatesAutoresizingMaskIntoConstraints = false
 
-        let apiKeyRowSpacer = NSView()
-        apiKeyRowSpacer.translatesAutoresizingMaskIntoConstraints = false
-        apiKeyRowSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         doubaoAPIKeyField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        doubaoAPIKeyField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        apiKeyLink.setContentHuggingPriority(.required, for: .horizontal)
+        apiKeyLink.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        let apiKeyControlRow = NSStackView(views: [doubaoAPIKeyField, apiKeyRowSpacer, apiKeyLink])
+        let apiKeyControlRow = NSStackView(views: [doubaoAPIKeyField, apiKeyLink])
         apiKeyControlRow.orientation = .horizontal
         apiKeyControlRow.spacing = 8
         apiKeyControlRow.alignment = .centerY
@@ -187,8 +206,7 @@ final class ASRSettingsWindowController: NSObject {
         doubaoGlobalInfoLabel = NSTextField(labelWithString: "")
         doubaoGlobalInfoLabel.font = .systemFont(ofSize: 12)
         doubaoGlobalInfoLabel.textColor = .secondaryLabelColor
-        doubaoGlobalInfoLabel.lineBreakMode = .byWordWrapping
-        doubaoGlobalInfoLabel.maximumNumberOfLines = 0
+        SettingsUI.allowHorizontalWrapping(doubaoGlobalInfoLabel, preferredMaxLayoutWidth: 430)
         doubaoGlobalInfoLabel.toolTip = loc("tooltip.doubao.globalInfo")
 
         let form = NSStackView()

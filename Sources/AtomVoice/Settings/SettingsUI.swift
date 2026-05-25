@@ -9,6 +9,8 @@ enum SettingsUI {
         field.translatesAutoresizingMaskIntoConstraints = false
         field.cell?.wraps = false
         field.cell?.isScrollable = true
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = delegate
         return field
     }
@@ -21,6 +23,8 @@ enum SettingsUI {
         field.translatesAutoresizingMaskIntoConstraints = false
         field.cell?.wraps = false
         field.cell?.isScrollable = true
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = delegate
         return field
     }
@@ -43,6 +47,16 @@ enum SettingsUI {
         label.font = .systemFont(ofSize: fontSize)
         label.textColor = .secondaryLabelColor
         return label
+    }
+
+    static func allowHorizontalWrapping(_ label: NSTextField, preferredMaxLayoutWidth: CGFloat? = nil) {
+        label.lineBreakMode = .byWordWrapping
+        label.maximumNumberOfLines = 0
+        if let preferredMaxLayoutWidth {
+            label.preferredMaxLayoutWidth = preferredMaxLayoutWidth
+        }
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
     static func makeFormRow(labelText: String, control: NSView, labelWidth: CGFloat = 120, spacing: CGFloat = 8) -> NSStackView {
