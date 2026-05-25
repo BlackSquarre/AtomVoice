@@ -2,6 +2,8 @@ import Cocoa
 import Speech
 
 final class ASRSettingsWindowController: NSObject {
+    private static let doubaoAPIKeyURLString = "https://console.volcengine.com/speech/new/setting/apikeys"
+
     var onClose: (() -> Void)?
     private var window: NSWindow?
     private var tabView: NSTabView!
@@ -153,6 +155,26 @@ final class ASRSettingsWindowController: NSObject {
         doubaoEndpointField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultEndpoint, delegate: self)
         doubaoEndpointField.toolTip = loc("tooltip.doubao.endpoint")
 
+        let apiKeyLink = NSButton(title: loc("doubao.settings.apiKeyLink"),
+                                  target: self, action: #selector(openDoubaoAPIKeyPage(_:)))
+        apiKeyLink.bezelStyle = .accessoryBarAction
+        apiKeyLink.isBordered = false
+        apiKeyLink.contentTintColor = .linkColor
+        apiKeyLink.font = .systemFont(ofSize: 12)
+        apiKeyLink.toolTip = Self.doubaoAPIKeyURLString
+        apiKeyLink.translatesAutoresizingMaskIntoConstraints = false
+
+        let apiKeyRowSpacer = NSView()
+        apiKeyRowSpacer.translatesAutoresizingMaskIntoConstraints = false
+        apiKeyRowSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        doubaoAPIKeyField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let apiKeyControlRow = NSStackView(views: [doubaoAPIKeyField, apiKeyRowSpacer, apiKeyLink])
+        apiKeyControlRow.orientation = .horizontal
+        apiKeyControlRow.spacing = 8
+        apiKeyControlRow.alignment = .centerY
+        apiKeyControlRow.translatesAutoresizingMaskIntoConstraints = false
+
         doubaoITNCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableITN"), tooltip: loc("tooltip.doubao.enableITN"))
         doubaoDDCCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableDDC"), tooltip: loc("tooltip.doubao.enableDDC"))
         doubaoNonstreamCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableNonstream"), tooltip: loc("tooltip.doubao.enableNonstream"))
@@ -176,7 +198,7 @@ final class ASRSettingsWindowController: NSObject {
         form.translatesAutoresizingMaskIntoConstraints = false
 
         let rows: [(String, NSView)] = [
-            (loc("doubao.settings.apiKey"), doubaoAPIKeyField),
+            (loc("doubao.settings.apiKey"), apiKeyControlRow),
             (loc("doubao.settings.resourceID"), doubaoModelPopup),
             (loc("doubao.settings.endpoint"), doubaoEndpointField),
             (loc("doubao.settings.effects"), effectsStack),
@@ -846,6 +868,12 @@ final class ASRSettingsWindowController: NSObject {
 
     @objc private func openAppleSettings(_ sender: NSButton) {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Dictation") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func openDoubaoAPIKeyPage(_ sender: NSButton) {
+        if let url = URL(string: Self.doubaoAPIKeyURLString) {
             NSWorkspace.shared.open(url)
         }
     }

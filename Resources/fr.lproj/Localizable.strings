@@ -299,6 +299,7 @@
 "doubao.settings.title" = "Réglages Doubao ASR";
 "doubao.settings.desc" = "Configurez la reconnaissance vocale en streaming Volcengine Doubao. L’audio est envoyé à Doubao uniquement lorsque ce moteur est sélectionné.";
 "doubao.settings.apiKey" = "API Key :";
+"doubao.settings.apiKeyLink" = "Obtenir une API Key ↗";
 "doubao.settings.resourceID" = "Modèle :";
 "doubao.settings.endpoint" = "Endpoint :";
 "doubao.settings.options" = "Options :";

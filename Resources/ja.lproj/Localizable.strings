@@ -299,6 +299,7 @@
 "doubao.settings.title" = "Doubao ASR 設定";
 "doubao.settings.desc" = "Volcengine Doubao のストリーミング音声認識を設定します。この認識エンジンを選択した場合のみ、音声が Doubao に送信されます。";
 "doubao.settings.apiKey" = "API Key:";
+"doubao.settings.apiKeyLink" = "API Key を取得 ↗";
 "doubao.settings.resourceID" = "モデル：";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "オプション:";

@@ -299,6 +299,7 @@
 "doubao.settings.title" = "Doubao-ASR-Einstellungen";
 "doubao.settings.desc" = "Konfigurieren Sie die Streaming-Spracherkennung von Volcengine Doubao. Audio wird nur an Doubao gesendet, wenn diese Erkennungs-Engine ausgewählt ist.";
 "doubao.settings.apiKey" = "API Key:";
+"doubao.settings.apiKeyLink" = "API Key abrufen ↗";
 "doubao.settings.resourceID" = "Modell:";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "Optionen:";

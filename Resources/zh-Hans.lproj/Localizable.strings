@@ -300,6 +300,7 @@
 "doubao.settings.title" = "豆包 ASR 设置";
 "doubao.settings.desc" = "配置火山引擎豆包流式语音识别。只有选择该识别引擎时，音频才会发送到豆包服务。";
 "doubao.settings.apiKey" = "API Key:";
+"doubao.settings.apiKeyLink" = "申请 API Key ↗";
 "doubao.settings.resourceID" = "模型：";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "选项:";

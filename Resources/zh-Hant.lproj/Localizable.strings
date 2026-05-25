@@ -299,6 +299,7 @@
 "doubao.settings.title" = "豆包 ASR 設定";
 "doubao.settings.desc" = "設定火山引擎豆包串流語音辨識。只有選擇該辨識引擎時，音訊才會傳送到豆包服務。";
 "doubao.settings.apiKey" = "API Key:";
+"doubao.settings.apiKeyLink" = "申請 API Key ↗";
 "doubao.settings.resourceID" = "模型：";
 "doubao.settings.endpoint" = "Endpoint:";
 "doubao.settings.options" = "選項:";
