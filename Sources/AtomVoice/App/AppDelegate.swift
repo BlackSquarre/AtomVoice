@@ -15,13 +15,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var textOutputSinkRegistry: TextOutputSinkRegistry!
     private var volumeController: VolumeController!
     private var sherpaDownloadCapsulePresenter: SherpaDownloadCapsulePresenter!
-    private var memoryPressureSource: DispatchSourceMemoryPressure?
-    private var selectedRecognitionEngineCode = ASREngineRegistry.appleCode
-    private var selectedSherpaPresetID = ""
-    private var selectedSherpaRecognitionLanguage = ""
-    private var selectedSherpaProvider = ""
-    private var pendingSherpaModelRelease = false
-    private var sherpaAutoUnloadWorkItem: DispatchWorkItem?
+    private var sherpaLifecycle: SherpaLifecycleCoordinator!
     private var session: RecordingSessionController!
 
     public override init() {
@@ -29,8 +23,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     deinit {
-        memoryPressureSource?.cancel()
-        sherpaAutoUnloadWorkItem?.cancel()
+        sherpaLifecycle?.stop()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -54,17 +47,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(false, forKey: AppSettings.Keys.doubaoASREnableNonstream)
             AppSettings.doubaoASRLowLatencyDefaultApplied = true
         }
-        selectedRecognitionEngineCode = AppSettings.normalizedRecognitionEngine
-        selectedSherpaPresetID = AppSettings.sherpaModelPresetID
-        selectedSherpaRecognitionLanguage = SherpaModelPreset.recognitionLanguage
-        selectedSherpaProvider = AppSettings.sherpaProvider
         // 启动时异步探测 GitHub 可达性，结果缓存供下载流程参考；不阻塞主线程
         // (Async probe GitHub reachability at launch; cached for download flow, no main-thread block)
         SherpaModelPreset.probeMirrorAsync()
 
         // 清理已废弃的 sherpaModelsReady 标记 + 修复 sherpaModelPresetID 指向未下载模型的状态
         // (Cleanup deprecated sherpaModelsReady flag + heal sherpaModelPresetID pointing to undownloaded preset)
-        Self.migrateSherpaPresetIfNeeded()
+        SherpaLifecycleCoordinator.migratePresetIfNeeded()
 
         // 全新安装：首次启动跳过权限请求，交给 OOBE 引导用户按需授权
         // (Fresh install: skip permission prompts on first launch — OOBE will guide the user.)
@@ -111,6 +100,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             capsuleWindow: capsuleWindow,
             isRecording: { [weak self] in self?.session.isRecording == true }
         )
+        sherpaLifecycle = SherpaLifecycleCoordinator(
+            registry: asrEngineRegistry,
+            provider: asrEngineProvider,
+            sessionInspector: { [weak self] in
+                guard let self else { return nil }
+                return SessionInspectorAdapter(controller: self.session)
+            }
+        )
+        sherpaLifecycle.start()
 
         menuBarController = MenuBarController(
             onLanguageChanged: { [weak self] in
@@ -138,11 +136,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     if self.session.isRecordingOrStarting {
                         self.session.stop()
                     } else {
-                        self.cancelSherpaAutoUnloadTask()
+                        self.sherpaLifecycle.cancelAutoUnload()
                         self.session.start()
                     }
                 } else {
-                    self.cancelSherpaAutoUnloadTask()
+                    self.sherpaLifecycle.cancelAutoUnload()
                     self.session.start()
                 }
             },
@@ -208,7 +206,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // (Headphone remote-button coordinator — opt-in via menu.)
         headphoneCoordinator = HeadphoneInputCoordinator(
             session: session,
-            cancelSherpaAutoUnload: { [weak self] in self?.cancelSherpaAutoUnloadTask() },
+            cancelSherpaAutoUnload: { [weak self] in self?.sherpaLifecycle.cancelAutoUnload() },
             onAccessibilityWarning: { [weak self] in self?.menuBarController.showAccessibilityWarning() }
         )
         if AppSettings.hasCompletedOOBE {
@@ -234,16 +232,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
 
-        // 监听系统内存压力，仅在内存严重不足时释放模型（Monitor system memory pressure, release model only on critical shortage）
-        memoryPressureSource = DispatchSource.makeMemoryPressureSource(eventMask: [.critical], queue: .main)
-        memoryPressureSource?.setEventHandler { [weak self] in
-            guard let self else { return }
-            guard !self.session.isRecording else { return }
-            DebugLog.info("[AppDelegate] Critical memory pressure, releasing Sherpa model")
-            self.releaseSherpaModelsIfNeeded()
-        }
-        memoryPressureSource?.resume()
-
         // 首次启动展示 OOBE 引导（Show first-launch OOBE on cold start）
         #if DEBUG_BUILD
         if let asrSettingsSnapshot = DebugASRSettingsSnapshotArguments.current {
@@ -268,12 +256,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(recognitionEngineDefaultsDidChange),
-            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
-            object: UserDefaults.standard
-        )
     }
 
     @objc private func activeAppDidChange(_ notification: Notification) {
@@ -283,117 +265,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if silenceMode { return }
         // 长按模式下切换了前台应用，取消本次录音（In hold-to-talk mode, switched frontmost app, cancel this recording）
         session.cancel()
-    }
-
-    @objc private func recognitionEngineDefaultsDidChange() {
-        let newCode = AppSettings.normalizedRecognitionEngine
-        let previousCode = selectedRecognitionEngineCode
-        selectedRecognitionEngineCode = newCode
-
-        let newSherpaPresetID = AppSettings.sherpaModelPresetID
-        let newSherpaRecognitionLanguage = SherpaModelPreset.recognitionLanguage
-        let newSherpaProvider = AppSettings.sherpaProvider
-        let didChangeSherpaSelection =
-            newSherpaPresetID != selectedSherpaPresetID ||
-            newSherpaRecognitionLanguage != selectedSherpaRecognitionLanguage ||
-            newSherpaProvider != selectedSherpaProvider
-        selectedSherpaPresetID = newSherpaPresetID
-        selectedSherpaRecognitionLanguage = newSherpaRecognitionLanguage
-        selectedSherpaProvider = newSherpaProvider
-
-        guard newCode != previousCode else {
-            if didChangeSherpaSelection {
-                handleSherpaSelectionChange()
-            }
-            updateSherpaAutoUnloadConfiguration()
-            return
-        }
-
-        guard asrEngineRegistry.isSherpa(previousCode), !asrEngineRegistry.isSherpa(newCode) else {
-            if didChangeSherpaSelection {
-                handleSherpaSelectionChange()
-            }
-            updateSherpaAutoUnloadConfiguration()
-            return
-        }
-
-        if session.isRecording && session.activeRecognitionSession?.requiresModelReloadOnRouteChange == true {
-            pendingSherpaModelRelease = true
-            return
-        }
-
-        releaseSherpaModelsIfNeeded()
-    }
-
-    private func handleSherpaSelectionChange() {
-        guard asrEngineProvider.hasSherpaEngine else { return }
-
-        if session.isRecording && session.activeRecognitionSession?.requiresModelReloadOnRouteChange == true {
-            pendingSherpaModelRelease = true
-            DebugLog.info("[AppDelegate] Sherpa preset changed, releasing old model after current recording")
-            return
-        }
-
-        DebugLog.info("[AppDelegate] Sherpa preset changed, releasing old model")
-        releaseSherpaModelsIfNeeded()
-    }
-
-    private func sherpaAutoUnloadEnabled() -> Bool {
-        AppSettings.sherpaAutoUnloadEnabled
-    }
-
-    private func sherpaAutoUnloadDelay() -> TimeInterval {
-        TimeInterval(AppSettings.sherpaAutoUnloadIdleMinutes * 60)
-    }
-
-    fileprivate func cancelSherpaAutoUnloadTask() {
-        sherpaAutoUnloadWorkItem?.cancel()
-        sherpaAutoUnloadWorkItem = nil
-    }
-
-    private func scheduleSherpaAutoUnloadIfNeeded() {
-        cancelSherpaAutoUnloadTask()
-        guard sherpaAutoUnloadEnabled(),
-              !session.isRecording,
-              selectedRecognitionEngineCode == ASREngineRegistry.sherpaCode,
-              asrEngineProvider.isSherpaModelLoaded else { return }
-
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.sherpaAutoUnloadWorkItem = nil
-            guard !self.session.isRecording,
-                  self.selectedRecognitionEngineCode == ASREngineRegistry.sherpaCode,
-                  self.asrEngineProvider.isSherpaModelLoaded else { return }
-            DebugLog.info("[AppDelegate] Sherpa idle timeout reached, auto-releasing local model")
-            self.releaseSherpaModelsIfNeeded()
-        }
-        sherpaAutoUnloadWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + sherpaAutoUnloadDelay(), execute: workItem)
-    }
-
-    private func updateSherpaAutoUnloadConfiguration() {
-        if selectedRecognitionEngineCode != ASREngineRegistry.sherpaCode || !sherpaAutoUnloadEnabled() {
-            cancelSherpaAutoUnloadTask()
-        }
-        scheduleSherpaAutoUnloadIfNeeded()
-    }
-
-    private func releaseSherpaModelsIfNeeded() {
-        cancelSherpaAutoUnloadTask()
-        pendingSherpaModelRelease = false
-        asrEngineProvider.releaseSherpaEngine()
-    }
-
-    private func releaseSherpaModelsAfterRecordingIfNeeded() {
-        guard pendingSherpaModelRelease else { return }
-        releaseSherpaModelsIfNeeded()
-    }
-
-    /// 录音结束后的 Sherpa 清理（条件释放 + 重新调度 idle 卸载）。
-    /// (Post-recording Sherpa cleanup — conditional release + reschedule idle unload.)
-    private func performPostRecordingSherpaCleanup() {
-        releaseSherpaModelsAfterRecordingIfNeeded()
-        scheduleSherpaAutoUnloadIfNeeded()
     }
 
     // MARK: - Sherpa download capsule
@@ -410,28 +281,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func requestPermissions() {
         PermissionService.shared.requestStartupPermissions()
-    }
-
-    // MARK: - Sherpa 模型下载
-
-    /// 启动时一次性迁移：清理旧 ready 标记；若 sherpaModelPresetID 指向未下载 preset 但同语言下已有别的 preset 已下载，则自动切换。
-    /// (One-shot migration at launch: remove deprecated ready flag; if sherpaModelPresetID points to an undownloaded preset but a different one in the same language is downloaded, auto-switch.)
-    private static func migrateSherpaPresetIfNeeded() {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: "sherpaModelsReady")
-
-        guard let savedID = defaults.string(forKey: AppSettings.Keys.sherpaModelPresetID),
-              let preset = SherpaModelPreset.allPresets.first(where: { $0.id == savedID }),
-              !preset.isDownloaded else { return }
-
-        let lang = SherpaModelPreset.recognitionLanguage
-        let pool = SherpaModelPreset.presets(forRecognitionLanguage: lang)
-        if let alt = pool.first(where: { $0.isDownloaded }) {
-            defaults.set(alt.id, forKey: AppSettings.Keys.sherpaModelPresetID)
-            DebugLog.info("[SherpaOnnx] Launch migration: \(savedID) is not downloaded, switching to downloaded preset \(alt.id)")
-        }
-        // 若同语言下都没有已下载的，保留原值；下次切到 sherpa 引擎时会触发下载提示
-        // (If nothing downloaded in this language, keep original; next sherpa switch will prompt download)
     }
 
     /// 展示 OOBE 引导窗口（Show OOBE onboarding window）
@@ -546,6 +395,6 @@ extension AppDelegate: RecordingSessionDelegate {
     }
 
     func sessionDidEnd() {
-        performPostRecordingSherpaCleanup()
+        sherpaLifecycle.performPostRecordingCleanup()
     }
 }

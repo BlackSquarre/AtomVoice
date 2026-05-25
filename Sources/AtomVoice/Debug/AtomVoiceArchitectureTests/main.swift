@@ -19,5 +19,6 @@ await HeadphoneHIDTests.run(&runner)
 await SherpaPreloadTests.run(&runner)
 await SingleInstanceControllerTests.run(&runner)
 await SherpaDownloadCapsulePresenterTests.run(&runner)
+await SherpaLifecycleCoordinatorTests.run(&runner)
 
 runner.finish()
