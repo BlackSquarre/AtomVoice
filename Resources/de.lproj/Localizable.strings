@@ -471,7 +471,7 @@
 "asrSettings.apple.status" = "Aktueller Status:";
 "asrSettings.apple.modelDownloaded" = "Offline-Modell heruntergeladen";
 "asrSettings.apple.modelNotDownloaded" = "Offline-Modell nicht heruntergeladen";
-"asrSettings.apple.enable" = "Apple-Spracherkennung aktivieren";
+"asrSettings.apple.enable" = "Apple-Offline-Erkennung aktivieren";
 "asrSettings.apple.note" = "Einige Sprachen unterstützen möglicherweise keine Offline-Erkennung. Wenn das Modell nicht heruntergeladen wurde, klicken Sie auf die Schaltfläche unten, um zu den Systemeinstellungen zu gelangen.";
 "asrSettings.apple.openSettings" = "Systemeinstellungen öffnen, um Modell herunterzuladen";
 "sherpa.chooser.provider" = "Compute-Backend：";

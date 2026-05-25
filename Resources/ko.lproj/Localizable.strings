@@ -471,7 +471,7 @@
 "asrSettings.apple.status" = "현재 상태:";
 "asrSettings.apple.modelDownloaded" = "오프라인 모델 다운로드됨";
 "asrSettings.apple.modelNotDownloaded" = "오프라인 모델 미다운로드";
-"asrSettings.apple.enable" = "Apple 음성 인식 활성화";
+"asrSettings.apple.enable" = "Apple 오프라인 인식 활성화";
 "asrSettings.apple.note" = "일부 언어는 오프라인 인식을 지원하지 않을 수 있습니다. 모델이 다운로드되지 않은 경우 아래 버튼을 클릭하여 시스템 설정으로 이동하세요.";
 "asrSettings.apple.openSettings" = "시스템 설정에서 모델 다운로드";
 "sherpa.chooser.provider" = "컴퓨트 백엔드：";

@@ -474,7 +474,7 @@
 "asrSettings.apple.status" = "Current Status:";
 "asrSettings.apple.modelDownloaded" = "Offline model downloaded";
 "asrSettings.apple.modelNotDownloaded" = "Offline model not downloaded";
-"asrSettings.apple.enable" = "Enable Apple Speech Recognition";
+"asrSettings.apple.enable" = "Enable Apple Offline Recognition";
 "asrSettings.apple.note" = "Some languages may not support offline recognition. Click the button below to go to System Settings to download the model.";
 "asrSettings.apple.openSettings" = "Open System Settings to Download Model";
 "asrSettings.sherpa.updateRuntime" = "Update Runtime";

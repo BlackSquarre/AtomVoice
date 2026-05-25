@@ -471,7 +471,7 @@
 "asrSettings.apple.status" = "Estado actual:";
 "asrSettings.apple.modelDownloaded" = "Modelo sin conexión descargado";
 "asrSettings.apple.modelNotDownloaded" = "Modelo sin conexión no descargado";
-"asrSettings.apple.enable" = "Activar el reconocimiento de voz de Apple";
+"asrSettings.apple.enable" = "Activar el reconocimiento sin conexión de Apple";
 "asrSettings.apple.note" = "Algunos idiomas pueden no soportar reconocimiento sin conexión. Si el modelo no está descargado, haga clic en el botón de abajo para ir a Configuración del Sistema.";
 "asrSettings.apple.openSettings" = "Abrir Configuración del Sistema para descargar modelo";
 "sherpa.chooser.provider" = "Backend de cálculo:";

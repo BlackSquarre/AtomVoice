@@ -475,7 +475,7 @@
 "asrSettings.apple.status" = "当前状态:";
 "asrSettings.apple.modelDownloaded" = "已下载离线模型";
 "asrSettings.apple.modelNotDownloaded" = "离线模型未下载";
-"asrSettings.apple.enable" = "启用 Apple 语音识别";
+"asrSettings.apple.enable" = "启用 Apple 离线识别";
 "asrSettings.apple.note" = "部分语言可能不支持离线识别。如果模型未下载，请点击下方按钮前往系统设置下载。";
 "asrSettings.apple.openSettings" = "打开系统设置下载模型";
 "asrSettings.sherpa.updateRuntime" = "更新运行时";

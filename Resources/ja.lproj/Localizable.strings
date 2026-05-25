@@ -471,7 +471,7 @@
 "asrSettings.apple.status" = "現在の状態:";
 "asrSettings.apple.modelDownloaded" = "オフラインモデル ダウンロード済み";
 "asrSettings.apple.modelNotDownloaded" = "オフラインモデル 未ダウンロード";
-"asrSettings.apple.enable" = "Apple 音声認識を有効にする";
+"asrSettings.apple.enable" = "Apple オフライン認識を有効にする";
 "asrSettings.apple.note" = "一部の言語はオフライン認識をサポートしていない場合があります。モデルがダウンロードされていない場合は、下のボタンをクリックしてシステム設定に移動してください。";
 "asrSettings.apple.openSettings" = "システム設定を開いてモデルをダウンロード";
 "sherpa.chooser.provider" = "コンピュートバックエンド：";

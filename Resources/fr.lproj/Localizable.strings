@@ -471,7 +471,7 @@
 "asrSettings.apple.status" = "État actuel :";
 "asrSettings.apple.modelDownloaded" = "Modèle hors ligne téléchargé";
 "asrSettings.apple.modelNotDownloaded" = "Modèle hors ligne non téléchargé";
-"asrSettings.apple.enable" = "Activer la reconnaissance vocale Apple";
+"asrSettings.apple.enable" = "Activer la reconnaissance hors ligne Apple";
 "asrSettings.apple.note" = "Certaines langues peuvent ne pas prendre en charge la reconnaissance hors ligne. Si le modèle n'est pas téléchargé, cliquez sur le bouton ci-dessous pour accéder aux Réglages Système.";
 "asrSettings.apple.openSettings" = "Ouvrir les Réglages Système pour télécharger le modèle";
 "sherpa.chooser.provider" = "Backend de calcul :";
