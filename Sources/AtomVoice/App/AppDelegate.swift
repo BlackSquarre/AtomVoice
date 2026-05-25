@@ -1,6 +1,7 @@
 import Cocoa
 
 public final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let singleInstance = SingleInstanceController()
     private let asrEngineRegistry = ASREngineRegistry.shared
     private let asrEngineProvider = ASREngineProvider()
     private var menuBarController: MenuBarController!
@@ -36,11 +37,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
-        removeSingleInstancePIDFileIfOwned()
+        singleInstance.releaseSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier)
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        terminateOtherRunningInstances()
+        singleInstance.claimSingleInstance(
+            currentPID: ProcessInfo.processInfo.processIdentifier,
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            currentExecutableURL: Bundle.main.executableURL?.standardizedFileURL
+        )
 
         // 安装最小主菜单（含 Edit），让设置窗口的 NSTextField 能响应 Cmd+C/V/X/A
         // (Install minimal main menu with Edit so settings-window text fields accept Cmd+C/V/X/A.)
@@ -267,98 +272,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             name: AppSettings.recognitionEngineSettingsDidChangeNotification,
             object: UserDefaults.standard
         )
-    }
-
-    private func terminateOtherRunningInstances() {
-        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return }
-
-        let currentPID = ProcessInfo.processInfo.processIdentifier
-        terminatePIDFromPreviousLaunchIfNeeded(currentPID: currentPID)
-
-        var candidates: [Int32: NSRunningApplication] = [:]
-        NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
-            .filter { $0.processIdentifier != currentPID }
-            .forEach { candidates[$0.processIdentifier] = $0 }
-
-        if let currentExecutableURL = Bundle.main.executableURL?.standardizedFileURL {
-            NSWorkspace.shared.runningApplications
-                .filter { $0.processIdentifier != currentPID }
-                .filter { $0.executableURL?.standardizedFileURL == currentExecutableURL }
-                .forEach { candidates[$0.processIdentifier] = $0 }
-        }
-
-        writeSingleInstancePIDFile(currentPID)
-
-        let otherApps = Array(candidates.values)
-        guard !otherApps.isEmpty else { return }
-
-        // 菜单栏应用不应该多开；新实例启动时清理旧实例，避免多个事件 tap 同时抢耳机线控。
-        otherApps.forEach { app in
-            DebugLog.info("[AppDelegate] Terminating older instance pid=\(app.processIdentifier)")
-            app.terminate()
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            otherApps.filter { !$0.isTerminated }.forEach { app in
-                DebugLog.info("[AppDelegate] Older instance did not terminate cleanly, force terminating pid=\(app.processIdentifier)")
-                app.forceTerminate()
-            }
-        }
-    }
-
-    private func terminatePIDFromPreviousLaunchIfNeeded(currentPID: Int32) {
-        guard let pid = readSingleInstancePIDFile(), pid != currentPID else { return }
-        guard Darwin.kill(pid, 0) == 0 else { return }
-        guard let app = NSRunningApplication(processIdentifier: pid) else { return }
-
-        DebugLog.info("[AppDelegate] PID file points to older instance pid=\(pid)")
-        app.terminate()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            if !app.isTerminated {
-                DebugLog.info("[AppDelegate] PID-file instance did not terminate cleanly, force terminating pid=\(pid)")
-                app.forceTerminate()
-            }
-        }
-    }
-
-    private func singleInstancePIDFileURL() -> URL? {
-        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return nil }
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-        let directory = appSupport.appendingPathComponent(bundleIdentifier, isDirectory: true)
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        } catch {
-            DebugLog.error("[AppDelegate] Failed to create single-instance PID directory: \(error.localizedDescription)")
-            return nil
-        }
-        return directory.appendingPathComponent("AtomVoice.pid")
-    }
-
-    private func readSingleInstancePIDFile() -> Int32? {
-        guard let url = singleInstancePIDFileURL() else { return nil }
-        guard let raw = try? String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
-              let pid = Int32(raw) else {
-            return nil
-        }
-        return pid
-    }
-
-    private func writeSingleInstancePIDFile(_ pid: Int32) {
-        guard let url = singleInstancePIDFileURL() else { return }
-        do {
-            try String(pid).write(to: url, atomically: true, encoding: .utf8)
-        } catch {
-            DebugLog.error("[AppDelegate] Failed to write single-instance PID file: \(error.localizedDescription)")
-        }
-    }
-
-    private func removeSingleInstancePIDFileIfOwned() {
-        let currentPID = ProcessInfo.processInfo.processIdentifier
-        guard readSingleInstancePIDFile() == currentPID else { return }
-        guard let url = singleInstancePIDFileURL() else { return }
-        try? FileManager.default.removeItem(at: url)
     }
 
     @objc private func activeAppDidChange(_ notification: Notification) {

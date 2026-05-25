@@ -17,5 +17,6 @@ await UpdateCheckerTests.run(&runner)
 await LLMRefinerTests.run(&runner)
 await HeadphoneHIDTests.run(&runner)
 await SherpaPreloadTests.run(&runner)
+await SingleInstanceControllerTests.run(&runner)
 
 runner.finish()
