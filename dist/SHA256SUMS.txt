@@ -1,4 +1,4 @@
-eb05a31c66f768a497a4163046a3c5957181f17acb495acb0c1902c6a31a6f9f  AtomVoice-0.10.4-Beta-4-AppleSilicon.zip
-19e02d82f374b206c67c6c2e4146df74d5fc3549012b8fbf42cc3149d17caafb  AtomVoice-0.10.4-Beta-4-Debug-Universal.zip
-fae9d581cec73da3123eeba8be4cbd806a9a1fb4bb4751e3c76bd4ddcc0c308c  AtomVoice-0.10.4-Beta-4-Intel.zip
-a8755d4868b6e6d5aabf8a5c1aca1d90ec6f0702a3648612ccb4e1a20fd59af4  AtomVoice-0.10.4-Beta-4-Universal.zip
+40fc8008b08eb22256513cedac914a0c73c519777e827a804c1f0c5839e81dcf  AtomVoice-0.10.5-AppleSilicon.zip
+85cd3b20af0c7ee611b66f86b8747a8459523c48b97d713cea2f136709bfed86  AtomVoice-0.10.5-Debug-Universal.zip
+e9e81161dde3246c7512fd830c1faa6dc4af8920de0ef9fe3947a4097941c93c  AtomVoice-0.10.5-Intel.zip
+9bddf58315f86aab15f608e8e7f378867a146d77972cc80ab4b68d1539dcec92  AtomVoice-0.10.5-Universal.zip
