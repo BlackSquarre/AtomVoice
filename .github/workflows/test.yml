@@ -22,8 +22,6 @@ jobs:
         include:
           - name: macOS 14 Apple Silicon
             runner: macos-14
-          - name: macOS 14 Intel
-            runner: macos-14-intel
           - name: macOS 15 Apple Silicon
             runner: macos-15
           - name: macOS 15 Intel
