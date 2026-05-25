@@ -20,5 +20,6 @@ await SherpaPreloadTests.run(&runner)
 await SingleInstanceControllerTests.run(&runner)
 await SherpaDownloadCapsulePresenterTests.run(&runner)
 await SherpaLifecycleCoordinatorTests.run(&runner)
+await RecordingStateBroadcasterTests.run(&runner)
 
 runner.finish()

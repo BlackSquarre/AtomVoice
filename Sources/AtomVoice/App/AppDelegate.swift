@@ -2,6 +2,7 @@ import Cocoa
 
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     private let singleInstance = SingleInstanceController()
+    private let recordingBroadcaster = RecordingStateBroadcaster()
     private let asrEngineRegistry = ASREngineRegistry.shared
     private let asrEngineProvider = ASREngineProvider()
     private var menuBarController: MenuBarController!
@@ -157,17 +158,25 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         fnKeyMonitor.onTapDisabled = { [weak self] in
             self?.menuBarController.showAccessibilityWarning()
         }
-        // session 通知 fnKeyMonitor 录音状态（Session notifies fnKeyMonitor of recording state）
-        session.onRecordingStateChanged = { [weak self] active in
-            guard let self else { return }
-            self.fnKeyMonitor.isRecording = active
-            self.capsuleWindow.recordingClickEnabled = active
-            self.headphoneCoordinator.notifyRecordingStateChanged(active)
-            self.sherpaDownloadCapsulePresenter.handleRecordingStateChanged(active: active)
+        recordingBroadcaster.addRecordingObserver { [weak fnKeyMonitor] active in
+            fnKeyMonitor?.isRecording = active
+        }
+        recordingBroadcaster.addRecordingObserver { [weak capsuleWindow] active in
+            capsuleWindow?.recordingClickEnabled = active
+        }
+        recordingBroadcaster.addRecordingObserver { [weak headphoneCoordinator] active in
+            headphoneCoordinator?.notifyRecordingStateChanged(active)
+        }
+        recordingBroadcaster.addRecordingObserver { [weak sherpaDownloadCapsulePresenter] active in
+            sherpaDownloadCapsulePresenter?.handleRecordingStateChanged(active: active)
+        }
+        recordingBroadcaster.addRecordingObserver { active in
             if !active {
                 UpdateChecker.shared.resumeDeferredRestartPromptIfPossible()
             }
-            #if DEBUG_BUILD
+        }
+        #if DEBUG_BUILD
+        recordingBroadcaster.addRecordingObserver { active in
             MemoryProbe.log(active ? "recording-start" : "recording-stop")
             if !active {
                 // 录音结束 3s 后再探一次，看 fallback / coordinator / 临时缓冲是否已释放
@@ -176,14 +185,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     MemoryProbe.log("recording-idle-3s")
                 }
             }
-            #endif
         }
-        session.onRefiningStateChanged = { [weak self] refining in
-            guard let self else { return }
-            self.fnKeyMonitor.isRefining = refining
+        #endif
+        recordingBroadcaster.addRefiningObserver { [weak fnKeyMonitor] refining in
+            fnKeyMonitor?.isRefining = refining
+        }
+        recordingBroadcaster.addRefiningObserver { refining in
             if !refining {
                 UpdateChecker.shared.resumeDeferredRestartPromptIfPossible()
             }
+        }
+        // session 通知外部组件录音状态（Session broadcasts recording/refining state to external components）
+        session.onRecordingStateChanged = { [weak recordingBroadcaster] active in
+            recordingBroadcaster?.broadcastRecordingStateChanged(active)
+        }
+        session.onRefiningStateChanged = { [weak recordingBroadcaster] refining in
+            recordingBroadcaster?.broadcastRefiningStateChanged(refining)
         }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in
             self?.fnKeyMonitor.triggerKeyCode = keyCode
