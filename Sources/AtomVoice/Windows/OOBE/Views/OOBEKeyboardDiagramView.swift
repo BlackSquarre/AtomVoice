@@ -6,10 +6,6 @@ import Cocoa
 // (Render simplified bottom two rows of a Mac keyboard. The 4 candidate
 // keys are colored & clickable; the rest are decorative grey caps.)
 
-enum OOBETriggerKeyStepLayout {
-    static let leftColumnWidth: CGFloat = 390
-}
-
 final class KeyboardDiagramView: NSView {
     var onSelect: ((UInt16) -> Void)?
     private var keyCaps: [KeyCap] = []
