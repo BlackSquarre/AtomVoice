@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice CoreML vs CPU</title>
+  <desc id="desc">Explains CoreML and CPU modes for AtomVoice local recognition.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="56%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="coreml" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f69bb"/>
+      <stop offset="100%" stop-color="#86aaf0"/>
+    </linearGradient>
+    <linearGradient id="cpu" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17855f"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 74px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.9px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .coreCard { fill: #ffffff; stroke: #78a1ea; stroke-width: 3.5; filter: url(#softShadow); }
+      .sectionTitle { font-size: 42px; font-weight: 860; fill: #151f29; }
+      .tag { font-size: 22px; font-weight: 840; fill: #ffffff; }
+      .headline { font-size: 34px; font-weight: 850; fill: #17212b; }
+      .body { font-size: 27px; font-weight: 620; fill: #42505b; }
+      .bodyStrong { font-size: 30px; font-weight: 850; fill: #17212b; }
+      .small { font-size: 23px; font-weight: 610; fill: #66727d; }
+      .check { font-size: 30px; font-weight: 860; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="80" class="kicker">AtomVoice Sherpa-ONNX local mode</text>
+    <text x="110" y="150" class="title">What is different about CoreML and CPU?</text>
+    <text x="110" y="200" class="sub">CoreML is better for daily use; CPU is better for compatibility and troubleshooting.</text>
+
+    <g transform="translate(110 280)">
+      <rect class="coreCard" x="0" y="0" width="840" height="540" rx="34"/>
+      <rect x="48" y="42" width="138" height="48" rx="24" fill="url(#coreml)"/>
+      <text x="117" y="75" class="tag" text-anchor="middle">CoreML</text>
+      <rect x="206" y="42" width="170" height="48" rx="24" fill="#17212b"/>
+      <text x="291" y="75" class="tag" text-anchor="middle">Recommended</text>
+      <text x="48" y="148" class="headline">Makes local recognition feel more system-native</text>
+
+      <g transform="translate(48 210)">
+        <circle cx="18" cy="18" r="18" fill="url(#coreml)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">1</text>
+        <text x="56" y="29" class="bodyStrong">Uses GPU and NPU acceleration</text>
+        <text x="56" y="68" class="body">Moves suitable work to dedicated acceleration.</text>
+      </g>
+
+      <g transform="translate(48 326)">
+        <circle cx="18" cy="18" r="18" fill="url(#coreml)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">2</text>
+        <text x="56" y="29" class="bodyStrong">Lower main CPU pressure</text>
+        <text x="56" y="68" class="body">Less likely to slow down other apps.</text>
+      </g>
+
+      <g transform="translate(48 442)">
+        <circle cx="18" cy="18" r="18" fill="url(#coreml)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">3</text>
+        <text x="56" y="29" class="bodyStrong">Better for long sessions</text>
+        <text x="56" y="68" class="body">Usually better for heat, power, and battery life.</text>
+      </g>
+    </g>
+
+    <g transform="translate(970 280)">
+      <rect class="card" x="0" y="0" width="840" height="540" rx="34"/>
+      <rect x="48" y="42" width="112" height="48" rx="24" fill="url(#cpu)"/>
+      <text x="104" y="75" class="tag" text-anchor="middle">CPU</text>
+      <text x="48" y="148" class="headline">Direct, stable, easy to troubleshoot</text>
+
+      <g transform="translate(48 210)">
+        <circle cx="18" cy="18" r="18" fill="url(#cpu)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">1</text>
+        <text x="56" y="29" class="bodyStrong">Simpler compatibility</text>
+        <text x="56" y="68" class="body">Switch back when CoreML loads or behaves poorly.</text>
+      </g>
+
+      <g transform="translate(48 326)">
+        <circle cx="18" cy="18" r="18" fill="url(#cpu)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">2</text>
+        <text x="56" y="29" class="bodyStrong">The Mac works harder</text>
+        <text x="56" y="68" class="body">Long sessions can affect overall smoothness.</text>
+      </g>
+
+      <g transform="translate(48 442)">
+        <circle cx="18" cy="18" r="18" fill="url(#cpu)"/>
+        <text x="18" y="29" class="check" text-anchor="middle">3</text>
+        <text x="56" y="29" class="bodyStrong">Good as a temporary switch</text>
+        <text x="56" y="68" class="body">Use for load failures, recognition issues, or comparison tests.</text>
+      </g>
+    </g>
+  </g>
+</svg>

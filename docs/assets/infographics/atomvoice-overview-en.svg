@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
-  <title id="title">AtomVoice 总体能力图</title>
-  <desc id="desc">展示 AtomVoice 如何让用户按住说话并把文字直接输入当前 Mac 应用。</desc>
+  <title id="title">AtomVoice overview infographic</title>
+  <desc id="desc">Shows how AtomVoice turns speech into text in the current Mac app.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#f8fbf9"/>
@@ -14,9 +14,9 @@
       <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#17212b" flood-opacity="0.24"/>
     </filter>
     <style>
-      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
       .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
-      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.2px; paint-order: stroke fill; }
+      .title { font-size: 62px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.2px; paint-order: stroke fill; }
       .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
       .card { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
       .cardTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
@@ -31,51 +31,51 @@
 
   <rect width="1920" height="1080" fill="url(#bg)"/>
   <g class="page">
-    <text x="110" y="92" class="kicker">AtomVoice 总览</text>
-    <text x="110" y="170" class="title">按住说话，文字就进当前 App</text>
-    <text x="110" y="222" class="sub">不用切窗口，不用复制粘贴；它像键盘一样，把你的话变成正在输入的文字。</text>
+    <text x="110" y="92" class="kicker">AtomVoice Overview</text>
+    <text x="110" y="170" class="title">Hold to speak, text appears in the current app</text>
+    <text x="110" y="222" class="sub">No window switching or copy-paste. It works like a keyboard for your voice.</text>
 
     <g transform="translate(625 318)">
       <circle cx="335" cy="260" r="250" fill="#ffffff" opacity="0.7"/>
       <circle cx="335" cy="260" r="300" class="ring"/>
       <image href="../../../localdoc/原子微语图标.svg" x="145" y="42" width="380" height="380" preserveAspectRatio="xMidYMid meet" filter="url(#coreShadow)"/>
-      <text x="335" y="486" class="coreTextDark" text-anchor="middle">说完就出字</text>
+      <text x="335" y="486" class="coreTextDark" text-anchor="middle">Speak, then text appears</text>
     </g>
 
     <g transform="translate(110 330)">
       <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#218b63"/>
       <rect x="34" y="32" width="132" height="38" rx="19" fill="#218b63"/>
-      <text x="100" y="58" class="badge" text-anchor="middle">怎么开始</text>
-      <text x="34" y="115" class="cardTitle">想说就说</text>
-      <text x="34" y="158" class="body">按住快捷键开始</text>
-      <text x="34" y="194" class="small">耳机控制 Beta 可选</text>
+      <text x="100" y="58" class="badge" text-anchor="middle">Start</text>
+      <text x="34" y="115" class="cardTitle">Speak when ready</text>
+      <text x="34" y="158" class="body">Hold a hotkey to start</text>
+      <text x="34" y="194" class="small">Headphone control Beta optional</text>
     </g>
 
     <g transform="translate(110 650)">
       <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#4f74bd"/>
       <rect x="34" y="32" width="132" height="38" rx="19" fill="#4f74bd"/>
-      <text x="100" y="58" class="badge" text-anchor="middle">怎么识别</text>
-      <text x="34" y="115" class="cardTitle">按场景选择</text>
-      <text x="34" y="158" class="body">本地、系统、云端</text>
-      <text x="34" y="194" class="small">隐私和准确率自己取舍</text>
+      <text x="100" y="58" class="badge" text-anchor="middle">Recognize</text>
+      <text x="34" y="115" class="cardTitle">Choose by scenario</text>
+      <text x="34" y="158" class="body">Local, system, or cloud</text>
+      <text x="34" y="194" class="small">Balance privacy and accuracy</text>
     </g>
 
     <g transform="translate(1380 330)">
       <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#7b72c8"/>
       <rect x="34" y="32" width="132" height="38" rx="19" fill="#7b72c8"/>
-      <text x="100" y="58" class="badge" text-anchor="middle">怎么变好</text>
-      <text x="34" y="115" class="cardTitle">可选 AI 润色</text>
-      <text x="34" y="158" class="body">修正口语和标点</text>
-      <text x="34" y="194" class="small">只处理识别后的文字</text>
+      <text x="100" y="58" class="badge" text-anchor="middle">Improve</text>
+      <text x="34" y="115" class="cardTitle">Optional AI refinement</text>
+      <text x="34" y="158" class="body">Fix speech style and punctuation</text>
+      <text x="34" y="194" class="small">Only recognized text is processed</text>
     </g>
 
     <g transform="translate(1380 650)">
       <rect x="0" y="0" width="430" height="218" rx="28" class="card" stroke="#bd6637"/>
       <rect x="34" y="32" width="132" height="38" rx="19" fill="#bd6637"/>
-      <text x="100" y="58" class="badge" text-anchor="middle">去哪里</text>
-      <text x="34" y="115" class="cardTitle">直接到光标</text>
-      <text x="34" y="158" class="body">邮件、聊天、笔记都能用</text>
-      <text x="34" y="194" class="small">不用打开转写窗口</text>
+      <text x="100" y="58" class="badge" text-anchor="middle">Output</text>
+      <text x="34" y="115" class="cardTitle">Directly to the cursor</text>
+      <text x="34" y="158" class="body">Works in mail, chat, and notes</text>
+      <text x="34" y="194" class="small">No transcription window needed</text>
     </g>
 
     <path d="M 545 440 C 620 440, 650 472, 700 510" class="arrow"/>

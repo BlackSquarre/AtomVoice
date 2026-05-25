@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice Sherpa-ONNX 本地识别介绍图</title>
+  <desc id="desc">介绍 AtomVoice Sherpa-ONNX 本地识别引擎的适用场景、优点和缺点。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="55%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#168b63"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 74px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .accentCard { fill: #ffffff; stroke: #2b9a70; stroke-width: 3; filter: url(#softShadow); }
+      .pill { font-size: 23px; font-weight: 840; fill: #ffffff; }
+      .section { font-size: 36px; font-weight: 860; fill: #151f29; }
+      .lead { font-size: 32px; font-weight: 820; fill: #17212b; }
+      .body { font-size: 27px; font-weight: 620; fill: #42505b; }
+      .strong { font-size: 29px; font-weight: 860; fill: #17212b; }
+      .num { font-size: 28px; font-weight: 880; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="86" class="kicker">AtomVoice 识别引擎</text>
+    <text x="110" y="164" class="title">Sherpa-ONNX：隐私优先的本地识别</text>
+    <text x="110" y="216" class="sub">音频在电脑上完成识别，适合不希望把语音发送到云端的输入场景。</text>
+
+    <g transform="translate(110 282)">
+      <rect class="accentCard" x="0" y="0" width="640" height="520" rx="32"/>
+      <rect x="42" y="42" width="154" height="48" rx="24" fill="url(#accent)"/>
+      <text x="119" y="75" class="pill" text-anchor="middle">本地离线</text>
+      <text x="42" y="158" class="section">适合谁</text>
+      <text x="42" y="218" class="lead">重视隐私、离线可用</text>
+      <text x="42" y="276" class="body">会议记录、私密内容、无网络环境，</text>
+      <text x="42" y="318" class="body">都更适合用本地模型完成识别。</text>
+    </g>
+
+    <g transform="translate(800 282)">
+      <rect class="card" x="0" y="0" width="490" height="520" rx="32"/>
+      <text x="40" y="66" class="section">优点</text>
+      <g transform="translate(40 126)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">1</text>
+        <text x="58" y="29" class="strong">音频不出电脑</text>
+        <text x="58" y="68" class="body">隐私边界最清楚。</text>
+      </g>
+      <g transform="translate(40 238)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">2</text>
+        <text x="58" y="29" class="strong">不依赖账号和网络</text>
+        <text x="58" y="68" class="body">下载后可离线使用。</text>
+      </g>
+      <g transform="translate(40 350)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">3</text>
+        <text x="58" y="29" class="strong">模型可选择</text>
+        <text x="58" y="68" class="body">按语言、速度和内存取舍。</text>
+      </g>
+    </g>
+
+    <g transform="translate(1340 282)">
+      <rect class="card" x="0" y="0" width="470" height="520" rx="32"/>
+      <text x="40" y="66" class="section">缺点</text>
+      <text x="40" y="140" class="strong">要下载运行库和模型</text>
+      <text x="40" y="184" class="body">首次配置会更重，</text>
+      <text x="40" y="226" class="body">大模型也会占用更多内存。</text>
+      <text x="40" y="318" class="strong">识别效果看模型</text>
+      <text x="40" y="362" class="body">不同语言、口音、长句稳定性，</text>
+      <text x="40" y="404" class="body">都会受模型能力影响。</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">哪些留在本机 哪些会发出去</title>
+  <desc id="desc">本地功能和云端功能分清楚。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 56px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.8px; paint-order: stroke fill; }
+      .sub { font-size: 24px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.4; filter: url(#softShadow); }
+      .cardTitle { font-size: 30px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 23px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 19px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 20px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 84px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 40px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 21px; font-weight: 760; fill: #293641; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="78" class="kicker">AtomVoice 隐私边界</text>
+    <text x="58" y="124" class="title">哪些留在本机</text>
+<text x="58" y="186" class="title">哪些会发出去</text>
+    <text x="58" y="248" class="sub">本地功能和云端功能分清楚。</text>
+
+    <g transform="translate(58 292)">
+      <rect x="0" y="0" width="964" height="430" rx="34" fill="#eef8f2" stroke="#218b63" stroke-width="3" filter="url(#softShadow)"/>
+      <text x="40" y="68" class="mid">留在本机</text>
+      <rect x="710" y="48" width="170" height="60" rx="30" fill="#218b63"/>
+      <text x="795" y="87" text-anchor="middle" class="badge">本地</text>
+      <text x="40" y="138" class="body">快捷键、录音控制、文字上屏</text>
+      <text x="40" y="188" class="body">Sherpa 本地识别、本地模型和设置</text>
+      <text x="40" y="238" class="body">可断网使用，音频不离开电脑</text>
+      <rect x="40" y="306" width="740" height="18" rx="9" fill="#218b63" opacity="0.18"/>
+      <rect x="40" y="306" width="620" height="18" rx="9" fill="#218b63"/>
+    </g>
+    <g transform="translate(58 790)">
+      <rect x="0" y="0" width="964" height="430" rx="34" fill="#fff1e8" stroke="#bd6637" stroke-width="3" filter="url(#softShadow)"/>
+      <text x="40" y="68" class="mid">会发到云端</text>
+      <rect x="710" y="48" width="170" height="60" rx="30" fill="#bd6637"/>
+      <text x="795" y="87" text-anchor="middle" class="badge">云端</text>
+      <text x="40" y="138" class="body">云端 ASR：发送音频做识别</text>
+      <text x="40" y="188" class="body">LLM 润色：发送文本做整理</text>
+      <text x="40" y="238" class="body">只有开启相关功能时才发生</text>
+      <rect x="40" y="306" width="740" height="18" rx="9" fill="#bd6637" opacity="0.18"/>
+      <rect x="40" y="306" width="500" height="18" rx="9" fill="#bd6637"/>
+    </g>
+  </g>
+</svg>

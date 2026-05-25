@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
-  <title id="title">AtomVoice 隐私边界信息图</title>
-  <desc id="desc">用左右分区展示 AtomVoice 哪些功能留在本机，哪些功能会发到云端。</desc>
+  <title id="title">AtomVoice privacy boundary infographic</title>
+  <desc id="desc">Shows which AtomVoice features stay local and which send data to the cloud.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#f8fbf9"/>
@@ -11,9 +11,9 @@
       <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
     </filter>
     <style>
-      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
       .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
-      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.2px; paint-order: stroke fill; }
+      .title { font-size: 62px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.2px; paint-order: stroke fill; }
       .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
       .zoneTitle { font-size: 48px; font-weight: 860; fill: #151f29; }
       .zoneSub { font-size: 26px; font-weight: 620; fill: #4e5a64; }
@@ -28,65 +28,67 @@
 
   <rect width="1920" height="1080" fill="url(#bg)"/>
   <g class="page">
-    <text x="110" y="92" class="kicker">AtomVoice 隐私边界</text>
-    <text x="110" y="170" class="title">哪些留在本机，哪些会发出去</text>
-    <text x="110" y="222" class="sub">本地功能默认留在 Mac；只有你开启云端能力，数据才跨过中间这条线。</text>
+    <text x="110" y="92" class="kicker">AtomVoice Privacy Boundary</text>
+    <text x="110" y="170" class="title">What stays local, what goes out</text>
+    <text x="110" y="222" class="sub">Local features stay on your Mac by default.</text>
+    <text x="110" y="258" class="sub">Data crosses the line only when you enable cloud features.</text>
 
     <g transform="translate(95 305)">
       <rect x="0" y="0" width="805" height="610" rx="38" fill="#edf9f4" stroke="#85ccb0" stroke-width="4"/>
       <rect x="0" y="0" width="805" height="18" rx="9" fill="#218b63"/>
-      <text x="50" y="82" class="zoneTitle">留在 Mac 上</text>
-      <text x="50" y="126" class="zoneSub">适合日常输入、离线环境和隐私敏感内容。</text>
+      <text x="50" y="82" class="zoneTitle">Stays on your Mac</text>
+      <text x="50" y="126" class="zoneSub">For daily input, offline use, and private content.</text>
 
       <rect x="50" y="185" width="330" height="150" rx="24" class="card" stroke="#218b63"/>
       <rect x="78" y="212" width="120" height="38" rx="19" fill="#218b63"/>
-      <text x="138" y="238" class="badge" text-anchor="middle">录音</text>
-      <text x="78" y="292" class="cardTitle">只在说话时听</text>
-      <text x="78" y="326" class="body">停止录音后就结束</text>
+      <text x="138" y="238" class="badge" text-anchor="middle">Recording</text>
+      <text x="78" y="292" class="cardTitle">Only while speaking</text>
+      <text x="78" y="326" class="body">Stops after recording</text>
 
       <rect x="425" y="185" width="330" height="150" rx="24" class="card" stroke="#218b63"/>
       <rect x="453" y="212" width="120" height="38" rx="19" fill="#218b63"/>
-      <text x="513" y="238" class="badge" text-anchor="middle">离线</text>
-      <text x="453" y="292" class="cardTitle">本地识别</text>
-      <text x="453" y="326" class="body">不联网也能转文字</text>
+      <text x="513" y="238" class="badge" text-anchor="middle">Offline</text>
+      <text x="453" y="292" class="cardTitle">Local recognition</text>
+      <text x="453" y="326" class="body">No network needed</text>
 
       <rect x="50" y="385" width="330" height="150" rx="24" class="card" stroke="#4f74bd"/>
-      <text x="78" y="460" class="cardTitle">系统识别</text>
-      <text x="78" y="500" class="body">支持时可选本机处理</text>
+      <text x="78" y="460" class="cardTitle">System recognition</text>
+      <text x="78" y="500" class="body">On-device if supported</text>
 
       <rect x="425" y="385" width="330" height="150" rx="24" class="card" stroke="#4f74bd"/>
-      <text x="453" y="460" class="cardTitle">直接输入</text>
-      <text x="453" y="500" class="body">文字进入当前 App</text>
+      <text x="453" y="460" class="cardTitle">Direct input</text>
+      <text x="453" y="500" class="body">Text enters current app</text>
     </g>
 
     <g transform="translate(928 305)">
       <rect x="0" y="0" width="64" height="610" rx="32" fill="#ffffff" stroke="#d8e0e7" stroke-width="2" filter="url(#softShadow)"/>
       <line x1="32" y1="58" x2="32" y2="552" stroke="#b9c2cb" stroke-width="5" stroke-dasharray="18 18" stroke-linecap="round"/>
-      <text x="32" y="310" class="dividerText" text-anchor="middle" transform="rotate(-90 32 310)">开启云端后才跨过</text>
+      <text x="32" y="310" class="dividerText" text-anchor="middle" transform="rotate(-90 32 310)">Crosses only when cloud is enabled</text>
     </g>
 
     <g transform="translate(1020 305)">
       <rect x="0" y="0" width="805" height="610" rx="38" fill="#fff4ea" stroke="#e0ad86" stroke-width="4"/>
       <rect x="0" y="0" width="805" height="18" rx="9" fill="#bd6637"/>
-      <text x="50" y="82" class="zoneTitle">发到云端</text>
-      <text x="50" y="126" class="zoneSub">适合更强识别、更自然润色，但需要主动开启。</text>
+      <text x="50" y="82" class="zoneTitle">Sent to the cloud</text>
+      <text x="50" y="126" class="zoneSub">For stronger recognition and cleaner writing, enabled explicitly.</text>
 
       <rect x="50" y="205" width="330" height="200" rx="24" class="card" stroke="#bd6637"/>
       <rect x="78" y="232" width="160" height="38" rx="19" fill="#bd6637"/>
-      <text x="158" y="258" class="badge" text-anchor="middle">语音发出去</text>
-      <text x="78" y="318" class="cardTitle">云端识别</text>
-      <text x="78" y="360" class="body">追求更高准确率</text>
-      <text x="78" y="395" class="body">需要网络和 API Key</text>
+      <text x="158" y="258" class="badge" text-anchor="middle">Speech</text>
+      <text x="78" y="318" class="cardTitle">Cloud recognition</text>
+      <text x="78" y="360" class="body">For higher accuracy</text>
+      <text x="78" y="395" class="body">Network + API key</text>
 
       <rect x="425" y="205" width="330" height="200" rx="24" class="card" stroke="#7b72c8"/>
       <rect x="453" y="232" width="160" height="38" rx="19" fill="#7b72c8"/>
-      <text x="533" y="258" class="badge" text-anchor="middle">文字发出去</text>
-      <text x="453" y="318" class="cardTitle">AI 润色</text>
-      <text x="453" y="360" class="body">只发送识别后的文字</text>
-      <text x="453" y="395" class="body">修正语气、标点、错词</text>
+      <text x="533" y="258" class="badge" text-anchor="middle">Text</text>
+      <text x="453" y="318" class="cardTitle">AI refinement</text>
+      <text x="453" y="360" class="body">Only recognized text</text>
+      <text x="453" y="395" class="body">Fixes tone and errors</text>
 
       <rect x="50" y="465" width="705" height="72" rx="24" fill="#ffffff" stroke="#e0bea5" stroke-width="2"/>
-      <text x="78" y="512" class="body">不用云端功能，语音就留在本机；开了云端，才发送对应内容。</text>
+      <text x="78" y="496" class="body">Without cloud features, speech stays local.</text>
+      <text x="78" y="526" class="body">When cloud is enabled, only the relevant data is sent.</text>
     </g>
 
     <path d="M 900 610 C 918 610, 930 610, 944 610" class="arrow"/>

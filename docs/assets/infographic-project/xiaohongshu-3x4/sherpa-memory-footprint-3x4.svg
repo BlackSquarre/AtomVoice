@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440" role="img" aria-labelledby="title desc">
+  <title id="title">本地识别 内存差距很大</title>
+  <desc id="desc">小模型适合日常，大模型要看机器内存。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 26px; font-weight: 760; fill: #596570; }
+      .title { font-size: 45px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.65px; paint-order: stroke fill; }
+      .sub { font-size: 23px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.2; filter: url(#softShadow); }
+      .cardTitle { font-size: 28px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 22px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 18px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 19px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 78px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 36px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 20px; font-weight: 760; fill: #293641; }
+      .xs { font-size: 16px; font-weight: 650; fill: #66727d; }
+      .white { fill: #ffffff; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1440" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="70" class="kicker">Sherpa 本地模型</text>
+    <text x="58" y="122" class="title">本地识别</text>
+<text x="58" y="176" class="title">内存差距很大</text>
+    <text x="58" y="236" class="sub">小模型适合日常，大模型要看机器内存。</text>
+
+    <g transform="translate(58 286)">
+      <rect x="0" y="0" width="452" height="196" rx="30" class="card"/>
+      <text x="34" y="58" class="cardTitle">最低峰值</text>
+      <text x="34" y="128" class="big">106.7</text>
+      <text x="286" y="120" class="mid">MB</text>
+      <text x="34" y="166" class="small">zh-14M / CPU</text>
+    </g>
+    <g transform="translate(570 286)">
+      <rect x="0" y="0" width="452" height="196" rx="30" class="card"/>
+      <text x="34" y="58" class="cardTitle">最高峰值</text>
+      <text x="34" y="128" class="big">1.09</text>
+      <text x="248" y="120" class="mid">GB</text>
+      <text x="34" y="166" class="small">xlarge-int8 / CPU</text>
+    </g>
+    <g transform="translate(58 540)">
+      <rect x="0" y="0" width="964" height="550" rx="34" class="card"/>
+      <text x="34" y="58" class="cardTitle">模型越大，内存差距越明显</text>
+      <text x="34" y="129" class="small">zh-14M</text><rect x="300" y="110" width="560" height="22" rx="11" fill="#218b63" opacity="0.14"/><rect x="300" y="110" width="96" height="22" rx="11" fill="#218b63"/><text x="878" y="129" class="small" text-anchor="end">106.7 MB</text>
+<text x="34" y="195" class="small">small bilingual</text><rect x="300" y="176" width="560" height="22" rx="11" fill="#4f74bd" opacity="0.14"/><rect x="300" y="176" width="168" height="22" rx="11" fill="#4f74bd"/><text x="878" y="195" class="small" text-anchor="end">186.7 MB</text>
+<text x="34" y="261" class="small">multi zh-hans</text><rect x="300" y="242" width="560" height="22" rx="11" fill="#4f74bd" opacity="0.14"/><rect x="300" y="242" width="194" height="22" rx="11" fill="#4f74bd"/><text x="878" y="261" class="small" text-anchor="end">211.8 MB</text>
+<text x="34" y="327" class="small">zh-int8</text><rect x="300" y="308" width="560" height="22" rx="11" fill="#bd6637" opacity="0.14"/><rect x="300" y="308" width="376" height="22" rx="11" fill="#bd6637"/><text x="878" y="327" class="small" text-anchor="end">412.0 MB</text>
+<text x="34" y="393" class="small">bilingual zh-en</text><rect x="300" y="374" width="560" height="22" rx="11" fill="#bd6637" opacity="0.14"/><rect x="300" y="374" width="432" height="22" rx="11" fill="#bd6637"/><text x="878" y="393" class="small" text-anchor="end">473.5 MB</text>
+<text x="34" y="459" class="small">zh-xlarge-int8</text><rect x="300" y="440" width="560" height="22" rx="11" fill="#bd6637" opacity="0.14"/><rect x="300" y="440" width="790" height="22" rx="11" fill="#bd6637"/><text x="878" y="459" class="small" text-anchor="end">1.09 GB</text>
+    </g>
+    <g transform="translate(58 1148)">
+      <rect x="0" y="0" width="964" height="130" rx="28" class="card"/>
+      <text x="34" y="56" class="cardTitle">使用建议</text>
+      <text x="34" y="94" class="body">8GB 机器优先小模型；xlarge 是明确的高内存档。</text>
+      <text x="34" y="122" class="xs">CoreML 可减轻主 CPU 压力，但加载更慢，内存峰值不一定更低。</text>
+    </g>
+  </g>
+</svg>

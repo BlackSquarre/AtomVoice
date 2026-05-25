@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice Sherpa CPU 与 CoreML 区别信息图</title>
+  <desc id="desc">解释 AtomVoice 当前架构下 Sherpa-ONNX 的 CPU 与 CoreML 后端区别、优缺点和内存报告读法。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="58%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="cpu" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17855f"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <linearGradient id="coreml" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f74bd"/>
+      <stop offset="100%" stop-color="#83a8ee"/>
+    </linearGradient>
+    <linearGradient id="neutral" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c2530"/>
+      <stop offset="100%" stop-color="#3a4652"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 68px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.9px; paint-order: stroke fill; }
+      .sub { font-size: 26px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .darkCard { fill: #18222d; filter: url(#softShadow); }
+      .sectionTitle { font-size: 32px; font-weight: 860; fill: #151f29; }
+      .whiteTitle { font-size: 32px; font-weight: 860; fill: #ffffff; }
+      .label { font-size: 23px; font-weight: 760; fill: #596570; }
+      .body { font-size: 23px; font-weight: 620; fill: #42505b; }
+      .bodyStrong { font-size: 25px; font-weight: 820; fill: #17212b; }
+      .whiteBody { font-size: 23px; font-weight: 620; fill: #dce4ec; }
+      .pillText { font-size: 21px; font-weight: 820; fill: #ffffff; }
+      .small { font-size: 20px; font-weight: 610; fill: #63707a; }
+      .tiny { font-size: 18px; font-weight: 610; fill: #6c7883; }
+      .stat { font-size: 50px; font-weight: 880; fill: #151f29; letter-spacing: 0; }
+      .unit { font-size: 25px; font-weight: 760; fill: #596570; }
+      .arrow { stroke: #aeb8c2; stroke-width: 4; stroke-linecap: round; fill: none; }
+      .chip { font-size: 22px; font-weight: 820; fill: #17212b; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="82" class="kicker">AtomVoice Sherpa-ONNX 后端选择</text>
+    <text x="110" y="154" class="title">CPU 和 CoreML，到底差在哪</text>
+    <text x="110" y="204" class="sub">当前软件只是把 provider 传给 Sherpa/ONNX Runtime；真正调度由运行库、模型、系统和硬件共同决定。</text>
+
+    <g transform="translate(110 248)">
+      <rect class="card" x="0" y="0" width="1700" height="150" rx="28"/>
+      <text x="34" y="54" class="sectionTitle">内存图怎么读</text>
+      <text x="34" y="98" class="body">模型名下面的数字，例如 56.9 MB / 474.1 MB，是</text>
+      <text x="574" y="98" class="bodyStrong">模型目录体积</text>
+      <text x="714" y="98" class="body">，不是运行时内存。</text>
+      <text x="1030" y="54" class="label">运行内存看什么？</text>
+      <text x="1030" y="98" class="body">看柱高和柱顶数字：加载后物理内存峰值。</text>
+      <text x="1030" y="130" class="tiny">本次报告未输入音频，所以不能用它判断识别速度。</text>
+    </g>
+
+    <g transform="translate(110 432)">
+      <rect class="card" x="0" y="0" width="530" height="390" rx="30"/>
+      <rect x="34" y="34" width="118" height="42" rx="21" fill="url(#cpu)"/>
+      <text x="93" y="63" class="pillText" text-anchor="middle">CPU</text>
+      <text x="34" y="125" class="sectionTitle">直接跑在通用处理器</text>
+
+      <g transform="translate(34 166)">
+        <circle cx="13" cy="11" r="7" fill="#17855f"/>
+        <text x="34" y="20" class="body">路径最短，加载开销低。</text>
+        <circle cx="13" cy="61" r="7" fill="#17855f"/>
+        <text x="34" y="70" class="body">当前配置 num_threads = 1，行为更可控。</text>
+        <circle cx="13" cy="111" r="7" fill="#17855f"/>
+        <text x="34" y="120" class="body">这次 5/6 个模型内存峰值更低。</text>
+      </g>
+
+      <line x1="34" y1="318" x2="496" y2="318" stroke="#e4e9ee" stroke-width="2"/>
+      <text x="34" y="360" class="label">代价</text>
+      <text x="112" y="360" class="body">解码时主 CPU 更忙，可能更耗电发热。</text>
+    </g>
+
+    <g transform="translate(695 432)">
+      <rect class="card" x="0" y="0" width="530" height="390" rx="30"/>
+      <rect x="34" y="34" width="150" height="42" rx="21" fill="url(#coreml)"/>
+      <text x="109" y="63" class="pillText" text-anchor="middle">CoreML</text>
+      <text x="34" y="125" class="sectionTitle">交给 Apple ML 栈调度</text>
+
+      <g transform="translate(34 166)">
+        <circle cx="13" cy="11" r="7" fill="#4f74bd"/>
+        <text x="34" y="20" class="body">可把支持的子图交给 GPU 或 ANE。</text>
+        <circle cx="13" cy="61" r="7" fill="#4f74bd"/>
+        <text x="34" y="70" class="body">优势通常是吞吐、延迟或主 CPU 压力。</text>
+        <circle cx="13" cy="111" r="7" fill="#4f74bd"/>
+        <text x="34" y="120" class="body">是否更快，要用真实音频 decode 实测。</text>
+      </g>
+
+      <line x1="34" y1="318" x2="496" y2="318" stroke="#e4e9ee" stroke-width="2"/>
+      <text x="34" y="360" class="label">代价</text>
+      <text x="112" y="360" class="body">首次加载更慢，内存峰值不一定更低。</text>
+    </g>
+
+    <g transform="translate(1280 432)">
+      <rect class="darkCard" x="0" y="0" width="530" height="390" rx="30"/>
+      <text x="34" y="58" class="whiteTitle">当前 AtomVoice 架构</text>
+      <g transform="translate(44 104)">
+        <rect x="0" y="0" width="188" height="58" rx="16" fill="#ffffff"/>
+        <text x="94" y="38" class="chip" text-anchor="middle">设置选择后端</text>
+        <path d="M198 29 L252 29" class="arrow"/>
+        <polygon points="252,19 270,29 252,39" fill="#aeb8c2"/>
+        <rect x="280" y="0" width="184" height="58" rx="16" fill="#ffffff"/>
+        <text x="372" y="38" class="chip" text-anchor="middle">Sherpa 创建</text>
+      </g>
+      <g transform="translate(44 194)">
+        <rect x="0" y="0" width="188" height="58" rx="16" fill="#ffffff"/>
+        <text x="94" y="38" class="chip" text-anchor="middle">C shim dlopen</text>
+        <path d="M198 29 L252 29" class="arrow"/>
+        <polygon points="252,19 270,29 252,39" fill="#aeb8c2"/>
+        <rect x="280" y="0" width="184" height="58" rx="16" fill="#ffffff"/>
+        <text x="372" y="38" class="chip" text-anchor="middle">传 provider</text>
+      </g>
+      <text x="44" y="308" class="whiteBody">CPU：provider = "cpu"</text>
+      <text x="44" y="346" class="whiteBody">CoreML：provider = "coreml"</text>
+      <text x="44" y="376" class="tiny" fill="#aeb8c2">运行库再决定支持哪些节点、如何落到硬件。</text>
+    </g>
+
+    <g transform="translate(110 854)">
+      <rect x="0" y="0" width="1700" height="72" rx="24" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5"/>
+      <text x="34" y="46" class="bodyStrong">实际选择：</text>
+      <text x="154" y="46" class="body">低内存和稳定加载优先选 CPU；追求实时解码速度或降低主 CPU 压力时，再用真实音频对 CoreML 做专项测速。</text>
+    </g>
+  </g>
+</svg>

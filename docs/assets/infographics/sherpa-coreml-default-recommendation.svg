@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice CoreML 默认推荐信息图</title>
+  <desc id="desc">用通用语言说明 AtomVoice Sherpa 本地识别为什么默认推荐 CoreML，以及什么时候改用 CPU。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="56%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="coreml" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f69bb"/>
+      <stop offset="100%" stop-color="#86aaf0"/>
+    </linearGradient>
+    <linearGradient id="cpu" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17855f"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bd6637"/>
+      <stop offset="100%" stop-color="#e79255"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 70px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.9px; paint-order: stroke fill; }
+      .sub { font-size: 27px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .blueCard { fill: #ffffff; stroke: #78a1ea; stroke-width: 3; filter: url(#softShadow); }
+      .sectionTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
+      .body { font-size: 25px; font-weight: 620; fill: #42505b; }
+      .bodyStrong { font-size: 28px; font-weight: 850; fill: #17212b; }
+      .small { font-size: 21px; font-weight: 610; fill: #66727d; }
+      .pillText { font-size: 22px; font-weight: 840; fill: #ffffff; }
+      .big { font-size: 54px; font-weight: 880; fill: #151f29; letter-spacing: 0; }
+      .unit { font-size: 26px; font-weight: 760; fill: #596570; }
+      .model { font-size: 23px; font-weight: 780; fill: #17212b; }
+      .axis { font-size: 19px; font-weight: 650; fill: #75818c; }
+      .barValue { font-size: 20px; font-weight: 830; fill: #17212b; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="82" class="kicker">AtomVoice 本地识别设置</text>
+    <text x="110" y="154" class="title">默认选 CoreML，让电脑更轻松</text>
+    <text x="110" y="204" class="sub">本地语音识别需要持续计算；CoreML 会把适合的工作交给 Apple 的专用加速能力，减少主处理器压力。</text>
+
+    <g transform="translate(110 260)">
+      <rect class="blueCard" x="0" y="0" width="820" height="292" rx="32"/>
+      <rect x="36" y="34" width="188" height="48" rx="24" fill="url(#coreml)"/>
+      <text x="130" y="67" class="pillText" text-anchor="middle">默认推荐</text>
+      <text x="36" y="136" class="sectionTitle">CoreML：适合日常长期使用</text>
+      <text x="36" y="188" class="body">更少占用主处理器，其他 App 更不容易被拖慢。</text>
+      <text x="36" y="232" class="body">在支持的设备上，通常也更利于功耗、发热和续航。</text>
+      <text x="36" y="266" class="small">实际速度仍取决于模型、系统版本和机器硬件。</text>
+    </g>
+
+    <g transform="translate(980 260)">
+      <rect class="card" x="0" y="0" width="830" height="292" rx="32"/>
+      <rect x="36" y="34" width="132" height="48" rx="24" fill="url(#cpu)"/>
+      <text x="102" y="67" class="pillText" text-anchor="middle">备用选择</text>
+      <text x="36" y="136" class="sectionTitle">CPU：适合兼容和排查</text>
+      <text x="36" y="188" class="body">加载通常更直接，遇到 CoreML 表现异常时可以切回 CPU。</text>
+      <text x="36" y="232" class="body">代价是主处理器更忙，长时间识别更可能影响整机流畅度。</text>
+      <text x="36" y="266" class="small">如果只看“加载内存”，CPU 有时更低；但系统负担不只看内存。</text>
+    </g>
+
+    <g transform="translate(110 590)">
+      <rect class="card" x="0" y="0" width="1020" height="290" rx="32"/>
+      <text x="40" y="58" class="sectionTitle">内存怎么理解</text>
+      <text x="40" y="108" class="body">模型名下面的 MB 是模型文件大小，不是运行时内存。</text>
+      <text x="40" y="152" class="body">真正需要关注的是加载后的峰值：模型越大，峰值通常越高。</text>
+
+      <g transform="translate(48 190)">
+        <rect x="0" y="0" width="144" height="54" rx="18" fill="#f1f5f8"/>
+        <text x="72" y="35" class="model" text-anchor="middle">zh-14M</text>
+        <text x="174" y="35" class="body">轻量，低内存机器更稳</text>
+        <rect x="510" y="0" width="168" height="54" rx="18" fill="#f1f5f8"/>
+        <text x="594" y="35" class="model" text-anchor="middle">xlarge</text>
+        <text x="706" y="35" class="body">更重，峰值约 1GB</text>
+      </g>
+    </g>
+
+    <g transform="translate(1170 590)">
+      <rect class="card" x="0" y="0" width="640" height="290" rx="32"/>
+      <text x="38" y="58" class="sectionTitle">实测峰值参考</text>
+      <text x="38" y="102" class="small">柱高是加载后物理内存峰值；仅用于选模型。</text>
+
+      <g transform="translate(72 140)">
+        <line x1="0" y1="100" x2="500" y2="100" stroke="#d6dee5" stroke-width="2"/>
+        <line x1="0" y1="50" x2="500" y2="50" stroke="#edf1f4" stroke-width="2"/>
+        <text x="-8" y="106" class="axis" text-anchor="end">0</text>
+        <text x="-8" y="56" class="axis" text-anchor="end">550</text>
+        <text x="-8" y="6" class="axis" text-anchor="end">1100MB</text>
+
+        <rect x="55" y="90" width="54" height="10" rx="5" fill="url(#coreml)"/>
+        <text x="82" y="78" class="barValue" text-anchor="middle">107</text>
+        <text x="82" y="132" class="model" text-anchor="middle">zh-14M</text>
+
+        <rect x="228" y="63" width="54" height="37" rx="9" fill="url(#coreml)"/>
+        <text x="255" y="51" class="barValue" text-anchor="middle">412</text>
+        <text x="255" y="132" class="model" text-anchor="middle">zh-int8</text>
+
+        <rect x="402" y="1" width="54" height="99" rx="9" fill="url(#warm)"/>
+        <text x="429" y="-11" class="barValue" text-anchor="middle">1094</text>
+        <text x="429" y="132" class="model" text-anchor="middle">xlarge</text>
+      </g>
+    </g>
+
+    <g transform="translate(110 914)">
+      <rect x="0" y="0" width="1700" height="72" rx="24" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5"/>
+      <text x="34" y="46" class="bodyStrong">建议：</text>
+      <text x="112" y="46" class="body">默认用 CoreML；只有在兼容性、加载失败、或想对比问题时，再切到 CPU。</text>
+    </g>
+  </g>
+</svg>

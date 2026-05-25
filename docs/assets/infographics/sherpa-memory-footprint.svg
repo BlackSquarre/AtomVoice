@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice Sherpa 本地模型内存占用信息图</title>
+  <desc id="desc">展示 2026-05-22 本机 Sherpa-ONNX 模型内存测试的 CPU 与 CoreML 峰值内存竖向柱状对比。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="52%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="cpuBar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#1f8f68"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <linearGradient id="coremlBar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#4f74bd"/>
+      <stop offset="100%" stop-color="#82a7ee"/>
+    </linearGradient>
+    <linearGradient id="riskBar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#bd6637"/>
+      <stop offset="100%" stop-color="#e79255"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.1px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .statLabel { font-size: 24px; font-weight: 760; fill: #5a6670; }
+      .statValue { font-size: 56px; font-weight: 880; fill: #151f29; letter-spacing: 0; }
+      .statUnit { font-size: 28px; font-weight: 760; fill: #596570; }
+      .statNote { font-size: 23px; font-weight: 600; fill: #56626d; }
+      .sectionTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
+      .axisText { font-size: 21px; font-weight: 700; fill: #7a8590; }
+      .modelName { font-size: 18px; font-weight: 760; fill: #17212b; }
+      .modelSize { font-size: 16px; font-weight: 650; fill: #697681; }
+      .barValue { font-size: 20px; font-weight: 830; fill: #17212b; }
+      .legend { font-size: 24px; font-weight: 780; fill: #293641; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="82" class="kicker">AtomVoice Sherpa-ONNX 本地模型</text>
+    <text x="110" y="154" class="title">不同模型内存使用量区别</text>
+    <text x="110" y="204" class="sub">内存数值为进行语音识别后物理内存峰值，取 3 次运行中位数；Sherpa-ONNX 运行库 v1.13.1。</text>
+
+    <g transform="translate(110 252)">
+      <rect class="card" x="0" y="0" width="500" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">最低峰值</text>
+      <text x="34" y="110" class="statValue">106.7</text>
+      <text x="210" y="106" class="statUnit">MB</text>
+      <text x="335" y="68" class="statNote">zh-14M</text>
+      <text x="335" y="104" class="statNote">CPU 后端</text>
+    </g>
+
+    <g transform="translate(650 252)">
+      <rect class="card" x="0" y="0" width="500" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">最高峰值</text>
+      <text x="34" y="110" class="statValue">1.09</text>
+      <text x="184" y="106" class="statUnit">GB</text>
+      <text x="335" y="68" class="statNote">zh-xlarge-int8</text>
+      <text x="335" y="104" class="statNote">CPU 后端</text>
+    </g>
+
+    <g transform="translate(1190 252)">
+      <rect class="card" x="0" y="0" width="620" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">CoreML 怎么理解</text>
+      <text x="34" y="95" class="statNote">有 GPU / NPU 加速，降低系统资源占用；</text>
+      <text x="34" y="128" class="statNote">但本图只比较加载后的峰值内存。</text>
+    </g>
+
+    <g transform="translate(110 438)">
+      <rect class="card" x="0" y="0" width="1700" height="472" rx="30"/>
+      <text x="38" y="58" class="sectionTitle">峰值内存：CPU vs CoreML</text>
+      <g transform="translate(940 40)">
+        <rect x="0" y="0" width="18" height="18" rx="5" fill="url(#cpuBar)"/>
+        <text x="30" y="19" class="legend">CPU</text>
+        <rect x="116" y="0" width="18" height="18" rx="5" fill="url(#coremlBar)"/>
+        <text x="146" y="19" class="legend">CoreML</text>
+      </g>
+
+      <g transform="translate(78 84)">
+        <line x1="42" y1="280" x2="1570" y2="280" stroke="#cbd5dd" stroke-width="2"/>
+        <line x1="42" y1="216" x2="1570" y2="216" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="42" y1="153" x2="1570" y2="153" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="42" y1="89" x2="1570" y2="89" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="42" y1="26" x2="1570" y2="26" stroke="#edf1f4" stroke-width="2"/>
+        <text x="0" y="286" class="axisText">0</text>
+        <text x="0" y="222" class="axisText">275</text>
+        <text x="0" y="159" class="axisText">550</text>
+        <text x="0" y="95" class="axisText">825</text>
+        <text x="0" y="32" class="axisText">1100 MB</text>
+        <text x="0" y="344" class="modelSize" text-anchor="start">模型大小</text>
+
+        <g transform="translate(134 0)">
+          <rect x="0" y="253" width="38" height="27" rx="9" fill="url(#cpuBar)"/>
+          <rect x="48" y="236" width="38" height="44" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="242" class="barValue" text-anchor="middle">107</text>
+          <text x="67" y="225" class="barValue" text-anchor="middle">171</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">zh-14M</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">56.9 MB</text>
+        </g>
+
+        <g transform="translate(388 0)">
+          <rect x="0" y="232" width="38" height="48" rx="9" fill="url(#cpuBar)"/>
+          <rect x="48" y="214" width="38" height="66" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="221" class="barValue" text-anchor="middle">187</text>
+          <text x="67" y="203" class="barValue" text-anchor="middle">260</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">small-bilingual</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">474.1 MB</text>
+        </g>
+
+        <g transform="translate(642 0)">
+          <rect x="0" y="226" width="38" height="54" rx="9" fill="url(#cpuBar)"/>
+          <rect x="48" y="223" width="38" height="57" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="215" class="barValue" text-anchor="middle">212</text>
+          <text x="67" y="212" class="barValue" text-anchor="middle">224</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">multi-zh-hans</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">327.6 MB</text>
+        </g>
+
+        <g transform="translate(896 0)">
+          <rect x="0" y="175" width="38" height="105" rx="9" fill="url(#cpuBar)"/>
+          <rect x="48" y="167" width="38" height="113" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="164" class="barValue" text-anchor="middle">412</text>
+          <text x="67" y="156" class="barValue" text-anchor="middle">445</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">zh-int8</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">160.0 MB</text>
+        </g>
+
+        <g transform="translate(1150 0)">
+          <rect x="0" y="159" width="38" height="121" rx="9" fill="url(#cpuBar)"/>
+          <rect x="48" y="141" width="38" height="139" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="148" class="barValue" text-anchor="middle">474</text>
+          <text x="67" y="130" class="barValue" text-anchor="middle">548</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">bilingual-zh-en</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">530.7 MB</text>
+        </g>
+
+        <g transform="translate(1404 0)">
+          <rect x="0" y="2" width="38" height="278" rx="9" fill="url(#riskBar)"/>
+          <rect x="48" y="24" width="38" height="256" rx="9" fill="url(#coremlBar)"/>
+          <text x="19" y="-9" class="barValue" text-anchor="middle">1094</text>
+          <text x="67" y="13" class="barValue" text-anchor="middle">1007</text>
+          <text x="43" y="318" class="modelName" text-anchor="middle">zh-xlarge-int8</text>
+          <text x="43" y="344" class="modelSize" text-anchor="middle">736.2 MB</text>
+        </g>
+      </g>
+    </g>
+
+  </g>
+</svg>

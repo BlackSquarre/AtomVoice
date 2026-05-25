@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440" role="img" aria-labelledby="title desc">
+  <title id="title">三种识别引擎 怎么选</title>
+  <desc id="desc">离线、日常、准确率优先，按场景切换。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 26px; font-weight: 760; fill: #596570; }
+      .title { font-size: 45px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.65px; paint-order: stroke fill; }
+      .sub { font-size: 23px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.2; filter: url(#softShadow); }
+      .cardTitle { font-size: 28px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 22px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 18px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 19px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 78px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 36px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 20px; font-weight: 760; fill: #293641; }
+      .xs { font-size: 16px; font-weight: 650; fill: #66727d; }
+      .white { fill: #ffffff; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1440" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="70" class="kicker">AtomVoice 语音输入引擎</text>
+    <text x="58" y="122" class="title">三种识别引擎</text>
+<text x="58" y="176" class="title">怎么选</text>
+    <text x="58" y="236" class="sub">离线、日常、准确率优先，按场景切换。</text>
+
+    <g transform="translate(58 292)">
+        <rect x="0" y="0" width="964" height="230" rx="30" class="card"/>
+        <circle cx="58" cy="52" r="30" fill="#218b63"/>
+        <text x="58" y="63" text-anchor="middle" class="badge">1</text>
+        <rect x="104" y="28" width="150" height="42" rx="21" fill="#218b63"/>
+        <text x="179" y="56" text-anchor="middle" class="badge">隐私优先</text>
+        <text x="34" y="122" class="cardTitle">Sherpa-ONNX</text>
+        <text x="34" y="162" class="small">本地模型识别</text>
+
+        <text x="390" y="54" class="label">优点</text>
+        <text x="454" y="54" class="body">音频不出电脑</text>
+        <text x="454" y="94" class="body">离线可用</text>
+        <text x="454" y="134" class="body">不需要 API Key</text>
+        <text x="390" y="180" class="label">代价</text>
+        <text x="454" y="180" class="small">要下载模型</text>
+        <text x="454" y="212" class="small">内存用量较高</text>
+        <rect x="790" y="28" width="114" height="42" rx="21" fill="#218b63"/>
+        <text x="847" y="56" text-anchor="middle" class="badge">本地</text>
+      </g>
+<g transform="translate(58 554)">
+        <rect x="0" y="0" width="964" height="230" rx="30" class="card"/>
+        <circle cx="58" cy="52" r="30" fill="#4f74bd"/>
+        <text x="58" y="63" text-anchor="middle" class="badge">2</text>
+        <rect x="104" y="28" width="150" height="42" rx="21" fill="#4f74bd"/>
+        <text x="179" y="56" text-anchor="middle" class="badge">默认平衡</text>
+        <text x="34" y="122" class="cardTitle">Apple Speech</text>
+        <text x="34" y="162" class="small">macOS 系统识别</text>
+
+        <text x="390" y="54" class="label">优点</text>
+        <text x="454" y="54" class="body">开箱即用</text>
+        <text x="454" y="94" class="body">系统集成度高</text>
+        <text x="454" y="134" class="body">支持实时上屏</text>
+        <text x="390" y="180" class="label">代价</text>
+        <text x="454" y="180" class="small">依赖系统服务</text>
+        <text x="454" y="212" class="small">受语言支持影响</text>
+        <rect x="790" y="28" width="114" height="42" rx="21" fill="#4f74bd"/>
+        <text x="847" y="56" text-anchor="middle" class="badge">系统</text>
+      </g>
+<g transform="translate(58 816)">
+        <rect x="0" y="0" width="964" height="230" rx="30" class="card"/>
+        <circle cx="58" cy="52" r="30" fill="#bd6637"/>
+        <text x="58" y="63" text-anchor="middle" class="badge">3</text>
+        <rect x="104" y="28" width="150" height="42" rx="21" fill="#bd6637"/>
+        <text x="179" y="56" text-anchor="middle" class="badge">能力优先</text>
+        <text x="34" y="122" class="cardTitle">豆包云端 ASR</text>
+        <text x="34" y="162" class="small">火山引擎云端识别</text>
+
+        <text x="390" y="54" class="label">优点</text>
+        <text x="454" y="54" class="body">中文长句更稳</text>
+        <text x="454" y="94" class="body">标点数字更自然</text>
+        <text x="454" y="134" class="body">准确率优先</text>
+        <text x="390" y="180" class="label">代价</text>
+        <text x="454" y="180" class="small">需要 API Key</text>
+        <text x="454" y="212" class="small">音频会发到云端</text>
+        <rect x="790" y="28" width="114" height="42" rx="21" fill="#bd6637"/>
+        <text x="847" y="56" text-anchor="middle" class="badge">云端</text>
+      </g>
+    <g transform="translate(58 1084)">
+      <rect x="0" y="0" width="964" height="194" rx="30" class="card"/>
+      <text x="34" y="58" class="cardTitle">选择逻辑</text>
+      <text x="34" y="112" class="label">先看隐私</text>
+      <text x="278" y="112" class="label">再看便利</text>
+      <text x="522" y="112" class="label">最后看准确率</text>
+      <text x="34" y="158" class="small">从本机处理到云端识别，隐私、便利性和准确率各有取舍。</text>
+    </g>
+  </g>
+</svg>

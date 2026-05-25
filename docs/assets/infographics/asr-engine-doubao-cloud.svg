@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice 豆包云端 ASR 介绍图</title>
+  <desc id="desc">介绍 AtomVoice 豆包云端 ASR 的适用场景、优点和缺点。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="55%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bd6637"/>
+      <stop offset="100%" stop-color="#e79255"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 74px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .accentCard { fill: #ffffff; stroke: #c67646; stroke-width: 3; filter: url(#softShadow); }
+      .pill { font-size: 23px; font-weight: 840; fill: #ffffff; }
+      .section { font-size: 36px; font-weight: 860; fill: #151f29; }
+      .lead { font-size: 32px; font-weight: 820; fill: #17212b; }
+      .body { font-size: 27px; font-weight: 620; fill: #42505b; }
+      .strong { font-size: 29px; font-weight: 860; fill: #17212b; }
+      .num { font-size: 28px; font-weight: 880; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="86" class="kicker">AtomVoice 识别引擎</text>
+    <text x="110" y="164" class="title">豆包云端 ASR：准确率优先</text>
+    <text x="110" y="216" class="sub">可选的云端流式识别，适合更看重中文长句、标点和数字规范化的场景。</text>
+
+    <g transform="translate(110 282)">
+      <rect class="accentCard" x="0" y="0" width="640" height="520" rx="32"/>
+      <rect x="42" y="42" width="154" height="48" rx="24" fill="url(#accent)"/>
+      <text x="119" y="75" class="pill" text-anchor="middle">能力优先</text>
+      <text x="42" y="158" class="section">适合谁</text>
+      <text x="42" y="218" class="lead">追求中文识别质量</text>
+      <text x="42" y="276" class="body">长句、口语断句、标点、数字，</text>
+      <text x="42" y="318" class="body">需要更自然的最终文本。</text>
+    </g>
+
+    <g transform="translate(800 282)">
+      <rect class="card" x="0" y="0" width="490" height="520" rx="32"/>
+      <text x="40" y="66" class="section">优点</text>
+      <g transform="translate(40 126)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">1</text>
+        <text x="58" y="29" class="strong">中文长句更稳</text>
+        <text x="58" y="68" class="body">适合长段口述。</text>
+      </g>
+      <g transform="translate(40 238)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">2</text>
+        <text x="58" y="29" class="strong">标点和数字更自然</text>
+        <text x="58" y="68" class="body">减少后期手动整理。</text>
+      </g>
+      <g transform="translate(40 350)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">3</text>
+        <text x="58" y="29" class="strong">失败可回退</text>
+        <text x="58" y="68" class="body">云端异常时可回到 Apple。</text>
+      </g>
+    </g>
+
+    <g transform="translate(1340 282)">
+      <rect class="card" x="0" y="0" width="470" height="520" rx="32"/>
+      <text x="40" y="66" class="section">缺点</text>
+      <text x="40" y="140" class="strong">需要 API Key 和网络</text>
+      <text x="40" y="184" class="body">首次使用需要显式配置，</text>
+      <text x="40" y="226" class="body">网络状态会影响识别。</text>
+      <text x="40" y="318" class="strong">音频会发送到云端</text>
+      <text x="40" y="362" class="body">首次切换会确认，</text>
+      <text x="40" y="404" class="body">适合用户明确接受的场景。</text>
+    </g>
+  </g>
+</svg>

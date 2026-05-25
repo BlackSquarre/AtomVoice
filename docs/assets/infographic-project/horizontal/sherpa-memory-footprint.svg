@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice Sherpa 本地模型内存占用信息图</title>
+  <desc id="desc">展示 2026-05-22 本机 Sherpa-ONNX 模型内存测试的 CPU 与 CoreML 峰值内存对比。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="52%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="cpuBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1f8f68"/>
+      <stop offset="100%" stop-color="#36b786"/>
+    </linearGradient>
+    <linearGradient id="coremlBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4f74bd"/>
+      <stop offset="100%" stop-color="#7aa0e8"/>
+    </linearGradient>
+    <linearGradient id="riskBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#bd6637"/>
+      <stop offset="100%" stop-color="#e68b51"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 72px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.1px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .statLabel { font-size: 24px; font-weight: 760; fill: #5a6670; }
+      .statValue { font-size: 56px; font-weight: 880; fill: #151f29; letter-spacing: 0; }
+      .statUnit { font-size: 28px; font-weight: 760; fill: #596570; }
+      .statNote { font-size: 23px; font-weight: 600; fill: #56626d; }
+      .sectionTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
+      .axisText { font-size: 22px; font-weight: 700; fill: #7a8590; }
+      .modelName { font-size: 25px; font-weight: 820; fill: #17212b; }
+      .modelMeta { font-size: 20px; font-weight: 650; fill: #63707a; }
+      .barValue { font-size: 22px; font-weight: 820; fill: #17212b; }
+      .legend { font-size: 24px; font-weight: 780; fill: #293641; }
+      .note { font-size: 23px; font-weight: 610; fill: #4f5b66; }
+      .calloutTitle { font-size: 27px; font-weight: 860; fill: #151f29; }
+      .calloutBody { font-size: 23px; font-weight: 620; fill: #46535e; }
+      .footer { font-size: 21px; font-weight: 600; fill: #68747f; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice Sherpa-ONNX 本地模型</text>
+    <text x="110" y="170" class="title">本地识别，内存差距很大</text>
+    <text x="110" y="222" class="sub">2026-05-22 本机实测，显示每个模型加载后的物理内存峰值；数值为 3 次运行的中位数。</text>
+
+    <g transform="translate(110 282)">
+      <rect class="card" x="0" y="0" width="500" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">最低峰值</text>
+      <text x="34" y="110" class="statValue">106.7</text>
+      <text x="210" y="106" class="statUnit">MB</text>
+      <text x="335" y="68" class="statNote">zh-14M</text>
+      <text x="335" y="104" class="statNote">CPU 后端</text>
+    </g>
+
+    <g transform="translate(650 282)">
+      <rect class="card" x="0" y="0" width="500" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">最高峰值</text>
+      <text x="34" y="110" class="statValue">1.09</text>
+      <text x="184" y="106" class="statUnit">GB</text>
+      <text x="335" y="68" class="statNote">xlarge-int8</text>
+      <text x="335" y="104" class="statNote">CPU 后端</text>
+    </g>
+
+    <g transform="translate(1190 282)">
+      <rect class="card" x="0" y="0" width="620" height="154" rx="26"/>
+      <text x="34" y="48" class="statLabel">CoreML 结论</text>
+      <text x="34" y="101" class="statNote">加载更慢，内存不稳定地更高或更低。</text>
+      <text x="34" y="132" class="statNote">小模型优先看 CPU，xlarge 才出现 CoreML 峰值优势。</text>
+    </g>
+
+    <g transform="translate(110 488)">
+      <rect class="card" x="0" y="0" width="1240" height="420" rx="30"/>
+      <text x="38" y="58" class="sectionTitle">峰值内存对比</text>
+      <g transform="translate(430 70)">
+        <rect x="0" y="0" width="18" height="18" rx="5" fill="url(#cpuBar)"/>
+        <text x="30" y="19" class="legend">CPU</text>
+        <rect x="118" y="0" width="18" height="18" rx="5" fill="url(#coremlBar)"/>
+        <text x="148" y="19" class="legend">CoreML</text>
+        <text x="390" y="19" class="axisText">刻度上限：1.1 GB</text>
+      </g>
+
+      <g transform="translate(38 98)">
+        <line x1="368" y1="0" x2="368" y2="282" stroke="#e4e9ee" stroke-width="2"/>
+        <line x1="560" y1="0" x2="560" y2="282" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="752" y1="0" x2="752" y2="282" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="944" y1="0" x2="944" y2="282" stroke="#edf1f4" stroke-width="2"/>
+        <line x1="1136" y1="0" x2="1136" y2="282" stroke="#edf1f4" stroke-width="2"/>
+        <text x="368" y="315" class="axisText" text-anchor="middle">0</text>
+        <text x="560" y="315" class="axisText" text-anchor="middle">275 MB</text>
+        <text x="752" y="315" class="axisText" text-anchor="middle">550 MB</text>
+        <text x="944" y="315" class="axisText" text-anchor="middle">825 MB</text>
+        <text x="1136" y="315" class="axisText" text-anchor="middle">1.1 GB</text>
+
+        <g transform="translate(0 0)">
+          <text x="0" y="22" class="modelName">zh-14M</text>
+          <text x="0" y="49" class="modelMeta">56.9 MB 模型</text>
+          <rect x="368" y="6" width="74" height="16" rx="8" fill="url(#cpuBar)"/>
+          <text x="454" y="23" class="barValue">106.7</text>
+          <rect x="368" y="30" width="119" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="499" y="47" class="barValue">171.4</text>
+        </g>
+
+        <g transform="translate(0 54)">
+          <text x="0" y="22" class="modelName">小型中英双语</text>
+          <text x="0" y="49" class="modelMeta">474.1 MB 模型</text>
+          <rect x="368" y="6" width="130" height="16" rx="8" fill="url(#cpuBar)"/>
+          <text x="510" y="23" class="barValue">186.7</text>
+          <rect x="368" y="30" width="181" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="561" y="47" class="barValue">259.8</text>
+        </g>
+
+        <g transform="translate(0 108)">
+          <text x="0" y="22" class="modelName">多语言简中</text>
+          <text x="0" y="49" class="modelMeta">327.6 MB 模型</text>
+          <rect x="368" y="6" width="148" height="16" rx="8" fill="url(#cpuBar)"/>
+          <text x="528" y="23" class="barValue">211.8</text>
+          <rect x="368" y="30" width="156" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="536" y="47" class="barValue">223.8</text>
+        </g>
+
+        <g transform="translate(0 162)">
+          <text x="0" y="22" class="modelName">zh-int8</text>
+          <text x="0" y="49" class="modelMeta">160.0 MB 模型</text>
+          <rect x="368" y="6" width="287" height="16" rx="8" fill="url(#cpuBar)"/>
+          <text x="667" y="23" class="barValue">412.0</text>
+          <rect x="368" y="30" width="311" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="691" y="47" class="barValue">445.1</text>
+        </g>
+
+        <g transform="translate(0 216)">
+          <text x="0" y="22" class="modelName">中英双语</text>
+          <text x="0" y="49" class="modelMeta">530.7 MB 模型</text>
+          <rect x="368" y="6" width="330" height="16" rx="8" fill="url(#cpuBar)"/>
+          <text x="710" y="23" class="barValue">473.5</text>
+          <rect x="368" y="30" width="382" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="762" y="47" class="barValue">547.7</text>
+        </g>
+
+        <g transform="translate(0 270)">
+          <text x="0" y="22" class="modelName">zh-xlarge-int8</text>
+          <text x="0" y="49" class="modelMeta">736.2 MB 模型</text>
+          <rect x="368" y="6" width="768" height="16" rx="8" fill="url(#riskBar)"/>
+          <text x="1148" y="23" class="barValue">1094.2</text>
+          <rect x="368" y="30" width="706" height="16" rx="8" fill="url(#coremlBar)"/>
+          <text x="1086" y="47" class="barValue">1006.7</text>
+        </g>
+      </g>
+    </g>
+
+    <g transform="translate(1390 488)">
+      <rect class="card" x="0" y="0" width="420" height="420" rx="30"/>
+      <text x="34" y="58" class="sectionTitle">读数怎么用</text>
+
+      <g transform="translate(34 98)">
+        <rect x="0" y="0" width="14" height="86" rx="7" fill="#218b63"/>
+        <text x="34" y="24" class="calloutTitle">8GB 机器</text>
+        <text x="34" y="62" class="calloutBody">优先 zh-14M 或多语言简中。</text>
+        <text x="34" y="95" class="calloutBody">不要默认推 xlarge。</text>
+      </g>
+
+      <g transform="translate(34 218)">
+        <rect x="0" y="0" width="14" height="86" rx="7" fill="#4f74bd"/>
+        <text x="34" y="24" class="calloutTitle">CoreML 不是省内存开关</text>
+        <text x="34" y="62" class="calloutBody">多数模型峰值更高，</text>
+        <text x="34" y="95" class="calloutBody">加载时间也明显更长。</text>
+      </g>
+
+      <g transform="translate(34 338)">
+        <rect x="0" y="0" width="14" height="42" rx="7" fill="#bd6637"/>
+        <text x="34" y="24" class="calloutTitle">xlarge 是明确的高内存档</text>
+      </g>
+    </g>
+
+    <text x="110" y="995" class="footer">来源：dist/sherpa-memory-report-20260522-145535.csv；运行库 v1.13.1；模型目录为本机 AtomVoice SherpaOnnx/models。</text>
+  </g>
+</svg>

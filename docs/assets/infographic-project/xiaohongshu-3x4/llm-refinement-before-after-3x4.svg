@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440" role="img" aria-labelledby="title desc">
+  <title id="title">把口语变成 可发送文本</title>
+  <desc id="desc">不是变长，而是更清楚、更好发。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 26px; font-weight: 760; fill: #596570; }
+      .title { font-size: 45px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.65px; paint-order: stroke fill; }
+      .sub { font-size: 23px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.2; filter: url(#softShadow); }
+      .cardTitle { font-size: 28px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 22px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 18px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 19px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 78px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 36px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 20px; font-weight: 760; fill: #293641; }
+      .xs { font-size: 16px; font-weight: 650; fill: #66727d; }
+      .white { fill: #ffffff; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1440" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="70" class="kicker">AtomVoice LLM 润色</text>
+    <text x="58" y="122" class="title">把口语变成</text>
+<text x="58" y="176" class="title">可发送文本</text>
+    <text x="58" y="236" class="sub">不是变长，而是更清楚、更好发。</text>
+
+    <g transform="translate(58 294)">
+      <rect x="0" y="0" width="964" height="276" rx="34" class="card"/>
+      <text x="34" y="58" class="cardTitle">识别出来</text>
+      <text x="34" y="122" class="big">嗯我想说...</text>
+      <text x="34" y="174" class="body">语气自然，但不适合直接发出去。</text>
+      <line x1="34" y1="218" x2="880" y2="218" class="mutedLine"/>
+      <text x="34" y="250" class="small">口头停顿 / 重复 / 语序松散</text>
+    </g>
+    <g transform="translate(58 624)">
+      <rect x="0" y="0" width="964" height="276" rx="34" class="card"/>
+      <text x="34" y="58" class="cardTitle">润色之后</text>
+      <text x="34" y="122" class="big">可发送文本</text>
+      <text x="34" y="174" class="body">保留原意，删掉口头噪音。</text>
+      <line x1="34" y1="218" x2="880" y2="218" stroke="#218b63" stroke-width="5" stroke-linecap="round"/>
+      <text x="34" y="250" class="small">更清楚 / 更短 / 更像正式输入</text>
+    </g>
+    <g transform="translate(58 954)">
+      <rect x="0" y="0" width="964" height="226" rx="30" class="card"/>
+      <text x="34" y="58" class="cardTitle">适合这些场景</text>
+      <text x="34" y="116" class="label">聊天回复</text>
+      <text x="278" y="116" class="label">邮件草稿</text>
+      <text x="522" y="116" class="label">工单说明</text>
+      <text x="34" y="166" class="label">会议记录</text>
+      <text x="278" y="166" class="label">长段输入</text>
+      <text x="522" y="166" class="label">多语言表达</text>
+    </g>
+  </g>
+</svg>

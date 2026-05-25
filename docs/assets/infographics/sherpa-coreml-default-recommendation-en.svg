@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice CoreML default recommendation</title>
+  <desc id="desc">Explains why CoreML is recommended by default for AtomVoice Sherpa local recognition, and when to use CPU.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="56%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="coreml" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f69bb"/>
+      <stop offset="100%" stop-color="#86aaf0"/>
+    </linearGradient>
+    <linearGradient id="cpu" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17855f"/>
+      <stop offset="100%" stop-color="#39b98a"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bd6637"/>
+      <stop offset="100%" stop-color="#e79255"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 60px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.9px; paint-order: stroke fill; }
+      .sub { font-size: 24px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .blueCard { fill: #ffffff; stroke: #78a1ea; stroke-width: 3; filter: url(#softShadow); }
+      .sectionTitle { font-size: 34px; font-weight: 860; fill: #151f29; }
+      .body { font-size: 22px; font-weight: 620; fill: #42505b; }
+      .bodyStrong { font-size: 28px; font-weight: 850; fill: #17212b; }
+      .small { font-size: 21px; font-weight: 610; fill: #66727d; }
+      .pillText { font-size: 22px; font-weight: 840; fill: #ffffff; }
+      .big { font-size: 54px; font-weight: 880; fill: #151f29; letter-spacing: 0; }
+      .unit { font-size: 26px; font-weight: 760; fill: #596570; }
+      .model { font-size: 23px; font-weight: 780; fill: #17212b; }
+      .axis { font-size: 19px; font-weight: 650; fill: #75818c; }
+      .barValue { font-size: 20px; font-weight: 830; fill: #17212b; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="82" class="kicker">AtomVoice local recognition setting</text>
+    <text x="110" y="154" class="title">Choose CoreML by default</text>
+    <text x="110" y="204" class="sub">Local speech recognition keeps computing.</text>
+    <text x="110" y="238" class="sub">CoreML moves suitable work to Apple acceleration.</text>
+
+    <g transform="translate(110 260)">
+      <rect class="blueCard" x="0" y="0" width="820" height="292" rx="32"/>
+      <rect x="36" y="34" width="170" height="48" rx="24" fill="url(#coreml)"/>
+      <text x="121" y="67" class="pillText" text-anchor="middle">Recommended</text>
+      <text x="36" y="136" class="sectionTitle">CoreML: for daily long-term use</text>
+      <text x="36" y="188" class="body">Uses less main CPU, so other apps are less likely to slow down.</text>
+      <text x="36" y="232" class="body">On supported Macs, it usually helps power, heat, and battery life.</text>
+      <text x="36" y="266" class="small">Actual speed still depends on model, macOS, and hardware.</text>
+    </g>
+
+    <g transform="translate(980 260)">
+      <rect class="card" x="0" y="0" width="830" height="292" rx="32"/>
+      <rect x="36" y="34" width="120" height="48" rx="24" fill="url(#cpu)"/>
+      <text x="96" y="67" class="pillText" text-anchor="middle">Fallback</text>
+      <text x="36" y="136" class="sectionTitle">CPU: for compatibility and debugging</text>
+      <text x="36" y="188" class="body">Usually loads more directly; switch back when CoreML behaves poorly.</text>
+      <text x="36" y="232" class="body">The tradeoff is more main CPU work, which can affect long-session smoothness.</text>
+      <text x="36" y="266" class="small">CPU may look lower by load memory alone, but system load is more than memory.</text>
+    </g>
+
+    <g transform="translate(110 590)">
+      <rect class="card" x="0" y="0" width="1020" height="290" rx="32"/>
+      <text x="40" y="58" class="sectionTitle">How to read memory</text>
+      <text x="40" y="108" class="body">The MB under a model name is model file size, not runtime memory.</text>
+      <text x="40" y="152" class="body">The important value is runtime peak: larger models usually peak higher.</text>
+
+      <g transform="translate(48 190)">
+        <rect x="0" y="0" width="144" height="54" rx="18" fill="#f1f5f8"/>
+        <text x="72" y="35" class="model" text-anchor="middle">zh-14M</text>
+        <text x="174" y="35" class="body">Lightweight, low pressure</text>
+        <rect x="548" y="0" width="168" height="54" rx="18" fill="#f1f5f8"/>
+        <text x="632" y="35" class="model" text-anchor="middle">xlarge</text>
+        <text x="744" y="35" class="body">Heavier, about 1GB</text>
+      </g>
+    </g>
+
+    <g transform="translate(1170 590)">
+      <rect class="card" x="0" y="0" width="640" height="290" rx="32"/>
+      <text x="38" y="58" class="sectionTitle">Measured peak reference</text>
+      <text x="38" y="102" class="small">Peak memory after load; for model choice only.</text>
+
+      <g transform="translate(72 140)">
+        <line x1="0" y1="100" x2="500" y2="100" stroke="#d6dee5" stroke-width="2"/>
+        <line x1="0" y1="50" x2="500" y2="50" stroke="#edf1f4" stroke-width="2"/>
+        <text x="-8" y="106" class="axis" text-anchor="end">0</text>
+        <text x="-8" y="56" class="axis" text-anchor="end">550</text>
+        <text x="-8" y="6" class="axis" text-anchor="end">1100MB</text>
+
+        <rect x="55" y="90" width="54" height="10" rx="5" fill="url(#coreml)"/>
+        <text x="82" y="78" class="barValue" text-anchor="middle">107</text>
+        <text x="82" y="132" class="model" text-anchor="middle">zh-14M</text>
+
+        <rect x="228" y="63" width="54" height="37" rx="9" fill="url(#coreml)"/>
+        <text x="255" y="51" class="barValue" text-anchor="middle">412</text>
+        <text x="255" y="132" class="model" text-anchor="middle">zh-int8</text>
+
+        <rect x="402" y="1" width="54" height="99" rx="9" fill="url(#warm)"/>
+        <text x="429" y="-11" class="barValue" text-anchor="middle">1094</text>
+        <text x="429" y="132" class="model" text-anchor="middle">xlarge</text>
+      </g>
+    </g>
+
+    <g transform="translate(110 914)">
+      <rect x="0" y="0" width="1700" height="72" rx="24" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5"/>
+      <text x="34" y="46" class="bodyStrong">Recommendation</text>
+      <text x="300" y="46" class="body">Use CoreML by default; switch to CPU for compatibility or troubleshooting.</text>
+    </g>
+  </g>
+</svg>

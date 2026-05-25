@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice Apple Speech 系统识别介绍图</title>
+  <desc id="desc">介绍 AtomVoice Apple Speech 系统识别引擎的适用场景、优点和缺点。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="55%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f74bd"/>
+      <stop offset="100%" stop-color="#82a7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 74px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1px; paint-order: stroke fill; }
+      .sub { font-size: 28px; font-weight: 560; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; filter: url(#softShadow); }
+      .accentCard { fill: #ffffff; stroke: #5a7dc7; stroke-width: 3; filter: url(#softShadow); }
+      .pill { font-size: 23px; font-weight: 840; fill: #ffffff; }
+      .section { font-size: 36px; font-weight: 860; fill: #151f29; }
+      .lead { font-size: 32px; font-weight: 820; fill: #17212b; }
+      .body { font-size: 27px; font-weight: 620; fill: #42505b; }
+      .strong { font-size: 29px; font-weight: 860; fill: #17212b; }
+      .num { font-size: 28px; font-weight: 880; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="86" class="kicker">AtomVoice 识别引擎</text>
+    <text x="110" y="164" class="title">Apple Speech：最省心的系统识别</text>
+    <text x="110" y="216" class="sub">使用 macOS 自带语音识别能力，适合默认日常输入和多语言场景。</text>
+
+    <g transform="translate(110 282)">
+      <rect class="accentCard" x="0" y="0" width="640" height="520" rx="32"/>
+      <rect x="42" y="42" width="154" height="48" rx="24" fill="url(#accent)"/>
+      <text x="119" y="75" class="pill" text-anchor="middle">默认平衡</text>
+      <text x="42" y="158" class="section">适合谁</text>
+      <text x="42" y="218" class="lead">想开箱即用的人</text>
+      <text x="42" y="276" class="body">不想下载模型、不想配置 API，</text>
+      <text x="42" y="318" class="body">直接用系统能力完成语音输入。</text>
+    </g>
+
+    <g transform="translate(800 282)">
+      <rect class="card" x="0" y="0" width="490" height="520" rx="32"/>
+      <text x="40" y="66" class="section">优点</text>
+      <g transform="translate(40 126)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">1</text>
+        <text x="58" y="29" class="strong">开箱即用</text>
+        <text x="58" y="68" class="body">系统集成度高。</text>
+      </g>
+      <g transform="translate(40 238)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">2</text>
+        <text x="58" y="29" class="strong">实时上屏</text>
+        <text x="58" y="68" class="body">边说边看到识别结果。</text>
+      </g>
+      <g transform="translate(40 350)">
+        <circle cx="18" cy="18" r="18" fill="url(#accent)"/><text x="18" y="29" class="num" text-anchor="middle">3</text>
+        <text x="58" y="29" class="strong">多语言方便</text>
+        <text x="58" y="68" class="body">跟随系统语言能力。</text>
+      </g>
+    </g>
+
+    <g transform="translate(1340 282)">
+      <rect class="card" x="0" y="0" width="470" height="520" rx="32"/>
+      <text x="40" y="66" class="section">缺点</text>
+      <text x="40" y="140" class="strong">依赖系统服务</text>
+      <text x="40" y="184" class="body">权限、网络、系统状态，</text>
+      <text x="40" y="226" class="body">都会影响可用性。</text>
+      <text x="40" y="318" class="strong">语言支持不完全一致</text>
+      <text x="40" y="362" class="body">本机识别是否可用，</text>
+      <text x="40" y="404" class="body">取决于当前语言和系统支持。</text>
+    </g>
+  </g>
+</svg>

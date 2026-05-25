@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">按住说话，文字 进当前 App</title>
+  <desc id="desc">把说话、识别、上屏放到同一个动作里。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 56px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.8px; paint-order: stroke fill; }
+      .sub { font-size: 24px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.4; filter: url(#softShadow); }
+      .cardTitle { font-size: 30px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 23px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 19px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 20px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 84px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 40px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 21px; font-weight: 760; fill: #293641; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="78" class="kicker">AtomVoice 总览</text>
+    <text x="58" y="124" class="title">按住说话，文字</text>
+<text x="58" y="186" class="title">进当前 App</text>
+    <text x="58" y="248" class="sub">把说话、识别、上屏放到同一个动作里。</text>
+
+    <g transform="translate(58 302)">
+      <rect x="0" y="0" width="964" height="338" rx="34" class="card"/>
+      <circle cx="142" cy="169" r="74" fill="#141d26"/>
+      <rect x="119" y="121" width="46" height="96" rx="23" fill="#22d3ee"/>
+      <rect x="136" y="227" width="14" height="36" rx="7" fill="#22c55e"/>
+      <text x="270" y="118" class="mid">按住说话</text>
+      <text x="270" y="170" class="body">松手后，文字直接进入当前 App。</text>
+      <text x="270" y="214" class="body">不用切窗口，不用复制粘贴。</text>
+      <rect x="270" y="250" width="520" height="16" rx="8" fill="#e4e9ee"/>
+      <rect x="270" y="250" width="410" height="16" rx="8" fill="#4f74bd"/>
+    </g>
+    <g transform="translate(58 704)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#218b63"/>
+        <text x="62" y="62" class="cardTitle">识别</text>
+        <text x="62" y="110" class="body">本地 / 系统 / 云端</text>
+        <text x="62" y="148" class="body">按场景切换</text>
+      </g>
+<g transform="translate(570 704)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#4f74bd"/>
+        <text x="62" y="62" class="cardTitle">上屏</text>
+        <text x="62" y="110" class="body">直接输入到光标处</text>
+        <text x="62" y="148" class="body">像键盘一样自然</text>
+      </g>
+<g transform="translate(58 974)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#bd6637"/>
+        <text x="62" y="62" class="cardTitle">润色</text>
+        <text x="62" y="110" class="body">把口语整理成</text>
+        <text x="62" y="148" class="body">可发送文本</text>
+      </g>
+<g transform="translate(570 974)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#141d26"/>
+        <text x="62" y="62" class="cardTitle">耳机控制</text>
+        <text x="62" y="110" class="body">不用碰键盘</text>
+        <text x="62" y="148" class="body">也能开始输入</text>
+      </g>
+<g transform="translate(58 1244)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#218b63"/>
+        <text x="62" y="62" class="cardTitle">多语言</text>
+        <text x="62" y="110" class="body">中英等常用输入</text>
+        <text x="62" y="148" class="body">按引擎能力选择</text>
+      </g>
+<g transform="translate(570 1244)">
+        <rect x="0" y="0" width="452" height="224" rx="28" class="card"/>
+        <rect x="30" y="32" width="12" height="58" rx="6" fill="#4f74bd"/>
+        <text x="62" y="62" class="cardTitle">自动更新</text>
+        <text x="62" y="110" class="body">保持最新版本</text>
+        <text x="62" y="148" class="body">少维护成本</text>
+      </g>
+  </g>
+</svg>

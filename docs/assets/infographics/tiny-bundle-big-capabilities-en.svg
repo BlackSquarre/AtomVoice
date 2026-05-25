@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AtomVoice small bundle, big capability infographic</title>
+  <desc id="desc">Shows how AtomVoice fits multiple recognition engines and dictation features into a tiny download.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="52%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a1d"/>
+      <stop offset="100%" stop-color="#050507"/>
+    </linearGradient>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#17212b" flood-opacity="0.14"/>
+    </filter>
+    <filter id="pillShadow" x="-20%" y="-30%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#17212b" flood-opacity="0.25"/>
+    </filter>
+    <style>
+      .page { font-family: "BlackSquareSans", "Black Square Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 30px; font-weight: 760; fill: #596570; }
+      .title { font-size: 62px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 1.2px; paint-order: stroke fill; }
+      .sub { font-size: 25px; font-weight: 560; fill: #4e5a64; }
+      .bigNumber { font-size: 150px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .unit { font-size: 42px; font-weight: 760; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke-width: 2.5; filter: url(#softShadow); }
+      .cardTitle { font-size: 32px; font-weight: 860; fill: #151f29; }
+      .body { font-size: 24px; font-weight: 590; fill: #34404b; }
+      .badge { font-size: 20px; font-weight: 820; fill: #ffffff; }
+      .engineTitle { font-size: 30px; font-weight: 860; fill: #151f29; }
+      .engineBody { font-size: 22px; font-weight: 600; fill: #4f5b66; }
+      .cap { font-size: 24px; font-weight: 760; fill: #24313c; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g class="page">
+    <text x="110" y="92" class="kicker">AtomVoice lightweight design</text>
+    <text x="110" y="170" class="title">Under 3MB, three recognition engines</text>
+    <text x="110" y="222" class="sub">A tiny download combines local, system, cloud recognition, and everyday input.</text>
+
+    <g transform="translate(110 315)">
+      <rect x="0" y="0" width="510" height="545" rx="38" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5" filter="url(#softShadow)"/>
+      <text x="58" y="155" class="bigNumber">&lt;3</text>
+      <text x="300" y="142" class="unit">MB</text>
+      <text x="58" y="210" class="body">Download size</text>
+
+      <g transform="translate(72 265)" filter="url(#pillShadow)">
+        <rect x="0" y="0" width="365" height="112" rx="56" fill="url(#pill)"/>
+        <rect x="78" y="38" width="18" height="42" rx="9" fill="#3B82F6"/>
+        <rect x="122" y="26" width="18" height="66" rx="9" fill="#22D3EE"/>
+        <rect x="166" y="14" width="18" height="90" rx="9" fill="#22C55E"/>
+        <rect x="210" y="26" width="18" height="66" rx="9" fill="#22D3EE"/>
+        <rect x="254" y="38" width="18" height="42" rx="9" fill="#3B82F6"/>
+      </g>
+
+      <text x="58" y="450" class="cardTitle">Small bundle, complete input</text>
+      <text x="58" y="492" class="body">Hold to speak: recognize, refine, insert</text>
+      <text x="58" y="528" class="body">all inside one menu bar app</text>
+    </g>
+
+    <g transform="translate(690 315)">
+      <rect x="0" y="0" width="360" height="245" rx="28" class="card" stroke="#218b63"/>
+      <rect x="34" y="30" width="154" height="38" rx="19" fill="#218b63"/>
+      <text x="111" y="56" class="badge" text-anchor="middle">Local engine</text>
+      <text x="34" y="118" class="engineTitle">Sherpa-ONNX</text>
+      <text x="34" y="160" class="engineBody">Works offline</text>
+      <text x="34" y="195" class="engineBody">Audio stays on device</text>
+    </g>
+
+    <g transform="translate(1110 315)">
+      <rect x="0" y="0" width="360" height="245" rx="28" class="card" stroke="#4f74bd"/>
+      <rect x="34" y="30" width="168" height="38" rx="19" fill="#4f74bd"/>
+      <text x="118" y="56" class="badge" text-anchor="middle">System engine</text>
+      <text x="34" y="118" class="engineTitle">Apple Speech</text>
+      <text x="34" y="160" class="engineBody">Ready out of the box</text>
+      <text x="34" y="195" class="engineBody">Great for daily input</text>
+    </g>
+
+    <g transform="translate(1530 315)">
+      <rect x="0" y="0" width="300" height="245" rx="28" class="card" stroke="#bd6637"/>
+      <rect x="34" y="30" width="160" height="38" rx="19" fill="#bd6637"/>
+      <text x="114" y="56" class="badge" text-anchor="middle">Cloud engine</text>
+      <text x="34" y="118" class="engineTitle">Doubao ASR</text>
+      <text x="34" y="160" class="engineBody">Accuracy first</text>
+      <text x="34" y="195" class="engineBody">Explicitly enabled</text>
+    </g>
+
+    <g transform="translate(690 630)">
+      <rect x="0" y="0" width="1140" height="230" rx="32" fill="#ffffff" stroke="#d8e0e7" stroke-width="2.5" filter="url(#softShadow)"/>
+      <text x="42" y="66" class="cardTitle">Also includes these input features</text>
+      <text x="42" y="126" class="cap">Hold / tap hotkey</text>
+      <text x="345" y="126" class="cap">Insert into current app</text>
+      <text x="702" y="126" class="cap">LLM Refinement Beta</text>
+      <text x="42" y="176" class="cap">Headphone Control Beta</text>
+      <text x="345" y="176" class="cap">Multilingual input</text>
+      <text x="702" y="176" class="cap">Auto update</text>
+    </g>
+  </g>
+</svg>

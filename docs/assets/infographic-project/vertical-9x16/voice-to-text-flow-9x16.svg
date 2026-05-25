@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">一句话怎样 变成文字</title>
+  <desc id="desc">触发、录音、识别、润色、上屏。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbf9"/>
+      <stop offset="54%" stop-color="#f4f7fb"/>
+      <stop offset="100%" stop-color="#fff7ee"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#17212b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+      .kicker { font-size: 28px; font-weight: 760; fill: #596570; }
+      .title { font-size: 56px; font-weight: 860; fill: #141d26; letter-spacing: 0; stroke: #141d26; stroke-width: 0.8px; paint-order: stroke fill; }
+      .sub { font-size: 24px; font-weight: 570; fill: #4e5a64; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.4; filter: url(#softShadow); }
+      .cardTitle { font-size: 30px; font-weight: 850; fill: #151f29; }
+      .body { font-size: 23px; font-weight: 600; fill: #4f5b66; }
+      .small { font-size: 19px; font-weight: 650; fill: #66727d; }
+      .badge { font-size: 20px; font-weight: 820; fill: #ffffff; }
+      .big { font-size: 84px; font-weight: 880; fill: #141d26; letter-spacing: 0; }
+      .mid { font-size: 40px; font-weight: 850; fill: #151f29; }
+      .label { font-size: 21px; font-weight: 760; fill: #293641; }
+      .mutedLine { stroke: #d8e0e7; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <g class="page">
+    <text x="58" y="78" class="kicker">AtomVoice 输入链路</text>
+    <text x="58" y="124" class="title">一句话怎样</text>
+<text x="58" y="186" class="title">变成文字</text>
+    <text x="58" y="248" class="sub">触发、录音、识别、润色、上屏。</text>
+    <g transform="translate(58 276)">
+      <rect x="0" y="0" width="964" height="142" rx="30" class="card"/>
+      <circle cx="72" cy="71" r="34" fill="#141d26"/>
+      <text x="72" y="83" text-anchor="middle" class="badge">1</text>
+      <text x="132" y="56" class="cardTitle">按住</text>
+      <text x="132" y="100" class="body">触发录音，也可轻触</text>
+      <line x1="72" y1="158" x2="72" y2="172" stroke="#4f74bd" stroke-width="5" stroke-linecap="round"/>
+    </g>
+<g transform="translate(58 466)">
+      <rect x="0" y="0" width="964" height="142" rx="30" class="card"/>
+      <circle cx="72" cy="71" r="34" fill="#4f74bd"/>
+      <text x="72" y="83" text-anchor="middle" class="badge">2</text>
+      <text x="132" y="56" class="cardTitle">说话</text>
+      <text x="132" y="100" class="body">麦克风收音，松手结束</text>
+      <line x1="72" y1="158" x2="72" y2="172" stroke="#218b63" stroke-width="5" stroke-linecap="round"/>
+    </g>
+<g transform="translate(58 656)">
+      <rect x="0" y="0" width="964" height="142" rx="30" class="card"/>
+      <circle cx="72" cy="71" r="34" fill="#218b63"/>
+      <text x="72" y="83" text-anchor="middle" class="badge">3</text>
+      <text x="132" y="56" class="cardTitle">识别</text>
+      <text x="132" y="100" class="body">本地 / 系统 / 云端</text>
+      <line x1="72" y1="158" x2="72" y2="172" stroke="#bd6637" stroke-width="5" stroke-linecap="round"/>
+    </g>
+<g transform="translate(58 846)">
+      <rect x="0" y="0" width="964" height="142" rx="30" class="card"/>
+      <circle cx="72" cy="71" r="34" fill="#bd6637"/>
+      <text x="72" y="83" text-anchor="middle" class="badge">4</text>
+      <text x="132" y="56" class="cardTitle">润色</text>
+      <text x="132" y="100" class="body">可选整理文本</text>
+      <line x1="72" y1="158" x2="72" y2="172" stroke="#141d26" stroke-width="5" stroke-linecap="round"/>
+    </g>
+<g transform="translate(58 1036)">
+      <rect x="0" y="0" width="964" height="142" rx="30" class="card"/>
+      <circle cx="72" cy="71" r="34" fill="#141d26"/>
+      <text x="72" y="83" text-anchor="middle" class="badge">5</text>
+      <text x="132" y="56" class="cardTitle">上屏</text>
+      <text x="132" y="100" class="body">输入当前 App 光标处</text>
+
+    </g>
+  </g>
+</svg>
