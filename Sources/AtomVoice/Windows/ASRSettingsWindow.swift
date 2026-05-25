@@ -1,5 +1,4 @@
 import Cocoa
-import Speech
 
 final class ASRSettingsWindowController: NSObject {
     private static let doubaoAPIKeyURLString = "https://console.volcengine.com/speech/new/setting/apikeys"
@@ -30,9 +29,7 @@ final class ASRSettingsWindowController: NSObject {
     private var sherpaAutoUnloadCheckbox: NSButton!
     private var sherpaAutoUnloadPopup: NSPopUpButton!
 
-    // Apple 设置（Apple settings）
-    private var appleEnableCheckbox: NSButton!
-    private var appleStatusLabel: NSTextField!
+    private let appleTab = AppleSettingsTab()
 
     // 状态（Status）
     private var statusLabel: NSTextField!
@@ -86,7 +83,7 @@ final class ASRSettingsWindowController: NSObject {
         // 标签页 2：Apple 离线识别（Tab 2: Apple offline recognition）
         let appleTab = NSTabViewItem(identifier: "apple")
         appleTab.label = loc("asrSettings.tab.apple")
-        appleTab.view = buildAppleTab()
+        appleTab.view = self.appleTab.makeView()
         tabView.addTabViewItem(appleTab)
 
         // 标签页 3：豆包云端识别（Tab 3: Doubao cloud recognition）
@@ -512,74 +509,6 @@ final class ASRSettingsWindowController: NSObject {
         AppSettings.displayName(forRecognitionLanguage: code)
     }
 
-    // MARK: - Apple 标签页（Apple Tab）
-
-    private func buildAppleTab() -> NSView {
-        let view = NSView()
-
-        let descLabel = NSTextField(labelWithString: loc("asrSettings.apple.desc"))
-        descLabel.font = .systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 0
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // 当前状态（Current status）
-        let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
-
-        appleStatusLabel = NSTextField(labelWithString: "")
-        appleStatusLabel.font = .systemFont(ofSize: 13)
-        appleStatusLabel.translatesAutoresizingMaskIntoConstraints = false
-        updateAppleStatus()
-
-        // 启用复选框（Enable checkbox）
-        let isEnabled = AppSettings.appleOnDeviceRecognitionEnabled
-        appleEnableCheckbox = SettingsUI.makeCheckbox(title: loc("asrSettings.apple.enable"), tooltip: "")
-        appleEnableCheckbox.state = isEnabled ? .on : .off
-        appleEnableCheckbox.isEnabled = isSupported
-        appleEnableCheckbox.translatesAutoresizingMaskIntoConstraints = false
-
-        // 注意事项（Notes）
-        let noteLabel = NSTextField(labelWithString: loc("asrSettings.apple.note"))
-        noteLabel.font = .systemFont(ofSize: 12)
-        noteLabel.textColor = .secondaryLabelColor
-        noteLabel.lineBreakMode = .byWordWrapping
-        noteLabel.maximumNumberOfLines = 0
-        noteLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // 打开系统设置按钮（Open System Settings button）
-        let openSettingsButton = SettingsUI.makeButton(loc("asrSettings.apple.openSettings"), target: self, action: #selector(openAppleSettings(_:)))
-        openSettingsButton.translatesAutoresizingMaskIntoConstraints = false
-
-        view.addSubview(descLabel)
-        view.addSubview(appleStatusLabel)
-        view.addSubview(appleEnableCheckbox)
-        view.addSubview(noteLabel)
-        view.addSubview(openSettingsButton)
-
-        NSLayoutConstraint.activate([
-            descLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            descLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            descLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-
-            appleStatusLabel.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 16),
-            appleStatusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-
-            appleEnableCheckbox.topAnchor.constraint(equalTo: appleStatusLabel.bottomAnchor, constant: 12),
-            appleEnableCheckbox.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-
-            noteLabel.topAnchor.constraint(equalTo: appleEnableCheckbox.bottomAnchor, constant: 16),
-            noteLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            noteLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-
-            openSettingsButton.topAnchor.constraint(equalTo: noteLabel.bottomAnchor, constant: 12),
-            openSettingsButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-        ])
-
-        return view
-    }
-
     // MARK: - 辅助方法（Helper methods）
 
     private func refreshFields() {
@@ -602,7 +531,7 @@ final class ASRSettingsWindowController: NSObject {
         updateSherpaStatus()
 
         // Apple 设置（Apple settings）
-        updateAppleStatus()
+        appleTab.refresh()
 
         // 状态（Status）
         statusLabel?.stringValue = ""
@@ -640,18 +569,7 @@ final class ASRSettingsWindowController: NSObject {
         sherpaAutoUnloadPopup?.isEnabled = enabled
     }
 
-    private func updateAppleStatus() {
-        let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
 
-        if isSupported {
-            appleStatusLabel?.stringValue = loc("asrSettings.apple.status") + " ✓ " + loc("asrSettings.apple.modelDownloaded")
-            appleStatusLabel?.textColor = .systemGreen
-        } else {
-            appleStatusLabel?.stringValue = loc("asrSettings.apple.status") + " " + loc("asrSettings.apple.modelNotDownloaded")
-            appleStatusLabel?.textColor = .systemOrange
-        }
-    }
 
     private func persistSherpaAutoUnloadSettings() {
         AppSettings.sherpaAutoUnloadEnabled = sherpaAutoUnloadCheckbox.state == .on
@@ -659,17 +577,7 @@ final class ASRSettingsWindowController: NSObject {
         AppSettings.sherpaAutoUnloadIdleMinutes = selectedUnloadMinutes
     }
 
-    private func persistAppleSettings() {
-        let appleEnabled = appleEnableCheckbox.state == .on
-        let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
-        if appleEnabled && !isSupported {
-            // 不支持时强制关闭（Force off when unsupported）
-            AppSettings.appleOnDeviceRecognitionEnabled = false
-        } else {
-            AppSettings.appleOnDeviceRecognitionEnabled = appleEnabled
-        }
-    }
+
 
     private func startSherpaSettingsDownload(
         preset: SherpaModelPreset,
@@ -884,11 +792,7 @@ final class ASRSettingsWindowController: NSObject {
         }
     }
 
-    @objc private func openAppleSettings(_ sender: NSButton) {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Dictation") {
-            NSWorkspace.shared.open(url)
-        }
-    }
+
 
     @objc private func openDoubaoAPIKeyPage(_ sender: NSButton) {
         if let url = URL(string: Self.doubaoAPIKeyURLString) {
@@ -932,7 +836,7 @@ final class ASRSettingsWindowController: NSObject {
                 let result = AlertPresenter.shared.runModalAlert(alert)
                 if result == .alertFirstButtonReturn {
                     persistSherpaAutoUnloadSettings()
-                    persistAppleSettings()
+                    _ = appleTab.save()
                     startSherpaSettingsDownload(preset: preset, activateOnSuccess: true) { [weak self] success in
                         if success {
                             self?.statusLabel.stringValue = loc("settings.saved")
@@ -955,7 +859,14 @@ final class ASRSettingsWindowController: NSObject {
         persistSherpaAutoUnloadSettings()
 
         // 保存 Apple 设置（Save Apple settings）
-        persistAppleSettings()
+        switch appleTab.save() {
+        case .saved, .deferred:
+            break
+        case let .failed(message, color):
+            statusLabel.stringValue = message
+            statusLabel.textColor = color
+            return
+        }
 
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
