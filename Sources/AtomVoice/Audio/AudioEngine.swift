@@ -126,7 +126,6 @@ final class AudioEngineController {
                 return
             }
             let wasActive = self.tapInstalled
-            NSLog("[ATOMVOICE] route-change handler PRE-cleanup wasActive=%d", wasActive ? 1 : 0)
             DebugLog.info("[AudioEngine] Detected real route change, wasActive=\(wasActive)")
             // 清掉旧 engine 状态
             if self.tapInstalled {
@@ -188,7 +187,6 @@ final class AudioEngineController {
 
         while isCurrentRouteRecovery(token), Date() < deadline {
             attempt += 1
-            NSLog("[ATOMVOICE] route-change before rebuild")
 
             // AVAudioEngine 不是线程安全的，必须在主线程操作 engine 状态（rebuild + arm）。
             // 后台线程只负责重试间隔和 token 校验。
@@ -204,7 +202,6 @@ final class AudioEngineController {
             }
 
             guard isCurrentRouteRecovery(token) else { return }
-            NSLog("[ATOMVOICE] route-change before re-arm")
 
             if armSuccess {
                 guard isCurrentRouteRecovery(token) else {
@@ -212,7 +209,6 @@ final class AudioEngineController {
                     return
                 }
                 completeRouteRecovery(token: token)
-                NSLog("[ATOMVOICE] route-change AFTER re-arm OK")
                 DebugLog.info("[AudioEngine] Seamlessly switched to new device after route change")
                 return
             }
