@@ -22,7 +22,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     public override init() { super.init() }
 
-    deinit { sherpaLifecycle?.stop(); NotificationCenter.default.removeObserver(self) }
+    deinit {
+        sherpaLifecycle?.stop()
+        NotificationCenter.default.removeObserver(self)
+    }
 
     public func applicationWillTerminate(_ notification: Notification) { singleInstance.releaseSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier) }
 
@@ -48,7 +51,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         AppSettings.registerDefaults()
         LLMAPIKeyMigration.runIfNeeded(backend: AppSettings.backend)
         if !AppSettings.doubaoASRLowLatencyDefaultApplied {
-            UserDefaults.standard.set(false, forKey: AppSettings.Keys.doubaoASREnableNonstream)
+            AppSettings.backend.set(false, forKey: AppSettings.Keys.doubaoASREnableNonstream)
             AppSettings.doubaoASRLowLatencyDefaultApplied = true
         }
         SherpaModelPreset.probeMirrorAsync()
@@ -101,7 +104,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             onLanguageChanged: { [weak self] in self?.asrEngineProvider.appleEngine().updateLanguage() },
             llmRefiner: llmRefiner,
             asrEngineRegistry: asrEngineRegistry,
-            textOutputSinkRegistry: textOutputSinkRegistry
+            textOutputSinkRegistry: textOutputSinkRegistry,
+            sherpaDownloadReporter: sherpaDownloadCapsulePresenter
         )
         menuBarController.onSherpaDownloadRequested = { [weak self] in self?.startSherpaDownload() }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in self?.fnKeyMonitor.triggerKeyCode = keyCode }
@@ -214,14 +218,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - External API
 
-    static func showSherpaDownloadCapsule(_ message: String) {
-        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }; appDelegate.sherpaDownloadCapsulePresenter.updateProgress(message: message, force: false)
-    }
-
-    static func finishSherpaDownloadCapsule(success: Bool, error: String?) {
-        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }; appDelegate.sherpaDownloadCapsulePresenter.finishDownload(success: success, error: error)
-    }
-
     func showOOBE() {
         menuBarController.presentOOBE { controller in
             controller.onFinish = { [weak self] engine, triggerKey in
@@ -260,10 +256,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startSherpaDownload() {
         if SherpaModelDownloader.isReady() { return }
         let downloader = SherpaModelDownloader.shared
-        AppDelegate.showSherpaDownloadCapsule(loc("sherpa.downloading.start"))
+        let reporter: SherpaDownloadReporting = sherpaDownloadCapsulePresenter
+        reporter.updateProgress(message: loc("sherpa.downloading.start"), force: false)
         downloader.addObserver(
-            progress: { [weak self] _, _, _, message in if self != nil { AppDelegate.showSherpaDownloadCapsule(message) } },
-            complete: { [weak self] success, error in if self != nil { AppDelegate.finishSherpaDownloadCapsule(success: success, error: error) } }
+            progress: { [weak reporter] _, _, _, message in reporter?.updateProgress(message: message, force: false) },
+            complete: { [weak reporter] success, error in reporter?.finishDownload(success: success, error: error) }
         )
         _ = downloader.startDownload()
     }

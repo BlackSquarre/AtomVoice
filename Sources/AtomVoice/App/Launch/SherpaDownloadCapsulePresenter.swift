@@ -9,7 +9,14 @@ protocol DownloadCapsulePresenting: AnyObject {
 
 extension CapsuleWindowController: DownloadCapsulePresenting {}
 
-final class SherpaDownloadCapsulePresenter {
+/// Sherpa 下载状态对外报告接口；解耦设置面板和 AppDelegate 持有的 presenter。
+/// (Outward-facing Sherpa download reporting; decouples settings panels from the AppDelegate-owned presenter.)
+protocol SherpaDownloadReporting: AnyObject {
+    func updateProgress(message: String, force: Bool)
+    func finishDownload(success: Bool, error: String?)
+}
+
+final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
     private weak var capsulePresenter: (any DownloadCapsulePresenting)?
     private let isRecording: () -> Bool
     private let now: () -> Date

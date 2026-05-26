@@ -5,6 +5,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
     let label = loc("asrSettings.tab.sherpa")
     private let parentWindow: () -> NSWindow?
     private let onStatusChanged: (String, NSColor) -> Void
+    private weak var sherpaDownloadReporter: SherpaDownloadReporting?
     private var sherpaRadioButtons: [NSButton] = []
     private var sherpaButtonModelIDs: [NSButton: String] = [:]
     private var sherpaStatusLabel: NSTextField!
@@ -16,10 +17,12 @@ final class SherpaSettingsTab: ASRSettingsTab {
     private var sherpaAutoUnloadPopup: NSPopUpButton!
     init(
         parentWindow: @escaping () -> NSWindow?,
-        onStatusChanged: @escaping (String, NSColor) -> Void
+        onStatusChanged: @escaping (String, NSColor) -> Void,
+        sherpaDownloadReporter: SherpaDownloadReporting?
     ) {
         self.parentWindow = parentWindow
         self.onStatusChanged = onStatusChanged
+        self.sherpaDownloadReporter = sherpaDownloadReporter
     }
 
     private func makeLabel(_ text: String, size: CGFloat, color: NSColor? = nil, wrapped: Bool = false) -> NSTextField {
@@ -212,7 +215,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         let pending = presets.filter { !$0.isDownloaded }
         // 当前选择的 preset id：若已不在当前语言列表中则回退到该语言的默认
         // (Current preset id; fall back to language default if it's not in this language's list)
-        let savedID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID)
+        let savedID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID)
         let validIDs = Set(presets.map { $0.id })
         let activeID = savedID.flatMap { validIDs.contains($0) ? $0 : nil }
             ?? SherpaModelPreset.defaultModelID(forRecognitionLanguage: lang)
@@ -307,17 +310,17 @@ final class SherpaSettingsTab: ASRSettingsTab {
         sherpaDeleteButton?.isEnabled = false
         sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
         sherpaStatusLabel?.textColor = .systemBlue
-        AppDelegate.showSherpaDownloadCapsule(sherpaStatusLabel.stringValue)
+        sherpaDownloadReporter?.updateProgress(message: sherpaStatusLabel.stringValue, force: false)
         let downloader = SherpaModelDownloader.shared
         downloader.addObserver(
             progress: { [weak self] _, _, _, message in
                 self?.sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
-                AppDelegate.showSherpaDownloadCapsule(message)
+                self?.sherpaDownloadReporter?.updateProgress(message: message, force: false)
             },
             complete: { [weak self] success, error in
                 guard let self else { return }
                 let targetReady = runtimeOnly || preset.isDownloaded
-                AppDelegate.finishSherpaDownloadCapsule(success: success && targetReady, error: error)
+                self.sherpaDownloadReporter?.finishDownload(success: success && targetReady, error: error)
                 if success && targetReady {
                     if activateOnSuccess {
                         AppSettings.sherpaModelPresetID = preset.id
@@ -340,7 +343,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         let result = downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly)
         if result == .alreadyDownloading {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
-            AppDelegate.showSherpaDownloadCapsule(sherpaStatusLabel.stringValue)
+            sherpaDownloadReporter?.updateProgress(message: sherpaStatusLabel.stringValue, force: false)
         }
     }
     @objc private func sherpaModelSelected(_ sender: NSButton) {
@@ -357,7 +360,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         // 切换语言后，若当前 preset 不在新语言列表中，自动切到该语言默认模型
         // (After language switch, if current preset isn't in new list, auto-select language default)
         let presets = SherpaModelPreset.presets(forRecognitionLanguage: code)
-        let savedID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID)
+        let savedID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID)
         if savedID == nil || !presets.contains(where: { $0.id == savedID }) {
             AppSettings.sherpaModelPresetID = SherpaModelPreset.defaultModelID(forRecognitionLanguage: code)
         }
@@ -392,7 +395,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
             SherpaImportedPresetStore.shared.remove(id: preset.id)
             // 当前正用着这个 preset，则切回该语言的内置默认
             // (If this was the active preset, fall back to language default)
-            if UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID) == preset.id {
+            if AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID) == preset.id {
                 AppSettings.sherpaModelPresetID = SherpaModelPreset.defaultModelID(forRecognitionLanguage: preset.language)
             }
         }

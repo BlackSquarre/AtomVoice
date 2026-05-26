@@ -4,15 +4,22 @@ final class ASRSettingsWindowController: NSObject {
     private static let initialContentSize = NSSize(width: 640, height: 600)
 
     var onClose: (() -> Void)?
+    private weak var sherpaDownloadReporter: SherpaDownloadReporting?
     private var window: NSWindow?
     private var tabView: NSTabView!
+
+    init(sherpaDownloadReporter: SherpaDownloadReporting?) {
+        self.sherpaDownloadReporter = sherpaDownloadReporter
+        super.init()
+    }
 
     private lazy var sherpaTab = SherpaSettingsTab(
         parentWindow: { [weak self] in self?.window },
         onStatusChanged: { [weak self] message, color in
             self?.statusLabel.stringValue = message
             self?.statusLabel.textColor = color
-        }
+        },
+        sherpaDownloadReporter: sherpaDownloadReporter
     )
     private let appleTab = AppleSettingsTab()
     private lazy var doubaoTab = DoubaoSettingsTab(textFieldDelegate: self)

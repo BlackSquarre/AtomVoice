@@ -12,6 +12,7 @@ import Cocoa
 ///  All open* methods follow the same template; kept inline for at-a-glance consistency.)
 final class MenuWindowRouter {
     private let llmRefiner: LLMRefiner
+    private weak var sherpaDownloadReporter: SherpaDownloadReporting?
     private var settingsWindow: SettingsWindowController?
     private var doubaoSettingsWindow: DoubaoSettingsWindowController?
     private var asrSettingsWindow: ASRSettingsWindowController?
@@ -19,8 +20,9 @@ final class MenuWindowRouter {
     private var permissionsWindow: PermissionsWindowController?
     private var oobeWindow: OOBEWindowController?
 
-    init(llmRefiner: LLMRefiner) {
+    init(llmRefiner: LLMRefiner, sherpaDownloadReporter: SherpaDownloadReporting) {
         self.llmRefiner = llmRefiner
+        self.sherpaDownloadReporter = sherpaDownloadReporter
     }
 
     func openSettings() {
@@ -43,7 +45,7 @@ final class MenuWindowRouter {
 
     func openASRSettings() {
         if asrSettingsWindow == nil {
-            let c = ASRSettingsWindowController()
+            let c = ASRSettingsWindowController(sherpaDownloadReporter: sherpaDownloadReporter)
             c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
             asrSettingsWindow = c
         }
@@ -53,7 +55,7 @@ final class MenuWindowRouter {
     #if DEBUG_BUILD
     func openASRSettingsSnapshot(tabIdentifier: String) {
         if asrSettingsWindow == nil {
-            let c = ASRSettingsWindowController()
+            let c = ASRSettingsWindowController(sherpaDownloadReporter: sherpaDownloadReporter)
             c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
             asrSettingsWindow = c
         }

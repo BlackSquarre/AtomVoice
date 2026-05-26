@@ -15,11 +15,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(onLanguageChanged: @escaping () -> Void,
          llmRefiner: LLMRefiner,
          asrEngineRegistry: ASREngineRegistry = .shared,
-         textOutputSinkRegistry: TextOutputSinkRegistry? = nil) {
+         textOutputSinkRegistry: TextOutputSinkRegistry? = nil,
+         sherpaDownloadReporter: SherpaDownloadReporting) {
         self.onLanguageChanged = onLanguageChanged
         self.asrEngineRegistry = asrEngineRegistry
         self.textOutputSinkRegistry = textOutputSinkRegistry
-        self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner)
+        self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner, sherpaDownloadReporter: sherpaDownloadReporter)
         super.init()
         setupStatusItem()
     }
@@ -753,7 +754,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func selectTextOutputSink(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
-        UserDefaults.standard.set(code, forKey: TextOutputSinkRegistry.userDefaultsKey)
+        AppSettings.backend.set(code, forKey: TextOutputSinkRegistry.settingsKey)
         rebuildMenu()
     }
 
