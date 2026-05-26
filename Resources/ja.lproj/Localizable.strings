@@ -306,7 +306,7 @@
 "doubao.settings.enablePunctuation" = "句読点を有効化";
 "doubao.settings.enableITN" = "テキスト正規化";
 "doubao.settings.enableDDC" = "言い淀み補正を有効化";
-"doubao.settings.enableNonstream" = "テキスト最適化";
+"doubao.settings.enableNonstream" = "二段階認識";
 "doubao.settings.finalTimeout" = "タイムアウト:";
 "doubao.settings.keychainFailed" = "API Key をキーチェーンに保存できませんでした。";
 "tooltip.doubao.apiKey" = "Volcengine コンソールの APP Key。Doubao 音声サービスへの接続に使います。";

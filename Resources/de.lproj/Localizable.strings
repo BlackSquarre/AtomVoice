@@ -306,7 +306,7 @@
 "doubao.settings.enablePunctuation" = "Interpunktion aktivieren";
 "doubao.settings.enableITN" = "Textnormalisierung";
 "doubao.settings.enableDDC" = "Sprachglättung aktivieren";
-"doubao.settings.enableNonstream" = "Textoptimierung";
+"doubao.settings.enableNonstream" = "Zweiterkennung";
 "doubao.settings.finalTimeout" = "Zeitlimit:";
 "doubao.settings.keychainFailed" = "API Key konnte nicht im Schlüsselbund gespeichert werden.";
 "tooltip.doubao.apiKey" = "APP Key aus der Volcengine-Konsole, zur Verbindung mit Doubao Speech.";

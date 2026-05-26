@@ -306,7 +306,7 @@
 "doubao.settings.enablePunctuation" = "Enable punctuation";
 "doubao.settings.enableITN" = "Text normalization";
 "doubao.settings.enableDDC" = "Enable speech smoothing";
-"doubao.settings.enableNonstream" = "Text optimization";
+"doubao.settings.enableNonstream" = "Second-pass recognition";
 "doubao.settings.finalTimeout" = "Timeout:";
 "doubao.settings.keychainFailed" = "Failed to save API Key to Keychain.";
 "tooltip.doubao.apiKey" = "The APP Key from the Volcengine console, used to connect to Doubao Speech.";

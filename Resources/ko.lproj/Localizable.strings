@@ -306,7 +306,7 @@
 "doubao.settings.enablePunctuation" = "문장 부호 사용";
 "doubao.settings.enableITN" = "텍스트 정규화";
 "doubao.settings.enableDDC" = "말더듬 정리 사용";
-"doubao.settings.enableNonstream" = "텍스트 최적화";
+"doubao.settings.enableNonstream" = "2차 인식";
 "doubao.settings.finalTimeout" = "시간 제한:";
 "doubao.settings.keychainFailed" = "API Key를 키체인에 저장하지 못했습니다.";
 "tooltip.doubao.apiKey" = "Volcengine 콘솔의 APP Key이며 Doubao 음성 서비스 연결에 사용됩니다.";

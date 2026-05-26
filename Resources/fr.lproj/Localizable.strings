@@ -306,7 +306,7 @@
 "doubao.settings.enablePunctuation" = "Activer la ponctuation";
 "doubao.settings.enableITN" = "Normalisation du texte";
 "doubao.settings.enableDDC" = "Lissage de la parole";
-"doubao.settings.enableNonstream" = "Optimisation du texte";
+"doubao.settings.enableNonstream" = "Reconnaissance en second passage";
 "doubao.settings.finalTimeout" = "Délai d’attente :";
 "doubao.settings.keychainFailed" = "Impossible d’enregistrer l’API Key dans le trousseau.";
 "tooltip.doubao.apiKey" = "APP Key de la console Volcengine, utilisée pour se connecter au service vocal Doubao.";

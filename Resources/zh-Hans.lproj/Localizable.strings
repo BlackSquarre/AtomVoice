@@ -307,7 +307,7 @@
 "doubao.settings.enablePunctuation" = "启用标点";
 "doubao.settings.enableITN" = "文本规范化";
 "doubao.settings.enableDDC" = "启用语义顺滑";
-"doubao.settings.enableNonstream" = "文本优化";
+"doubao.settings.enableNonstream" = "二遍识别";
 "doubao.settings.finalTimeout" = "超时时间:";
 "doubao.settings.keychainFailed" = "无法将 API Key 保存到钥匙串。";
 "tooltip.doubao.apiKey" = "火山引擎控制台里的 APP Key，用于连接豆包语音服务。";
