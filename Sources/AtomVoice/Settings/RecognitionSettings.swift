@@ -8,12 +8,12 @@ final class RecognitionSettings {
     }
 
     var selectedLanguage: String {
-        get { backend.string(forKey: AppSettings.Keys.selectedLanguage) ?? AppSettings.systemDefaultLanguage }
+        get { backend.string(forKey: AppSettings.Keys.selectedLanguage, default: AppSettings.systemDefaultLanguage) }
         set { backend.set(newValue, forKey: AppSettings.Keys.selectedLanguage) }
     }
 
     var engine: String {
-        get { backend.string(forKey: AppSettings.Keys.recognitionEngine) ?? ASREngineRegistry.appleCode }
+        get { backend.string(forKey: AppSettings.Keys.recognitionEngine, default: ASREngineRegistry.appleCode) }
         set { setRecognitionTrackedString(newValue, key: AppSettings.Keys.recognitionEngine, currentValue: { engine }) }
     }
 
@@ -42,12 +42,12 @@ final class RecognitionSettings {
     }
 
     var sherpaProvider: String {
-        get { backend.string(forKey: AppSettings.Keys.sherpaProvider) ?? AppSettings.defaultSherpaProvider }
+        get { backend.string(forKey: AppSettings.Keys.sherpaProvider, default: AppSettings.defaultSherpaProvider) }
         set { setRecognitionTrackedString(newValue, key: AppSettings.Keys.sherpaProvider, currentValue: { sherpaProvider }) }
     }
 
     var sherpaModelPresetID: String {
-        get { backend.string(forKey: AppSettings.Keys.sherpaModelPresetID) ?? SherpaModelPreset.defaultModelID }
+        get { backend.string(forKey: AppSettings.Keys.sherpaModelPresetID, default: SherpaModelPreset.defaultModelID) }
         set { setRecognitionTrackedString(newValue, key: AppSettings.Keys.sherpaModelPresetID, currentValue: { sherpaModelPresetID }) }
     }
 

@@ -8,12 +8,12 @@ final class InterfaceSettings {
     }
 
     var animationStyle: String {
-        get { backend.string(forKey: AppSettings.Keys.animationStyle) ?? AppSettings.defaultAnimationStyle }
+        get { backend.string(forKey: AppSettings.Keys.animationStyle, default: AppSettings.defaultAnimationStyle) }
         set { backend.set(newValue, forKey: AppSettings.Keys.animationStyle) }
     }
 
     var animationSpeed: String {
-        get { backend.string(forKey: AppSettings.Keys.animationSpeed) ?? AppSettings.defaultAnimationSpeed }
+        get { backend.string(forKey: AppSettings.Keys.animationSpeed, default: AppSettings.defaultAnimationSpeed) }
         set { backend.set(newValue, forKey: AppSettings.Keys.animationSpeed) }
     }
 

@@ -20,22 +20,22 @@ final class LLMSettings {
     }
 
     var apiBaseURL: String {
-        get { backend.string(forKey: AppSettings.Keys.llmAPIBaseURL) ?? AppSettings.defaultLLMBaseURL }
+        get { backend.string(forKey: AppSettings.Keys.llmAPIBaseURL, default: AppSettings.defaultLLMBaseURL) }
         set { backend.set(newValue, forKey: AppSettings.Keys.llmAPIBaseURL) }
     }
 
     var apiKey: String {
-        get { backend.string(forKey: AppSettings.Keys.llmAPIKey) ?? "" }
+        get { backend.string(forKey: AppSettings.Keys.llmAPIKey, default: "") }
         set { backend.set(newValue, forKey: AppSettings.Keys.llmAPIKey) }
     }
 
     var model: String {
-        get { backend.string(forKey: AppSettings.Keys.llmModel) ?? AppSettings.defaultLLMModel }
+        get { backend.string(forKey: AppSettings.Keys.llmModel, default: AppSettings.defaultLLMModel) }
         set { backend.set(newValue, forKey: AppSettings.Keys.llmModel) }
     }
 
     var systemPrompt: String {
-        get { backend.string(forKey: AppSettings.Keys.llmSystemPrompt) ?? "" }
+        get { backend.string(forKey: AppSettings.Keys.llmSystemPrompt, default: "") }
         set { backend.set(newValue, forKey: AppSettings.Keys.llmSystemPrompt) }
     }
 

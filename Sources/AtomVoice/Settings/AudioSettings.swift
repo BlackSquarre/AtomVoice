@@ -33,7 +33,7 @@ final class AudioSettings {
     }
 
     var audioInputDeviceUID: String {
-        get { backend.string(forKey: AppSettings.Keys.audioInputDeviceUID) ?? "" }
+        get { backend.string(forKey: AppSettings.Keys.audioInputDeviceUID, default: "") }
         set { backend.set(newValue, forKey: AppSettings.Keys.audioInputDeviceUID) }
     }
 

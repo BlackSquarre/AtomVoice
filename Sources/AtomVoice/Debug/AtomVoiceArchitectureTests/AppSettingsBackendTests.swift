@@ -28,6 +28,14 @@ enum AppSettingsBackendTests {
             try expect(observed == 1)
         }
 
+        await runner.run("In-memory settings backend returns string fallback when key is missing") {
+            let backend = InMemorySettingsBackend()
+
+            try expect(backend.string(forKey: "missing", default: "fallback") == "fallback")
+            backend.set("stored", forKey: "missing")
+            try expect(backend.string(forKey: "missing", default: "fallback") == "stored")
+        }
+
         await runner.run("Recognition settings preserve engine notification contract") {
             let backend = InMemorySettingsBackend()
             backend.register(defaults: [

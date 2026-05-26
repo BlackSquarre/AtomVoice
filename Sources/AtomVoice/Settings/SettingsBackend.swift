@@ -4,6 +4,7 @@ protocol SettingsBackend: AnyObject {
     var notificationObject: Any? { get }
 
     func string(forKey key: String) -> String?
+    func string(forKey key: String, default defaultValue: String) -> String
     func bool(forKey key: String, default defaultValue: Bool) -> Bool
     func double(forKey key: String, default defaultValue: Double) -> Double
     func integer(forKey key: String, default defaultValue: Int) -> Int
@@ -41,6 +42,10 @@ final class UserDefaultsBackend: SettingsBackend {
 
     func string(forKey key: String) -> String? {
         defaults.string(forKey: key)
+    }
+
+    func string(forKey key: String, default defaultValue: String) -> String {
+        defaults.string(forKey: key) ?? defaultValue
     }
 
     func bool(forKey key: String, default defaultValue: Bool) -> Bool {
@@ -106,6 +111,10 @@ final class InMemorySettingsBackend: SettingsBackend {
 
     func string(forKey key: String) -> String? {
         value(forKey: key) as? String
+    }
+
+    func string(forKey key: String, default defaultValue: String) -> String {
+        (value(forKey: key) as? String) ?? defaultValue
     }
 
     func bool(forKey key: String, default defaultValue: Bool) -> Bool {
