@@ -32,6 +32,7 @@ enum AppSettings {
         static let llmEnabled = "llmEnabled"
         static let llmAPIBaseURL = "llmAPIBaseURL"
         static let llmAPIKey = "llmAPIKey"
+        static let llmAPIKeyMigratedToKeychain = "llmAPIKeyMigratedToKeychain"
         static let llmModel = "llmModel"
         static let llmSystemPrompt = "llmSystemPrompt"
         static let llmProviders = "llmProviders"
@@ -116,6 +117,7 @@ enum AppSettings {
             Keys.appleLiveInsertionEnabled: false,
             Keys.llmEnabled: false,
             Keys.llmAPIBaseURL: defaultLLMBaseURL,
+            Keys.llmAPIKeyMigratedToKeychain: false,
             Keys.llmModel: defaultLLMModel,
             Keys.autoPunctuationEnabled: true,
             Keys.appleOnDeviceRecognitionEnabled: false,

@@ -46,6 +46,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configureLaunchDefaults() {
         MainMenuInstaller.install()
         AppSettings.registerDefaults()
+        LLMAPIKeyMigration.runIfNeeded(backend: AppSettings.backend)
         if !AppSettings.doubaoASRLowLatencyDefaultApplied {
             UserDefaults.standard.set(false, forKey: AppSettings.Keys.doubaoASREnableNonstream)
             AppSettings.doubaoASRLowLatencyDefaultApplied = true

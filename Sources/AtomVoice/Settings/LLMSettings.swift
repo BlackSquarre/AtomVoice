@@ -4,9 +4,11 @@ final class LLMSettings {
     static let enabledDidChangeNotification = Notification.Name("LLMSettings.enabledDidChange")
 
     private let backend: SettingsBackend
+    private let apiKeyStore: LLMAPIKeyStoring
 
-    init(backend: SettingsBackend) {
+    init(backend: SettingsBackend, apiKeyStore: LLMAPIKeyStoring = LLMAPIKeyStore.shared) {
         self.backend = backend
+        self.apiKeyStore = apiKeyStore
     }
 
     var enabled: Bool {
@@ -25,8 +27,14 @@ final class LLMSettings {
     }
 
     var apiKey: String {
-        get { backend.string(forKey: AppSettings.Keys.llmAPIKey, default: "") }
-        set { backend.set(newValue, forKey: AppSettings.Keys.llmAPIKey) }
+        get { apiKeyStore.read() ?? "" }
+        set {
+            if newValue.isEmpty {
+                apiKeyStore.delete()
+            } else {
+                _ = apiKeyStore.write(newValue)
+            }
+        }
     }
 
     var model: String {
