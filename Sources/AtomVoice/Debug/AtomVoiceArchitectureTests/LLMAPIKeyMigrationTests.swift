@@ -54,5 +54,19 @@ enum LLMAPIKeyMigrationTests {
             try expect(backend.string(forKey: AppSettings.Keys.llmAPIKey) == "legacy-key")
             try expect(backend.bool(forKey: AppSettings.Keys.llmAPIKeyMigratedToKeychain, default: false))
         }
+
+        await runner.run("LLM API key migration preserves Keychain value when both legacy and Keychain are non-empty") {
+            let backend = InMemorySettingsBackend()
+            let keyStore = FakeLLMAPIKeyStore()
+            keyStore.storedValue = "keychain-key"
+            backend.set("stale-legacy", forKey: AppSettings.Keys.llmAPIKey)
+
+            LLMAPIKeyMigration.runIfNeeded(backend: backend, apiKeyStore: keyStore)
+
+            try expect(keyStore.storedValue == "keychain-key")
+            try expect(keyStore.writes.isEmpty)
+            try expect(backend.string(forKey: AppSettings.Keys.llmAPIKey) == nil)
+            try expect(backend.bool(forKey: AppSettings.Keys.llmAPIKeyMigratedToKeychain, default: false))
+        }
     }
 }
