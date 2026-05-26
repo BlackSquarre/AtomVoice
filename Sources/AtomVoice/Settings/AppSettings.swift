@@ -54,6 +54,8 @@ enum AppSettings {
         static let sherpaProvider = "sherpaProvider"
         static let sherpaModelPresetID = "sherpaModelPresetID"
         static let sherpaRecognitionLanguage = "sherpaRecognitionLanguage"
+        static let sherpaMirrorCached = "sherpaMirrorCached"
+        static let sherpaImportedPresets = "sherpaImportedPresets"
         static let textOutputSink = "textOutputSink"
         static let doubaoASREndpoint = "doubaoASREndpoint"
         static let doubaoASRResourceID = "doubaoASRResourceID"

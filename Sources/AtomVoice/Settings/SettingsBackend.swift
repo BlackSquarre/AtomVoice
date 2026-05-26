@@ -8,6 +8,7 @@ protocol SettingsBackend: AnyObject {
     func bool(forKey key: String, default defaultValue: Bool) -> Bool
     func double(forKey key: String, default defaultValue: Double) -> Double
     func integer(forKey key: String, default defaultValue: Int) -> Int
+    func data(forKey key: String) -> Data?
     func set(_ value: Any?, forKey key: String)
     func register(defaults: [String: Any])
     func observe(key: String, handler: @escaping () -> Void) -> SettingsObservation
@@ -61,6 +62,10 @@ final class UserDefaultsBackend: SettingsBackend {
     func integer(forKey key: String, default defaultValue: Int) -> Int {
         guard defaults.object(forKey: key) != nil else { return defaultValue }
         return defaults.integer(forKey: key)
+    }
+
+    func data(forKey key: String) -> Data? {
+        defaults.data(forKey: key)
     }
 
     func set(_ value: Any?, forKey key: String) {
@@ -133,6 +138,10 @@ final class InMemorySettingsBackend: SettingsBackend {
         if let int = value(forKey: key) as? Int { return int }
         if let number = value(forKey: key) as? NSNumber { return number.intValue }
         return defaultValue
+    }
+
+    func data(forKey key: String) -> Data? {
+        value(forKey: key) as? Data
     }
 
     func set(_ value: Any?, forKey key: String) {
