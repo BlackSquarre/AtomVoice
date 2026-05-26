@@ -90,10 +90,12 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
 
     private func notifyComplete(_ success: Bool, _ message: String?) {
         DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             // 复制订阅者快照避免遍历期间被修改（Snapshot observers to avoid mutation during iteration）
-            let snapshot = self?.observers.values.map { $0 } ?? []
+            let snapshot = Array(self.observers.values)
             // 完成后清空所有订阅者，避免下次下载又触发旧 closure（Clear all observers after completion to avoid stale closures next time）
-            self?.observers.removeAll()
+            self.observers.removeAll()
+            self.isDownloading = false
             snapshot.forEach { $0.complete?(success, message) }
         }
     }
@@ -307,7 +309,6 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         }
 
         guard !itemsToDownload.isEmpty else {
-            isDownloading = false
             let success = runtimeOnly || Self.isReady(for: preset)
             if !success { Self.printMissingRequiredFiles(for: preset) }
             targetPreset = nil
@@ -335,10 +336,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         currentTask?.cancel()
         session?.invalidateAndCancel()
         session = nil
-        isDownloading = false
         targetPreset = nil
         targetVersion = nil
         runtimeOnlySession = false
+        notifyComplete(false, "Cancelled")
     }
 
     // MARK: - Private
@@ -365,7 +366,6 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private func downloadCurrent() {
         guard currentItemIndex < itemsToDownload.count else {
             // 全部完成（All done）
-            isDownloading = false
             session?.finishTasksAndInvalidate()
             session = nil
 
@@ -506,7 +506,6 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     private func finishWithError(_ message: String) {
-        isDownloading = false
         session?.invalidateAndCancel()
         session = nil
         targetPreset = nil
