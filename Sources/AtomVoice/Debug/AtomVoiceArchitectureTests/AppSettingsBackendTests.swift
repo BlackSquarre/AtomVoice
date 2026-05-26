@@ -47,11 +47,11 @@ enum AppSettingsBackendTests {
             var changedKeys: [String] = []
             var notificationObjects: [AnyObject] = []
             let token = NotificationCenter.default.addObserver(
-                forName: AppSettings.recognitionEngineSettingsDidChangeNotification,
+                forName: AppSettingsEventBus.recognitionEngineNotification,
                 object: backend,
                 queue: nil
             ) { notification in
-                if let key = notification.userInfo?[AppSettings.recognitionEngineSettingsChangedKey] as? String {
+                if case .recognitionEngineSettingsChanged(let key) = AppSettingsEventBus.decode(notification) {
                     changedKeys.append(key)
                 }
                 if let object = notification.object as AnyObject? {
@@ -75,12 +75,16 @@ enum AppSettingsBackendTests {
             let settings = LLMSettings(backend: backend)
 
             var notifications = 0
+            var decodedEvents: [AppSettingsEvent] = []
             let token = NotificationCenter.default.addObserver(
-                forName: LLMSettings.enabledDidChangeNotification,
+                forName: AppSettingsEventBus.llmEnabledNotification,
                 object: backend,
                 queue: nil
-            ) { _ in
+            ) { note in
                 notifications += 1
+                if let event = AppSettingsEventBus.decode(note) {
+                    decodedEvents.append(event)
+                }
             }
             defer { NotificationCenter.default.removeObserver(token) }
 
@@ -89,6 +93,7 @@ enum AppSettingsBackendTests {
 
             try expect(settings.enabled)
             try expect(notifications == 1)
+            try expect(decodedEvents == [.llmEnabledDidChange])
         }
 
         await runner.run("Audio settings keep lower volume default true") {

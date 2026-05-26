@@ -22,9 +22,6 @@ enum AppSettings {
     static let update = UpdateSettings(backend: backend)
     static let interface = InterfaceSettings(backend: backend)
 
-    static let recognitionEngineSettingsDidChangeNotification = Notification.Name("AppSettings.recognitionEngineSettingsDidChange")
-    static let recognitionEngineSettingsChangedKey = "key"
-
     enum Keys {
         static let selectedLanguage = "selectedLanguage"
         static let recognitionEngine = "recognitionEngine"

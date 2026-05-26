@@ -19,11 +19,11 @@ enum AppSettingsNotificationTests {
 
             var changedKeys: [String] = []
             let token = NotificationCenter.default.addObserver(
-                forName: AppSettings.recognitionEngineSettingsDidChangeNotification,
+                forName: AppSettingsEventBus.recognitionEngineNotification,
                 object: defaults,
                 queue: nil
             ) { notification in
-                if let key = notification.userInfo?[AppSettings.recognitionEngineSettingsChangedKey] as? String {
+                if case .recognitionEngineSettingsChanged(let key) = AppSettingsEventBus.decode(notification) {
                     changedKeys.append(key)
                 }
             }

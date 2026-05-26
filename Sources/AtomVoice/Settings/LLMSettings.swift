@@ -1,8 +1,6 @@
 import Foundation
 
 final class LLMSettings {
-    static let enabledDidChangeNotification = Notification.Name("LLMSettings.enabledDidChange")
-
     private let backend: SettingsBackend
     private let apiKeyStore: LLMAPIKeyStoring
 
@@ -17,7 +15,7 @@ final class LLMSettings {
             let oldValue = enabled
             backend.set(newValue, forKey: AppSettings.Keys.llmEnabled)
             guard oldValue != enabled else { return }
-            NotificationCenter.default.post(name: Self.enabledDidChangeNotification, object: backend.notificationObject)
+            AppSettingsEventBus.publish(.llmEnabledDidChange, from: backend.notificationObject)
         }
     }
 

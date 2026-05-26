@@ -96,7 +96,7 @@ final class SherpaLifecycleCoordinator {
         notificationCenter.addObserver(
             self,
             selector: #selector(recognitionEngineDefaultsDidChange),
-            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
+            name: AppSettingsEventBus.recognitionEngineNotification,
             object: notificationObject
         )
     }
@@ -108,7 +108,7 @@ final class SherpaLifecycleCoordinator {
         cancelAutoUnload()
         notificationCenter.removeObserver(
             self,
-            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
+            name: AppSettingsEventBus.recognitionEngineNotification,
             object: notificationObject
         )
     }

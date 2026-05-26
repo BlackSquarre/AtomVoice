@@ -81,10 +81,9 @@ final class RecognitionSettings {
         backend.set(value, forKey: key)
         let newValue = currentValue()
         guard oldValue != newValue else { return }
-        NotificationCenter.default.post(
-            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
-            object: backend.notificationObject,
-            userInfo: [AppSettings.recognitionEngineSettingsChangedKey: key]
+        AppSettingsEventBus.publish(
+            .recognitionEngineSettingsChanged(key: key),
+            from: backend.notificationObject
         )
     }
 }

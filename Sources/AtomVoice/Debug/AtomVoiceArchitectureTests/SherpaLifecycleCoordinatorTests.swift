@@ -134,7 +134,7 @@ private final class SherpaLifecycleHarness {
 
     func postSettingsChange() {
         notificationCenter.post(
-            name: AppSettings.recognitionEngineSettingsDidChangeNotification,
+            name: AppSettingsEventBus.recognitionEngineNotification,
             object: nil
         )
     }
