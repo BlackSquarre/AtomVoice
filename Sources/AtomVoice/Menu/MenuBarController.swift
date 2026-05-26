@@ -8,6 +8,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let asrEngineRegistry: ASREngineRegistry
     private let textOutputSinkRegistry: TextOutputSinkRegistry?
     private let windowRouter: MenuWindowRouter
+    private weak var appHost: AppHostActions?
     private let permissionService = PermissionService.shared
     var onTriggerKeyChanged: ((UInt16) -> Void)?
     var onSherpaDownloadRequested: (() -> Void)?
@@ -16,11 +17,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
          llmRefiner: LLMRefiner,
          asrEngineRegistry: ASREngineRegistry = .shared,
          textOutputSinkRegistry: TextOutputSinkRegistry? = nil,
-         sherpaDownloadReporter: SherpaDownloadReporting) {
+         sherpaDownloadReporter: SherpaDownloadReporting,
+         appHost: AppHostActions) {
         self.onLanguageChanged = onLanguageChanged
         self.asrEngineRegistry = asrEngineRegistry
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner, sherpaDownloadReporter: sherpaDownloadReporter)
+        self.appHost = appHost
         super.init()
         setupStatusItem()
     }
@@ -656,10 +659,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     #endif
 
     @objc private func rerunOOBE(_ sender: NSMenuItem) {
-        // 重置完成标志并交给 AppDelegate 展示窗口
-        // (Reset completion flag and let AppDelegate present the window)
+        // 重置完成标志并交给 host 展示窗口
+        // (Reset completion flag and let the host present the window)
         AppSettings.hasCompletedOOBE = false
-        (NSApp.delegate as? AppDelegate)?.showOOBE()
+        appHost?.showOOBE()
     }
 
     private func openDoubaoSettingsWindow() {
@@ -825,7 +828,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 return
             }
         }
-        (NSApp.delegate as? AppDelegate)?.setHeadphoneControlEnabled(willEnable)
+        appHost?.setHeadphoneControlEnabled(willEnable)
         rebuildMenu()
     }
 

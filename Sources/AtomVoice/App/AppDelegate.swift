@@ -105,7 +105,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             llmRefiner: llmRefiner,
             asrEngineRegistry: asrEngineRegistry,
             textOutputSinkRegistry: textOutputSinkRegistry,
-            sherpaDownloadReporter: sherpaDownloadCapsulePresenter
+            sherpaDownloadReporter: sherpaDownloadCapsulePresenter,
+            appHost: self
         )
         menuBarController.onSherpaDownloadRequested = { [weak self] in self?.startSherpaDownload() }
         menuBarController.onTriggerKeyChanged = { [weak self] keyCode in self?.fnKeyMonitor.triggerKeyCode = keyCode }
@@ -283,6 +284,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func requestPermissions() { PermissionService.shared.requestStartupPermissions() }
 }
+
+// MARK: - AppHostActions
+
+extension AppDelegate: AppHostActions {}
 
 // MARK: - RecordingSessionDelegate
 
