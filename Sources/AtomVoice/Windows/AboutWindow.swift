@@ -109,8 +109,8 @@ final class AboutWindowController: NSObject {
         }
 
         // ── 版本号（Version）────────────────────────────────────────────
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        let version = AppBundleInfo.shortVersion
+        let build = AppBundleInfo.build
         let verLabel = NSTextField(labelWithString: loc("about.version", version, build))
         verLabel.font = .systemFont(ofSize: 11.5)
         verLabel.textColor = .secondaryLabelColor

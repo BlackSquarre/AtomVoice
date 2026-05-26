@@ -4,18 +4,18 @@ import Cocoa
 /// 把文件/签名/安装委托给 UpdateInstaller。
 /// (Auto-update coordinator: owns the check/download/restart state machine and UI;
 /// delegates network I/O to ReleaseSource and file/signature/install to UpdateInstaller.)
-final class UpdateChecker: NSObject {
+final class UpdateChecker {
     static let shared = UpdateChecker()
 
-    private let bundleIdentifier = "com.blacksquarre.AtomVoice"
-    private let teamIdentifier = "NC623693G3"
+    private static let bundleIdentifier = "com.blacksquarre.AtomVoice"
+    private static let teamIdentifier = "NC623693G3"
     private let releaseSource: ReleaseSource
     private let installer: UpdateInstaller
 
-    private convenience override init() {
+    private convenience init() {
         let installer = BundleUpdateInstaller(
-            expectedBundleIdentifier: "com.blacksquarre.AtomVoice",
-            expectedTeamIdentifier: "NC623693G3",
+            expectedBundleIdentifier: Self.bundleIdentifier,
+            expectedTeamIdentifier: Self.teamIdentifier,
             isNewer: { lhs, rhs in
                 // 与 UpdateChecker.isNewer 共用同一算法。
                 // (Reuses the same algorithm as UpdateChecker.isNewer.)
@@ -31,7 +31,6 @@ final class UpdateChecker: NSObject {
     init(releaseSource: ReleaseSource, installer: UpdateInstaller) {
         self.releaseSource = releaseSource
         self.installer = installer
-        super.init()
     }
 
     private var progressWindow: NSWindow?
@@ -106,7 +105,7 @@ final class UpdateChecker: NSObject {
     // MARK: - 版本比对与提示
 
     private func handleRelease(_ release: ReleaseInfo, silent: Bool) {
-        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let current = AppBundleInfo.shortVersion
         guard isNewer(release.version, than: current) else {
             state = .idle
             if !silent {
@@ -178,7 +177,7 @@ final class UpdateChecker: NSObject {
                         try self.installer.verifyChecksum(zipURL: zipURL, listing: listing, assetName: release.assetName)
                         DispatchQueue.main.async { self.updateProgressLabel(loc("update.installing")) }
                         let newApp = try self.installer.extractZip(zipURL)
-                        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+                        let current = AppBundleInfo.shortVersion
                         try self.installer.validateDownloadedApp(newApp, currentVersion: current, expectedVersion: release.version)
                         DispatchQueue.main.async {
                             guard self.state == .downloading else { return }
