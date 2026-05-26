@@ -51,10 +51,9 @@ final class OOBEWindowController: NSObject {
             }
             return
         }
-        state.engine = ASREngineRegistry.shared.normalizedCode(for: UserDefaults.standard.string(forKey: "recognitionEngine"))
-        let savedKey = UInt16(UserDefaults.standard.integer(forKey: "triggerKeyCode"))
-        state.triggerKeyCode = (savedKey == 0) ? 61 : savedKey
-        state.silenceAutoStop = UserDefaults.standard.bool(forKey: "silenceAutoStopEnabled")
+        state.engine = ASREngineRegistry.shared.normalizedCode(for: AppSettings.recognitionEngine)
+        state.triggerKeyCode = AppSettings.triggerKeyCode
+        state.silenceAutoStop = AppSettings.silenceAutoStopEnabled
         state.headphoneControl = AppSettings.headphoneControlEnabled
         buildWindow(initialStep: initialStep)
     }
@@ -226,16 +225,16 @@ final class OOBEWindowController: NSObject {
     }
 
     private func finish() {
-        UserDefaults.standard.set(true, forKey: Self.completionDefaultsKey)
+        AppSettings.hasCompletedOOBE = true
         AppSettings.recognitionEngine = state.engine
-        UserDefaults.standard.set(Int(state.triggerKeyCode), forKey: "triggerKeyCode")
-        UserDefaults.standard.set(state.silenceAutoStop, forKey: "silenceAutoStopEnabled")
+        AppSettings.triggerKeyCode = state.triggerKeyCode
+        AppSettings.silenceAutoStopEnabled = state.silenceAutoStop
         AppSettings.headphoneControlEnabled = state.headphoneControl
         if state.headphoneControl {
             AppSettings.headphoneControlAlertShown = true
         }
         if state.engine == VolcengineASRSettings.engineCode {
-            UserDefaults.standard.set(true, forKey: "doubaoASRPrivacyAccepted")
+            AppSettings.doubaoASRPrivacyAccepted = true
         }
         let chosenEngine = state.engine
         let chosenKey = state.triggerKeyCode

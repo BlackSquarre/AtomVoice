@@ -27,7 +27,7 @@ final class SpeechRecognizerController {
     }
 
     func updateLanguage() {
-        let langCode = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "zh-CN"
+        let langCode = AppSettings.selectedLanguage
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: langCode))
         recognizer?.defaultTaskHint = .dictation
     }
@@ -231,7 +231,7 @@ final class SpeechRecognizerController {
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
         req.addsPunctuation = true
-        if UserDefaults.standard.bool(forKey: "appleOnDeviceRecognitionEnabled") {
+        if AppSettings.appleOnDeviceRecognitionEnabled {
             if recognizer?.supportsOnDeviceRecognition == true {
                 req.requiresOnDeviceRecognition = true
             } else {

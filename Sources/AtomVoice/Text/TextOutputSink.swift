@@ -47,7 +47,7 @@ extension TextOutputSink {
 final class TextOutputSinkRegistry {
     static let pasteCode = "paste"
     static let streamingCode = "streaming"
-    static let userDefaultsKey = "textOutputSink"
+    static let userDefaultsKey = AppSettings.Keys.textOutputSink
 
     let sinks: [TextOutputSink]
     private let sinkByCode: [String: TextOutputSink]

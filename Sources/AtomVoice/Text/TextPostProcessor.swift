@@ -52,7 +52,7 @@ final class SherpaPunctuationProcessor: TextPostProcessor {
     }
 
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
-        guard UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") else { return nil }
+        guard AppSettings.autoPunctuationEnabled else { return nil }
         guard registry.isSherpa(context.engineCode) else { return nil }
         guard Self.supportsLanguage(context.language) else { return nil }
         return punctuator(text)
@@ -70,7 +70,7 @@ final class HeuristicPunctuationProcessor: TextPostProcessor {
     let id = "heuristicPunctuation"
 
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
-        guard UserDefaults.standard.bool(forKey: "autoPunctuationEnabled") else { return nil }
+        guard AppSettings.autoPunctuationEnabled else { return nil }
         if context.engineCode == VolcengineASRSettings.engineCode { return nil }
         return PunctuationProcessor.process(text, language: context.language)
     }

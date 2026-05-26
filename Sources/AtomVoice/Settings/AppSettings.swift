@@ -52,6 +52,8 @@ enum AppSettings {
         static let sherpaAutoUnloadIdleMinutes = "sherpaAutoUnloadIdleMinutes"
         static let sherpaProvider = "sherpaProvider"
         static let sherpaModelPresetID = "sherpaModelPresetID"
+        static let sherpaRecognitionLanguage = "sherpaRecognitionLanguage"
+        static let textOutputSink = "textOutputSink"
         static let doubaoASREndpoint = "doubaoASREndpoint"
         static let doubaoASRResourceID = "doubaoASRResourceID"
         static let doubaoASREnableITN = "doubaoASREnableITN"
@@ -130,6 +132,7 @@ enum AppSettings {
             Keys.sherpaAutoUnloadEnabled: true,
             Keys.sherpaAutoUnloadIdleMinutes: 15,
             Keys.sherpaProvider: defaultSherpaProvider,
+            Keys.textOutputSink: TextOutputSinkRegistry.pasteCode,
             Keys.doubaoASREndpoint: VolcengineASRSettings.defaultEndpoint,
             Keys.doubaoASRResourceID: VolcengineASRSettings.defaultResourceID,
             Keys.doubaoASREnableITN: true,

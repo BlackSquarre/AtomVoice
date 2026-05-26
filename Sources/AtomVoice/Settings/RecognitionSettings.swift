@@ -52,11 +52,11 @@ final class RecognitionSettings {
     }
 
     var sherpaRecognitionLanguage: String {
-        get { backend.string(forKey: SherpaModelPreset.recognitionLanguageKey) ?? selectedLanguage }
+        get { backend.string(forKey: AppSettings.Keys.sherpaRecognitionLanguage) ?? selectedLanguage }
         set {
             setRecognitionTrackedString(
                 newValue,
-                key: SherpaModelPreset.recognitionLanguageKey,
+                key: AppSettings.Keys.sherpaRecognitionLanguage,
                 currentValue: { sherpaRecognitionLanguage }
             )
         }

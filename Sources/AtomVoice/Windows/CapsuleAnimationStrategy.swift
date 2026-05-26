@@ -693,11 +693,11 @@ final class CapsuleDebugElapsedTimerStrategy: CapsuleElapsedTimerStrategy {
 
 extension CapsuleWindowController {
     var currentAnimationSelection: CapsuleAnimationSelection {
-        CapsuleAnimationSelection.resolve(styleCode: UserDefaults.standard.string(forKey: "animationStyle"))
+        CapsuleAnimationSelection.resolve(styleCode: AppSettings.animationStyle)
     }
 
     var spotlightMotion: CapsuleSpotlightMotion {
-        CapsuleSpotlightMotion.resolve(speedCode: UserDefaults.standard.string(forKey: "animationSpeed"))
+        CapsuleSpotlightMotion.resolve(speedCode: AppSettings.animationSpeed)
     }
 
     var usesSingleBounceSpotlightAnimation: Bool {

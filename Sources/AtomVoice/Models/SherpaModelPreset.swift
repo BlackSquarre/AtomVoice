@@ -81,7 +81,7 @@ struct SherpaModelPreset {
 
     /// Sherpa 识别语言独立 UserDefaults key，与 UI 语言解耦
     /// (Sherpa recognition language defaults key — decoupled from UI language)
-    static let recognitionLanguageKey = "sherpaRecognitionLanguage"
+    static let recognitionLanguageKey = AppSettings.Keys.sherpaRecognitionLanguage
 
     /// 当前 Sherpa 识别语言；首次读取时回退到 UI 语言以保持已有用户行为
     /// (Current Sherpa recognition language; first read falls back to UI language for existing users)
