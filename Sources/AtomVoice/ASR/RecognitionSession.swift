@@ -418,10 +418,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
         fallback.beginWaitingForFirstResult()
         callbacks.onShowInitial()
         callbacks.onShowRecording()
-        DispatchQueue.main.async {
-            guard callbacks.isRecordingCurrent() else { return }
-            callbacks.onShimmerChanged(true)
-        }
 
         if let error = cloudEngine.start(
             onResult: { [weak self] text, _ in
@@ -442,11 +438,17 @@ final class DoubaoRecognitionSession: RecognitionSession {
         ) {
             fallback.reset()
             usingAppleStartFallback = true
+            callbacks.onShimmerChanged(false)
             callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
             DebugLog.error("[Doubao] Start failed, falling back to Apple Speech: \(error)")
             let result = appleSession.start(audioFormat: nil, callbacks: callbacks)
             callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
             return result
+        }
+
+        DispatchQueue.main.async {
+            guard callbacks.isRecordingCurrent() else { return }
+            callbacks.onShimmerChanged(true)
         }
 
         guard audioEngine.start() else {
