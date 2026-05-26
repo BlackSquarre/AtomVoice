@@ -37,235 +37,30 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        // 顶部提示：按住/单击 [触发键] 开始语音输入（Top tip: hold/tap [trigger key] to start voice input）
         let triggerOption = TriggerKeyOption.option(for: AppSettings.triggerKeyCode)
         let isTapMode = AppSettings.silenceAutoStopEnabled
-        let instructionFmt = loc(isTapMode ? "menu.tapKey" : "menu.holdKey")
-        menu.addItem(makeSectionLabel(String(format: instructionFmt, loc(triggerOption.symbolKey))))
-        menu.addItem(makeSectionLabel(loc("menu.startVoiceInput")))
+        let currentLang = AppSettings.selectedLanguage
+        let currentEngine = AppSettings.normalizedRecognitionEngine
 
+        addHeader(to: menu, triggerOption: triggerOption, isTapMode: isTapMode)
         menu.addItem(.separator())
 
-        // 识别语言（Recognition language）
-        let langItem = makeMenuItem(title: loc("menu.language"), imageName: "globe")
-        let langMenu = NSMenu()
-        let currentLang = AppSettings.selectedLanguage
-        for lang in AppSettings.appLanguageOptions {
-            langMenu.addItem(
-                makeMenuItem(
-                    title: lang.displayName,
-                    action: #selector(selectLanguage(_:)),
-                    state: lang.code == currentLang ? .on : .off,
-                    representedObject: lang.code
-                )
-            )
-        }
-        langItem.submenu = langMenu
-        menu.addItem(langItem)
-
-        // 识别引擎（Recognition engine）
-        let engineItem = makeMenuItem(title: loc("menu.recognitionEngine"), imageName: "cpu")
-        let engineMenu = NSMenu()
-        let currentEngine = AppSettings.normalizedRecognitionEngine
-        for descriptor in asrEngineRegistry.descriptors {
-            engineMenu.addItem(
-                makeMenuItem(
-                    title: loc(descriptor.displayNameKey),
-                    action: #selector(selectRecognitionEngine(_:)),
-                    imageName: descriptor.iconName,
-                    state: descriptor.code == currentEngine ? .on : .off,
-                    representedObject: descriptor.code
-                )
-            )
-        }
-        engineMenu.addItem(.separator())
-
-        // 识别引擎设置（Recognition engine settings）
-        engineMenu.addItem(makeMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), imageName: "gear"))
-
-        engineMenu.addItem(
-            makeMenuItem(
-                title: loc("menu.engine.howto"),
-                action: #selector(openEngineHowto(_:)),
-                imageName: "questionmark.circle"
-            )
-        )
-
-        engineMenu.addItem(.separator())
-
-        // LLM 优化放在识别引擎菜单末尾，避免主菜单过长（Keep LLM refinement at the end of Recognition Engine to shorten the main menu）
-        let llmItem = makeMenuItem(title: loc("menu.llm"), imageName: "wand.and.stars")
-        llmItem.toolTip = loc("tooltip.menu.llm")
-        let llmMenu = NSMenu()
-        let llmEnabled = AppSettings.llmEnabled
-        let toggleItem = makeMenuItem(
-            title: llmEnabled ? loc("menu.llm.enabled") : loc("menu.llm.disabled"),
-            action: #selector(toggleLLM(_:)),
-            state: llmEnabled ? .on : .off
-        )
-        llmMenu.addItem(toggleItem)
-        llmMenu.addItem(.separator())
-        llmMenu.addItem(makeMenuItem(title: loc("menu.settings"), action: #selector(openSettings(_:)), imageName: "gear"))
-        llmMenu.addItem(makeMenuItem(title: loc("menu.llm.howto"), action: #selector(openLLMHowto(_:)), imageName: "questionmark.circle"))
-        llmItem.submenu = llmMenu
-        engineMenu.addItem(llmItem)
-
-        engineItem.submenu = engineMenu
-        menu.addItem(engineItem)
-
-        // 自动标点（Auto punctuation）
-        let punctEnabled = AppSettings.autoPunctuationEnabled
-        menu.addItem(
-            makeMenuItem(
-                title: loc("menu.punctuation"),
-                action: #selector(togglePunctuation(_:)),
-                imageName: "text.badge.plus",
-                state: punctEnabled ? .on : .off,
-                toolTip: loc("tooltip.menu.punctuation")
-            )
-        )
-
-        // 文本输出方式（Text output destination）
-        if let outputRegistry = textOutputSinkRegistry, outputRegistry.descriptors.count > 1 {
-            let outputItem = makeMenuItem(title: loc("menu.textOutput"), imageName: "square.and.arrow.up")
-            let outputMenu = NSMenu()
-            let currentOutput = outputRegistry.currentCode()
-            for descriptor in outputRegistry.descriptors {
-                outputMenu.addItem(
-                    makeMenuItem(
-                        title: loc(descriptor.displayNameKey),
-                        action: #selector(selectTextOutputSink(_:)),
-                        imageName: descriptor.iconName,
-                        state: descriptor.code == currentOutput ? .on : .off,
-                        representedObject: descriptor.code
-                    )
-                )
-            }
-            outputItem.submenu = outputMenu
+        menu.addItem(makeLanguageItem(currentLang: currentLang))
+        menu.addItem(makeRecognitionEngineItem(currentEngine: currentEngine))
+        menu.addItem(makePunctuationItem())
+        if let outputItem = makeTextOutputItem() {
             menu.addItem(outputItem)
         }
-
         menu.addItem(.separator())
 
-        // 输入方式: 单击说话 or 长按说话（Input mode: tap to speak or hold to speak）
-        let inputModeItem = makeMenuItem(title: loc("menu.inputMode"), imageName: "waveform")
-        inputModeItem.toolTip = loc("tooltip.menu.inputMode")
-        let inputModeMenu = NSMenu()
-        inputModeMenu.addItem(makeMenuItem(title: loc("menu.inputMode.tap"), action: #selector(selectInputModeTap(_:)), state: isTapMode ? .on : .off))
-        inputModeMenu.addItem(makeMenuItem(title: loc("menu.inputMode.hold"), action: #selector(selectInputModeHold(_:)), state: !isTapMode ? .on : .off))
-        inputModeMenu.addItem(.separator())
-        inputModeMenu.addItem(
-            makeMenuItem(
-                title: loc("menu.inputMode.liveInsertion"),
-                action: #selector(toggleAppleLiveInsertion(_:)),
-                state: AppSettings.appleLiveInsertionEnabled ? .on : .off,
-                isEnabled: asrEngineRegistry.isApple(currentEngine),
-                toolTip: loc("menu.inputMode.liveInsertion.tooltip")
-            )
-        )
-        if isTapMode {
-            inputModeMenu.addItem(.separator())
-            inputModeMenu.addItem(makeSectionLabel(loc("menu.silence.duration")))
-            let manualStop = AppSettings.tapModeManualStop
-            let currentDuration = AppSettings.silenceDuration
-            // "手动停止"：选中后不自动停录，必须再点一次触发键（Manual stop: disables auto-stop, requires a second trigger tap）
-            inputModeMenu.addItem(
-                makeMenuItem(
-                    title: loc("menu.silence.manualStop"),
-                    action: #selector(selectManualStop(_:)),
-                    state: manualStop ? .on : .off,
-                    indentationLevel: 1
-                )
-            )
-            for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
-                let isSelected = !manualStop && abs(currentDuration - value) < 0.01
-                inputModeMenu.addItem(
-                    makeMenuItem(
-                        title: title,
-                        action: #selector(selectSilenceDuration(_:)),
-                        state: isSelected ? .on : .off,
-                        representedObject: value,
-                        indentationLevel: 1
-                    )
-                )
-            }
-        }
-        inputModeItem.submenu = inputModeMenu
-        menu.addItem(inputModeItem)
-
-        // 触发按键（Trigger key）
-        let triggerItem = makeMenuItem(title: loc("menu.triggerKey"), imageName: "command")
-        triggerItem.toolTip = loc("tooltip.menu.triggerKey")
-        let triggerMenu = NSMenu()
-        for option in TriggerKeyOption.all {
-            let item = makeMenuItem(
-                title: loc(option.locKey),
-                action: #selector(selectTriggerKey(_:)),
-                state: option.keyCode == triggerOption.keyCode ? .on : .off,
-                representedObject: NSNumber(value: Int(option.keyCode))
-            )
-            // 将菜单标题中的 "Globe" 文字替换为 SF Symbol globe 图片
-            // (Replace "Globe" text in menu title with SF Symbol globe image)
-            if option.keyCode == 63 {
-                let title = loc(option.locKey)
-                if let range = title.range(of: "Globe") {
-                    let attr = NSMutableAttributedString(string: String(title[..<range.lowerBound]), attributes: [
-                        .font: NSFont.menuFont(ofSize: 0)
-                    ])
-                    if let globeImage = NSImage(systemSymbolName: "globe", accessibilityDescription: "Globe") {
-                        let symbolConfig = NSImage.SymbolConfiguration(pointSize: NSFont.menuFont(ofSize: 0).pointSize, weight: .regular)
-                        if let configured = globeImage.withSymbolConfiguration(symbolConfig) {
-                            let attachment = NSTextAttachment()
-                            attachment.image = configured
-                            let imageString = NSAttributedString(attachment: attachment)
-                            attr.append(imageString)
-                        }
-                    }
-                    attr.append(NSAttributedString(string: String(title[range.upperBound...]), attributes: [
-                        .font: NSFont.menuFont(ofSize: 0)
-                    ]))
-                    item.attributedTitle = attr
-                }
-            }
-            triggerMenu.addItem(item)
-        }
-        triggerItem.submenu = triggerMenu
-        menu.addItem(triggerItem)
-
-        // 音频输入设备（Audio input device）
-        let audioInputItem = makeMenuItem(title: loc("menu.audioInput"), imageName: "mic.badge.plus")
-        audioInputItem.toolTip = loc("tooltip.menu.audioInput")
-        let audioInputMenu = NSMenu()
-        let savedUID = AppSettings.audioInputDeviceUID
-        audioInputMenu.addItem(
-            makeMenuItem(
-                title: loc("menu.audioInput.default"),
-                action: #selector(selectAudioInput(_:)),
-                state: savedUID.isEmpty ? .on : .off,
-                representedObject: ""
-            )
-        )
-        audioInputMenu.addItem(.separator())
-        for device in AudioEngineController.availableInputDevices() {
-            audioInputMenu.addItem(
-                makeMenuItem(
-                    title: device.name,
-                    action: #selector(selectAudioInput(_:)),
-                    state: device.uid == savedUID ? .on : .off,
-                    representedObject: device.uid
-                )
-            )
-        }
-        audioInputItem.submenu = audioInputMenu
-        menu.addItem(audioInputItem)
-
+        menu.addItem(makeInputModeItem(currentEngine: currentEngine, isTapMode: isTapMode))
+        menu.addItem(makeTriggerKeyItem(triggerOption: triggerOption))
+        menu.addItem(makeAudioInputItem())
         menu.addItem(.separator())
 
-        // 其他设置（子菜单：动画效果、开机启动、权限与帮助、检查更新、关于）（Other settings (submenu: animation, launch at login, permissions & help, check for updates, about)）
         let otherItem = makeMenuItem(title: loc("menu.otherSettings"), imageName: "ellipsis.circle")
         otherItem.submenu = buildOtherSettingsMenu()
         menu.addItem(otherItem)
-
         menu.addItem(.separator())
 
         menu.addItem(
@@ -279,6 +74,239 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(makeMenuItem(title: loc("menu.quit"), action: #selector(quit(_:)), keyEquivalent: "q", imageName: "power"))
 
         statusItem.menu = menu
+    }
+
+    // MARK: - Menu sections
+
+    /// 顶部提示：按住/单击 [触发键] 开始语音输入。
+    /// (Top tip: hold/tap [trigger key] to start voice input.)
+    private func addHeader(to menu: NSMenu, triggerOption: TriggerKeyOption, isTapMode: Bool) {
+        let instructionFmt = loc(isTapMode ? "menu.tapKey" : "menu.holdKey")
+        menu.addItem(makeSectionLabel(String(format: instructionFmt, loc(triggerOption.symbolKey))))
+        menu.addItem(makeSectionLabel(loc("menu.startVoiceInput")))
+    }
+
+    /// 识别语言子菜单。
+    /// (Recognition language submenu.)
+    private func makeLanguageItem(currentLang: String) -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.language"), imageName: "globe")
+        let submenu = NSMenu()
+        for lang in AppSettings.appLanguageOptions {
+            submenu.addItem(
+                makeMenuItem(
+                    title: lang.displayName,
+                    action: #selector(selectLanguage(_:)),
+                    state: lang.code == currentLang ? .on : .off,
+                    representedObject: lang.code
+                )
+            )
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    /// 识别引擎子菜单（含引擎设置与 LLM 子菜单）。
+    /// (Recognition engine submenu; includes engine settings and the LLM submenu.)
+    private func makeRecognitionEngineItem(currentEngine: String) -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.recognitionEngine"), imageName: "cpu")
+        let submenu = NSMenu()
+        for descriptor in asrEngineRegistry.descriptors {
+            submenu.addItem(
+                makeMenuItem(
+                    title: loc(descriptor.displayNameKey),
+                    action: #selector(selectRecognitionEngine(_:)),
+                    imageName: descriptor.iconName,
+                    state: descriptor.code == currentEngine ? .on : .off,
+                    representedObject: descriptor.code
+                )
+            )
+        }
+        submenu.addItem(.separator())
+        submenu.addItem(makeMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), imageName: "gear"))
+        submenu.addItem(
+            makeMenuItem(
+                title: loc("menu.engine.howto"),
+                action: #selector(openEngineHowto(_:)),
+                imageName: "questionmark.circle"
+            )
+        )
+        submenu.addItem(.separator())
+        // LLM 优化放在引擎菜单末尾，避免主菜单过长。
+        // (LLM refinement lives at the bottom of the engine submenu to keep the main menu short.)
+        submenu.addItem(makeLLMItem())
+        item.submenu = submenu
+        return item
+    }
+
+    private func makeLLMItem() -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.llm"), imageName: "wand.and.stars")
+        item.toolTip = loc("tooltip.menu.llm")
+        let submenu = NSMenu()
+        let llmEnabled = AppSettings.llmEnabled
+        submenu.addItem(
+            makeMenuItem(
+                title: llmEnabled ? loc("menu.llm.enabled") : loc("menu.llm.disabled"),
+                action: #selector(toggleLLM(_:)),
+                state: llmEnabled ? .on : .off
+            )
+        )
+        submenu.addItem(.separator())
+        submenu.addItem(makeMenuItem(title: loc("menu.settings"), action: #selector(openSettings(_:)), imageName: "gear"))
+        submenu.addItem(makeMenuItem(title: loc("menu.llm.howto"), action: #selector(openLLMHowto(_:)), imageName: "questionmark.circle"))
+        item.submenu = submenu
+        return item
+    }
+
+    private func makePunctuationItem() -> NSMenuItem {
+        let enabled = AppSettings.autoPunctuationEnabled
+        return makeMenuItem(
+            title: loc("menu.punctuation"),
+            action: #selector(togglePunctuation(_:)),
+            imageName: "text.badge.plus",
+            state: enabled ? .on : .off,
+            toolTip: loc("tooltip.menu.punctuation")
+        )
+    }
+
+    /// 文本输出方式子菜单；仅当至少 2 个 sink 注册时返回。
+    /// (Text output destination submenu; returns nil unless at least two sinks are registered.)
+    private func makeTextOutputItem() -> NSMenuItem? {
+        guard let registry = textOutputSinkRegistry, registry.descriptors.count > 1 else { return nil }
+        let item = makeMenuItem(title: loc("menu.textOutput"), imageName: "square.and.arrow.up")
+        let submenu = NSMenu()
+        let currentOutput = registry.currentCode()
+        for descriptor in registry.descriptors {
+            submenu.addItem(
+                makeMenuItem(
+                    title: loc(descriptor.displayNameKey),
+                    action: #selector(selectTextOutputSink(_:)),
+                    imageName: descriptor.iconName,
+                    state: descriptor.code == currentOutput ? .on : .off,
+                    representedObject: descriptor.code
+                )
+            )
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    /// 输入方式子菜单：单击/长按 + 实时插入 + 静音停录时长。
+    /// (Input mode submenu: tap/hold + live insertion + silence durations.)
+    private func makeInputModeItem(currentEngine: String, isTapMode: Bool) -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.inputMode"), imageName: "waveform")
+        item.toolTip = loc("tooltip.menu.inputMode")
+        let submenu = NSMenu()
+        submenu.addItem(makeMenuItem(title: loc("menu.inputMode.tap"), action: #selector(selectInputModeTap(_:)), state: isTapMode ? .on : .off))
+        submenu.addItem(makeMenuItem(title: loc("menu.inputMode.hold"), action: #selector(selectInputModeHold(_:)), state: !isTapMode ? .on : .off))
+        submenu.addItem(.separator())
+        submenu.addItem(
+            makeMenuItem(
+                title: loc("menu.inputMode.liveInsertion"),
+                action: #selector(toggleAppleLiveInsertion(_:)),
+                state: AppSettings.appleLiveInsertionEnabled ? .on : .off,
+                isEnabled: asrEngineRegistry.isApple(currentEngine),
+                toolTip: loc("menu.inputMode.liveInsertion.tooltip")
+            )
+        )
+        if isTapMode {
+            submenu.addItem(.separator())
+            submenu.addItem(makeSectionLabel(loc("menu.silence.duration")))
+            let manualStop = AppSettings.tapModeManualStop
+            let currentDuration = AppSettings.silenceDuration
+            // "手动停止"：选中后不自动停录，必须再点一次触发键。
+            // (Manual stop: disables auto-stop, requires a second trigger tap.)
+            submenu.addItem(
+                makeMenuItem(
+                    title: loc("menu.silence.manualStop"),
+                    action: #selector(selectManualStop(_:)),
+                    state: manualStop ? .on : .off,
+                    indentationLevel: 1
+                )
+            )
+            for (title, value) in [("0.5s", 0.5), ("1s", 1.0), ("1.5s", 1.5), ("2s", 2.0), ("3s", 3.0), ("5s", 5.0)] {
+                let isSelected = !manualStop && abs(currentDuration - value) < 0.01
+                submenu.addItem(
+                    makeMenuItem(
+                        title: title,
+                        action: #selector(selectSilenceDuration(_:)),
+                        state: isSelected ? .on : .off,
+                        representedObject: value,
+                        indentationLevel: 1
+                    )
+                )
+            }
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    /// 触发键子菜单；Fn/Globe 选项会把标题里的 "Globe" 字样换成 SF Symbol。
+    /// (Trigger key submenu; for Fn/Globe, replaces literal "Globe" text in the title with the SF Symbol.)
+    private func makeTriggerKeyItem(triggerOption: TriggerKeyOption) -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.triggerKey"), imageName: "command")
+        item.toolTip = loc("tooltip.menu.triggerKey")
+        let submenu = NSMenu()
+        for option in TriggerKeyOption.all {
+            let menuItem = makeMenuItem(
+                title: loc(option.locKey),
+                action: #selector(selectTriggerKey(_:)),
+                state: option.keyCode == triggerOption.keyCode ? .on : .off,
+                representedObject: NSNumber(value: Int(option.keyCode))
+            )
+            if option.keyCode == 63 {
+                let title = loc(option.locKey)
+                if let range = title.range(of: "Globe") {
+                    let attr = NSMutableAttributedString(string: String(title[..<range.lowerBound]), attributes: [
+                        .font: NSFont.menuFont(ofSize: 0)
+                    ])
+                    if let globeImage = NSImage(systemSymbolName: "globe", accessibilityDescription: "Globe") {
+                        let symbolConfig = NSImage.SymbolConfiguration(pointSize: NSFont.menuFont(ofSize: 0).pointSize, weight: .regular)
+                        if let configured = globeImage.withSymbolConfiguration(symbolConfig) {
+                            let attachment = NSTextAttachment()
+                            attachment.image = configured
+                            attr.append(NSAttributedString(attachment: attachment))
+                        }
+                    }
+                    attr.append(NSAttributedString(string: String(title[range.upperBound...]), attributes: [
+                        .font: NSFont.menuFont(ofSize: 0)
+                    ]))
+                    menuItem.attributedTitle = attr
+                }
+            }
+            submenu.addItem(menuItem)
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    /// 音频输入设备子菜单。
+    /// (Audio input device submenu.)
+    private func makeAudioInputItem() -> NSMenuItem {
+        let item = makeMenuItem(title: loc("menu.audioInput"), imageName: "mic.badge.plus")
+        item.toolTip = loc("tooltip.menu.audioInput")
+        let submenu = NSMenu()
+        let savedUID = AppSettings.audioInputDeviceUID
+        submenu.addItem(
+            makeMenuItem(
+                title: loc("menu.audioInput.default"),
+                action: #selector(selectAudioInput(_:)),
+                state: savedUID.isEmpty ? .on : .off,
+                representedObject: ""
+            )
+        )
+        submenu.addItem(.separator())
+        for device in AudioEngineController.availableInputDevices() {
+            submenu.addItem(
+                makeMenuItem(
+                    title: device.name,
+                    action: #selector(selectAudioInput(_:)),
+                    state: device.uid == savedUID ? .on : .off,
+                    representedObject: device.uid
+                )
+            )
+        }
+        item.submenu = submenu
+        return item
     }
 
     private func buildOtherSettingsMenu() -> NSMenu {
