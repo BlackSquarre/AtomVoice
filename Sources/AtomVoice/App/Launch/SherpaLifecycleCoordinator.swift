@@ -45,7 +45,7 @@ final class SherpaLifecycleCoordinator {
         sessionInspector: @escaping () -> SherpaSessionInspector?,
         settings: SherpaLifecycleSettingsProviding = AppSherpaLifecycleSettingsProvider(),
         notificationCenter: NotificationCenter = .default,
-        notificationObject: Any? = UserDefaults.standard,
+        notificationObject: Any? = AppSettings.backend.notificationObject,
         scheduleAfter: @escaping (TimeInterval, DispatchWorkItem) -> Void = { delay, workItem in
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
         }
@@ -64,18 +64,17 @@ final class SherpaLifecycleCoordinator {
     }
 
     /// 启动时调用一次：清理废弃 ready 标记 + 自愈 preset。
-    static func migratePresetIfNeeded() {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: "sherpaModelsReady")
+    static func migratePresetIfNeeded(backend: SettingsBackend = AppSettings.backend) {
+        backend.set(nil, forKey: "sherpaModelsReady")
 
-        guard let savedID = defaults.string(forKey: AppSettings.Keys.sherpaModelPresetID),
+        guard let savedID = backend.string(forKey: AppSettings.Keys.sherpaModelPresetID),
               let preset = SherpaModelPreset.allPresets.first(where: { $0.id == savedID }),
               !preset.isDownloaded else { return }
 
         let lang = SherpaModelPreset.recognitionLanguage
         let pool = SherpaModelPreset.presets(forRecognitionLanguage: lang)
         if let alt = pool.first(where: { $0.isDownloaded }) {
-            defaults.set(alt.id, forKey: AppSettings.Keys.sherpaModelPresetID)
+            backend.set(alt.id, forKey: AppSettings.Keys.sherpaModelPresetID)
             DebugLog.info("[SherpaOnnx] Launch migration: \(savedID) is not downloaded, switching to downloaded preset \(alt.id)")
         }
         // 若同语言下都没有已下载的，保留原值；下次切到 sherpa 引擎时会触发下载提示
@@ -112,6 +111,10 @@ final class SherpaLifecycleCoordinator {
             name: AppSettings.recognitionEngineSettingsDidChangeNotification,
             object: notificationObject
         )
+    }
+
+    deinit {
+        stop()
     }
 
     /// 录音结束后调用（从 sessionDidEnd 转发）。
