@@ -78,7 +78,9 @@ extension RecordingSessionController {
         case .notifySessionDidEnd:
             delegate?.sessionDidEnd()
         case .requestSherpaModelDownload(let redownload, let delay):
+            #if DEBUG_BUILD
             SherpaModelDownloader.printMissingRequiredFiles()
+            #endif
             if delay > 0 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                     self?.delegate?.sessionRequiresSherpaModelDownload(redownload: redownload)
