@@ -27,7 +27,7 @@ final class ProviderStore {
     }
 
     static func load() -> [LLMProvider] {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = AppSettings.backend.data(forKey: key),
               let list = try? JSONDecoder().decode([LLMProvider].self, from: data)
         else { return defaults }
         return list
@@ -35,7 +35,7 @@ final class ProviderStore {
 
     static func save(_ list: [LLMProvider]) {
         if let data = try? JSONEncoder().encode(list) {
-            UserDefaults.standard.set(data, forKey: key)
+            AppSettings.backend.set(data, forKey: key)
         }
     }
 }

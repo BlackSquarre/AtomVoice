@@ -62,25 +62,25 @@ struct VolcengineASRSettings {
     }
 
     static func load() -> VolcengineASRSettings {
-        let defaults = UserDefaults.standard
+        let backend = AppSettings.backend
         return VolcengineASRSettings(
-            endpoint: defaults.string(forKey: AppSettings.Keys.doubaoASREndpoint) ?? defaultEndpoint,
+            endpoint: backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint),
             apiKey: savedAPIKey,
-            resourceID: defaults.string(forKey: AppSettings.Keys.doubaoASRResourceID) ?? defaultResourceID,
-            enableITN: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableITN),
-            enableDDC: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableDDC),
-            enableNonstream: defaults.bool(forKey: AppSettings.Keys.doubaoASREnableNonstream),
+            resourceID: backend.string(forKey: AppSettings.Keys.doubaoASRResourceID, default: defaultResourceID),
+            enableITN: backend.bool(forKey: AppSettings.Keys.doubaoASREnableITN, default: true),
+            enableDDC: backend.bool(forKey: AppSettings.Keys.doubaoASREnableDDC, default: false),
+            enableNonstream: backend.bool(forKey: AppSettings.Keys.doubaoASREnableNonstream, default: false),
             selectedLanguage: AppSettings.selectedLanguage
         )
     }
 
     func persistNonSecretFields() {
-        let defaults = UserDefaults.standard
-        defaults.set(trimmedEndpoint, forKey: AppSettings.Keys.doubaoASREndpoint)
-        defaults.set(trimmedResourceID, forKey: AppSettings.Keys.doubaoASRResourceID)
-        defaults.set(enableITN, forKey: AppSettings.Keys.doubaoASREnableITN)
-        defaults.set(enableDDC, forKey: AppSettings.Keys.doubaoASREnableDDC)
-        defaults.set(enableNonstream, forKey: AppSettings.Keys.doubaoASREnableNonstream)
+        let backend = AppSettings.backend
+        backend.set(trimmedEndpoint, forKey: AppSettings.Keys.doubaoASREndpoint)
+        backend.set(trimmedResourceID, forKey: AppSettings.Keys.doubaoASRResourceID)
+        backend.set(enableITN, forKey: AppSettings.Keys.doubaoASREnableITN)
+        backend.set(enableDDC, forKey: AppSettings.Keys.doubaoASREnableDDC)
+        backend.set(enableNonstream, forKey: AppSettings.Keys.doubaoASREnableNonstream)
     }
 
     var trimmedEndpoint: String {

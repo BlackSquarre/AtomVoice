@@ -164,7 +164,7 @@ final class SherpaModelChooserController: NSObject {
 
         let lang = (languagePopup.selectedItem?.representedObject as? String) ?? SherpaModelPreset.recognitionLanguage
         let presets = SherpaModelPreset.presets(forRecognitionLanguage: lang)
-        let savedID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID)
+        let savedID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID)
         let presetIDs = Set(presets.map { $0.id })
         let activeID: String = (savedID.flatMap { presetIDs.contains($0) ? $0 : nil })
             ?? SherpaModelPreset.defaultModelID(forRecognitionLanguage: lang)

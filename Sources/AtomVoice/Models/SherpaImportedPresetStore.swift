@@ -12,14 +12,14 @@ struct SherpaImportedPresetRecord: Codable, Equatable {
 /// 已导入预设的持久化容器（Persistence container for imported presets）
 final class SherpaImportedPresetStore {
     static let shared = SherpaImportedPresetStore()
-    private static let key = "sherpaImportedPresets"
+    private static let key = AppSettings.Keys.sherpaImportedPresets
 
     private(set) var records: [SherpaImportedPresetRecord] = []
 
     init() { reload() }
 
     func reload() {
-        guard let data = UserDefaults.standard.data(forKey: Self.key) else {
+        guard let data = AppSettings.backend.data(forKey: Self.key) else {
             records = []
             return
         }
@@ -28,7 +28,7 @@ final class SherpaImportedPresetStore {
 
     func save() {
         if let data = try? JSONEncoder().encode(records) {
-            UserDefaults.standard.set(data, forKey: Self.key)
+            AppSettings.backend.set(data, forKey: Self.key)
         }
     }
 

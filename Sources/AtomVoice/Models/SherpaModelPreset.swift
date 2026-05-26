@@ -86,7 +86,7 @@ struct SherpaModelPreset {
     /// 当前 Sherpa 识别语言；首次读取时回退到 UI 语言以保持已有用户行为
     /// (Current Sherpa recognition language; first read falls back to UI language for existing users)
     static var recognitionLanguage: String {
-        if let lang = UserDefaults.standard.string(forKey: recognitionLanguageKey), !lang.isEmpty {
+        if let lang = AppSettings.backend.string(forKey: recognitionLanguageKey), !lang.isEmpty {
             return lang
         }
         return AppSettings.selectedLanguage
@@ -118,7 +118,7 @@ struct SherpaModelPreset {
 
     /// 当前选中的预设（Currently selected preset）
     static var current: SherpaModelPreset {
-        let currentID = UserDefaults.standard.string(forKey: AppSettings.Keys.sherpaModelPresetID) ?? defaultModelID
+        let currentID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID) ?? defaultModelID
         return allPresets.first(where: { $0.id == currentID }) ?? defaultPreset
     }
 
@@ -186,10 +186,10 @@ struct SherpaModelPreset {
         "https://gh.llkk.cc/",
     ]
 
-    private static let mirrorCacheKey = "sherpaMirrorCached"
+    private static let mirrorCacheKey = AppSettings.Keys.sherpaMirrorCached
 
     static var prefersMirror: Bool {
-        UserDefaults.standard.object(forKey: mirrorCacheKey) as? Bool ?? false
+        AppSettings.backend.bool(forKey: mirrorCacheKey, default: false)
     }
 
     static func probeMirrorAsync() {
@@ -202,14 +202,14 @@ struct SherpaModelPreset {
             let task = session.dataTask(with: request) { _, response, error in
                 let reachable = error == nil &&
                     (response as? HTTPURLResponse).map { (200..<400).contains($0.statusCode) } == true
-                UserDefaults.standard.set(!reachable, forKey: mirrorCacheKey)
+                AppSettings.backend.set(!reachable, forKey: mirrorCacheKey)
             }
             task.resume()
         }
     }
 
     static func resetMirrorCache() {
-        UserDefaults.standard.removeObject(forKey: mirrorCacheKey)
+        AppSettings.backend.set(nil, forKey: mirrorCacheKey)
     }
 
     static func candidateURLs(for githubURL: URL) -> [URL] {
