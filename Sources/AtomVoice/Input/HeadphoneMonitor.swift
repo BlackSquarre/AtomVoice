@@ -109,6 +109,7 @@ final class HeadphoneMonitor {
             },
             userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
+            Unmanaged<HeadphoneMonitor>.passUnretained(self).release()
             DebugLog.error("[HeadphoneMonitor] Failed to create event tap (missing Accessibility permission?)")
             return
         }

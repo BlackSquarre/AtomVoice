@@ -79,6 +79,7 @@ final class FnKeyMonitor {
             },
             userInfo: Unmanaged.passRetained(self).toOpaque()
         ) else {
+            Unmanaged<FnKeyMonitor>.passUnretained(self).release()
             DebugLog.error("[FnKeyMonitor] Failed to create event tap. Grant Accessibility permission in System Settings > Privacy & Security > Accessibility.")
             return
         }
