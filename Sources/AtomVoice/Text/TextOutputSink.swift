@@ -47,7 +47,7 @@ extension TextOutputSink {
 final class TextOutputSinkRegistry {
     static let pasteCode = "paste"
     static let streamingCode = "streaming"
-    static let userDefaultsKey = AppSettings.Keys.textOutputSink
+    static let settingsKey = AppSettings.Keys.textOutputSink
 
     let sinks: [TextOutputSink]
     private let sinkByCode: [String: TextOutputSink]
@@ -67,7 +67,7 @@ final class TextOutputSinkRegistry {
     }
 
     func currentCode() -> String {
-        let raw = UserDefaults.standard.string(forKey: Self.userDefaultsKey) ?? fallbackCode
+        let raw = AppSettings.backend.string(forKey: Self.settingsKey) ?? fallbackCode
         return sinkByCode[raw] != nil ? raw : fallbackCode
     }
 
