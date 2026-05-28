@@ -38,93 +38,104 @@ final class TextInjector {
         isInjecting = true
         let injectionID = UUID()
         currentInjectionID = injectionID
-        scheduleInjectionWatchdog(for: injectionID, text: next.text, completion: next.completion)
-        performInject(text: next.text) { [weak self] in
-            guard let self else { return }
-            guard self.isInjecting, self.currentInjectionID == injectionID else {
-                return
-            }
-            self.isInjecting = false
-            next.completion?()
-            self.processNextInjection()
+        let text = next.text
+        let completion = next.completion
+
+        // 主任务：跑完整粘贴流程，结束后在主线程上回收状态并推进队列。
+        // (Main task: run the full paste pipeline, then reconcile state on main thread.)
+        Task { @MainActor [weak self] in
+            await self?.performInject(text: text)
+            self?.finishInjection(injectionID: injectionID, completion: completion)
+        }
+
+        // Watchdog：5s 内未完成就强制回收状态、调 completion、继续推进。
+        // 与主任务用 injectionID 互相 gate，先到的一方负责调 completion。
+        // (Watchdog: force-reset and continue after 5s. Two tasks gate each other via injectionID;
+        //  whoever wins fires completion.)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.injectionWatchdogTimeout * 1_000_000_000))
+            self?.handleWatchdog(injectionID: injectionID, textLength: text.count, completion: completion)
         }
     }
 
-    private func scheduleInjectionWatchdog(for injectionID: UUID, text: String, completion: (() -> Void)?) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.injectionWatchdogTimeout) { [weak self] in
-            guard let self, self.isInjecting, self.currentInjectionID == injectionID else { return }
-            DebugLog.error("[TextInjector] Injection timed out after \(Self.injectionWatchdogTimeout)s, resetting state and continuing queue, textLength=\(text.count)")
-            self.isInjecting = false
-            self.currentInjectionID = UUID()
-            completion?()
-            self.processNextInjection()
-        }
+    @MainActor
+    private func finishInjection(injectionID: UUID, completion: (() -> Void)?) {
+        guard isInjecting, currentInjectionID == injectionID else { return }
+        isInjecting = false
+        completion?()
+        processNextInjection()
     }
 
-    private func performInject(text: String, completion: (() -> Void)? = nil) {
+    @MainActor
+    private func handleWatchdog(injectionID: UUID, textLength: Int, completion: (() -> Void)?) {
+        guard isInjecting, currentInjectionID == injectionID else { return }
+        DebugLog.error("[TextInjector] Injection timed out after \(Self.injectionWatchdogTimeout)s, resetting state and continuing queue, textLength=\(textLength)")
+        isInjecting = false
+        currentInjectionID = UUID()
+        completion?()
+        processNextInjection()
+    }
+
+    @MainActor
+    private func performInject(text: String) async {
         // 在主线程上读取前台应用的 bundleID，命中内置兼容性清单时改用更长的粘贴延迟，避免远程桌面/虚拟机/串流类应用丢字符。
         // (Resolve frontmost app on main thread to pick per-app paste delay override for remote desktop / VM / streaming clients.)
         let compatProfile: PasteCompatibilityProfile? = PasteCompatibilityRegistry.profileForFrontmostApp()
 
-        // 将获取光标后字符的跨进程 IPC 调用移至后台队列，避免目标应用挂起时连带卡死主线程
-        // (Move the cross-process IPC call for getting character after cursor to a background queue to avoid freezing the main thread if target app hangs)
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { return }
-            let nextChar = self.getCharacterAfterCursor()
-            
-            DispatchQueue.main.async {
-                var finalText = text
-                if let nextChar, PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
-                    finalText = self.removeTrailingPunctuation(text)
-                }
+        // 将获取光标后字符的跨进程 IPC 调用移至后台 Task，避免目标应用挂起时连带卡死主线程。
+        // (Move the cross-process AX read off the main actor so a hung target app doesn't freeze us.)
+        let nextChar = await Task.detached(priority: .userInitiated) {
+            Self.getCharacterAfterCursor()
+        }.value
 
-                // 保存当前剪贴板（Save current clipboard）
-                let pasteboard = NSPasteboard.general
-                let previousContents = self.savePasteboard(pasteboard)
-
-                // 将文本写入剪贴板（Set text to clipboard）
-                pasteboard.clearContents()
-                pasteboard.setString(finalText, forType: .string)
-
-                // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check if current input source is CJK, switch to ASCII if needed）
-                let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-                let needsSwitch = self.isCJKInputSource(originalSource)
-                if needsSwitch {
-                    self.switchToASCIIInputSource()
-                }
-
-                // 短暂延迟，等待输入源切换生效（Small delay for input source switch to take effect）
-                let delay = needsSwitch ? 0.05 : 0.02
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    // 模拟 Cmd+V 粘贴（Simulate Cmd+V paste）
-                    self.simulatePaste()
-
-                    // 粘贴后恢复输入源（Restore input source after paste）
-                    // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴；debug build 可在菜单调节
-                    // 远程桌面 / 虚拟机 / 串流类应用命中兼容性清单时使用更长的延迟，避免键盘转发掉字符
-                    // (Paste delay: enough time for target apps incl. Electron; tunable via debug menu.
-                    //  Remote-desktop / VM / streaming clients matched by compatibility registry use a longer override to avoid dropped characters.)
-                    let basePasteDelay: Double = AppSettings.pasteDelay
-                    let pasteDelay: Double = max(basePasteDelay, compatProfile?.pasteDelay ?? 0)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) {
-                        if needsSwitch {
-                            TISSelectInputSource(originalSource)
-                        }
-                        // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard, ensuring input method restoration doesn't affect paste）
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            self.restorePasteboard(pasteboard, contents: previousContents)
-                            completion?()
-                        }
-                    }
-                }
-            }
+        var finalText = text
+        if let nextChar, PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
+            finalText = Self.removeTrailingPunctuation(text)
         }
+
+        // 保存当前剪贴板（Save current clipboard）
+        let pasteboard = NSPasteboard.general
+        let previousContents = savePasteboard(pasteboard)
+
+        // 将文本写入剪贴板（Set text to clipboard）
+        pasteboard.clearContents()
+        pasteboard.setString(finalText, forType: .string)
+
+        // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check current input source, switch to ASCII if needed）
+        let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        let needsSwitch = Self.isCJKInputSource(originalSource)
+        if needsSwitch {
+            Self.switchToASCIIInputSource()
+        }
+
+        // 短暂等待输入源切换生效（Wait briefly for input source switch to take effect）
+        await Self.sleep(seconds: needsSwitch ? 0.05 : 0.02)
+        Self.simulatePaste()
+
+        // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴；debug build 可在菜单调节。
+        // 远程桌面 / 虚拟机 / 串流类应用命中兼容性清单时使用更长的延迟，避免键盘转发掉字符。
+        // (Paste delay: enough time for target apps incl. Electron; tunable via debug menu.
+        //  Remote-desktop / VM / streaming clients matched by compatibility registry use a longer override to avoid dropped characters.)
+        let pasteDelay = max(AppSettings.pasteDelay, compatProfile?.pasteDelay ?? 0)
+        await Self.sleep(seconds: pasteDelay)
+
+        if needsSwitch {
+            TISSelectInputSource(originalSource)
+        }
+
+        // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard）
+        await Self.sleep(seconds: 0.05)
+        restorePasteboard(pasteboard, contents: previousContents)
+    }
+
+    private static func sleep(seconds: Double) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 
     // MARK: - 光标标点检测
 
     /// 获取当前聚焦输入框中光标后方的第一个字符（Get the first character after cursor in the currently focused text field）
-    private func getCharacterAfterCursor() -> Character? {
+    private static func getCharacterAfterCursor() -> Character? {
         let systemWide = AXUIElementCreateSystemWide()
 
         // 获取当前聚焦的 UI 元素（Get the currently focused UI element）
@@ -160,7 +171,7 @@ final class TextInjector {
     }
 
     /// 移除文本末尾的标点符号（Remove trailing punctuation from text）
-    private func removeTrailingPunctuation(_ text: String) -> String {
+    private static func removeTrailingPunctuation(_ text: String) -> String {
         var trimmed = text
         while let last = trimmed.last, PunctuationProcessor.isSentenceEndingPunctuation(last) {
             trimmed = String(trimmed.dropLast())
@@ -168,7 +179,7 @@ final class TextInjector {
         return trimmed
     }
 
-    private func isCJKInputSource(_ source: TISInputSource) -> Bool {
+    private static func isCJKInputSource(_ source: TISInputSource) -> Bool {
         guard let idPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else {
             return false
         }
@@ -189,7 +200,7 @@ final class TextInjector {
         return cjkPatterns.contains(where: { sourceID.hasPrefix($0) })
     }
 
-    private func switchToASCIIInputSource() {
+    private static func switchToASCIIInputSource() {
         let filter = [
             kTISPropertyInputSourceCategory: kTISCategoryKeyboardInputSource,
             kTISPropertyInputSourceType: kTISTypeKeyboardLayout,
@@ -227,7 +238,7 @@ final class TextInjector {
         }
     }
 
-    private func simulatePaste() {
+    private static func simulatePaste() {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)  // V 键（V key）
         let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
