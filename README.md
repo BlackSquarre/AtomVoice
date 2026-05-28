@@ -139,6 +139,12 @@ Built-in presets: **OpenAI** / **Anthropic** / DeepSeek / Moonshot (Kimi) / Qwen
 
 The default system prompt is tuned for dictation polish (fix homophones, mis-transcribed product/API names, fillers, punctuation) and switches automatically by recognition language. You can override it with your own prompt. LLM Refinement sends recognized text, not audio, to the provider you select.
 
+## Contributing
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and PR guidelines.
+
+For security reports, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
