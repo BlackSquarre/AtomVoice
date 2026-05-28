@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a bug or regression in AtomVoice
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in the fields below — logs and reproduction steps matter more than screenshots.
+
+  - type: dropdown
+    id: macos
+    attributes:
+      label: macOS version
+      description: From the Apple menu → About This Mac, or `sw_vers -productVersion`.
+      options:
+        - "26.x"
+        - "15.x"
+        - "14.x"
+        - Older / Other (specify in Additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: atomvoice-version
+    attributes:
+      label: AtomVoice version
+      description: From the menu bar → About. Include "Debug" if it's a debug build.
+      placeholder: e.g. 0.10.5 (Release) / 0.10.5 (Debug)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Recognition engine in use
+      options:
+        - Apple Speech
+        - Sherpa-ONNX (local)
+        - Doubao Cloud
+        - Multiple / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: trigger
+    attributes:
+      label: How to reproduce
+      description: What trigger key did you press, in which app, with which audio input/output device, and what did you say?
+      placeholder: |
+        1. Press right-Option in TextEdit
+        2. Speak "Hello world"
+        3. Release the key
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        For Debug builds (`make dev` artifact), please attach the latest entries from `~/Library/Logs/AtomVoice/debug.log`.
+        For Release builds, run `log show --predicate 'processImagePath CONTAINS "AtomVoice"' --last 5m --style compact` and paste relevant lines.
+      render: text
+
+  - type: input
+    id: audio-device
+    attributes:
+      label: Audio input / output device (if relevant)
+      description: Especially for USB DAC, Bluetooth headset, or wired headset issues.
+      placeholder: e.g. MOONDROP MAY (USB), AirPods Pro, MacBook Built-in
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots only if it's a UI layout issue. Otherwise, logs above are more useful.

@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a new feature or improvement for AtomVoice
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: please check [CONTRIBUTING.md](../../CONTRIBUTING.md) — especially the "暂不建议的方向" section, which lists scopes the project does not plan to take on (iOS port, SwiftUI rewrite, paid features, etc.).
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: What do you want to do?
+      description: Describe the concrete use case, not just the feature name.
+      placeholder: |
+        When I dictate technical docs, I often need to insert code blocks. Right now I have to stop recording and switch context.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How are you working around it today?
+      description: Helps gauge severity and whether the feature would replace an existing flow.
+
+  - type: dropdown
+    id: willing-to-pr
+    attributes:
+      label: Are you willing to send a PR?
+      options:
+        - "Yes, I'd like to implement this"
+        - "Maybe, with guidance"
+        - "No, just suggesting"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Links to similar features in other tools, screenshots, or design sketches.
