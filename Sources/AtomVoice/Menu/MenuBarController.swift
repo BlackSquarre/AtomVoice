@@ -486,10 +486,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: - Launch at Login
 
     private var isLaunchAtLoginEnabled: Bool {
-        if #available(macOS 13.0, *) {
-            return SMAppService.mainApp.status == .enabled
-        }
-        return false
+        SMAppService.mainApp.status == .enabled
     }
 
     private var hasAllPermissions: Bool {
@@ -806,16 +803,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
-        if #available(macOS 13.0, *) {
-            do {
-                if isLaunchAtLoginEnabled {
-                    try SMAppService.mainApp.unregister()
-                } else {
-                    try SMAppService.mainApp.register()
-                }
-            } catch {
-                DebugLog.error("[LaunchAtLogin] Error: \(error)")
+        do {
+            if isLaunchAtLoginEnabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
             }
+        } catch {
+            DebugLog.error("[LaunchAtLogin] Error: \(error)")
         }
         rebuildMenu()
     }
