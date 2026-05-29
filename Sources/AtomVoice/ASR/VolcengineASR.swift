@@ -218,6 +218,9 @@ final class VolcengineASRProvider: CloudASRProvider {
         }
 
         DebugLog.info("[VolcengineASR] create: request=\(requestID) connect=\(connectID)")
+        #if DEBUG_BUILD
+        DebugLog.info("[VolcengineASR] settings: resource=\(settings.trimmedResourceID) language=\(settings.volcengineLanguage) itn=\(settings.enableITN) ddc=\(settings.enableDDC) nonstream=\(settings.enableNonstream) endWindow=\(settings.endWindowSize) finalTimeout=\(settings.finalResultTimeout)s resultType=full")
+        #endif
 
         return VolcengineASRConnection(session: sharedSession, request: request, initialFrame: initialFrame)
     }
@@ -364,6 +367,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
                 return
             }
             if let text = response.text {
+                ASRLatencyProbe.beginServerText(text, isFinal: response.isFinal)
                 delegate?.connection(self, didReceiveText: text, isFinal: response.isFinal)
             }
         } catch {

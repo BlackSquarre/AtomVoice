@@ -70,6 +70,7 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
         case .showRefining:
             capsuleWindow.showRefining()
         case .updateText(let text):
+            ASRLatencyProbe.mark(text, stage: "presenter_update_text")
             capsuleWindow.updateText(text)
         case .updateBands(let bands):
             capsuleWindow.updateBands(bands)

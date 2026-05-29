@@ -32,6 +32,7 @@ extension RecordingSessionController {
         case .showCapsule(let presentation, let ensurePanel):
             presentCapsule(presentation, ensurePanel: ensurePanel)
         case .updateCapsuleText(let text):
+            ASRLatencyProbe.mark(text, stage: "side_effect_update_capsule")
             presenter.present(.updateText(text))
             streamSession?.update(currentText: text)
         case .updateCapsuleBands:

@@ -16,6 +16,7 @@ extension RecordingSessionController {
             },
             onPartialResult: { [weak self] text, isFinal in
                 guard let self else { return }
+                ASRLatencyProbe.mark(text, stage: "callbacks_partial", isFinal: isFinal)
                 self.dispatch(.asrPartial(text: text, isFinal: isFinal))
                 self.commitAppleLiveSegmentIfNeeded(from: text, isFinal: isFinal)
             },

@@ -360,7 +360,11 @@ final class CapsuleWindowController {
     func updateText(_ text: String, completion: (() -> Void)? = nil) {
         // 紧凑状态模式下不展示实时识别文字，避免胶囊跟着文字变长变短
         // (In compact status mode skip live text — keeps capsule width fixed and statusy)
-        if compactStatusKey != nil { completion?(); return }
+        if compactStatusKey != nil {
+            ASRLatencyProbe.finish(text, stage: "capsule_skip_compact")
+            completion?()
+            return
+        }
         updateVisibleText(text, completion: completion)
     }
 
@@ -369,12 +373,17 @@ final class CapsuleWindowController {
     }
 
     private func updateVisibleText(_ text: String, completion: (() -> Void)? = nil) {
-        guard let label = textLabel, let panel = panel else { completion?(); return }
+        guard let label = textLabel, let panel = panel else {
+            ASRLatencyProbe.finish(text, stage: "capsule_missing_ui")
+            completion?()
+            return
+        }
         let currentPresentationID = presentationID
         // 确保文字颜色恢复为默认（showError 会改为红色）（Ensure text color resets to default — showError changes it to red）
         label.textColor = .labelColor
         label.stringValue = text
         label.isHidden = false
+        ASRLatencyProbe.finish(text, stage: "capsule_label_set")
 
         let measured = (text as NSString).size(withAttributes: [.font: label.font!])
         let tw = min(max(measured.width + 18, minTextWidth), maxTextWidth)
