@@ -21,8 +21,8 @@
     <string>com.blacksquarre.AtomVoice</string>
     <key>CFBundleVersion</key>
     <string>13</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.10.5</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.10.6-Beta-1</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
