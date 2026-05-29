@@ -2,6 +2,7 @@ var runner = TestRunner()
 
 await PermissionTests.run(&runner)
 await ASRProviderTests.run(&runner)
+await CloudASRTests.run(&runner)
 await RecognitionSessionTests.run(&runner)
 await OOBELayoutTests.run(&runner)
 await CapsuleAnimationTests.run(&runner)

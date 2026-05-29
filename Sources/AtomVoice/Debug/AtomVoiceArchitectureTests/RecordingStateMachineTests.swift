@@ -375,6 +375,26 @@ enum RecordingStateMachineTests {
             try expect(partial.sideEffects.contains(.updateCapsuleText("hello")))
             try expect(partial.sideEffects.contains(.noteASRText("hello")))
         }
+        await runner.run("Recording state machine updates final partial while stopping") {
+            var state = RecordingSessionState()
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: VolcengineASRSettings.engineCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+            step(&state, .triggerReleased)
+
+            let finalPartial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello final", isFinal: true))
+
+            try expect(finalPartial.state.phase == .stopping)
+            try expect(finalPartial.sideEffects.contains(.updateCapsuleText("hello final")))
+            try expect(finalPartial.sideEffects.contains(.noteASRText("hello final")))
+        }
         await runner.run("Recording state machine controls text output activation") {
             var state = RecordingSessionState()
             step(&state, .triggerPressed(deferCapsulePresentation: false))

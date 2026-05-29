@@ -379,11 +379,17 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
                   self.state != .idle, self.state != .cancelled
             else { return }
 
-            if text != self.lastText {
+            ASRLatencyProbe.mark(text, stage: "cloud_receive", isFinal: isFinal)
+            let shouldEmit = text != self.lastText || isFinal
+            if shouldEmit {
                 self.lastText = text
+                ASRLatencyProbe.mark(text, stage: "cloud_emit_scheduled", isFinal: isFinal)
                 DispatchQueue.main.async { [onResult] in
+                    ASRLatencyProbe.mark(text, stage: "cloud_emit_main", isFinal: isFinal)
                     onResult?(text, isFinal)
                 }
+            } else {
+                ASRLatencyProbe.mark(text, stage: "cloud_dedup_skip", isFinal: isFinal)
             }
             if isFinal, self.state == .finishing {
                 self.completeStopLocked(text: self.lastText, error: nil)

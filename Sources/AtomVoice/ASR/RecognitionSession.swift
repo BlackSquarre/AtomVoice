@@ -420,13 +420,24 @@ final class DoubaoRecognitionSession: RecognitionSession {
         callbacks.onShowRecording()
 
         if let error = cloudEngine.start(
-            onResult: { [weak self] text, _ in
-                DispatchQueue.main.async {
-                    guard let self, callbacks.isRecordingCurrent() else { return }
+            onResult: { [weak self] text, isFinal in
+                ASRLatencyProbe.mark(text, stage: "session_on_result", isFinal: isFinal)
+                let handleResult = {
+                    guard let self else { return }
+                    guard callbacks.isCurrent() else {
+                        ASRLatencyProbe.mark(text, stage: "session_drop_stale", isFinal: isFinal)
+                        return
+                    }
+                    ASRLatencyProbe.mark(text, stage: "session_forward_partial", isFinal: isFinal)
+                    callbacks.onPartialResult(text, isFinal)
                     if self.fallback.acceptCloudText(text) {
                         callbacks.onShimmerChanged(false)
                     }
-                    callbacks.onPartialResult(text, false)
+                }
+                if Thread.isMainThread {
+                    handleResult()
+                } else {
+                    DispatchQueue.main.async(execute: handleResult)
                 }
             },
             onError: { [weak self] message in
