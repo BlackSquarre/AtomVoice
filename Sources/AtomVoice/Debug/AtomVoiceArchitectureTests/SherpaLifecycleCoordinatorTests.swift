@@ -109,7 +109,7 @@ enum SherpaLifecycleCoordinatorTests {
 
 private final class SherpaLifecycleHarness {
     let settings: FakeSherpaLifecycleSettings
-    let provider = FakeSherpaEngineProvider()
+    let provider = FakeASREngineProvider()
     let session: FakeSherpaSessionInspector
     let notificationCenter = NotificationCenter()
     var scheduledDelays: [TimeInterval] = []
@@ -167,39 +167,4 @@ private final class FakeSherpaLifecycleSettings: SherpaLifecycleSettingsProvidin
     var sherpaProvider: String { provider }
     var sherpaAutoUnloadEnabled: Bool { autoUnloadEnabled }
     var sherpaAutoUnloadIdleMinutes: Int { idleMinutes }
-}
-
-private final class FakeSherpaEngineProvider: ASREngineProviding {
-    var hasSherpaEngineValue = false
-    var isSherpaModelLoadedValue = false
-    private(set) var releaseCount = 0
-
-    var hasSherpaEngine: Bool { hasSherpaEngineValue }
-    var isSherpaModelLoaded: Bool { isSherpaModelLoadedValue }
-
-    func releaseSherpaEngine() {
-        releaseCount += 1
-        hasSherpaEngineValue = false
-        isSherpaModelLoadedValue = false
-    }
-
-    func speechRecognizer() -> SpeechRecognizerController {
-        fatalError("FakeSherpaEngineProvider does not create real engines")
-    }
-
-    func appleEngine() -> AppleSpeechASREngine {
-        fatalError("FakeSherpaEngineProvider does not create real engines")
-    }
-
-    func sherpaEngine() -> SherpaOnnxASREngine {
-        fatalError("FakeSherpaEngineProvider does not create real engines")
-    }
-
-    func volcengineEngine() -> VolcengineASREngine {
-        fatalError("FakeSherpaEngineProvider does not create real engines")
-    }
-
-    func recognitionSession(for code: String, audioEngine: AudioEngineController) -> any RecognitionSession {
-        fatalError("FakeSherpaEngineProvider does not create recognition sessions")
-    }
 }

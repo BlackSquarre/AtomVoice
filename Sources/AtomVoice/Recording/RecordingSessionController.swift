@@ -64,7 +64,7 @@ final class RecordingSessionController {
         asrEngineProvider.recognitionSession(for: code, audioEngine: audioEngine)
     }
 
-    init(
+    convenience init(
         audioEngine: AudioEngineController,
         capsuleWindow: CapsuleWindowController,
         llmRefiner: LLMRefiner,
@@ -74,8 +74,30 @@ final class RecordingSessionController {
         asrEngineRegistry: ASREngineRegistry,
         asrEngineProvider: ASREngineProviding
     ) {
-        self.audioEngine = audioEngine
         let presenter = RecordingSessionPresenter(capsuleWindow: capsuleWindow)
+        self.init(
+            audioEngine: audioEngine,
+            presenter: presenter,
+            llmRefiner: llmRefiner,
+            textPostProcessorRegistry: textPostProcessorRegistry,
+            textOutputSinkRegistry: textOutputSinkRegistry,
+            volumeController: volumeController,
+            asrEngineRegistry: asrEngineRegistry,
+            asrEngineProvider: asrEngineProvider
+        )
+    }
+
+    init(
+        audioEngine: AudioEngineController,
+        presenter: RecordingSessionPresenting,
+        llmRefiner: LLMRefiner,
+        textPostProcessorRegistry: TextPostProcessorRegistry,
+        textOutputSinkRegistry: TextOutputSinkRegistry,
+        volumeController: VolumeController,
+        asrEngineRegistry: ASREngineRegistry,
+        asrEngineProvider: ASREngineProviding
+    ) {
+        self.audioEngine = audioEngine
         self.presenter = presenter
         self.llmRefiner = llmRefiner
         self.textOutputSinkRegistry = textOutputSinkRegistry

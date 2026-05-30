@@ -80,6 +80,77 @@ func makeRecognitionSessionCallbacks(
     )
 }
 
+final class RecordingSessionHarness {
+    let audioEngine = AudioEngineController()
+    let presenter = FakeRecordingSessionPresenter()
+    let session: FakeRecognitionSession
+    let provider = FakeASREngineProvider()
+    let outputSink: FakeTextOutputSink
+    let delegate = FakeRecordingSessionDelegate()
+    let controller: RecordingSessionController
+
+    init(
+        session: FakeRecognitionSession = FakeRecognitionSession(),
+        outputSink: FakeTextOutputSink = FakeTextOutputSink(),
+        processors: [TextPostProcessor] = []
+    ) {
+        self.session = session
+        self.outputSink = outputSink
+        provider.register(session)
+        controller = RecordingSessionController(
+            audioEngine: audioEngine,
+            presenter: presenter,
+            llmRefiner: LLMRefiner(),
+            textPostProcessorRegistry: TextPostProcessorRegistry(processors: processors),
+            textOutputSinkRegistry: TextOutputSinkRegistry(sinks: [outputSink], fallbackCode: outputSink.descriptor.code),
+            volumeController: VolumeController(),
+            asrEngineRegistry: ASREngineRegistry.shared,
+            asrEngineProvider: provider
+        )
+        controller.delegate = delegate
+    }
+
+    @discardableResult
+    func enterStarting(deferCapsulePresentation: Bool = false) -> Int {
+        var state = RecordingSessionState()
+        _ = step(&state, .triggerPressed(deferCapsulePresentation: deferCapsulePresentation))
+        controller.state = state
+        return state.startRequestGeneration
+    }
+
+    @discardableResult
+    func enterCapturing(engine: String = ASREngineRegistry.appleCode) -> Int {
+        var state = RecordingSessionState()
+        _ = step(&state, .triggerPressed(deferCapsulePresentation: false))
+        _ = step(&state, .inputPreflightCompleted(request: state.startRequestGeneration, ready: true))
+        _ = step(
+            &state,
+            .recognitionCapabilitiesResolved(
+                mutableCapsulePreview: session.supportsMutableCapsulePreview
+            )
+        )
+        _ = step(
+            &state,
+            .startValidated(
+                engine: engine,
+                pendingDoubaoText: nil,
+                pendingRefinementText: nil,
+                lowerVolume: false
+            )
+        )
+        controller.state = state
+        controller.recognitionSession = session
+        return state.recordingGeneration
+    }
+
+    func tearDown() {
+        controller.asrSilenceMonitor.stop()
+        controller.recognitionSession?.cancel()
+        controller.streamSession?.cancel()
+        controller.streamSession = nil
+    }
+}
+
 final class RecognitionFinalizerHarness {
     let presenter = FakeRecognitionPresenter()
     let refiner = FakeRecognitionRefiner()
@@ -167,4 +238,3 @@ final class RecognitionFinalizerSettingsBox {
         set { value.llmResultDelay = newValue }
     }
 }
-
