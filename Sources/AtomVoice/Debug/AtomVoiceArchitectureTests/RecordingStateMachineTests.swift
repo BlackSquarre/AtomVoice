@@ -375,6 +375,25 @@ enum RecordingStateMachineTests {
             try expect(partial.sideEffects.contains(.updateCapsuleText("hello")))
             try expect(partial.sideEffects.contains(.noteASRText("hello")))
         }
+        await runner.run("Recording state machine hides mutable partial text when model disables capsule preview") {
+            var state = RecordingSessionState()
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(&state, .recognitionCapabilitiesResolved(mutableCapsulePreview: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.appleCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+
+            let partial = RecordingStateMachine.reduce(state, .asrPartial(text: "hello", isFinal: false))
+
+            try expect(!partial.sideEffects.contains(.updateCapsuleText("hello")))
+            try expect(partial.sideEffects.contains(.noteASRText("hello")))
+        }
         await runner.run("Recording state machine updates final partial while stopping") {
             var state = RecordingSessionState()
             step(&state, .triggerPressed(deferCapsulePresentation: false))

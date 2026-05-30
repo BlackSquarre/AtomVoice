@@ -50,10 +50,13 @@ enum ASRProviderTests {
             try expect((apple as AnyObject) === (appleAgain as AnyObject))
             try expect(apple.code == ASREngineRegistry.appleCode)
             try expect(apple.preferredAudioFormat == nil)
+            try expect(apple.supportsMutableCapsulePreview)
             try expect(apple.supportsLiveInsertion)
             try expect(!apple.supportsServerFallback)
+            try expect(sherpa.supportsMutableCapsulePreview)
             try expect(sherpa.preferredAudioFormat == .voice16k)
             try expect(!sherpa.supportsLiveInsertion)
+            try expect(doubao.supportsMutableCapsulePreview)
             try expect(doubao.preferredAudioFormat == .voice16k)
             try expect(doubao.supportsServerFallback)
         }
