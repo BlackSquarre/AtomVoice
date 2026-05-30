@@ -26,6 +26,7 @@ enum RecordingEvent: Equatable {
     case startPreflightFailed(message: String, ensurePanel: Bool)
     case externalModelDownloadRequired(redownload: Bool)
     case externalModelDownloadInProgress
+    case recognitionCapabilitiesResolved(mutableCapsulePreview: Bool)
     case startValidated(
         engine: String,
         pendingDoubaoText: String?,
@@ -146,6 +147,7 @@ struct RecordingSessionState: Equatable {
     fileprivate(set) var isRefining = false
     fileprivate(set) var isWaitingForDoubaoFinalResult = false
     var pendingRefinementText: String?
+    var mutableCapsulePreviewEnabled = true
     var textOutputActivated = false
     var liveInsertion = RecordingLiveInsertionState()
     var deferredCapsule = RecordingDeferredCapsuleState()
@@ -173,6 +175,7 @@ struct RecordingStateMachine {
                 return (next, effects)
             }
             next.deferredCapsule.begin(deferred: deferCapsulePresentation)
+            next.mutableCapsulePreviewEnabled = true
             next.phase = .starting
             next.startRequestGeneration += 1
             effects.append(.waitForInputReady(request: next.startRequestGeneration))
@@ -203,6 +206,10 @@ struct RecordingStateMachine {
         case .externalModelDownloadInProgress:
             guard next.phase == .starting else { break }
             next.phase = .idle
+
+        case .recognitionCapabilitiesResolved(let mutableCapsulePreview):
+            guard next.phase == .starting || next.phase == .capturing else { break }
+            next.mutableCapsulePreviewEnabled = mutableCapsulePreview
 
         case .startValidated(let engine, let pendingDoubaoText, let pendingRefinementText, let lowerVolume):
             guard next.phase == .starting else { break }
@@ -304,11 +311,11 @@ struct RecordingStateMachine {
             ])
 
         case .asrPartial:
-            if next.deferredCapsule.isDeferred {
+            if next.mutableCapsulePreviewEnabled, next.deferredCapsule.isDeferred {
                 if case .asrPartial(let text, _) = event {
                     next.deferredCapsule.recognizedText = text
                 }
-            } else if case .asrPartial(let text, _) = event {
+            } else if next.mutableCapsulePreviewEnabled, case .asrPartial(let text, _) = event {
                 effects.append(.updateCapsuleText(text))
             }
             if case .asrPartial(let text, _) = event {
@@ -446,6 +453,7 @@ private extension RecordingSessionState {
         isRefining = false
         isWaitingForDoubaoFinalResult = false
         pendingRefinementText = nil
+        mutableCapsulePreviewEnabled = true
         textOutputActivated = false
         liveInsertion.reset()
         deferredCapsule.reset()

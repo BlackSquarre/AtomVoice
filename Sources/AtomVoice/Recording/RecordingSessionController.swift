@@ -279,6 +279,11 @@ final class RecordingSessionController {
             : nil
         let pendingRefinementText = state.isRefining ? state.pendingRefinementText : nil
         recognitionSession = selectedSession
+        _ = dispatch(
+            .recognitionCapabilitiesResolved(
+                mutableCapsulePreview: selectedSession.supportsMutableCapsulePreview
+            )
+        )
 
         let lowerVolume = AppSettings.lowerVolumeOnRecording
         DebugLog.info("[Session] startRecording: lowerVolume=\(lowerVolume)")

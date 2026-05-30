@@ -59,6 +59,9 @@ struct RecognitionSessionCallbacks {
 protocol RecognitionSession: AnyObject {
     var code: String { get }
     var currentText: String { get }
+    /// 当前引擎/模型是否支持在胶囊里用后续 partial 回改前文
+    /// (Whether the current engine/model supports revising earlier capsule text with later partials)
+    var supportsMutableCapsulePreview: Bool { get }
     var supportsLiveInsertion: Bool { get }
     var supportsServerFallback: Bool { get }
     var supportsSilenceMonitoring: Bool { get }
@@ -87,6 +90,7 @@ extension RecognitionSession {
 
 final class AppleRecognitionSession: RecognitionSession {
     let code = ASREngineRegistry.appleCode
+    let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = true
     let supportsServerFallback = false
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = nil
@@ -177,6 +181,7 @@ final class AppleRecognitionSession: RecognitionSession {
 
 final class SherpaRecognitionSession: RecognitionSession {
     let code = ASREngineRegistry.sherpaCode
+    let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
     let supportsServerFallback = false
     let requiresModelReloadOnRouteChange = true
@@ -363,6 +368,7 @@ final class SherpaRecognitionSession: RecognitionSession {
 
 final class DoubaoRecognitionSession: RecognitionSession {
     let code = VolcengineASRSettings.engineCode
+    let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
     let supportsServerFallback = true
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
