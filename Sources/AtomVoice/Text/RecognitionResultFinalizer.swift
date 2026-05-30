@@ -404,16 +404,19 @@ final class RecognitionResultFinalizer {
     }
 
     private func dismissAndDeliver(_ text: String) {
-        presenter.dismissRecognition { [self] in
-            outputSinkProvider().deliver(text: text, completion: nil)
-        }
+        // 上屏不等胶囊消失动画：立即注入，消失动画并行播放，省掉一次动画时长的延迟。
+        // 胶囊是 nonactivating panel，不抢焦点，粘贴始终发往前台 App，不受其显隐影响。
+        // (Inject immediately; the capsule fades out in parallel. It's a non-activating panel,
+        //  so paste always targets the frontmost app regardless of capsule visibility.)
+        outputSinkProvider().deliver(text: text, completion: nil)
+        presenter.dismissRecognition(completion: nil)
     }
 
     private func dismissAndDeliverPunctuationOnly(_ punctuation: String?) {
-        presenter.dismissRecognition { [self] in
-            if let punctuation, !punctuation.isEmpty {
-                outputSinkProvider().deliver(text: punctuation, completion: nil)
-            }
+        // 上屏不等胶囊消失动画（同 dismissAndDeliver）。(Inject without waiting for the dismiss animation.)
+        if let punctuation, !punctuation.isEmpty {
+            outputSinkProvider().deliver(text: punctuation, completion: nil)
         }
+        presenter.dismissRecognition(completion: nil)
     }
 }

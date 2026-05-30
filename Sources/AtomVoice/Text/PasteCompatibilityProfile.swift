@@ -12,11 +12,17 @@ enum PasteCompatibilityCategory {
     /// 游戏串流：除转发延迟外还要等下一帧渲染，通常需要最长延迟。
     /// (Game streaming — also waits for next frame render; needs the longest delay.)
     case gameStreaming
+    /// Electron / Chromium 套壳应用：粘贴经过渲染进程读剪贴板，标准延迟下可能丢字符或粘贴空。
+    /// 沿用历史上验证过对 Electron 有效的 0.25s；全局默认延迟下调后由这里兜底。
+    /// (Electron / Chromium shells — paste goes through the renderer reading the clipboard, so the
+    ///  short default can drop characters. Keeps the 0.25s value historically proven for Electron.)
+    case electron
 
     /// 该类别下统一使用的粘贴延迟（秒），会与全局 AppSettings.pasteDelay 取较大值。
     /// (Category-wide paste delay in seconds; combined with the global AppSettings.pasteDelay by taking the larger value.)
     var pasteDelay: Double {
         switch self {
+        case .electron:       return 0.25
         case .virtualMachine: return 0.35
         case .remoteDesktop:  return 0.40
         case .gameStreaming:  return 0.50
@@ -104,6 +110,46 @@ enum PasteCompatibilityRegistry {
     /// 查找当前前台应用对应的兼容性配置。返回 nil 表示走默认粘贴行为。
     /// (Looks up the compatibility profile for the current frontmost app; nil means default paste behavior.)
     static func profileForFrontmostApp() -> PasteCompatibilityProfile? {
-        profile(forBundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        // 1. 先查内置白名单（远程桌面 / VM / 串流）。
+        // (1. Built-in allow-list first — remote desktop / VM / streaming.)
+        if let profile = profile(forBundleID: app.bundleIdentifier) {
+            return profile
+        }
+        // 2. 白名单未命中时自动检测 Electron，命中则套用 .electron 类别的兜底延迟。
+        // (2. Otherwise auto-detect Electron and apply the .electron category fallback delay.)
+        guard isElectronApp(app) else { return nil }
+        return PasteCompatibilityProfile(
+            bundleID: app.bundleIdentifier ?? "",
+            displayName: app.localizedName ?? "Electron",
+            category: .electron
+        )
+    }
+
+    // Electron 检测结果按 bundleID 缓存，避免每次粘贴都做文件系统检查（同一 App 只查一次）。
+    // 仅在主线程（粘贴流程）访问，无需额外加锁。
+    // (Cache Electron detection by bundleID so the filesystem is hit only once per app. Main-thread only.)
+    private static var electronCheckCache: [String: Bool] = [:]
+
+    /// 判断应用是否为 Electron / Chromium 套壳：检查 bundle 内是否存在 Electron Framework.framework。
+    /// 这是 Electron 应用的硬性结构，比 Info.plist 特征更可靠。
+    /// (Detect Electron / Chromium shells by checking for Electron Framework.framework inside the bundle —
+    ///  a hard structural marker, more reliable than Info.plist heuristics.)
+    static func isElectronApp(_ app: NSRunningApplication) -> Bool {
+        guard let bundleID = app.bundleIdentifier else {
+            return detectElectronFramework(app)
+        }
+        if let cached = electronCheckCache[bundleID] {
+            return cached
+        }
+        let result = detectElectronFramework(app)
+        electronCheckCache[bundleID] = result
+        return result
+    }
+
+    private static func detectElectronFramework(_ app: NSRunningApplication) -> Bool {
+        guard let bundleURL = app.bundleURL else { return false }
+        let framework = bundleURL.appendingPathComponent("Contents/Frameworks/Electron Framework.framework")
+        return FileManager.default.fileExists(atPath: framework.path)
     }
 }

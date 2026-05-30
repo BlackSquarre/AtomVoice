@@ -67,7 +67,11 @@ enum AppSettings {
         static let headphoneControlAlertShown = "headphoneControlAlertShown"
     }
 
-    static let defaultPasteDelay: Double = 0.25
+    /// 全局默认粘贴延迟。原生 App 用这个较短值上屏更跟手；
+    /// Electron / 远程桌面 / VM / 串流类 App 由 PasteCompatibilityRegistry 自动套用更长延迟兜底。
+    /// (Global default paste delay. Native apps use this shorter value for snappier output;
+    ///  Electron / remote-desktop / VM / streaming apps get a longer delay via PasteCompatibilityRegistry.)
+    static let defaultPasteDelay: Double = 0.10
     static let pasteDelayOptions: [Double] = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40]
     static let defaultSilenceDuration: Double = 3.0
 
