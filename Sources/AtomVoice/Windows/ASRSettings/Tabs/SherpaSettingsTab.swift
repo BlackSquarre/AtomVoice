@@ -15,6 +15,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
     private var sherpaRadioStack: NSStackView!
     private var sherpaAutoUnloadCheckbox: NSButton!
     private var sherpaAutoUnloadPopup: NSPopUpButton!
+    private var sherpaImportFlow: SherpaModelImportFlow?
     init(
         parentWindow: @escaping () -> NSWindow?,
         onStatusChanged: @escaping (String, NSColor) -> Void,
@@ -464,8 +465,10 @@ final class SherpaSettingsTab: ASRSettingsTab {
     }
     @objc private func importSherpaModel(_ sender: NSButton) {
         let flow = SherpaModelImportFlow(parentWindow: parentWindow())
+        sherpaImportFlow = flow
         flow.run { [weak self] record in
             guard let self else { return }
+            self.sherpaImportFlow = nil
             guard let record else { return }  // 取消或失败已在 flow 内提示（cancel/failure already alerted）
             // 导入成功 → 自动选中并刷新（On success, auto-select and refresh）
             AppSettings.sherpaRecognitionLanguage = record.language
