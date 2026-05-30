@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .executable(name: "AtomVoice", targets: ["AtomVoice"]),
         .executable(name: "AtomVoiceArchitectureTests", targets: ["AtomVoiceArchitectureTests"]),
+        .executable(name: "AtomVoiceDoctor", targets: ["AtomVoiceDoctor"]),
         .executable(name: "SherpaMemoryProbe", targets: ["SherpaMemoryProbe"]),
         .executable(name: "SherpaMemoryBenchmark", targets: ["SherpaMemoryBenchmark"]),
     ],
@@ -39,6 +40,7 @@ let package = Package(
                 "Debug/SherpaMemoryProbe",
                 "Debug/SherpaMemoryBenchmark",
                 "Debug/AtomVoiceArchitectureTests",
+                "Debug/AtomVoiceDoctor",
                 "Debug/Tools",
                 "Debug/Scripts",
             ]
@@ -47,6 +49,11 @@ let package = Package(
             name: "AtomVoiceArchitectureTests",
             dependencies: ["AtomVoiceCore"],
             path: "Sources/AtomVoice/Debug/AtomVoiceArchitectureTests"
+        ),
+        .executableTarget(
+            name: "AtomVoiceDoctor",
+            dependencies: ["AtomVoiceCore"],
+            path: "Sources/AtomVoice/Debug/AtomVoiceDoctor"
         ),
         .executableTarget(
             name: "SherpaMemoryProbe",

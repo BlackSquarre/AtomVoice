@@ -9,7 +9,7 @@ INSTALL_DIR = /Applications
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
-.PHONY: build dev run install clean release sherpa-memory test lint-loc \
+.PHONY: build dev run install clean release sherpa-memory doctor test lint-loc \
         clean-release-cache release-cold release-fast release-verify build-release-binaries \
         build-release-arm64 build-release-x86_64 build-debug-arm64 build-debug-x86_64 \
         package-arm64 package-x86_64 package-universal package-debug-universal
@@ -49,6 +49,10 @@ sherpa-memory:
 	swift build -c release --product SherpaMemoryProbe -Xswiftc -DDEBUG_BUILD
 	swift build -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
 	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
+
+# ── 本机环境诊断：只读 JSON 输出，不请求权限/录音/下载模型 ─────────────────
+doctor:
+	@swift run -q -Xswiftc -enable-testing -Xswiftc -DDEBUG_BUILD AtomVoiceDoctor --json
 
 # ── Release：复用独立 scratch cache，并行构建正式/Debug 二进制，再串行打包 ───────
 release: clean-dist build-release-binaries package-arm64 package-x86_64 package-universal package-debug-universal sha256sums
