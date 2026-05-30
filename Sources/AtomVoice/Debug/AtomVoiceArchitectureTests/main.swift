@@ -24,5 +24,8 @@ await SingleInstanceControllerTests.run(&runner)
 await SherpaDownloadCapsulePresenterTests.run(&runner)
 await SherpaLifecycleCoordinatorTests.run(&runner)
 await RecordingStateBroadcasterTests.run(&runner)
+#if DEBUG_BUILD
+await DebugAudioEvidenceRecorderTests.run(&runner)
+#endif
 
 runner.finish()

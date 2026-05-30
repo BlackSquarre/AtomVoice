@@ -22,6 +22,9 @@ final class RecordingSessionController {
     private let liveInsertionAdapter = AppleLiveInsertionAdapter()
     var recognitionSession: (any RecognitionSession)?
     weak var delegate: RecordingSessionDelegate?
+    #if DEBUG_BUILD
+    private let audioEvidenceRecorder = DebugAudioEvidenceRecorder()
+    #endif
 
     /// 录音中状态变化回调：true=进入录音，false=结束（用于同步外部组件如 FnKeyMonitor.isRecording）。
     /// (Recording-active state callback: true on enter, false on stop. Used to sync external components like FnKeyMonitor.isRecording.)
@@ -309,6 +312,9 @@ final class RecordingSessionController {
 
         let lowerVolume = AppSettings.lowerVolumeOnRecording
         DebugLog.info("[Session] startRecording: lowerVolume=\(lowerVolume)")
+        #if DEBUG_BUILD
+        audioEvidenceRecorder.reset()
+        #endif
         _ = dispatch(
             .startValidated(
                 engine: AppSettings.normalizedRecognitionEngine,
@@ -328,6 +334,9 @@ final class RecordingSessionController {
             case .started:
                 break
             case .failed(let failure):
+                #if DEBUG_BUILD
+                preserveDebugAudioEvidence(reason: .sessionStartFailed)
+                #endif
                 dispatch(
                     .sessionStartFailed(
                         message: failure.message,
@@ -349,8 +358,17 @@ final class RecordingSessionController {
 
     private func handleAudioRouteRecoveryFailed() {
         DebugLog.error("[Session] Audio route recovery failed, ending current recording")
+        #if DEBUG_BUILD
+        preserveDebugAudioEvidence(reason: .audioRouteRecoveryFailed)
+        #endif
         _ = dispatch(.audioRouteRecoveryFailed)
     }
+
+    #if DEBUG_BUILD
+    func preserveDebugAudioEvidence(reason: DebugAudioEvidenceReason) {
+        _ = audioEvidenceRecorder.preserve(reason: reason)
+    }
+    #endif
 
     // MARK: - 实时识别更新与状态（Real-time updates & state）
 
@@ -373,6 +391,9 @@ final class RecordingSessionController {
             memcpy(destination, source, byteSize)
             destinationBuffers[index].mDataByteSize = sourceBuffers[index].mDataByteSize
         }
+        #if DEBUG_BUILD
+        audioEvidenceRecorder.record(copy)
+        #endif
         return copy
     }
 

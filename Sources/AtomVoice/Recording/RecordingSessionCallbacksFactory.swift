@@ -42,6 +42,9 @@ extension RecordingSessionController {
                 self?.dispatch(.fallbackStarted(engine: code))
             },
             onStartFailure: { [weak self] failure in
+                #if DEBUG_BUILD
+                self?.preserveDebugAudioEvidence(reason: .sessionStartFailed)
+                #endif
                 self?.dispatch(
                     .sessionStartFailed(
                         message: failure.message,
