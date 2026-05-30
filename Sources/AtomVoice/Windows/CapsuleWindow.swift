@@ -16,13 +16,16 @@ final class CapsuleWindowController {
         case download
     }
 
+    var onDidDismiss: (() -> Void)?
     var panel: NSPanel?
     var waveformView: WaveformView?
     private var textLabel: NSTextField?
     private var refiningLabel: NSTextField?
     var contentView: NSView?
     var animationSurfaceView: NSView?
-    private var downloadTintLayer: CALayer?
+    private var downloadTrackLayer: CALayer?
+    private var downloadFillLayer: CALayer?
+    private var downloadProgressValue: Double = 0
     var waveformVisible = true
     var presentationID = 0
     private(set) var isShowingError = false
@@ -46,6 +49,13 @@ final class CapsuleWindowController {
     private let downloadTextWidth: CGFloat = 320
     private let horizontalPadding: CGFloat = 24
     private let compactMinTextWidth: CGFloat = 56
+    private let downloadTrackColor = NSColor(calibratedRed: 0.07, green: 0.15, blue: 0.31, alpha: 0.76)
+    private let downloadTrackBorderColor = NSColor(calibratedRed: 0.49, green: 0.72, blue: 1.00, alpha: 0.64)
+    private let downloadFillColor = NSColor(calibratedRed: 0.18, green: 0.59, blue: 1.00, alpha: 0.86)
+    private let downloadFillHighlightColor = NSColor(calibratedRed: 0.80, green: 0.92, blue: 1.00, alpha: 0.96)
+
+    var isVisible: Bool { panel != nil }
+    var isShowingDownloadPresentation: Bool { panel != nil && displayMode == .download }
 
     /// 紧凑状态模式：流式上屏时启用，胶囊收窄、只显示固定状态文案，updateText 忽略实时文字
     /// (Compact status mode: enabled during streaming; capsule narrows, shows only a fixed status string,
@@ -54,9 +64,10 @@ final class CapsuleWindowController {
 
     // MARK: - 布局计算
 
-    private func fullWidth(forTextWidth tw: CGFloat) -> CGFloat {
+    private func fullWidth(forTextWidth tw: CGFloat, includesWaveform: Bool = true) -> CGFloat {
         // 计时器以半透明叠层呈现，不占据布局宽度（Timer is rendered as a translucent overlay; no extra width.）
-        return tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
+        let waveformSpace = includesWaveform ? waveformWidth + waveformLeadingOffset + waveformTextGap : 0
+        return tw + waveformSpace + horizontalPadding * 2
     }
 
     private func targetFrame(width: CGFloat) -> NSRect {
@@ -167,7 +178,7 @@ final class CapsuleWindowController {
             resolvedInitialText = initialText
             resolvedTextWidth = initialTextWidth(initialText)
         }
-        let fw = fullWidth(forTextWidth: resolvedTextWidth)
+        let fw = fullWidth(forTextWidth: resolvedTextWidth, includesWaveform: displayMode != .download)
         let target = targetFrame(width: fw)
         let animationSelection = currentAnimationSelection
         let animationStyle = animationSelection.style
@@ -207,6 +218,7 @@ final class CapsuleWindowController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = labelFont
         label.textColor = .labelColor
+        label.alignment = displayMode == .download ? .center : .natural
         label.lineBreakMode = .byTruncatingHead
         label.maximumNumberOfLines = 1
         label.cell?.truncatesLastVisibleLine = true
@@ -303,14 +315,27 @@ final class CapsuleWindowController {
             waveform.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             waveform.widthAnchor.constraint(equalToConstant: waveformWidth),
             waveform.heightAnchor.constraint(equalToConstant: 29),
-            label.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             textMinW, textMaxW,
-            refLabel.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
-            refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
 
-        label.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+        if displayMode == .download {
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+                refLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                refLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
+                label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+                refLabel.leadingAnchor.constraint(equalTo: waveform.trailingAnchor, constant: waveformTextGap),
+                refLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            ])
+        }
 
         #if DEBUG_BUILD
         if showRecordingTimer {
@@ -325,7 +350,7 @@ final class CapsuleWindowController {
         self.contentView = container
         self.animationSurfaceView = surface
         if displayMode == .download {
-            applyDownloadAppearance()
+            applyDownloadAppearance(progress: downloadProgressValue)
         }
 
         animationStrategy.animateIn(host: makeAnimationHost(panel: panel, container: container, targetFrame: target))
@@ -426,14 +451,12 @@ final class CapsuleWindowController {
         }
     }
 
-    func showDownloadProgress(_ text: String) {
+    func showDownloadProgress(_ text: String, progress: Double) {
+        downloadProgressValue = min(max(progress, 0), 1)
         guard panel != nil, displayMode == .download else {
             show(showRecordingTimer: false, initialText: text, showWaveformInitially: false, displayMode: .download)
             refiningLabel?.isHidden = true
             textLabel?.isHidden = false
-            DispatchQueue.main.async { [weak self] in
-                self?.applyShimmerToCapsule()
-            }
             return
         }
 
@@ -443,30 +466,71 @@ final class CapsuleWindowController {
         label.isHidden = false
         refiningLabel?.isHidden = true
         hideWaveform()
+        updateDownloadProgress(downloadProgressValue)
     }
 
-    private func applyDownloadAppearance() {
+    private func applyDownloadAppearance(progress: Double) {
         guard let surface = animationSurfaceView else { return }
         surface.wantsLayer = true
         guard let rootLayer = surface.layer else { return }
+        stopShimmer()
+        downloadTrackLayer?.removeFromSuperlayer()
+        downloadTrackLayer = nil
+        downloadFillLayer = nil
 
-        let tint = CALayer()
-        tint.frame = surface.bounds
-        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-        tint.cornerRadius = cornerRadius
-        tint.cornerCurve = .continuous
-        tint.masksToBounds = true
-        tint.backgroundColor = NSColor.systemBlue.withAlphaComponent(0.22).cgColor
-        tint.borderWidth = 0.75
-        tint.borderColor = NSColor.systemBlue.withAlphaComponent(0.45).cgColor
-        rootLayer.insertSublayer(tint, at: 0)
-        downloadTintLayer = tint
+        let track = CALayer()
+        track.frame = surface.bounds
+        track.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        track.cornerRadius = cornerRadius
+        track.cornerCurve = .continuous
+        track.masksToBounds = true
+        track.backgroundColor = downloadTrackColor.cgColor
+        track.borderWidth = 1
+        track.borderColor = downloadTrackBorderColor.cgColor
+        track.shadowColor = NSColor(calibratedWhite: 0, alpha: 0.26).cgColor
+        track.shadowOpacity = 1
+        track.shadowRadius = 10
+        track.shadowOffset = CGSize(width: 0, height: -1)
+
+        let fill = CAGradientLayer()
+        fill.anchorPoint = CGPoint(x: 0, y: 0.5)
+        fill.position = CGPoint(x: 0, y: surface.bounds.midY)
+        fill.bounds = CGRect(x: 0, y: 0, width: 0, height: surface.bounds.height)
+        fill.autoresizingMask = [.layerHeightSizable]
+        fill.startPoint = CGPoint(x: 0, y: 0.5)
+        fill.endPoint = CGPoint(x: 1, y: 0.5)
+        fill.colors = [
+            downloadFillColor.cgColor,
+            downloadFillHighlightColor.cgColor,
+        ]
+        fill.locations = [0.0, 1.0]
+
+        track.addSublayer(fill)
+        rootLayer.insertSublayer(track, at: 0)
+        downloadTrackLayer = track
+        downloadFillLayer = fill
+        updateDownloadProgress(progress, animated: false)
+        applyShimmerToCapsule()
+    }
+
+    private func updateDownloadProgress(_ progress: Double, animated: Bool = true) {
+        guard let track = downloadTrackLayer, let fill = downloadFillLayer else { return }
+        let clamped = min(max(progress, 0), 1)
+        let targetBounds = CGRect(x: 0, y: 0, width: track.bounds.width * clamped, height: track.bounds.height)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        fill.position = CGPoint(x: 0, y: track.bounds.midY)
+        fill.bounds = targetBounds
+        CATransaction.commit()
     }
 
     func showRecording() {
         displayMode = .normal
-        downloadTintLayer?.removeFromSuperlayer()
-        downloadTintLayer = nil
+        downloadTrackLayer?.removeFromSuperlayer()
+        downloadTrackLayer = nil
+        downloadFillLayer = nil
+        downloadProgressValue = 0
         stopShimmer()
         refiningLabel?.isHidden = true
         // 紧凑模式下保留状态文案"正在输入"
@@ -572,11 +636,14 @@ final class CapsuleWindowController {
     // MARK: - Cleanup
 
     func cleanup() {
+        let dismissHandler = onDidDismiss
         panel?.orderOut(nil)
         stopShimmer()
         animationStrategy.stop()
-        downloadTintLayer?.removeFromSuperlayer()
-        downloadTintLayer = nil
+        downloadTrackLayer?.removeFromSuperlayer()
+        downloadTrackLayer = nil
+        downloadFillLayer = nil
+        downloadProgressValue = 0
         isShowingError = false
         presentationID += 1
         #if DEBUG_BUILD
@@ -592,5 +659,6 @@ final class CapsuleWindowController {
         compactStatusKey = nil
         displayMode = .normal
         panel = nil
+        dismissHandler?()
     }
 }

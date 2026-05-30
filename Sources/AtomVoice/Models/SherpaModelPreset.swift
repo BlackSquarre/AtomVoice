@@ -33,6 +33,7 @@ struct SherpaModelPreset {
         // 中英双语（Bilingual Chinese + English）
         builtIn(id: "bilingual-small", lang: "bilingual", archive: "sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16.tar.bz2", sizeMB: 437),
         builtIn(id: "bilingual",       lang: "bilingual", archive: "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2",       sizeMB: 488),
+        builtIn(id: "bilingual-paraformer", lang: "bilingual", archive: "sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2", sizeMB: 999),
         // 英文（English）
         builtIn(id: "en-20M",     lang: "en-US",     archive: "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2", sizeMB: 122),
         builtIn(id: "en-standard",lang: "en-US",     archive: "sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2",     sizeMB: 296),

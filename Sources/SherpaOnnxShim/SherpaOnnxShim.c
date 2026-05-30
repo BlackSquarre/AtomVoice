@@ -189,17 +189,18 @@ static void decode_available(AtomVoiceSherpaContext *context) {
   }
 }
 
-AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
-                                               const char *model_dir,
-                                               const char *encoder_name,
-                                               const char *decoder_name,
-                                               const char *joiner_name,
-                                               const char *tokens_name,
-                                               const char *provider,
-                                               char *error_message,
-                                               int32_t error_message_size) {
+static AtomVoiceSherpaContext *create_online_context(const char *lib_dir,
+                                                     const char *model_dir,
+                                                     const char *encoder_name,
+                                                     const char *decoder_name,
+                                                     const char *joiner_name,
+                                                     const char *tokens_name,
+                                                     const char *provider,
+                                                     int32_t use_paraformer,
+                                                     char *error_message,
+                                                     int32_t error_message_size) {
   if (error_message && error_message_size > 0) { error_message[0] = '\0'; }
-  if (!lib_dir || !model_dir || !encoder_name || !decoder_name || !joiner_name || !tokens_name) {
+  if (!lib_dir || !model_dir || !encoder_name || !decoder_name || !tokens_name || (!use_paraformer && !joiner_name)) {
     set_error(error_message, error_message_size, "Missing runtime path, model path, or model file names");
     return NULL;
   }
@@ -220,10 +221,25 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
   char tokens[4096];
   make_path(encoder, sizeof(encoder), model_dir, encoder_name);
   make_path(decoder, sizeof(decoder), model_dir, decoder_name);
-  make_path(joiner, sizeof(joiner), model_dir, joiner_name);
   make_path(tokens, sizeof(tokens), model_dir, tokens_name);
+  if (!use_paraformer) {
+    make_path(joiner, sizeof(joiner), model_dir, joiner_name);
+  }
 
-  if (!path_exists(encoder) || !path_exists(decoder) || !path_exists(joiner) || !path_exists(tokens)) {
+  if (!path_exists(encoder) || !path_exists(decoder) || !path_exists(tokens)) {
+    if (use_paraformer) {
+      set_error(error_message, error_message_size,
+                "Sherpa paraformer files not found in %s (expected %s / %s / %s)",
+                model_dir, encoder_name, decoder_name, tokens_name);
+    } else {
+      set_error(error_message, error_message_size,
+                "Sherpa model files not found in %s (expected %s / %s / %s / %s)",
+                model_dir, encoder_name, decoder_name, joiner_name, tokens_name);
+    }
+    return NULL;
+  }
+
+  if (!use_paraformer && !path_exists(joiner)) {
     set_error(error_message, error_message_size,
               "Sherpa model files not found in %s (expected %s / %s / %s / %s)",
               model_dir, encoder_name, decoder_name, joiner_name, tokens_name);
@@ -273,9 +289,15 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
   memset(&config, 0, sizeof(config));
   config.feat_config.sample_rate = 16000;
   config.feat_config.feature_dim = 80;
-  config.model_config.transducer.encoder = encoder;
-  config.model_config.transducer.decoder = decoder;
-  config.model_config.transducer.joiner = joiner;
+  if (use_paraformer) {
+    config.model_config.paraformer.encoder = encoder;
+    config.model_config.paraformer.decoder = decoder;
+    config.model_config.model_type = "paraformer";
+  } else {
+    config.model_config.transducer.encoder = encoder;
+    config.model_config.transducer.decoder = decoder;
+    config.model_config.transducer.joiner = joiner;
+  }
   config.model_config.tokens = tokens;
   config.model_config.num_threads = 1;
   config.model_config.provider = provider ? provider : "cpu";
@@ -296,6 +318,31 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
   }
 
   return context;
+}
+
+AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
+                                               const char *model_dir,
+                                               const char *encoder_name,
+                                               const char *decoder_name,
+                                               const char *joiner_name,
+                                               const char *tokens_name,
+                                               const char *provider,
+                                               char *error_message,
+                                               int32_t error_message_size) {
+  return create_online_context(lib_dir, model_dir, encoder_name, decoder_name, joiner_name, tokens_name,
+                               provider, 0, error_message, error_message_size);
+}
+
+AtomVoiceSherpaContext *AtomVoiceSherpaCreateParaformer(const char *lib_dir,
+                                                        const char *model_dir,
+                                                        const char *encoder_name,
+                                                        const char *decoder_name,
+                                                        const char *tokens_name,
+                                                        const char *provider,
+                                                        char *error_message,
+                                                        int32_t error_message_size) {
+  return create_online_context(lib_dir, model_dir, encoder_name, decoder_name, NULL, tokens_name,
+                               provider, 1, error_message, error_message_size);
 }
 
 int32_t AtomVoiceSherpaAcceptWaveform(AtomVoiceSherpaContext *context,

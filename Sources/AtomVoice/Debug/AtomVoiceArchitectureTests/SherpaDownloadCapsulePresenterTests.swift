@@ -1,3 +1,4 @@
+import Cocoa
 import Foundation
 @testable import AtomVoiceCore
 
@@ -13,12 +14,12 @@ enum SherpaDownloadCapsulePresenterTests {
                 scheduleAfter: { _, _ in }
             )
 
-            presenter.updateProgress(message: "Downloading", force: false)
+            presenter.updateProgress(progress: 0.1, message: "Downloading", force: false)
 
-            try expect(capsule.events == ["progress:Downloading"])
+            try expect(capsule.events == ["progress:0.10:Downloading"])
             currentDate = currentDate.addingTimeInterval(0.3)
-            presenter.updateProgress(message: "Downloading 2", force: false)
-            try expect(capsule.events == ["progress:Downloading", "progress:Downloading 2"])
+            presenter.updateProgress(progress: 0.2, message: "Downloading 2", force: false)
+            try expect(capsule.events == ["progress:0.10:Downloading", "progress:0.20:Downloading 2"])
         }
 
         await runner.run("updateProgress throttles within 250ms window") {
@@ -31,11 +32,11 @@ enum SherpaDownloadCapsulePresenterTests {
                 scheduleAfter: { _, _ in }
             )
 
-            presenter.updateProgress(message: "First", force: false)
+            presenter.updateProgress(progress: 0.1, message: "First", force: false)
             currentDate = currentDate.addingTimeInterval(0.1)
-            presenter.updateProgress(message: "Second", force: false)
+            presenter.updateProgress(progress: 0.2, message: "Second", force: false)
 
-            try expect(capsule.events == ["progress:First"])
+            try expect(capsule.events == ["progress:0.10:First"])
         }
 
         await runner.run("updateProgress shows progress immediately when force=true") {
@@ -48,10 +49,10 @@ enum SherpaDownloadCapsulePresenterTests {
                 scheduleAfter: { _, _ in }
             )
 
-            presenter.updateProgress(message: "First", force: false)
-            presenter.updateProgress(message: "Forced", force: true)
+            presenter.updateProgress(progress: 0.1, message: "First", force: false)
+            presenter.updateProgress(progress: 0.2, message: "Forced", force: true)
 
-            try expect(capsule.events == ["progress:First", "progress:Forced"])
+            try expect(capsule.events == ["progress:0.10:First", "progress:0.20:Forced"])
         }
 
         await runner.run("updateProgress is no-op while recording") {
@@ -63,7 +64,7 @@ enum SherpaDownloadCapsulePresenterTests {
                 scheduleAfter: { _, _ in }
             )
 
-            presenter.updateProgress(message: "Hidden", force: true)
+            presenter.updateProgress(progress: 0.1, message: "Hidden", force: true)
 
             try expect(capsule.events.isEmpty)
         }
@@ -124,29 +125,63 @@ enum SherpaDownloadCapsulePresenterTests {
                 now: { Date(timeIntervalSince1970: 1) },
                 scheduleAfter: { _, _ in }
             )
-            presenter.updateProgress(message: "Downloading", force: true)
+            presenter.updateProgress(progress: 0.4, message: "Downloading", force: true)
             recording = true
 
             presenter.handleRecordingStateChanged(active: true)
 
-            try expect(capsule.events == ["progress:Downloading", "dismiss"])
+            try expect(capsule.events == ["progress:0.40:Downloading", "dismiss"])
         }
 
-        await runner.run("handleRecordingStateChanged active=false re-shows last message if active session was deferred") {
+        await runner.run("download progress resumes after capsule dismiss finishes") {
             var recording = true
             let capsule = FakeDownloadCapsulePresenter()
+            let window = CapsuleWindowController()
+            window.panel = NSPanel()
             let presenter = SherpaDownloadCapsulePresenter(
                 capsulePresenter: capsule,
+                capsuleWindow: window,
                 isRecording: { recording },
                 now: { Date(timeIntervalSince1970: 1) },
                 scheduleAfter: { _, _ in }
             )
-            presenter.updateProgress(message: "Deferred", force: true)
+            presenter.updateProgress(progress: 0.6, message: "Deferred", force: true)
+            presenter.handleRecordingStateChanged(active: true)
             recording = false
 
             presenter.handleRecordingStateChanged(active: false)
+            try expect(capsule.events == ["dismiss"])
 
-            try expect(capsule.events == ["progress:Deferred"])
+            window.panel = nil
+            window.onDidDismiss?()
+
+            try expect(capsule.events == ["dismiss", "progress:0.60:Deferred"])
+        }
+
+        await runner.run("download progress does not steal non-download capsule after recording") {
+            var recording = true
+            let capsule = FakeDownloadCapsulePresenter()
+            let window = CapsuleWindowController()
+            window.panel = NSPanel()
+            let presenter = SherpaDownloadCapsulePresenter(
+                capsulePresenter: capsule,
+                capsuleWindow: window,
+                isRecording: { recording },
+                now: { Date(timeIntervalSince1970: 1) },
+                scheduleAfter: { _, _ in }
+            )
+
+            presenter.updateProgress(progress: 0.7, message: "Deferred", force: true)
+            presenter.handleRecordingStateChanged(active: true)
+            recording = false
+            presenter.handleRecordingStateChanged(active: false)
+
+            try expect(capsule.events == ["dismiss"])
+
+            // 模拟识别结果胶囊仍在，占用同一个 window。
+            window.onDidDismiss?()
+
+            try expect(capsule.events == ["dismiss"])
         }
     }
 }
@@ -154,8 +189,8 @@ enum SherpaDownloadCapsulePresenterTests {
 private final class FakeDownloadCapsulePresenter: DownloadCapsulePresenting {
     private(set) var events: [String] = []
 
-    func showDownloadProgress(_ text: String) {
-        events.append("progress:\(text)")
+    func showDownloadProgress(_ text: String, progress: Double) {
+        events.append(String(format: "progress:%0.2f:%@", progress, text))
     }
 
     func updateText(_ text: String, completion: (() -> Void)?) {

@@ -136,20 +136,41 @@ final class SherpaOnnxRecognizerController {
             lastStartFailureKind = .missingModel
             return loc("error.sherpaModelMissing", preset.modelDirectory.path)
         }
-        DebugLog.info("[SherpaOnnx] Loading \(preset.id): encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner) tokens=\(manifest.tokens) provider=\(Self.provider)")
+        if manifest.family == .onlineTransducer, manifest.joiner == nil {
+            lastStartFailureKind = .missingModel
+            return loc("error.sherpaModelMissing", preset.modelDirectory.path)
+        }
+
+        let joinerDescription = manifest.joiner ?? "-"
+        DebugLog.info("[SherpaOnnx] Loading \(preset.id): family=\(manifest.family.rawValue) encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(joinerDescription) tokens=\(manifest.tokens) provider=\(Self.provider)")
 
         var errorBuffer = [CChar](repeating: 0, count: 2048)
         let providerStr = Self.provider
-        let created = Self.runtimeLibDirectory.path.withCString { libDir in
+        let created: OpaquePointer? = Self.runtimeLibDirectory.path.withCString { libDir in
             preset.modelDirectory.path.withCString { modelDir in
                 manifest.encoder.withCString { encoder in
                     manifest.decoder.withCString { decoder in
-                        manifest.joiner.withCString { joiner in
-                            manifest.tokens.withCString { tokens in
-                                providerStr.withCString { provider in
-                                    errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
-                                        AtomVoiceSherpaCreate(libDir, modelDir, encoder, decoder, joiner, tokens,
-                                                              provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                        manifest.tokens.withCString { tokens in
+                            providerStr.withCString { provider in
+                                errorBuffer.withUnsafeMutableBufferPointer { errorPtr -> OpaquePointer? in
+                                    switch manifest.family {
+                                    case .onlineTransducer:
+                                        guard let joinerName = manifest.joiner else { return nil }
+                                        return joinerName.withCString { joiner in
+                                            AtomVoiceSherpaCreate(libDir, modelDir, encoder, decoder, joiner, tokens,
+                                                                  provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                                        }
+                                    case .onlineParaformer:
+                                        return AtomVoiceSherpaCreateParaformer(
+                                            libDir,
+                                            modelDir,
+                                            encoder,
+                                            decoder,
+                                            tokens,
+                                            provider,
+                                            errorPtr.baseAddress,
+                                            Int32(errorPtr.count)
+                                        )
                                     }
                                 }
                             }

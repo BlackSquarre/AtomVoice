@@ -16,9 +16,15 @@ struct Options {
 }
 
 struct ModelManifest {
+    enum Family {
+        case onlineTransducer
+        case onlineParaformer
+    }
+
+    let family: Family
     let encoder: String
     let decoder: String
-    let joiner: String
+    let joiner: String?
     let tokens: String
 }
 
@@ -129,33 +135,90 @@ func currentMemory() -> MemorySnapshot {
 }
 
 func discoverManifest(in directory: URL) -> ModelManifest? {
-    guard let entries = try? FileManager.default.contentsOfDirectory(
+    guard let enumerator = FileManager.default.enumerator(
         at: directory,
         includingPropertiesForKeys: [.isRegularFileKey],
         options: [.skipsHiddenFiles]
     ) else { return nil }
 
-    let regular = entries.filter { url in
-        (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
+    let regular = enumerator.compactMap { item -> URL? in
+        guard let url = item as? URL,
+              (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+            return nil
+        }
+        return url
     }
     let onnx = regular.filter { $0.pathExtension.lowercased() == "onnx" && fileSize($0) > 0 }
+
+    func relativePath(_ url: URL) -> String {
+        let base = directory.standardizedFileURL.path
+        let path = url.standardizedFileURL.path
+        guard path.hasPrefix(base + "/") else { return url.lastPathComponent }
+        return String(path.dropFirst(base.count + 1))
+    }
+
+    let isInt8: (URL) -> Bool = { $0.lastPathComponent.lowercased().contains("int8") }
 
     func pick(component: String, preferInt8: Bool) -> String? {
         let candidates = onnx.filter { $0.lastPathComponent.lowercased().contains(component) }
         guard !candidates.isEmpty else { return nil }
-        if candidates.count == 1 { return candidates[0].lastPathComponent }
-        let int8 = candidates.filter { $0.lastPathComponent.lowercased().contains("int8") }
-        let nonInt8 = candidates.filter { !$0.lastPathComponent.lowercased().contains("int8") }
-        return (preferInt8 ? (int8.first ?? nonInt8.first) : (nonInt8.first ?? int8.first))?.lastPathComponent
+        if candidates.count == 1 { return relativePath(candidates[0]) }
+        let int8 = candidates.filter(isInt8)
+        let nonInt8 = candidates.filter { !isInt8($0) }
+        return preferInt8
+            ? (int8.first ?? nonInt8.first).map(relativePath)
+            : (nonInt8.first ?? int8.first).map(relativePath)
     }
 
-    guard let encoder = pick(component: "encoder", preferInt8: true),
-          let decoder = pick(component: "decoder", preferInt8: false),
-          let joiner = pick(component: "joiner", preferInt8: true),
-          let tokens = regular.first(where: { $0.lastPathComponent == "tokens.txt" && fileSize($0) > 0 })?.lastPathComponent
-    else { return nil }
+    guard let tokens = regular.first(where: { $0.lastPathComponent == "tokens.txt" && fileSize($0) > 0 }).map(relativePath) else {
+        return nil
+    }
 
-    return ModelManifest(encoder: encoder, decoder: decoder, joiner: joiner, tokens: tokens)
+    if let encoder = pick(component: "encoder", preferInt8: true),
+       let decoder = pick(component: "decoder", preferInt8: false),
+       let joiner = pick(component: "joiner", preferInt8: true) {
+        return ModelManifest(
+            family: .onlineTransducer,
+            encoder: encoder,
+            decoder: decoder,
+            joiner: joiner,
+            tokens: tokens
+        )
+    }
+
+    func pickParaformerPair() -> (String, String)? {
+        let encoders = onnx.filter { $0.lastPathComponent.lowercased().contains("encoder") }
+        let decoders = onnx.filter { $0.lastPathComponent.lowercased().contains("decoder") }
+        guard !encoders.isEmpty, !decoders.isEmpty else { return nil }
+
+        let int8Encoders = encoders.filter(isInt8)
+        let plainEncoders = encoders.filter { !isInt8($0) }
+        let int8Decoders = decoders.filter(isInt8)
+        let plainDecoders = decoders.filter { !isInt8($0) }
+
+        if let encoder = int8Encoders.first, let decoder = int8Decoders.first {
+            return (relativePath(encoder), relativePath(decoder))
+        }
+        if let encoder = plainEncoders.first, let decoder = plainDecoders.first {
+            return (relativePath(encoder), relativePath(decoder))
+        }
+
+        let selectedEncoder = int8Encoders.first ?? plainEncoders.first ?? encoders[0]
+        let selectedDecoder = int8Decoders.first ?? plainDecoders.first ?? decoders[0]
+        return (relativePath(selectedEncoder), relativePath(selectedDecoder))
+    }
+
+    if let (encoder, decoder) = pickParaformerPair() {
+        return ModelManifest(
+            family: .onlineParaformer,
+            encoder: encoder,
+            decoder: decoder,
+            joiner: nil,
+            tokens: tokens
+        )
+    }
+
+    return nil
 }
 
 func fileSize(_ url: URL) -> UInt64 {
@@ -283,11 +346,17 @@ let context = runtimeLibDir.withCString { libDir in
     modelDir.withCString { modelDirC in
         manifest.encoder.withCString { encoder in
             manifest.decoder.withCString { decoder in
-                manifest.joiner.withCString { joiner in
-                    manifest.tokens.withCString { tokens in
-                        options.provider.withCString { provider in
-                            errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
-                                AtomVoiceSherpaCreate(libDir, modelDirC, encoder, decoder, joiner, tokens, provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                manifest.tokens.withCString { tokens in
+                    options.provider.withCString { provider in
+                        errorBuffer.withUnsafeMutableBufferPointer { errorPtr in
+                            switch manifest.family {
+                            case .onlineTransducer:
+                                guard let joiner = manifest.joiner else { return Optional<OpaquePointer>.none }
+                                return joiner.withCString { joinerC in
+                                    AtomVoiceSherpaCreate(libDir, modelDirC, encoder, decoder, joinerC, tokens, provider, errorPtr.baseAddress, Int32(errorPtr.count))
+                                }
+                            case .onlineParaformer:
+                                return AtomVoiceSherpaCreateParaformer(libDir, modelDirC, encoder, decoder, tokens, provider, errorPtr.baseAddress, Int32(errorPtr.count))
                             }
                         }
                     }

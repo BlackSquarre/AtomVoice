@@ -258,9 +258,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if SherpaModelDownloader.isReady() { return }
         let downloader = SherpaModelDownloader.shared
         let reporter: SherpaDownloadReporting = sherpaDownloadCapsulePresenter
-        reporter.updateProgress(message: loc("sherpa.downloading.start"), force: false)
+        reporter.updateProgress(progress: 0, message: loc("sherpa.downloading.start"), force: false)
         downloader.addObserver(
-            progress: { [weak reporter] _, _, _, message in reporter?.updateProgress(message: message, force: false) },
+            progress: { [weak reporter] _, _, overallProgress, message in
+                reporter?.updateProgress(progress: overallProgress, message: message, force: false)
+            },
             complete: { [weak reporter] success, error in reporter?.finishDownload(success: success, error: error) }
         )
         _ = downloader.startDownload()

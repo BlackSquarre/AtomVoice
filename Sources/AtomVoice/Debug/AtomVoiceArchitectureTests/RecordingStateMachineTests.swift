@@ -185,6 +185,23 @@ enum RecordingStateMachineTests {
             try expect(capturing.sideEffects.contains(.lowerVolume))
             try expect(capturing.sideEffects.contains(.startSession(generation: 1)))
         }
+        await runner.run("Recording state machine extends silence monitor during model loading grace") {
+            var state = RecordingSessionState()
+            step(&state, .triggerPressed(deferCapsulePresentation: false))
+            step(
+                &state,
+                .startValidated(
+                    engine: ASREngineRegistry.sherpaCode,
+                    pendingDoubaoText: nil,
+                    pendingRefinementText: nil,
+                    lowerVolume: false
+                )
+            )
+
+            let result = RecordingStateMachine.reduce(state, .silenceMonitorGraceRequested(duration: 15))
+
+            try expect(result.sideEffects == [.extendSilenceMonitor(by: 15)])
+        }
         await runner.run("Recording state machine delivers pending Doubao and refinement text on new start") {
             var state = RecordingSessionState()
             step(&state, .refiningStarted(text: "old llm"))

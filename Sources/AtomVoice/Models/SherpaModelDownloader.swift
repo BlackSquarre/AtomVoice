@@ -466,7 +466,8 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     if item.name == "asr", let preset = self.targetPreset {
                         if let manifest = ModelManifest.discover(in: preset.modelDirectory) {
                             try? manifest.save(to: preset.modelDirectory)
-                            DebugLog.info("[Download] Wrote manifest: encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(manifest.joiner)")
+                            let joiner = manifest.joiner ?? "-"
+                            DebugLog.info("[Download] Wrote manifest: family=\(manifest.family.rawValue) encoder=\(manifest.encoder) decoder=\(manifest.decoder) joiner=\(joiner)")
                         } else {
                             DebugLog.error("[Download] Could not recognize model files after extraction \(preset.modelDirectory.path)")
                         }

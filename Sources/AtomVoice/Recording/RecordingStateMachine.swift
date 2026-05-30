@@ -54,6 +54,7 @@ enum RecordingEvent: Equatable {
     case capsuleTextUpdated(String)
     case capsuleBandsUpdated
     case shimmerChanged(Bool)
+    case silenceMonitorGraceRequested(duration: TimeInterval)
     case liveInsertionProgressCleared
     case liveInsertionReset
     case liveInsertionDeferred(text: String, isFinal: Bool)
@@ -407,6 +408,11 @@ struct RecordingStateMachine {
                 next.deferredCapsule.pendingShimmer = active
             } else {
                 effects.append(active ? .startShimmer : .stopShimmer)
+            }
+
+        case .silenceMonitorGraceRequested(let duration):
+            if next.phase == .capturing {
+                effects.append(.extendSilenceMonitor(by: duration))
             }
 
         case .liveInsertionProgressCleared:

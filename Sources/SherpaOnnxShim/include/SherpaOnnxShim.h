@@ -22,6 +22,18 @@ AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,
                                                char *error_message,
                                                int32_t error_message_size);
 
+/// Paraformer 仍然走 sherpa-onnx online recognizer，只是模型字段从 transducer 切到 paraformer。
+/// (Paraformer still uses sherpa-onnx's online recognizer; only the model config switches
+/// from transducer fields to paraformer fields.)
+AtomVoiceSherpaContext *AtomVoiceSherpaCreateParaformer(const char *lib_dir,
+                                                        const char *model_dir,
+                                                        const char *encoder_name,
+                                                        const char *decoder_name,
+                                                        const char *tokens_name,
+                                                        const char *provider,
+                                                        char *error_message,
+                                                        int32_t error_message_size);
+
 int32_t AtomVoiceSherpaAcceptWaveform(AtomVoiceSherpaContext *context,
                                       int32_t sample_rate,
                                       const float *samples,

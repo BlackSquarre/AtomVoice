@@ -178,25 +178,14 @@ final class SherpaSettingsTab: ASRSettingsTab {
     func save() -> ASRSettingsTabSaveOutcome {
         if let preset = selectedPreset {
             if !preset.isDownloaded {
-                let alert = NSAlert()
-                alert.messageText = loc("asrSettings.sherpa.saveUndownloaded.title")
-                alert.informativeText = loc("asrSettings.sherpa.saveUndownloaded.message", preset.id, preset.sizeMB)
-                alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
-                alert.addButton(withTitle: loc("asrSettings.sherpa.saveUndownloaded.download"))
-                alert.addButton(withTitle: loc("common.cancel"))
-                if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
-                    persistSherpaAutoUnloadSettings()
-                    startSherpaSettingsDownload(preset: preset, activateOnSuccess: true) { [weak self] success in
-                        if success {
-                            self?.onStatusChanged(loc("settings.saved"), .systemGreen)
-                        }
+                persistSherpaAutoUnloadSettings()
+                startSherpaSettingsDownload(preset: preset, activateOnSuccess: true) { [weak self] success in
+                    if success {
+                        self?.onStatusChanged(loc("settings.saved"), .systemGreen)
                     }
-                    onStatusChanged(loc("asrSettings.sherpa.downloading"), .systemBlue)
-                    return .deferred
-                } else {
-                    // 取消保存：保留旧 preset 不动（Cancel save: keep old preset unchanged）
-                    return .failed(message: loc("asrSettings.sherpa.saveUndownloaded.cancelled"), color: .systemOrange)
                 }
+                onStatusChanged(loc("asrSettings.sherpa.downloading"), .systemBlue)
+                return .deferred
             } else {
                 AppSettings.sherpaModelPresetID = preset.id
             }
@@ -311,12 +300,12 @@ final class SherpaSettingsTab: ASRSettingsTab {
         sherpaDeleteButton?.isEnabled = false
         sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
         sherpaStatusLabel?.textColor = .systemBlue
-        sherpaDownloadReporter?.updateProgress(message: sherpaStatusLabel.stringValue, force: false)
+        sherpaDownloadReporter?.updateProgress(progress: 0, message: sherpaStatusLabel.stringValue, force: false)
         let downloader = SherpaModelDownloader.shared
         downloader.addObserver(
-            progress: { [weak self] _, _, _, message in
+            progress: { [weak self] _, _, overallProgress, message in
                 self?.sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
-                self?.sherpaDownloadReporter?.updateProgress(message: message, force: false)
+                self?.sherpaDownloadReporter?.updateProgress(progress: overallProgress, message: message, force: false)
             },
             complete: { [weak self] success, error in
                 guard let self else { return }
@@ -344,7 +333,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         let result = downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly)
         if result == .alreadyDownloading {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
-            sherpaDownloadReporter?.updateProgress(message: sherpaStatusLabel.stringValue, force: false)
+            sherpaDownloadReporter?.updateProgress(progress: 0, message: sherpaStatusLabel.stringValue, force: false)
         }
     }
     @objc private func sherpaModelSelected(_ sender: NSButton) {
@@ -405,17 +394,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
     }
     @objc private func downloadSherpaModel(_ sender: NSButton) {
         guard let preset = selectedOrCurrentPreset else { return }
-        // 确认下载（Confirm download）
-        let alert = NSAlert()
-        alert.messageText = loc("sherpa.download.title")
-        alert.informativeText = loc("asrSettings.sherpa.download.confirm")
-        alert.icon = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
-        alert.addButton(withTitle: loc("sherpa.download.confirm"))
-        alert.addButton(withTitle: loc("common.cancel"))
-
-        if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
-            startSherpaSettingsDownload(preset: preset, activateOnSuccess: true)
-        }
+        startSherpaSettingsDownload(preset: preset, activateOnSuccess: true)
     }
     @objc private func updateSherpaRuntime(_ sender: NSButton) {
         guard !SherpaModelDownloader.shared.isDownloading else { return }

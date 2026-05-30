@@ -47,6 +47,7 @@ final class RecordingSessionController {
     private var startRequestGeneration: Int {
         get { state.startRequestGeneration }
     }
+    private let sherpaModelLoadingSilenceGrace: TimeInterval = 15
 
     // MARK: - 协调器（Coordinators）
     let audioAnalyzer = AudioAnalyzer()
@@ -236,6 +237,9 @@ final class RecordingSessionController {
 
     func showCapsuleProgress(_ text: String, hidesWaveform: Bool = true) {
         _ = dispatch(.capsulePresentationRequested(.progress(text: text, hidesWaveform: hidesWaveform)))
+        if text == loc("sherpa.loadingModel") {
+            _ = dispatch(.silenceMonitorGraceRequested(duration: sherpaModelLoadingSilenceGrace))
+        }
     }
 
     func showCapsuleError(_ message: String, dismissAfter delay: TimeInterval, ensurePanel: Bool = false) {

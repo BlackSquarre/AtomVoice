@@ -120,24 +120,63 @@ enum CapsuleAnimationTests {
             try expect(!second.hasActiveTimer)
         }
         await runner.run("Capsule shimmer strategy reapplies without leaking layers") {
-            let view = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 42))
-            view.wantsLayer = true
-            let strategy = CapsuleDefaultShimmerStrategy()
-            let host = ShimmerHost(animationSurface: view, cornerRadius: 21, capsuleHeight: 42)
+            let result = await MainActor.run { () -> (Bool, Int, Bool, Bool, Bool, Int, Bool) in
+                let view = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 42))
+                view.wantsLayer = true
+                let strategy = CapsuleDefaultShimmerStrategy()
+                let host = ShimmerHost(animationSurface: view, cornerRadius: 21, capsuleHeight: 42)
 
-            strategy.apply(to: host)
-            try expect(strategy.hasActiveLayer)
-            try expect(view.layer?.sublayers?.count == 1)
+                strategy.apply(to: host)
+                let firstApplyActive = strategy.hasActiveLayer
+                let firstApplyCount = view.layer?.sublayers?.count ?? 0
 
-            strategy.stop()
-            try expect(!strategy.hasActiveLayer)
-            try expect(view.layer?.sublayers?.isEmpty ?? true)
+                strategy.stop()
+                let firstStopCleared = !strategy.hasActiveLayer
+                let firstStopEmpty = view.layer?.sublayers?.isEmpty ?? true
 
-            strategy.apply(to: host)
-            try expect(strategy.hasActiveLayer)
-            try expect(view.layer?.sublayers?.count == 1)
-            strategy.stop()
-            try expect(view.layer?.sublayers?.isEmpty ?? true)
+                strategy.apply(to: host)
+                let secondApplyActive = strategy.hasActiveLayer
+                let secondApplyCount = view.layer?.sublayers?.count ?? 0
+                strategy.stop()
+                let secondStopEmpty = view.layer?.sublayers?.isEmpty ?? true
+                return (firstApplyActive, firstApplyCount, firstStopCleared, firstStopEmpty, secondApplyActive, secondApplyCount, secondStopEmpty)
+            }
+
+            try expect(result.0)
+            try expect(result.1 == 1)
+            try expect(result.2)
+            try expect(result.3)
+            try expect(result.4)
+            try expect(result.5 == 1)
+            try expect(result.6)
+        }
+        await runner.run("Capsule download presentation keeps progress track and shimmer together") {
+            let result = await MainActor.run { () -> (Bool, Int, Int, Bool, NSTextAlignment, CGFloat) in
+                let controller = CapsuleWindowController()
+                controller.showDownloadProgress("Downloading", progress: 0.45)
+                controller.panel?.contentView?.layoutSubtreeIfNeeded()
+                controller.contentView?.layoutSubtreeIfNeeded()
+                let isShowingDownload = controller.isShowingDownloadPresentation
+                let downloadLayerCount = controller.animationSurfaceView?.layer?.sublayers?.count ?? 0
+                let label = controller.contentView?.subviews
+                    .compactMap { $0 as? NSTextField }
+                    .first { $0.stringValue == "Downloading" }
+                let labelAlignment = label?.alignment ?? .natural
+                let centerDelta = abs((label?.frame.midX ?? 0) - (controller.contentView?.bounds.midX ?? 0))
+
+                controller.showRecording()
+                let recordingLayerCount = controller.animationSurfaceView?.layer?.sublayers?.count ?? 0
+                let isShowingRecording = !controller.isShowingDownloadPresentation
+                controller.cleanup()
+                return (isShowingDownload, downloadLayerCount, recordingLayerCount, isShowingRecording, labelAlignment, centerDelta)
+            }
+
+            try expect(result.0)
+            try expect(result.1 >= 2)
+            try expect(result.2 < result.1)
+            try expect(result.3)
+            try expect(result.4 == .center)
+            try expect(result.5 < 1)
         }
 #if DEBUG_BUILD
         await runner.run("Capsule debug elapsed timer stops cleanly") {
