@@ -20,9 +20,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.blacksquarre.AtomVoice</string>
     <key>CFBundleVersion</key>
-    <string>14</string>
+    <string>15</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.10.6</string>
+	<string>0.10.7-Beta-1</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
