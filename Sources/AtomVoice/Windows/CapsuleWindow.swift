@@ -145,6 +145,12 @@ final class CapsuleWindowController {
 
     // MARK: - Show
 
+    /// 确保胶囊面板存在：已存在则复用，不存在才新建。用于错误回弹等"面板可能已被提前收起"的场景。
+    /// (Ensure the capsule panel exists: reuse if present, create only if absent — used by error re-presentation.)
+    func ensureVisible() {
+        if panel == nil { show() }
+    }
+
     func show(showRecordingTimer: Bool = true,
               initialText: String = "",
               showWaveformInitially: Bool = true,

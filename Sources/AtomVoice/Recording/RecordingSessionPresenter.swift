@@ -94,6 +94,9 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
     }
 
     func showRecognitionError(_ message: String, dismissAfter: TimeInterval) {
+        // 胶囊可能在停止时已提前收起；报错前确保面板存在，避免错误被静默丢弃。
+        // (The capsule may have been dismissed early on stop; ensure it exists before showing the error.)
+        capsuleWindow.ensureVisible()
         present(.showError(message: message, dismissAfter: dismissAfter, ensurePanel: false))
     }
 

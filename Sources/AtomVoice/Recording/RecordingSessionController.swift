@@ -48,6 +48,9 @@ final class RecordingSessionController {
         get { state.startRequestGeneration }
     }
     private let sherpaModelLoadingSilenceGrace: TimeInterval = 15
+    /// 停止录音到收起胶囊的延迟（秒）：给一个极短缓冲，让胶囊消失不突兀。
+    /// (Delay from stop to capsule dismissal — a tiny buffer so the capsule doesn't vanish abruptly.)
+    private let stopCapsuleDismissDelay: TimeInterval = 0.1
 
     // MARK: - 协调器（Coordinators）
     let audioAnalyzer = AudioAnalyzer()
@@ -410,6 +413,33 @@ final class RecordingSessionController {
             return
         }
         _ = dispatch(.triggerReleased)
+        // 停止键按下即收起胶囊（仅非 LLM 路径）：识别收尾与上屏在后台继续，给用户即时反馈。
+        // 开 LLM 时保留胶囊，用于展示"优化中"与优化结果。
+        // (Dismiss the capsule the moment the stop key is pressed, on the non-LLM path; finalize and paste continue in the background.)
+        dismissCapsuleOnStopIfNoRefinement()
+    }
+
+    /// 停止录音时若不会走 LLM 润色，延迟极短时间收起胶囊；识别收尾与上屏在后台继续。
+    /// (On stop, if no LLM refinement will run, dismiss the capsule after a tiny delay; finalize/paste continue in background.)
+    private func dismissCapsuleOnStopIfNoRefinement() {
+        let willRefine = AppSettings.llmEnabled && !AppSettings.llmAPIKey.isEmpty
+        guard !willRefine else { return }
+        scheduleCapsuleDismissAfterStop()
+    }
+
+    /// 停止后收起胶囊：本地引擎停止即出结果，立即收起（上屏飞快）；
+    /// 云端要等异步 final，延迟 stopCapsuleDismissDelay 再收起更柔和，并在期间开始新录音时跳过，避免误关新胶囊。
+    /// (Dismiss the capsule on stop: local engines dismiss instantly; cloud engines delay slightly to avoid a flicker,
+    ///  skipping if a new recording has started meanwhile.)
+    private func scheduleCapsuleDismissAfterStop() {
+        guard recognitionSession?.dismissCapsuleImmediatelyOnStop == false else {
+            presenter.dismiss(completion: nil)
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + stopCapsuleDismissDelay) { [weak self] in
+            guard let self, !self.isRecordingOrStarting else { return }
+            self.presenter.dismiss(completion: nil)
+        }
     }
 
     private func cancelRecording() {
@@ -431,6 +461,9 @@ final class RecordingSessionController {
             return
         }
         _ = dispatch(.immediateStop(appending: punctuation))
+        // 立即上屏路径跳过 LLM，延迟极短时间收起胶囊。
+        // (Immediate-output path skips LLM; dismiss the capsule a tiny delay after stop.)
+        scheduleCapsuleDismissAfterStop()
     }
 
     func stopRecognitionSession(generation: Int, immediate: Bool, appending punctuation: String?) {
