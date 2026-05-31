@@ -66,6 +66,9 @@ protocol RecognitionSession: AnyObject {
     var supportsServerFallback: Bool { get }
     var supportsSilenceMonitoring: Bool { get }
     var requiresModelReloadOnRouteChange: Bool { get }
+    /// 停止录音时胶囊是否立即收起。本地引擎停止即出结果→true；云端要等异步 final→false（稍作延迟避免"闪一下"）。
+    /// (Whether the capsule dismisses immediately on stop. Local engines: true; cloud — awaits async final: false.)
+    var dismissCapsuleImmediatelyOnStop: Bool { get }
     var preferredAudioFormat: AudioRouter.ConsumerFormat? { get }
 
     func preflight() -> RecognitionSessionPreflightResult
@@ -85,6 +88,7 @@ protocol RecognitionSession: AnyObject {
 extension RecognitionSession {
     var supportsSilenceMonitoring: Bool { true }
     var requiresModelReloadOnRouteChange: Bool { false }
+    var dismissCapsuleImmediatelyOnStop: Bool { true }
     func preflight() -> RecognitionSessionPreflightResult { .ready }
 }
 
@@ -371,6 +375,9 @@ final class DoubaoRecognitionSession: RecognitionSession {
     let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
     let supportsServerFallback = true
+    // 云端停止后要等异步最终结果，胶囊延迟极短时间再收起，避免"闪一下"。
+    // (Cloud awaits an async final result on stop; dismiss the capsule after a tiny delay to avoid a flicker.)
+    let dismissCapsuleImmediatelyOnStop = false
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
 
     private let cloudEngine: VolcengineASREngine
