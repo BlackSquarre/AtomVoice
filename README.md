@@ -7,6 +7,9 @@
 <h3 align="center">Press, speak.</h3>
 <p align="center">Lightweight, privacy-first voice dictation that types into any Mac app, with no time limit.</p>
 
+<p align="center">
+  <img src="README/atomvoicepreview.webp" alt="AtomVoice usage demo" width="960">
+</p>
 
 
 ---
