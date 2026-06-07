@@ -16,14 +16,15 @@ jobs:
         id: release
         run: |
           # 从 release 事件获取版本，或从最新 release 获取
+          # 本项目 tag 不带 v 前缀（如 0.10.7），仅剥离 refs/tags/。
           if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
+            VERSION="${GITHUB_REF#refs/tags/}"
           else
-            VERSION=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName -q '.[0].tagName' | sed 's/^v//')
+            VERSION=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName -q '.[0].tagName')
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
-          TAG="v${VERSION}"
+
+          TAG="${VERSION}"
 
           # 从 release assets 读取真实的 Universal zip 文件名，避免版本命名规则变化导致 404。
           ASSET_NAME=$(gh release view "$TAG" --repo ${{ github.repository }} --json assets -q '.assets[].name | select(endswith("-Universal.zip"))' | head -n 1)
