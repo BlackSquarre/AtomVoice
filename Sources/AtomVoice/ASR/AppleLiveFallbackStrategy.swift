@@ -1,4 +1,6 @@
+import AVFoundation
 import Foundation
+import Speech
 
 /// 豆包识别失败后启动 Apple 实时识别回退的策略对象。
 /// (Strategy that activates Apple live recognition as a fallback after Doubao recognition fails.)
@@ -61,12 +63,21 @@ final class AppleLiveFallbackStrategy {
                 DebugLog.error("[AppleLiveFallback] \(error)")
             },
             onRequestSwitch: { [weak self] newRequest in
-                self?.audioEngine.switchRequest(newRequest)
+                // 续录滚动换 request 时同样用 16kHz，与初次接入及回灌音频保持一致。
+                // (Rolling re-segmentation also switches at 16kHz to stay consistent.)
+                self?.audioEngine.switchRequest(newRequest, format: .voice16k)
             }
         )
 
         if let request {
-            audioEngine.switchRequest(request)
+            // 先把豆包断流前最近几秒的回看音频回灌给 Apple，补回"豆包已收音但识别结果未回传"的
+            // 交接缺口；再接上实时流。回看音频与实时流同为 16kHz，重叠部分的去重交给 combinedText。
+            // (Replay the last few seconds of look-back audio into Apple to recover the hand-off gap,
+            //  then attach the live stream. Both are 16kHz; overlap de-dup is handled by combinedText.)
+            for buffer in fallback.rollingBufferSnapshot() {
+                request.append(buffer)
+            }
+            audioEngine.switchRequest(request, format: .voice16k)
         }
         return initialText
     }

@@ -482,7 +482,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
 
         activeRouterConsumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
             guard let self, callbacks.isRecordingCurrent() else { return }
-            self.fallback.appendAudioBufferIfWaiting(buffer, copyBuffer: callbacks.copyAudioBuffer)
+            self.fallback.captureAudioBuffer(buffer, copyBuffer: callbacks.copyAudioBuffer)
             self.cloudEngine.accept(buffer: buffer)
         }
         return .started

@@ -157,6 +157,28 @@ enum RecognitionFinalizerTests {
                 ) == "Unrelated final"
             )
         }
+        await runner.run("Doubao fallback rolling look-back caps at window") {
+            let coordinator = DoubaoFallbackCoordinator()
+            let format = try require(AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: 16000,
+                channels: 1,
+                interleaved: false
+            ))
+            func makeBuffer(frames: AVAudioFrameCount) -> AVAudioPCMBuffer {
+                let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!
+                buffer.frameLength = frames
+                return buffer
+            }
+            // 16 个 0.5s buffer = 8s 输入；回看窗口 5s，应只保留最近 10 个(=5s)。
+            for _ in 0..<16 {
+                coordinator.captureAudioBuffer(makeBuffer(frames: 8000), copyBuffer: { $0 })
+            }
+            let snapshot = coordinator.rollingBufferSnapshot()
+            let totalFrames = snapshot.reduce(0) { $0 + Int($1.frameLength) }
+            try expect(snapshot.count == 10)
+            try expect(totalFrames == 80000)
+        }
         await runner.run("Cloud fallback text merge removes overlap") {
             let merged = DoubaoFallbackCoordinator.combinedText(
                 prefix: "hello world",

@@ -17,7 +17,7 @@ final class AudioEngineController {
     /// (Audio router: tap buffer dispatched to consumers; analysis lives in AudioAnalyzer.)
     let router = AudioRouter()
 
-    /// Apple Live Fallback 调 switchRequest 时挂载的 nil-format 消费者 id。
+    /// Apple Live Fallback 调 switchRequest 时挂载的消费者 id。
     /// (Consumer id for the SFSpeechAudioBufferRecognitionRequest currently switched in.)
     private var switchedRequestConsumerID: UUID?
     /// 最近一次成功完成 start() 的时间戳；用于过滤"自己触发"的 ConfigurationChange 通知。
@@ -500,14 +500,17 @@ final class AudioEngineController {
         }
     }
 
-    /// Apple Live Fallback 切换识别请求时调用：以 nil-format 透传消费者方式接入 router。
-    /// 当前只有 Apple Live Fallback（豆包失败后回退到 Apple Speech）用此 API。
-    /// (Used by Apple Live Fallback when Doubao fails; subsequent buffers feed the new request.)
-    func switchRequest(_ newRequest: SFSpeechAudioBufferRecognitionRequest) {
+    /// Apple Live Fallback 切换识别请求时调用：把后续 buffer 以指定 format 接入 router 喂给新 request。
+    /// 当前只有 Apple Live Fallback（豆包失败后回退到 Apple Speech）用此 API；它传 16kHz，
+    /// 与回退时回灌的历史回看音频（同为 16kHz）一致，避免同一 request 中途变更采样率。
+    /// (Used by Apple Live Fallback; subsequent buffers feed the new request at the given format.
+    ///  It passes 16kHz to match the replayed look-back audio and avoid a mid-stream rate change.)
+    func switchRequest(_ newRequest: SFSpeechAudioBufferRecognitionRequest,
+                       format: AudioRouter.ConsumerFormat? = nil) {
         if let id = switchedRequestConsumerID {
             router.unregister(id)
         }
-        switchedRequestConsumerID = router.register(format: nil) { buffer in
+        switchedRequestConsumerID = router.register(format: format) { buffer in
             newRequest.append(buffer)
         }
     }
