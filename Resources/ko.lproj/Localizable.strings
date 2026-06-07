@@ -251,6 +251,7 @@
 "update.error.install" = "설치 실패: %@";
 "update.beta" = "베타";
 "update.debug" = "Debug";
+"update.progress.title" = "아톰보이스 업데이트 중";
 "menu.lowerVolumeOnRecording" = "녹음 중 시스템 볼륨 낮추기";
 "menu.lowerVolumeOnRecording.tooltip" = "녹음 중 시스템 볼륨을 80% 낮춤";
 

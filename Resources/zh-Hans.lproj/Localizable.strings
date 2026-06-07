@@ -252,6 +252,7 @@
 "update.error.install" = "安装失败：%@";
 "update.beta" = "测试版";
 "update.debug" = "Debug 版";
+"update.progress.title" = "正在更新 原子微语";
 "menu.lowerVolumeOnRecording" = "录音时降低系统音量";
 "menu.lowerVolumeOnRecording.tooltip" = "录音期间将系统音量降低 80%";
 

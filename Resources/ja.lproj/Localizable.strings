@@ -251,6 +251,7 @@
 "update.error.install" = "インストールに失敗しました：%@";
 "update.beta" = "ベータ";
 "update.debug" = "Debug";
+"update.progress.title" = "原子微声を更新中";
 "menu.lowerVolumeOnRecording" = "録音中にシステム音量を下げる";
 "menu.lowerVolumeOnRecording.tooltip" = "録音中にシステム音量を80%下げる";
 

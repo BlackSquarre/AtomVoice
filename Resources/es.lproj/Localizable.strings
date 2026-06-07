@@ -251,6 +251,7 @@
 "update.error.install" = "Error de instalación: %@";
 "update.beta" = "Beta";
 "update.debug" = "Debug";
+"update.progress.title" = "Actualizando AtomVoice";
 "menu.lowerVolumeOnRecording" = "Reducir volumen al grabar";
 "menu.lowerVolumeOnRecording.tooltip" = "Reducir volumen del sistema un 80% durante la grabación";
 

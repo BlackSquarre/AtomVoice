@@ -251,6 +251,7 @@
 "update.error.install" = "Installation fehlgeschlagen: %@";
 "update.beta" = "Beta";
 "update.debug" = "Debug";
+"update.progress.title" = "AtomVoice wird aktualisiert";
 "menu.lowerVolumeOnRecording" = "Lautstärke während der Aufnahme senken";
 "menu.lowerVolumeOnRecording.tooltip" = "Systemlautstärke während der Aufnahme um 80% senken";
 

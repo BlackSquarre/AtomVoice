@@ -253,7 +253,7 @@ final class UpdateChecker {
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered, defer: false
         )
-        w.title = loc("app.title")
+        w.title = loc("update.progress.title")
         w.titlebarAppearsTransparent = true
         w.isMovableByWindowBackground = true
         w.isReleasedWhenClosed = false
