@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="atomvoicepreview.webp" alt="AtomVoice usage demo" width="960">
+  <img src="atomvoicepreview-30fps.apng" alt="AtomVoice usage demo" width="960">
 </p>
 
 ---
