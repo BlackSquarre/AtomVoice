@@ -123,6 +123,11 @@
 "sherpa.extracting" = "Sherpa モデルを解凍中 (%d/%d)...";
 "sherpa.download.complete" = "Sherpa モデルのダウンロード完了 ✓";
 "sherpa.download.failed" = "Sherpa モデルのダウンロード失敗：%@";
+"sherpa.runtime.downloading.progressWithSize" = "Sherpa ランタイムを更新中 (%d/%d)... %d%%（%@/%@ MB）";
+"sherpa.runtime.downloading.start" = "Sherpa ランタイムの更新を準備中...";
+"sherpa.runtime.extracting" = "Sherpa ランタイムを解凍中 (%d/%d)...";
+"sherpa.runtime.download.complete" = "Sherpa ランタイムの更新完了 ✓";
+"sherpa.runtime.download.failed" = "Sherpa ランタイムの更新失敗：%@";
 "sherpa.redownload.message" = "Sherpa モデルファイルが見つからないか破損しています。再ダウンロードしますか？";
 "sherpa.download.error.allMirrorsFailed" = "%@ のダウンロードに失敗しました: すべてのミラーに接続できません";
 "sherpa.download.error.moveFailed" = "ダウンロードしたファイルの移動に失敗しました: %@";

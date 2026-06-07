@@ -258,12 +258,32 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if SherpaModelDownloader.isReady() { return }
         let downloader = SherpaModelDownloader.shared
         let reporter: SherpaDownloadReporting = sherpaDownloadCapsulePresenter
-        reporter.updateProgress(progress: 0, message: loc("sherpa.downloading.start"), force: false)
+        let runtimeReady = SherpaModelDownloader.runtimeRequiredFiles().allSatisfy {
+            SherpaModelPreset.isUsableFile($0.url)
+        }
+        let modelReady = SherpaModelPreset.current.isDownloaded
+        let punctuationReady = SherpaModelPreset.isUsableFile(SherpaModelDownloader.punctuationRequiredFile())
+        let runtimeOnlyRepair = !runtimeReady && modelReady && punctuationReady
+        let initialMessage = runtimeOnlyRepair
+            ? loc("sherpa.runtime.downloading.start")
+            : loc("sherpa.downloading.start")
+        reporter.updateProgress(
+            progress: 0,
+            message: initialMessage,
+            force: false
+        )
         downloader.addObserver(
             progress: { [weak reporter] _, _, overallProgress, message in
                 reporter?.updateProgress(progress: overallProgress, message: message, force: false)
             },
-            complete: { [weak reporter] success, error in reporter?.finishDownload(success: success, error: error) }
+            complete: { [weak reporter] success, error in
+                reporter?.finishDownload(
+                    success: success,
+                    error: error,
+                    successMessageKey: runtimeOnlyRepair ? "sherpa.runtime.download.complete" : "sherpa.download.complete",
+                    failureMessageKey: runtimeOnlyRepair ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
+                )
+            }
         )
         _ = downloader.startDownload()
     }

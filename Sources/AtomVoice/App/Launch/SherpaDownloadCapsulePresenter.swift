@@ -14,12 +14,15 @@ extension CapsuleWindowController: DownloadCapsulePresenting {}
 protocol SherpaDownloadReporting: AnyObject {
     func updateProgress(progress: Double, message: String, force: Bool)
     func finishDownload(success: Bool, error: String?)
+    func finishDownload(success: Bool, error: String?, successMessageKey: String, failureMessageKey: String)
 }
 
 final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
     private struct PendingCompletion {
         let success: Bool
         let error: String?
+        let successMessageKey: String
+        let failureMessageKey: String
     }
 
     private weak var capsulePresenter: (any DownloadCapsulePresenting)?
@@ -80,21 +83,35 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
 
     /// 下载结束时调用，决定是否展示完成/失败胶囊。
     func finishDownload(success: Bool, error: String?) {
+        finishDownload(
+            success: success,
+            error: error,
+            successMessageKey: "sherpa.download.complete",
+            failureMessageKey: "sherpa.download.failed"
+        )
+    }
+
+    func finishDownload(success: Bool, error: String?, successMessageKey: String, failureMessageKey: String) {
         sherpaDownloadCapsuleActive = false
         sherpaDownloadDeferredByRecording = false
         sherpaDownloadCapsuleMessage = nil
         sherpaDownloadCapsuleProgress = success ? 1 : sherpaDownloadCapsuleProgress
         guard canPresentDownloadCapsule else {
-            pendingCompletion = PendingCompletion(success: success, error: error)
+            pendingCompletion = PendingCompletion(
+                success: success,
+                error: error,
+                successMessageKey: successMessageKey,
+                failureMessageKey: failureMessageKey
+            )
             return
         }
         if success {
-            capsulePresenter?.updateText(loc("sherpa.download.complete"), completion: nil)
+            capsulePresenter?.updateText(loc(successMessageKey), completion: nil)
             scheduleAfter(2) { [weak self] in
                 self?.capsulePresenter?.dismiss(completion: nil)
             }
         } else {
-            capsulePresenter?.showError(loc("sherpa.download.failed", error ?? "Unknown error"), dismissAfter: 6)
+            capsulePresenter?.showError(loc(failureMessageKey, error ?? "Unknown error"), dismissAfter: 6)
         }
     }
 
@@ -112,7 +129,12 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
 
         if let pendingCompletion, canPresentDownloadCapsule {
             self.pendingCompletion = nil
-            finishDownload(success: pendingCompletion.success, error: pendingCompletion.error)
+            finishDownload(
+                success: pendingCompletion.success,
+                error: pendingCompletion.error,
+                successMessageKey: pendingCompletion.successMessageKey,
+                failureMessageKey: pendingCompletion.failureMessageKey
+            )
             return
         }
 

@@ -123,6 +123,11 @@
 "sherpa.extracting" = "正在解壓 Sherpa 模型 (%d/%d)...";
 "sherpa.download.complete" = "Sherpa 模型下載完成 ✓";
 "sherpa.download.failed" = "Sherpa 模型下載失敗：%@";
+"sherpa.runtime.downloading.progressWithSize" = "正在更新 Sherpa 執行階段 (%d/%d)... %d%%（%@/%@ MB）";
+"sherpa.runtime.downloading.start" = "正在準備更新 Sherpa 執行階段...";
+"sherpa.runtime.extracting" = "正在解壓 Sherpa 執行階段 (%d/%d)...";
+"sherpa.runtime.download.complete" = "Sherpa 執行階段更新完成 ✓";
+"sherpa.runtime.download.failed" = "Sherpa 執行階段更新失敗：%@";
 "sherpa.redownload.message" = "Sherpa 模型檔案缺失或損壞，是否重新下載？";
 "sherpa.download.error.allMirrorsFailed" = "下載 %@ 失敗：所有鏡像均無法連線";
 "sherpa.download.error.moveFailed" = "移動下載檔案失敗：%@";

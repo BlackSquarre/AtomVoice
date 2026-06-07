@@ -123,6 +123,11 @@
 "sherpa.extracting" = "Sherpa-Modell wird extrahiert (%d/%d)...";
 "sherpa.download.complete" = "Sherpa-Modell-Download abgeschlossen ✓";
 "sherpa.download.failed" = "Sherpa-Modell-Download fehlgeschlagen: %@";
+"sherpa.runtime.downloading.progressWithSize" = "Sherpa-Laufzeitumgebung wird aktualisiert (%d/%d)... %d%% (%@/%@ MB)";
+"sherpa.runtime.downloading.start" = "Aktualisierung der Sherpa-Laufzeitumgebung wird vorbereitet...";
+"sherpa.runtime.extracting" = "Sherpa-Laufzeitumgebung wird extrahiert (%d/%d)...";
+"sherpa.runtime.download.complete" = "Sherpa-Laufzeitumgebung aktualisiert ✓";
+"sherpa.runtime.download.failed" = "Aktualisierung der Sherpa-Laufzeitumgebung fehlgeschlagen: %@";
 "sherpa.redownload.message" = "Sherpa-Modelldateien fehlen oder sind beschädigt. Erneut herunterladen?";
 "sherpa.download.error.allMirrorsFailed" = "Download von %@ fehlgeschlagen: Alle Mirrors sind nicht erreichbar";
 "sherpa.download.error.moveFailed" = "Heruntergeladene Datei konnte nicht verschoben werden: %@";

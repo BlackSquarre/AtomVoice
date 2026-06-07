@@ -310,21 +310,28 @@ final class SherpaSettingsTab: ASRSettingsTab {
             complete: { [weak self] success, error in
                 guard let self else { return }
                 let targetReady = runtimeOnly || preset.isDownloaded
-                self.sherpaDownloadReporter?.finishDownload(success: success && targetReady, error: error)
+                self.sherpaDownloadReporter?.finishDownload(
+                    success: success && targetReady,
+                    error: error,
+                    successMessageKey: runtimeOnly ? "sherpa.runtime.download.complete" : "sherpa.download.complete",
+                    failureMessageKey: runtimeOnly ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
+                )
                 if success && targetReady {
                     if activateOnSuccess {
                         AppSettings.sherpaModelPresetID = preset.id
                     }
                     self.rebuildSherpaModelList()
                     self.updateSherpaStatus()
-                    self.setSherpaStatus(loc("sherpa.download.complete"), color: .systemGreen)
+                    let completeKey = runtimeOnly ? "sherpa.runtime.download.complete" : "sherpa.download.complete"
+                    self.setSherpaStatus(loc(completeKey), color: .systemGreen)
                 } else if success {
                     self.rebuildSherpaModelList()
                     self.updateSherpaStatus()
                 } else {
                     self.rebuildSherpaModelList()
                     self.updateSherpaStatus()
-                    self.setSherpaStatus(loc("sherpa.download.failed", error ?? "Unknown error"), color: .systemRed)
+                    let failedKey = runtimeOnly ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
+                    self.setSherpaStatus(loc(failedKey, error ?? "Unknown error"), color: .systemRed)
                 }
                 completion?(success && targetReady)
             }

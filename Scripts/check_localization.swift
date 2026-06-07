@@ -1,4 +1,8 @@
+#if os(Linux)
+import Glibc
+#else
 import Darwin
+#endif
 import Foundation
 
 let expectedLocales = ["en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "fr", "de"]

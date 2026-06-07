@@ -123,6 +123,11 @@
 "sherpa.extracting" = "Extraction du modèle Sherpa (%d/%d)...";
 "sherpa.download.complete" = "Téléchargement du modèle Sherpa terminé ✓";
 "sherpa.download.failed" = "Échec du téléchargement du modèle Sherpa : %@";
+"sherpa.runtime.downloading.progressWithSize" = "Mise à jour du runtime Sherpa (%d/%d)... %d%% (%@/%@ Mo)";
+"sherpa.runtime.downloading.start" = "Préparation de la mise à jour du runtime Sherpa...";
+"sherpa.runtime.extracting" = "Extraction du runtime Sherpa (%d/%d)...";
+"sherpa.runtime.download.complete" = "Mise à jour du runtime Sherpa terminée ✓";
+"sherpa.runtime.download.failed" = "Échec de la mise à jour du runtime Sherpa : %@";
 "sherpa.redownload.message" = "Les fichiers du modèle Sherpa sont manquants ou corrompus. Re-télécharger ?";
 "sherpa.download.error.allMirrorsFailed" = "Échec du téléchargement de %@ : aucun miroir n'est accessible";
 "sherpa.download.error.moveFailed" = "Échec du déplacement du fichier téléchargé : %@";

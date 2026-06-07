@@ -123,6 +123,11 @@
 "sherpa.extracting" = "Sherpa 모델 압축 해제 중 (%d/%d)...";
 "sherpa.download.complete" = "Sherpa 모델 다운로드 완료 ✓";
 "sherpa.download.failed" = "Sherpa 모델 다운로드 실패: %@";
+"sherpa.runtime.downloading.progressWithSize" = "Sherpa 런타임 업데이트 중 (%d/%d)... %d%%(%@/%@ MB)";
+"sherpa.runtime.downloading.start" = "Sherpa 런타임 업데이트 준비 중...";
+"sherpa.runtime.extracting" = "Sherpa 런타임 압축 해제 중 (%d/%d)...";
+"sherpa.runtime.download.complete" = "Sherpa 런타임 업데이트 완료 ✓";
+"sherpa.runtime.download.failed" = "Sherpa 런타임 업데이트 실패: %@";
 "sherpa.redownload.message" = "Sherpa 모델 파일이 없거나 손상되었습니다. 다시 다운로드하시겠습니까?";
 "sherpa.download.error.allMirrorsFailed" = "%@ 다운로드 실패: 모든 미러에 연결할 수 없습니다";
 "sherpa.download.error.moveFailed" = "다운로드한 파일 이동 실패: %@";

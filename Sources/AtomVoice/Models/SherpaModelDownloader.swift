@@ -142,12 +142,25 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     private func downloadProgressMessage(num: Int, percent: Int, totalBytesWritten: Int64, totalBytesExpected: Int64) -> String {
+        let key = isCurrentRuntimeItem
+            ? "sherpa.runtime.downloading.progressWithSize"
+            : "sherpa.downloading.progressWithSize"
         guard totalBytesExpected > 0 else {
-            return loc("sherpa.downloading.progressWithSize", num, totalItems, percent, "--", "--")
+            return loc(key, num, totalItems, percent, "--", "--")
         }
         let downloadedMB = String(format: "%.1f", Double(totalBytesWritten) / 1_048_576.0)
         let totalMB = String(format: "%.1f", Double(totalBytesExpected) / 1_048_576.0)
-        return loc("sherpa.downloading.progressWithSize", num, totalItems, percent, downloadedMB, totalMB)
+        return loc(key, num, totalItems, percent, downloadedMB, totalMB)
+    }
+
+    private func extractingMessage(num: Int) -> String {
+        let key = isCurrentRuntimeItem ? "sherpa.runtime.extracting" : "sherpa.extracting"
+        return loc(key, num, totalItems)
+    }
+
+    private var isCurrentRuntimeItem: Bool {
+        guard currentItemIndex < itemsToDownload.count else { return runtimeOnlySession }
+        return itemsToDownload[currentItemIndex].name == "runtime"
     }
 
     /// 简单的运行库文件清单（Simple runtime file list）
@@ -443,7 +456,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         }
 
         // 解压（Extract）
-        notifyProgress(num, totalItems, computeOverallProgress(itemProgress: 1.0), loc("sherpa.extracting", num, totalItems))
+        notifyProgress(num, totalItems, computeOverallProgress(itemProgress: 1.0), extractingMessage(num: num))
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
