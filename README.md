@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="README/atomvoicepreview.webp" alt="AtomVoice usage demo" width="960">
+</p>
+
+---
+
 **English** | [简体中文](README/README-zh-Hans.md) | [繁體中文](README/README-zh-Hant.md) | [日本語](README/README-ja.md) | [한국어](README/README-ko.md) | [Español](README/README-es.md) | [Français](README/README-fr.md) | [Deutsch](README/README-de.md)
 
 # AtomVoice
@@ -6,10 +12,6 @@
 
 <h3 align="center">Press, speak.</h3>
 <p align="center">Lightweight, privacy-first voice dictation that types into any Mac app, with no time limit.</p>
-
-<p align="center">
-  <img src="README/atomvoicepreview.webp" alt="AtomVoice usage demo" width="960">
-</p>
 
 
 ---
