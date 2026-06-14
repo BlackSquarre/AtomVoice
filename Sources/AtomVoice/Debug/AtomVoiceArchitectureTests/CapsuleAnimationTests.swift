@@ -187,7 +187,7 @@ enum CapsuleAnimationTests {
                 restoreDefaultsObject(oldPlacement, forKey: AppSettings.Keys.capsuleWindowPlacement)
             }
 
-            let result = try await MainActor.run { () throws -> (Double, Double, Double, Double) in
+            let result = try await MainActor.run { () throws -> (Double, Double, Double, Double, Double) in
                 guard let screen = NSScreen.main,
                       let screenID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.intValue
                 else {
@@ -208,11 +208,17 @@ enum CapsuleAnimationTests {
                 let secondRatio = (secondFrame.midX - visibleFrame.minX) / visibleFrame.width
                 let firstBottomOffset = firstFrame.minY - visibleFrame.minY
                 let secondBottomOffset = secondFrame.minY - visibleFrame.minY
-                return (firstRatio, secondRatio, firstBottomOffset, secondBottomOffset)
+                let desiredMidX = visibleFrame.minX + visibleFrame.width * 0.28
+                let clampedX = min(
+                    max(desiredMidX - secondFrame.width / 2, visibleFrame.minX),
+                    max(visibleFrame.minX, visibleFrame.maxX - secondFrame.width)
+                )
+                let expectedSecondRatio = (clampedX + secondFrame.width / 2 - visibleFrame.minX) / visibleFrame.width
+                return (firstRatio, secondRatio, firstBottomOffset, secondBottomOffset, expectedSecondRatio)
             }
 
             try expect(approximatelyEqual(result.0, 0.28, tolerance: 0.01))
-            try expect(approximatelyEqual(result.1, 0.28, tolerance: 0.01))
+            try expect(approximatelyEqual(result.1, result.4, tolerance: 0.01))
             try expect(approximatelyEqual(result.2, 96, tolerance: 1))
             try expect(approximatelyEqual(result.3, 96, tolerance: 1))
         }
