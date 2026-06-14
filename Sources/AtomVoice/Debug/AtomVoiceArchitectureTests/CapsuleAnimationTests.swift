@@ -178,6 +178,78 @@ enum CapsuleAnimationTests {
             try expect(result.4 == .center)
             try expect(result.5 < 1)
         }
+        await runner.run("Capsule saved placement survives text-width changes") {
+            let defaults = UserDefaults.standard
+            let oldStyle = defaults.object(forKey: AppSettings.Keys.animationStyle)
+            let oldPlacement = defaults.object(forKey: AppSettings.Keys.capsuleWindowPlacement)
+            defer {
+                restoreDefaultsObject(oldStyle, forKey: AppSettings.Keys.animationStyle)
+                restoreDefaultsObject(oldPlacement, forKey: AppSettings.Keys.capsuleWindowPlacement)
+            }
+
+            let result = try await MainActor.run { () throws -> (Double, Double, Double, Double) in
+                guard let screen = NSScreen.main,
+                      let screenID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.intValue
+                else {
+                    throw TestFailure(file: #filePath, line: #line, message: "main screen unavailable")
+                }
+                AppSettings.animationStyle = "none"
+                AppSettings.capsuleWindowPlacement = CapsuleWindowPlacement(screenID: screenID, centerXRatio: 0.28, bottomOffset: 96)
+
+                let controller = CapsuleWindowController()
+                controller.show(initialText: "短")
+                let firstFrame = try require(controller.panel).frame.insetBy(dx: controller.animationInset, dy: controller.animationInset)
+                controller.updateText(String(repeating: "更长的测试文本", count: 8))
+                let secondFrame = try require(controller.panel).frame.insetBy(dx: controller.animationInset, dy: controller.animationInset)
+                controller.cleanup()
+
+                let visibleFrame = screen.visibleFrame
+                let firstRatio = (firstFrame.midX - visibleFrame.minX) / visibleFrame.width
+                let secondRatio = (secondFrame.midX - visibleFrame.minX) / visibleFrame.width
+                let firstBottomOffset = firstFrame.minY - visibleFrame.minY
+                let secondBottomOffset = secondFrame.minY - visibleFrame.minY
+                return (firstRatio, secondRatio, firstBottomOffset, secondBottomOffset)
+            }
+
+            try expect(approximatelyEqual(result.0, 0.28, tolerance: 0.01))
+            try expect(approximatelyEqual(result.1, 0.28, tolerance: 0.01))
+            try expect(approximatelyEqual(result.2, 96, tolerance: 1))
+            try expect(approximatelyEqual(result.3, 96, tolerance: 1))
+        }
+        await runner.run("Capsule reset clears saved placement and returns to default position") {
+            let defaults = UserDefaults.standard
+            let oldStyle = defaults.object(forKey: AppSettings.Keys.animationStyle)
+            let oldPlacement = defaults.object(forKey: AppSettings.Keys.capsuleWindowPlacement)
+            defer {
+                restoreDefaultsObject(oldStyle, forKey: AppSettings.Keys.animationStyle)
+                restoreDefaultsObject(oldPlacement, forKey: AppSettings.Keys.capsuleWindowPlacement)
+            }
+
+            let result = try await MainActor.run { () throws -> (Bool, Double, Double) in
+                guard let screen = NSScreen.main,
+                      let screenID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.intValue
+                else {
+                    throw TestFailure(file: #filePath, line: #line, message: "main screen unavailable")
+                }
+                AppSettings.animationStyle = "none"
+                AppSettings.capsuleWindowPlacement = CapsuleWindowPlacement(screenID: screenID, centerXRatio: 0.18, bottomOffset: 132)
+
+                let controller = CapsuleWindowController()
+                controller.show(initialText: "Reset test")
+                controller.resetUserPlacementToDefault(animated: false)
+                let frame = try require(controller.panel).frame.insetBy(dx: controller.animationInset, dy: controller.animationInset)
+                controller.cleanup()
+
+                let visibleFrame = screen.visibleFrame
+                let centerRatio = (frame.midX - visibleFrame.minX) / visibleFrame.width
+                let bottomOffset = frame.minY - visibleFrame.minY
+                return (AppSettings.capsuleWindowPlacement == nil, centerRatio, bottomOffset)
+            }
+
+            try expect(result.0)
+            try expect(approximatelyEqual(result.1, 0.5, tolerance: 0.01))
+            try expect(approximatelyEqual(result.2, 54, tolerance: 1))
+        }
 #if DEBUG_BUILD
         await runner.run("Capsule debug elapsed timer stops cleanly") {
             let container = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 42))

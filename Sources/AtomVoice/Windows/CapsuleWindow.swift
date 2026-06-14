@@ -2,11 +2,64 @@ import Cocoa
 
 private final class CapsuleClickOverlayView: NSView {
     var onClick: (() -> Void)?
+    var onSecondaryClick: (() -> Void)?
+    var onDragStarted: (() -> Void)?
+    var onDragDelta: ((CGPoint) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private let dragThreshold: CGFloat = 4
+    private var mouseDownScreenPoint: NSPoint?
+    private var lastDragScreenPoint: NSPoint?
+    private var isDragging = false
 
     override func mouseDown(with event: NSEvent) {
+        guard let screenPoint = screenPoint(for: event) else {
+            onClick?()
+            return
+        }
+        mouseDownScreenPoint = screenPoint
+        lastDragScreenPoint = screenPoint
+        isDragging = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = mouseDownScreenPoint,
+              let current = screenPoint(for: event)
+        else { return }
+
+        if !isDragging {
+            let distance = hypot(current.x - start.x, current.y - start.y)
+            guard distance >= dragThreshold else { return }
+            isDragging = true
+            onDragStarted?()
+        }
+
+        guard let previous = lastDragScreenPoint else { return }
+        onDragDelta?(CGPoint(x: current.x - previous.x, y: current.y - previous.y))
+        lastDragScreenPoint = current
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        defer { resetTrackingState() }
+        guard !isDragging else { return }
         onClick?()
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        onSecondaryClick?()
+    }
+
+    private func screenPoint(for event: NSEvent) -> NSPoint? {
+        guard let window else { return nil }
+        return window.convertPoint(toScreen: event.locationInWindow)
+    }
+
+    private func resetTrackingState() {
+        mouseDownScreenPoint = nil
+        lastDragScreenPoint = nil
+        isDragging = false
     }
 }
 
@@ -53,6 +106,7 @@ final class CapsuleWindowController {
     private let downloadTrackBorderColor = NSColor(calibratedRed: 0.49, green: 0.72, blue: 1.00, alpha: 0.64)
     private let downloadFillColor = NSColor(calibratedRed: 0.18, green: 0.59, blue: 1.00, alpha: 0.86)
     private let downloadFillHighlightColor = NSColor(calibratedRed: 0.80, green: 0.92, blue: 1.00, alpha: 0.96)
+    private let defaultBottomOffset: CGFloat = 54
 
     var isVisible: Bool { panel != nil }
     var isShowingDownloadPresentation: Bool { panel != nil && displayMode == .download }
@@ -70,9 +124,108 @@ final class CapsuleWindowController {
         return tw + waveformSpace + horizontalPadding * 2
     }
 
-    private func targetFrame(width: CGFloat) -> NSRect {
-        let s = NSScreen.main?.visibleFrame ?? .zero
-        return NSRect(x: s.midX - width / 2, y: s.minY + 54, width: width, height: capsuleHeight)
+    private var savedPlacement: CapsuleWindowPlacement? {
+        get { AppSettings.capsuleWindowPlacement }
+        set { AppSettings.capsuleWindowPlacement = newValue }
+    }
+
+    private func defaultVisualFrame(width: CGFloat, on screen: NSScreen) -> NSRect {
+        let visibleFrame = screen.visibleFrame
+        let clampedWidth = min(width, visibleFrame.width)
+        let maxY = max(visibleFrame.minY, visibleFrame.maxY - capsuleHeight)
+        let y = min(visibleFrame.minY + defaultBottomOffset, maxY)
+        return NSRect(
+            x: visibleFrame.midX - clampedWidth / 2,
+            y: y,
+            width: clampedWidth,
+            height: capsuleHeight
+        )
+    }
+
+    private func targetVisualFrame(width: CGFloat, preferredScreen: NSScreen? = nil) -> NSRect {
+        let fallbackScreen = preferredScreen ?? panel?.screen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen = fallbackScreen else {
+            return NSRect(x: 0, y: defaultBottomOffset, width: width, height: capsuleHeight)
+        }
+        guard let placement = savedPlacement else {
+            return defaultVisualFrame(width: width, on: screen)
+        }
+        return visualFrame(width: width, on: resolvedScreen(for: placement) ?? screen, placement: placement)
+    }
+
+    private func visualFrame(width: CGFloat, on screen: NSScreen, placement: CapsuleWindowPlacement) -> NSRect {
+        let visibleFrame = screen.visibleFrame
+        let clampedWidth = min(width, visibleFrame.width)
+        let normalizedX = max(0, min(1, placement.centerXRatio))
+        let desiredMidX = visibleFrame.minX + visibleFrame.width * normalizedX
+        let minX = visibleFrame.minX
+        let maxX = max(minX, visibleFrame.maxX - clampedWidth)
+        let x = min(max(desiredMidX - clampedWidth / 2, minX), maxX)
+        let minY = visibleFrame.minY
+        let maxY = max(minY, visibleFrame.maxY - capsuleHeight)
+        let y = min(max(minY + max(0, placement.bottomOffset), minY), maxY)
+        return NSRect(x: x, y: y, width: clampedWidth, height: capsuleHeight)
+    }
+
+    private func resolvedScreen(for placement: CapsuleWindowPlacement) -> NSScreen? {
+        guard let screenID = placement.screenID else { return nil }
+        return NSScreen.screens.first { $0.displayID == screenID }
+    }
+
+    private func bestMatchingScreen(for visualFrame: NSRect) -> NSScreen? {
+        let midpoint = CGPoint(x: visualFrame.midX, y: visualFrame.midY)
+        if let containing = NSScreen.screens.first(where: { $0.visibleFrame.contains(midpoint) }) {
+            return containing
+        }
+        return NSScreen.screens.max { lhs, rhs in
+            lhs.visibleFrame.intersection(visualFrame).area < rhs.visibleFrame.intersection(visualFrame).area
+        }
+    }
+
+    private func persistPlacement(for visualFrame: NSRect) {
+        guard let screen = bestMatchingScreen(for: visualFrame) else { return }
+        let visibleFrame = screen.visibleFrame
+        let centerXRatio = (visualFrame.midX - visibleFrame.minX) / visibleFrame.width
+        let bottomOffset = visualFrame.minY - visibleFrame.minY
+        savedPlacement = CapsuleWindowPlacement(
+            screenID: screen.displayID,
+            centerXRatio: centerXRatio,
+            bottomOffset: bottomOffset
+        )
+    }
+
+    private func currentVisualFrame(for panel: NSPanel) -> NSRect {
+        panel.frame.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset)
+    }
+
+    func resetUserPlacementToDefault(animated: Bool = true) {
+        savedPlacement = nil
+        guard let panel else { return }
+        let targetScreen = NSScreen.main ?? panel.screen ?? NSScreen.screens.first
+        let width = currentVisualFrame(for: panel).width
+        guard let targetScreen else { return }
+        let frame = panelFrame(forVisualFrame: defaultVisualFrame(width: width, on: targetScreen))
+        if animated {
+            animateFrameChange(panel: panel, frame: frame, currentPresentationID: presentationID)
+        } else {
+            panel.setFrame(frame, display: false)
+            updateShimmerFrame()
+        }
+    }
+
+    private func beginManualDrag() {
+        guard displayMode == .normal else { return }
+        animationStrategy.stop()
+    }
+
+    private func dragPanel(by delta: CGPoint) {
+        guard let panel, displayMode == .normal else { return }
+        var frame = panel.frame
+        frame.origin.x += delta.x
+        frame.origin.y += delta.y
+        panel.setFrame(frame, display: false)
+        updateShimmerFrame()
+        persistPlacement(for: currentVisualFrame(for: panel))
     }
 
     func panelFrame(forVisualFrame visualFrame: NSRect) -> NSRect {
@@ -185,7 +338,7 @@ final class CapsuleWindowController {
             resolvedTextWidth = initialTextWidth(initialText)
         }
         let fw = fullWidth(forTextWidth: resolvedTextWidth, includesWaveform: displayMode != .download)
-        let target = targetFrame(width: fw)
+        let target = targetVisualFrame(width: fw)
         let animationSelection = currentAnimationSelection
         let animationStyle = animationSelection.style
         animationStrategy = CapsuleAnimationStrategyFactory.make(selection: animationSelection)
@@ -308,6 +461,15 @@ final class CapsuleWindowController {
             else { return }
             self.onRecordingClick?()
         }
+        clickOverlay.onSecondaryClick = { [weak self] in
+            self?.resetUserPlacementToDefault()
+        }
+        clickOverlay.onDragStarted = { [weak self] in
+            self?.beginManualDrag()
+        }
+        clickOverlay.onDragDelta = { [weak self] delta in
+            self?.dragPanel(by: delta)
+        }
         surface.addSubview(clickOverlay)
         NSLayoutConstraint.activate([
             clickOverlay.leadingAnchor.constraint(equalTo: surface.leadingAnchor),
@@ -420,11 +582,8 @@ final class CapsuleWindowController {
         let tw = min(max(measured.width + 18, minTextWidth), maxTextWidth)
         let totalWidth = fullWidth(forTextWidth: tw)
 
-        let screen = NSScreen.main?.visibleFrame ?? .zero
-        var visualFrame = panel.frame.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset)
-        visualFrame.size.width = totalWidth
-        visualFrame.origin.x = screen.midX - totalWidth / 2
-        let frame = panelFrame(forVisualFrame: visualFrame)
+        let targetVisualFrame = self.targetVisualFrame(width: totalWidth, preferredScreen: panel.screen)
+        let frame = panelFrame(forVisualFrame: targetVisualFrame)
 
         animateFrameChange(panel: panel, frame: frame, currentPresentationID: currentPresentationID, completion: completion)
     }
@@ -619,11 +778,8 @@ final class CapsuleWindowController {
         let tw = max(measured.width + 14, compactMinTextWidth)
         let totalWidth = tw + waveformWidth + waveformLeadingOffset + horizontalPadding * 2 + waveformTextGap
 
-        let screen = NSScreen.main?.visibleFrame ?? .zero
-        var visualFrameRect = panel.frame.insetBy(dx: animationStrategy.currentInset, dy: animationStrategy.currentInset)
-        visualFrameRect.size.width = totalWidth
-        visualFrameRect.origin.x = screen.midX - totalWidth / 2
-        let frame = panelFrame(forVisualFrame: visualFrameRect)
+        let targetVisualFrame = self.targetVisualFrame(width: totalWidth, preferredScreen: panel.screen)
+        let frame = panelFrame(forVisualFrame: targetVisualFrame)
 
         animateFrameChange(panel: panel, frame: frame, currentPresentationID: presentationID)
     }
@@ -666,5 +822,18 @@ final class CapsuleWindowController {
         displayMode = .normal
         panel = nil
         dismissHandler?()
+    }
+}
+
+private extension CGRect {
+    var area: CGFloat {
+        guard !isNull, !isEmpty else { return 0 }
+        return width * height
+    }
+}
+
+private extension NSScreen {
+    var displayID: Int? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.intValue
     }
 }

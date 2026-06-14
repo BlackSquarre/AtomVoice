@@ -42,6 +42,7 @@ enum AppSettings {
         static let silenceDuration = "silenceDuration"
         static let silenceThreshold = "silenceThreshold"
         static let triggerKeyCode = "triggerKeyCode"
+        static let capsuleWindowPlacement = "capsuleWindowPlacement"
         static let lowerVolumeOnRecording = "lowerVolumeOnRecording"
         static let audioInputDeviceUID = "audioInputDeviceUID"
         static let includeBetaUpdates = "includeBetaUpdates"
@@ -250,6 +251,11 @@ enum AppSettings {
     static var triggerKeyCode: UInt16 {
         get { interface.triggerKeyCode }
         set { interface.triggerKeyCode = newValue }
+    }
+
+    static var capsuleWindowPlacement: CapsuleWindowPlacement? {
+        get { interface.capsuleWindowPlacement }
+        set { interface.capsuleWindowPlacement = newValue }
     }
 
     static var lowerVolumeOnRecording: Bool {

@@ -107,24 +107,42 @@ enum AppSettingsBackendTests {
             try expect(!settings.lowerVolumeOnRecording)
         }
 
+        await runner.run("Interface settings persist capsule window placement") {
+            let backend = InMemorySettingsBackend()
+            let settings = InterfaceSettings(backend: backend)
+            let placement = CapsuleWindowPlacement(screenID: 42, centerXRatio: 0.32, bottomOffset: 88)
+
+            settings.capsuleWindowPlacement = placement
+
+            try expect(settings.capsuleWindowPlacement == placement)
+
+            settings.capsuleWindowPlacement = nil
+            try expect(settings.capsuleWindowPlacement == nil)
+        }
+
         await runner.run("AppSettings facade writes existing UserDefaults keys") {
             let defaults = UserDefaults.standard
             let oldEngine = defaults.object(forKey: AppSettings.Keys.recognitionEngine)
             let oldLLMEnabled = defaults.object(forKey: AppSettings.Keys.llmEnabled)
             let oldLowerVolume = defaults.object(forKey: AppSettings.Keys.lowerVolumeOnRecording)
+            let oldCapsulePlacement = defaults.object(forKey: AppSettings.Keys.capsuleWindowPlacement)
             defer {
                 restoreDefaultsObject(oldEngine, forKey: AppSettings.Keys.recognitionEngine)
                 restoreDefaultsObject(oldLLMEnabled, forKey: AppSettings.Keys.llmEnabled)
                 restoreDefaultsObject(oldLowerVolume, forKey: AppSettings.Keys.lowerVolumeOnRecording)
+                restoreDefaultsObject(oldCapsulePlacement, forKey: AppSettings.Keys.capsuleWindowPlacement)
             }
 
             AppSettings.recognitionEngine = ASREngineRegistry.appleCode
             AppSettings.llmEnabled = true
             AppSettings.lowerVolumeOnRecording = false
+            let placement = CapsuleWindowPlacement(screenID: 7, centerXRatio: 0.5, bottomOffset: 54)
+            AppSettings.capsuleWindowPlacement = placement
 
             try expect(defaults.string(forKey: AppSettings.Keys.recognitionEngine) == ASREngineRegistry.appleCode)
             try expect(defaults.bool(forKey: AppSettings.Keys.llmEnabled))
             try expect(!defaults.bool(forKey: AppSettings.Keys.lowerVolumeOnRecording))
+            try expect(AppSettings.capsuleWindowPlacement == placement)
         }
     }
 }

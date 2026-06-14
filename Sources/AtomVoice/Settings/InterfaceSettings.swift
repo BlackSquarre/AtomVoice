@@ -1,5 +1,11 @@
 import Foundation
 
+struct CapsuleWindowPlacement: Codable, Equatable {
+    let screenID: Int?
+    let centerXRatio: Double
+    let bottomOffset: Double
+}
+
 final class InterfaceSettings {
     private let backend: SettingsBackend
 
@@ -25,5 +31,20 @@ final class InterfaceSettings {
     var headphoneControlEnabled: Bool {
         get { backend.bool(forKey: AppSettings.Keys.headphoneControlEnabled, default: false) }
         set { backend.set(newValue, forKey: AppSettings.Keys.headphoneControlEnabled) }
+    }
+
+    var capsuleWindowPlacement: CapsuleWindowPlacement? {
+        get {
+            guard let data = backend.data(forKey: AppSettings.Keys.capsuleWindowPlacement) else { return nil }
+            return try? JSONDecoder().decode(CapsuleWindowPlacement.self, from: data)
+        }
+        set {
+            guard let newValue else {
+                backend.set(nil, forKey: AppSettings.Keys.capsuleWindowPlacement)
+                return
+            }
+            let data = try? JSONEncoder().encode(newValue)
+            backend.set(data, forKey: AppSettings.Keys.capsuleWindowPlacement)
+        }
     }
 }
