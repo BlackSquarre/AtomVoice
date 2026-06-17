@@ -17,10 +17,7 @@ private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard let point = screenPoint(for: event) else {
-            state = .failed
-            return
-        }
+        let point = screenPoint(for: event)
         startScreenPoint = point
         lastScreenPoint = point
         delta = .zero
@@ -28,12 +25,11 @@ private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let start = startScreenPoint,
-              let current = screenPoint(for: event)
-        else {
+        guard let start = startScreenPoint else {
             state = .failed
             return
         }
+        let current = screenPoint(for: event)
 
         switch state {
         case .possible:
@@ -68,9 +64,8 @@ private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
         delta = .zero
     }
 
-    private func screenPoint(for event: NSEvent) -> NSPoint? {
-        guard let window = view?.window else { return nil }
-        return window.convertPoint(toScreen: event.locationInWindow)
+    private func screenPoint(for event: NSEvent) -> NSPoint {
+        NSEvent.mouseLocation
     }
 }
 
@@ -86,6 +81,7 @@ private final class CapsuleClickOverlayView: NSView, NSGestureRecognizerDelegate
     private let dragGesture = CapsuleDragGestureRecognizer(threshold: 4, target: nil, action: nil)
     private let clickGesture = NSClickGestureRecognizer()
     private let secondaryClickGesture = NSClickGestureRecognizer()
+    private var handledSecondaryClickViaGesture = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -137,6 +133,15 @@ private final class CapsuleClickOverlayView: NSView, NSGestureRecognizerDelegate
 
     @objc private func handleSecondaryClick(_ gesture: NSClickGestureRecognizer) {
         guard gesture.state == .ended else { return }
+        handledSecondaryClickViaGesture = true
+        onSecondaryClick?()
+        DispatchQueue.main.async { [weak self] in
+            self?.handledSecondaryClickViaGesture = false
+        }
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        guard !handledSecondaryClickViaGesture else { return }
         onSecondaryClick?()
     }
 
@@ -190,6 +195,11 @@ final class CapsuleWindowController {
     private let downloadFillColor = NSColor(calibratedRed: 0.18, green: 0.59, blue: 1.00, alpha: 0.86)
     private let downloadFillHighlightColor = NSColor(calibratedRed: 0.80, green: 0.92, blue: 1.00, alpha: 0.96)
     private let defaultBottomOffset: CGFloat = 54
+    private var usesSystemLiquidGlassTransparency: Bool {
+        ProcessInfo.processInfo.isOperatingSystemAtLeast(
+            OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0)
+        )
+    }
 
     var isVisible: Bool { panel != nil }
     var isShowingDownloadPresentation: Bool { panel != nil && displayMode == .download }
@@ -480,9 +490,7 @@ final class CapsuleWindowController {
 
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
-            glass.cornerRadius = cornerRadius
-            glass.style = .clear
-            glass.tintColor = NSColor.windowBackgroundColor.withAlphaComponent(0.065)
+            configureGlassEffectView(glass)
             glass.translatesAutoresizingMaskIntoConstraints = false
             glass.contentView = container
             // none 模式下禁用 glass view 自带的隐式入场动画（Disable glass view's implicit entry animation in none mode）
@@ -605,6 +613,27 @@ final class CapsuleWindowController {
         }
 
         animationStrategy.animateIn(host: makeAnimationHost(panel: panel, container: container, targetFrame: target))
+    }
+
+    @available(macOS 26.0, *)
+    private func configureGlassEffectView(_ glass: NSGlassEffectView) {
+        glass.cornerRadius = cornerRadius
+        if usesSystemLiquidGlassTransparency {
+            // macOS 27 的 Liquid Glass 透明度由系统控制；不要固定 tint/alpha。
+            glass.style = .regular
+            glass.tintColor = nil
+            applyGlassInteractivityIfAvailable(to: glass)
+        } else {
+            glass.style = .clear
+            glass.tintColor = NSColor.windowBackgroundColor.withAlphaComponent(0.065)
+        }
+    }
+
+    @available(macOS 26.0, *)
+    private func applyGlassInteractivityIfAvailable(to glass: NSGlassEffectView) {
+        let selector = NSSelectorFromString("setEffectIsInteractive:")
+        guard glass.responds(to: selector) else { return }
+        glass.setValue(true, forKey: "effectIsInteractive")
     }
 
     private func initialTextWidth(_ text: String) -> CGFloat {
