@@ -6,6 +6,8 @@ RELEASE_BUILD_ROOT = .build/release-artifacts
 DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
+DEVELOPER_DIR ?= /Applications/Xcode-beta.app/Contents/Developer
+export DEVELOPER_DIR
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
