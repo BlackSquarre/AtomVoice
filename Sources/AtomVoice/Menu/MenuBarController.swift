@@ -3,6 +3,12 @@ import Speech
 import ServiceManagement
 
 final class MenuBarController: NSObject, NSMenuDelegate {
+    private enum MenuItemImageVisibilityPreference: Int {
+        case automatic = 0
+        case visible = 1
+        case hidden = 2
+    }
+
     private var statusItem: NSStatusItem!
     private let onLanguageChanged: () -> Void
     private let asrEngineRegistry: ASREngineRegistry
@@ -61,7 +67,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(makeAudioInputItem())
         menu.addItem(.separator())
 
-        let otherItem = makeMenuItem(title: loc("menu.otherSettings"), imageName: "ellipsis.circle")
+        let otherItem = makeMenuItem(
+            title: loc("menu.otherSettings"),
+            imageName: "ellipsis.circle",
+            imageVisibility: .visible
+        )
         otherItem.submenu = buildOtherSettingsMenu()
         menu.addItem(otherItem)
         menu.addItem(.separator())
@@ -92,7 +102,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 识别语言子菜单。
     /// (Recognition language submenu.)
     private func makeLanguageItem(currentLang: String) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.language"), imageName: "globe")
+        let item = makeMenuItem(title: loc("menu.language"), imageName: "globe", imageVisibility: .visible)
         let submenu = NSMenu()
         for lang in AppSettings.appLanguageOptions {
             submenu.addItem(
@@ -111,7 +121,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 识别引擎子菜单（含引擎设置与 LLM 子菜单）。
     /// (Recognition engine submenu; includes engine settings and the LLM submenu.)
     private func makeRecognitionEngineItem(currentEngine: String) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.recognitionEngine"), imageName: "cpu")
+        let item = makeMenuItem(title: loc("menu.recognitionEngine"), imageName: "cpu", imageVisibility: .visible)
         let submenu = NSMenu()
         for descriptor in asrEngineRegistry.descriptors {
             submenu.addItem(
@@ -142,7 +152,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     private func makeLLMItem() -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.llm"), imageName: "wand.and.stars")
+        let item = makeMenuItem(title: loc("menu.llm"), imageName: "wand.and.stars", imageVisibility: .visible)
         item.toolTip = loc("tooltip.menu.llm")
         let submenu = NSMenu()
         let llmEnabled = AppSettings.llmEnabled
@@ -166,6 +176,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             title: loc("menu.punctuation"),
             action: #selector(togglePunctuation(_:)),
             imageName: "text.badge.plus",
+            imageVisibility: .visible,
             state: enabled ? .on : .off,
             toolTip: loc("tooltip.menu.punctuation")
         )
@@ -175,7 +186,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// (Text output destination submenu; returns nil unless at least two sinks are registered.)
     private func makeTextOutputItem() -> NSMenuItem? {
         guard let registry = textOutputSinkRegistry, registry.descriptors.count > 1 else { return nil }
-        let item = makeMenuItem(title: loc("menu.textOutput"), imageName: "square.and.arrow.up")
+        let item = makeMenuItem(title: loc("menu.textOutput"), imageName: "square.and.arrow.up", imageVisibility: .visible)
         let submenu = NSMenu()
         let currentOutput = registry.currentCode()
         for descriptor in registry.descriptors {
@@ -196,7 +207,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 输入方式子菜单：单击/长按 + 实时插入 + 静音停录时长。
     /// (Input mode submenu: tap/hold + live insertion + silence durations.)
     private func makeInputModeItem(currentEngine: String, isTapMode: Bool) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.inputMode"), imageName: "waveform")
+        let item = makeMenuItem(title: loc("menu.inputMode"), imageName: "waveform", imageVisibility: .visible)
         item.toolTip = loc("tooltip.menu.inputMode")
         let submenu = NSMenu()
         submenu.addItem(makeMenuItem(title: loc("menu.inputMode.tap"), action: #selector(selectInputModeTap(_:)), state: isTapMode ? .on : .off))
@@ -246,7 +257,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 触发键子菜单；Fn/Globe 选项会把标题里的 "Globe" 字样换成 SF Symbol。
     /// (Trigger key submenu; for Fn/Globe, replaces literal "Globe" text in the title with the SF Symbol.)
     private func makeTriggerKeyItem(triggerOption: TriggerKeyOption) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.triggerKey"), imageName: "command")
+        let item = makeMenuItem(title: loc("menu.triggerKey"), imageName: "command", imageVisibility: .visible)
         item.toolTip = loc("tooltip.menu.triggerKey")
         let submenu = NSMenu()
         for option in TriggerKeyOption.all {
@@ -285,7 +296,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 音频输入设备子菜单。
     /// (Audio input device submenu.)
     private func makeAudioInputItem() -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.audioInput"), imageName: "mic.badge.plus")
+        let item = makeMenuItem(title: loc("menu.audioInput"), imageName: "mic.badge.plus", imageVisibility: .visible)
         item.toolTip = loc("tooltip.menu.audioInput")
         let submenu = NSMenu()
         let savedUID = AppSettings.audioInputDeviceUID
@@ -316,7 +327,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let m = NSMenu()
 
         // 动画效果（Animation style）
-        let animItem = makeMenuItem(title: loc("menu.animation"), imageName: "sparkles")
+        let animItem = makeMenuItem(title: loc("menu.animation"), imageName: "sparkles", imageVisibility: .visible)
         let animMenu = NSMenu()
         let currentAnim = AppSettings.animationStyle
         for (title, key) in [(loc("menu.animation.dynamicIsland"), "dynamicIsland"),
@@ -392,6 +403,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 title: loc("menu.help"),
                 action: #selector(openPermissions(_:)),
                 imageName: hasAllPermissions ? "checkmark.shield" : "exclamationmark.shield",
+                imageVisibility: .visible,
                 toolTip: loc("tooltip.menu.help")
             )
         )
@@ -402,12 +414,20 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         m.addItem(.separator())
 
         // 检查更新（Check for updates）
-        m.addItem(makeMenuItem(title: loc("menu.checkForUpdates"), action: #selector(checkForUpdates(_:)), imageName: "arrow.down.circle"))
+        m.addItem(
+            makeMenuItem(
+                title: loc("menu.checkForUpdates"),
+                action: #selector(checkForUpdates(_:)),
+                imageName: "arrow.down.circle",
+                imageVisibility: .visible
+            )
+        )
         m.addItem(
             makeMenuItem(
                 title: loc("menu.betaUpdates"),
                 action: #selector(toggleBetaUpdates(_:)),
                 imageName: "flask",
+                imageVisibility: .hidden,
                 state: AppSettings.includeBetaUpdates ? .on : .off,
                 indentationLevel: 1
             )
@@ -418,6 +438,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 title: loc("menu.debugUpdates"),
                 action: #selector(toggleDebugUpdates(_:)),
                 imageName: "ladybug",
+                imageVisibility: .hidden,
                 state: AppSettings.updateToDebugBuilds ? .on : .off,
                 indentationLevel: 1
             )
@@ -430,22 +451,19 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         m.addItem(.separator())
 
         // Debug: 测试离线模型下载提示弹窗（Debug: Test offline model download prompt）
-        let testOnDeviceAlertItem = NSMenuItem(
+        let testOnDeviceAlertItem = makeMenuItem(
             title: loc("menu.debug.testOnDeviceAlert"),
             action: #selector(debugTestOnDeviceAlert(_:)),
-            keyEquivalent: ""
+            imageName: "ladybug"
         )
-        testOnDeviceAlertItem.image = icon("ladybug")
-        testOnDeviceAlertItem.target = self
         m.addItem(testOnDeviceAlertItem)
 
         // Debug: 粘贴延迟可调（Debug: tunable paste delay）
-        let pasteDelayItem = NSMenuItem(
+        let pasteDelayItem = makeMenuItem(
             title: String(format: "Paste Delay: %.0f ms", AppSettings.pasteDelay * 1000),
             action: nil,
-            keyEquivalent: ""
+            imageName: "timer"
         )
-        pasteDelayItem.image = icon("timer")
         let pasteDelaySubmenu = NSMenu()
         let current = AppSettings.pasteDelay
         for option in AppSettings.pasteDelayOptions {
@@ -463,13 +481,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         m.addItem(pasteDelayItem)
 
         // Debug: 当前进程内存快照（写入 ~/Library/Logs/AtomVoice/debug.log）
-        let memProbeItem = NSMenuItem(
+        let memProbeItem = makeMenuItem(
             title: Self.debugMemoryTitle(),
             action: #selector(debugDumpMemorySnapshot(_:)),
-            keyEquivalent: ""
+            imageName: "memorychip"
         )
-        memProbeItem.image = icon("memorychip")
-        memProbeItem.target = self
         debugMemoryItem = memProbeItem
         m.addItem(memProbeItem)
         #endif
@@ -504,6 +520,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         action: Selector? = nil,
         keyEquivalent: String = "",
         imageName: String? = nil,
+        imageVisibility: MenuItemImageVisibilityPreference = .automatic,
         state: NSControl.StateValue = .off,
         representedObject: Any? = nil,
         isEnabled: Bool = true,
@@ -516,6 +533,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         if let imageName {
             item.image = icon(imageName)
+            applyPreferredImageVisibility(imageVisibility, to: item)
         }
         item.state = state
         item.representedObject = representedObject
@@ -523,6 +541,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         item.indentationLevel = indentationLevel
         item.toolTip = toolTip
         return item
+    }
+
+    private func applyPreferredImageVisibility(_ preference: MenuItemImageVisibilityPreference, to item: NSMenuItem) {
+        let selector = NSSelectorFromString("setPreferredImageVisibility:")
+        guard item.responds(to: selector) else { return }
+        item.setValue(NSNumber(value: preference.rawValue), forKey: "preferredImageVisibility")
     }
 
     private func makeSectionLabel(_ title: String, indentationLevel: Int = 0, toolTip: String? = nil) -> NSMenuItem {
