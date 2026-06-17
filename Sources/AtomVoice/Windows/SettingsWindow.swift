@@ -65,6 +65,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
             defer: false
         )
         sheet.title = loc("provider.title")
+        WindowConfiguration.configureSheet(sheet, identifier: "AtomVoice.ProviderEditorSheet")
         let cv = sheet.contentView!
         let p: CGFloat = 20
 
@@ -274,6 +275,7 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
             defer: false
         )
         sheet.title = loc("settings.prompt.title")
+        WindowConfiguration.configureSheet(sheet, identifier: "AtomVoice.PromptEditorSheet")
         let cv = sheet.contentView!
         let p: CGFloat = 20
 
@@ -568,8 +570,10 @@ final class SettingsWindowController: NSObject {
         self.window = w
         w.delegate = self
         refreshFields()
-        w.center()
-        w.recalculateKeyViewLoop()
+        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.SettingsWindow")
+        if !restoredFrame {
+            w.center()
+        }
         WindowPresenter.shared.bringToFront(w)
     }
 

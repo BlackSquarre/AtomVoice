@@ -24,6 +24,7 @@ final class SherpaModelChooserController: NSObject {
         )
         w.title = loc("sherpa.chooser.title")
         w.isReleasedWhenClosed = false
+        WindowConfiguration.configureSheet(w, identifier: "AtomVoice.SherpaModelChooser")
 
         guard let cv = w.contentView else { return }
         let pad: CGFloat = 20

@@ -137,8 +137,10 @@ final class DoubaoSettingsWindowController: NSObject {
 
         window = w
         refreshFields()
-        w.center()
-        w.recalculateKeyViewLoop()
+        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.DoubaoSettingsWindow")
+        if !restoredFrame {
+            w.center()
+        }
         WindowPresenter.shared.bringToFront(w)
     }
 

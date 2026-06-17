@@ -130,6 +130,7 @@ final class OOBEWindowController: NSObject {
         ])
 
         self.window = w
+        WindowConfiguration.configureKeyViewLoop(w, identifier: "AtomVoice.OOBEWindow")
         // 监听外观切换，重新解析 dots 颜色
         appearanceObservation = w.observe(\.effectiveAppearance, options: []) { [weak self] _, _ in
             DispatchQueue.main.async { self?.updateDots() }
@@ -173,6 +174,7 @@ final class OOBEWindowController: NSObject {
         backButton.isHidden = (step == 0)
         nextButton.title = (step == totalSteps - 1) ? loc("oobe.done") : loc("oobe.next")
         activeStep.willAppear()
+        window?.recalculateKeyViewLoop()
     }
 
     private func updateDots() {

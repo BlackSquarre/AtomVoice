@@ -84,7 +84,10 @@ final class PermissionsWindowController: NSObject {
 
         self.window = w
         refresh()
-        w.center()
+        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.PermissionsWindow")
+        if !restoredFrame {
+            w.center()
+        }
         WindowPresenter.shared.bringToFront(w)
     }
 

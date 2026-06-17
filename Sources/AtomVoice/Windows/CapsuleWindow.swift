@@ -6,9 +6,14 @@ private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
     private var lastScreenPoint: NSPoint?
     private(set) var delta: CGPoint = .zero
 
-    init(threshold: CGFloat, target: AnyObject?, action: Selector?) {
+    init(threshold: CGFloat, target: Any?, action: Selector?) {
         self.dragThreshold = threshold
         super.init(target: target, action: action)
+    }
+
+    required init?(coder: NSCoder) {
+        self.dragThreshold = 4
+        super.init(coder: coder)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -55,10 +60,6 @@ private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
         default:
             break
         }
-    }
-
-    override func mouseCancelled(with event: NSEvent) {
-        state = .cancelled
     }
 
     override func reset() {
@@ -140,7 +141,7 @@ private final class CapsuleClickOverlayView: NSView, NSGestureRecognizerDelegate
     }
 
     func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer,
-                           shouldBeRequiredToFailByGestureRecognizer otherGestureRecognizer: NSGestureRecognizer) -> Bool {
+                           shouldBeRequiredToFailBy otherGestureRecognizer: NSGestureRecognizer) -> Bool {
         gestureRecognizer === clickGesture && otherGestureRecognizer === dragGesture
     }
 }

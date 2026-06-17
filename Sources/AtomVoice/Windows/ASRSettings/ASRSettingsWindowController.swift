@@ -128,8 +128,10 @@ final class ASRSettingsWindowController: NSObject {
         }
 
         w.setContentSize(Self.initialContentSize)
-        w.center()
-        w.recalculateKeyViewLoop()
+        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.ASRSettingsWindow")
+        if !restoredFrame {
+            w.center()
+        }
         WindowPresenter.shared.bringToFront(w)
     }
 
