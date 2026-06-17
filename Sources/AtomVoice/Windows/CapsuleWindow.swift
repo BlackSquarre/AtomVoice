@@ -1,6 +1,79 @@
 import Cocoa
 
-private final class CapsuleClickOverlayView: NSView {
+private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
+    private let dragThreshold: CGFloat
+    private var startScreenPoint: NSPoint?
+    private var lastScreenPoint: NSPoint?
+    private(set) var delta: CGPoint = .zero
+
+    init(threshold: CGFloat, target: AnyObject?, action: Selector?) {
+        self.dragThreshold = threshold
+        super.init(target: target, action: action)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let point = screenPoint(for: event) else {
+            state = .failed
+            return
+        }
+        startScreenPoint = point
+        lastScreenPoint = point
+        delta = .zero
+        state = .possible
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = startScreenPoint,
+              let current = screenPoint(for: event)
+        else {
+            state = .failed
+            return
+        }
+
+        switch state {
+        case .possible:
+            let distance = hypot(current.x - start.x, current.y - start.y)
+            guard distance >= dragThreshold else { return }
+            delta = CGPoint(x: current.x - start.x, y: current.y - start.y)
+            state = .began
+        case .began, .changed:
+            guard let previous = lastScreenPoint else { return }
+            delta = CGPoint(x: current.x - previous.x, y: current.y - previous.y)
+            state = .changed
+        default:
+            return
+        }
+        lastScreenPoint = current
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        switch state {
+        case .began, .changed:
+            state = .ended
+        case .possible:
+            state = .failed
+        default:
+            break
+        }
+    }
+
+    override func mouseCancelled(with event: NSEvent) {
+        state = .cancelled
+    }
+
+    override func reset() {
+        startScreenPoint = nil
+        lastScreenPoint = nil
+        delta = .zero
+    }
+
+    private func screenPoint(for event: NSEvent) -> NSPoint? {
+        guard let window = view?.window else { return nil }
+        return window.convertPoint(toScreen: event.locationInWindow)
+    }
+}
+
+private final class CapsuleClickOverlayView: NSView, NSGestureRecognizerDelegate {
     var onClick: (() -> Void)?
     var onSecondaryClick: (() -> Void)?
     var onDragStarted: (() -> Void)?
@@ -9,57 +82,66 @@ private final class CapsuleClickOverlayView: NSView {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-    private let dragThreshold: CGFloat = 4
-    private var mouseDownScreenPoint: NSPoint?
-    private var lastDragScreenPoint: NSPoint?
-    private var isDragging = false
+    private let dragGesture = CapsuleDragGestureRecognizer(threshold: 4, target: nil, action: nil)
+    private let clickGesture = NSClickGestureRecognizer()
+    private let secondaryClickGesture = NSClickGestureRecognizer()
 
-    override func mouseDown(with event: NSEvent) {
-        guard let screenPoint = screenPoint(for: event) else {
-            onClick?()
-            return
-        }
-        mouseDownScreenPoint = screenPoint
-        lastDragScreenPoint = screenPoint
-        isDragging = false
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configureGestureRecognizers()
     }
 
-    override func mouseDragged(with event: NSEvent) {
-        guard let start = mouseDownScreenPoint,
-              let current = screenPoint(for: event)
-        else { return }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configureGestureRecognizers()
+    }
 
-        if !isDragging {
-            let distance = hypot(current.x - start.x, current.y - start.y)
-            guard distance >= dragThreshold else { return }
-            isDragging = true
+    private func configureGestureRecognizers() {
+        dragGesture.target = self
+        dragGesture.action = #selector(handleDrag(_:))
+        dragGesture.delegate = self
+
+        clickGesture.target = self
+        clickGesture.action = #selector(handleClick(_:))
+        clickGesture.buttonMask = 0x1
+        clickGesture.numberOfClicksRequired = 1
+        clickGesture.delegate = self
+
+        secondaryClickGesture.target = self
+        secondaryClickGesture.action = #selector(handleSecondaryClick(_:))
+        secondaryClickGesture.buttonMask = 0x2
+        secondaryClickGesture.numberOfClicksRequired = 1
+
+        addGestureRecognizer(dragGesture)
+        addGestureRecognizer(clickGesture)
+        addGestureRecognizer(secondaryClickGesture)
+    }
+
+    @objc private func handleDrag(_ gesture: CapsuleDragGestureRecognizer) {
+        switch gesture.state {
+        case .began:
             onDragStarted?()
+            onDragDelta?(gesture.delta)
+        case .changed:
+            onDragDelta?(gesture.delta)
+        default:
+            break
         }
-
-        guard let previous = lastDragScreenPoint else { return }
-        onDragDelta?(CGPoint(x: current.x - previous.x, y: current.y - previous.y))
-        lastDragScreenPoint = current
     }
 
-    override func mouseUp(with event: NSEvent) {
-        defer { resetTrackingState() }
-        guard !isDragging else { return }
+    @objc private func handleClick(_ gesture: NSClickGestureRecognizer) {
+        guard gesture.state == .ended else { return }
         onClick?()
     }
 
-    override func rightMouseUp(with event: NSEvent) {
+    @objc private func handleSecondaryClick(_ gesture: NSClickGestureRecognizer) {
+        guard gesture.state == .ended else { return }
         onSecondaryClick?()
     }
 
-    private func screenPoint(for event: NSEvent) -> NSPoint? {
-        guard let window else { return nil }
-        return window.convertPoint(toScreen: event.locationInWindow)
-    }
-
-    private func resetTrackingState() {
-        mouseDownScreenPoint = nil
-        lastDragScreenPoint = nil
-        isDragging = false
+    func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer,
+                           shouldBeRequiredToFailByGestureRecognizer otherGestureRecognizer: NSGestureRecognizer) -> Bool {
+        gestureRecognizer === clickGesture && otherGestureRecognizer === dragGesture
     }
 }
 
