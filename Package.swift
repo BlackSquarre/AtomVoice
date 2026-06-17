@@ -37,6 +37,8 @@ let package = Package(
                 "AppIcon-1024.png",
                 "AppIcon-source-chromakey.png",
                 "AppIcon.iconset",
+                "AppIconLiquidGlass.icon",
+                "AppIconLiquidGlass.layers",
                 "Debug/SherpaMemoryProbe",
                 "Debug/SherpaMemoryBenchmark",
                 "Debug/AtomVoiceArchitectureTests",

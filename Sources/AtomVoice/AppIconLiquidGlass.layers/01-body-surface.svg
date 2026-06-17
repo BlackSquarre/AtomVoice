@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AtomVoice icon body surface">
+  <title>AtomVoice icon body surface</title>
+  <defs>
+    <linearGradient id="bodySurface" x1="512" y1="72" x2="512" y2="952" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7F5F0"/>
+      <stop offset="0.55" stop-color="#E7E3DA"/>
+      <stop offset="1" stop-color="#CFCAC0"/>
+    </linearGradient>
+  </defs>
+  <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="url(#bodySurface)"/>
+  <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="none" stroke="#8A8987" stroke-opacity="0.28" stroke-width="2"/>
+</svg>

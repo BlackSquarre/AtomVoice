@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AtomVoice icon inner capsule">
+  <title>AtomVoice icon inner capsule</title>
+  <defs>
+    <linearGradient id="innerLip" x1="512" y1="349" x2="512" y2="675" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#222326"/>
+      <stop offset="0.52" stop-color="#07080B"/>
+      <stop offset="1" stop-color="#292A2E"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="512" y1="355" x2="512" y2="669" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1C1D22"/>
+      <stop offset="0.48" stop-color="#08090C"/>
+      <stop offset="1" stop-color="#030407"/>
+    </linearGradient>
+  </defs>
+  <rect x="195" y="349" width="634" height="326" rx="163" ry="163" fill="url(#innerLip)"/>
+  <rect x="201" y="355" width="622" height="314" rx="157" ry="157" fill="url(#pill)"/>
+  <ellipse cx="512" cy="388" rx="230" ry="55" fill="#FFFFFF" opacity="0.07"/>
+</svg>

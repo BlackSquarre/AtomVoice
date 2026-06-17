@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AtomVoice icon green waveform bar">
+  <title>AtomVoice icon green waveform bar</title>
+  <defs>
+    <linearGradient id="greenBar" x1="0" y1="389" x2="0" y2="635" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A8F5CA"/>
+      <stop offset="0.55" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#15803D"/>
+    </linearGradient>
+  </defs>
+  <rect x="493" y="389" width="38" height="246" rx="19" ry="19" fill="url(#greenBar)"/>
+</svg>

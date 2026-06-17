@@ -1,172 +1,59 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="原子微语 AtomVoice">
   <title>原子微语 AtomVoice</title>
-
   <defs>
-    <filter id="iconShadow" x="-12%" y="-5%" width="124%" height="125%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="14"></feGaussianBlur>
-      <feOffset dy="24"></feOffset>
-      <feComponentTransfer><feFuncA type="linear" slope="0.28"></feFuncA></feComponentTransfer>
-      <feMerge>
-        <feMergeNode></feMergeNode>
-        <feMergeNode in="SourceGraphic"></feMergeNode>
-      </feMerge>
-    </filter>
-
-    <filter id="bodyInnerShadow" x="-3%" y="-3%" width="106%" height="106%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="4"></feGaussianBlur>
-      <feOffset dy="3"></feOffset>
-      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"></feComposite>
-      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0"></feColorMatrix>
-      <feComposite in2="SourceGraphic" operator="in"></feComposite>
-    </filter>
-
-    <filter id="barGlow" x="-200%" y="-100%" width="500%" height="300%">
-      <feGaussianBlur stdDeviation="18"></feGaussianBlur>
-    </filter>
-
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2"></feGaussianBlur>
-    </filter>
-
-    <filter id="pillDropShadow" x="-10%" y="-10%" width="120%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="10"></feGaussianBlur>
-      <feOffset dy="6"></feOffset>
-      <feComponentTransfer><feFuncA type="linear" slope="0.45"></feFuncA></feComponentTransfer>
-      <feMerge>
-        <feMergeNode></feMergeNode>
-        <feMergeNode in="SourceGraphic"></feMergeNode>
-      </feMerge>
-    </filter>
-
-    <linearGradient id="bodyMain" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#f4f3f0"></stop>
-      <stop offset="0.5" stop-color="#e3e1dd"></stop>
-      <stop offset="1" stop-color="#c2c0bd"></stop>
+    <linearGradient id="bodySurface" x1="512" y1="72" x2="512" y2="952" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7F5F0"/>
+      <stop offset="0.55" stop-color="#E7E3DA"/>
+      <stop offset="1" stop-color="#CFCAC0"/>
     </linearGradient>
-
-    <linearGradient id="bodyTopGlow" x1="0.5" y1="0" x2="0.5" y2="0.28">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.6"></stop>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+    <linearGradient id="bezel" x1="512" y1="341" x2="512" y2="683" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9F8F4"/>
+      <stop offset="0.20" stop-color="#D8D3CB"/>
+      <stop offset="0.52" stop-color="#8E8A84"/>
+      <stop offset="0.80" stop-color="#DCD8D0"/>
+      <stop offset="1" stop-color="#BDB7AF"/>
     </linearGradient>
-
-    <linearGradient id="bodyBottomShade" x1="0.5" y1="0.6" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#000000" stop-opacity="0"></stop>
-      <stop offset="1" stop-color="#15140f" stop-opacity="0.22"></stop>
+    <linearGradient id="innerLip" x1="512" y1="349" x2="512" y2="675" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#222326"/>
+      <stop offset="0.52" stop-color="#07080B"/>
+      <stop offset="1" stop-color="#292A2E"/>
     </linearGradient>
-
-    <linearGradient id="bezelChrome" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#fbfbfa"></stop>
-      <stop offset="0.12" stop-color="#e7e5e2"></stop>
-      <stop offset="0.28" stop-color="#9a9794"></stop>
-      <stop offset="0.5" stop-color="#6b6967"></stop>
-      <stop offset="0.72" stop-color="#b9b6b3"></stop>
-      <stop offset="0.88" stop-color="#ecebe8"></stop>
-      <stop offset="1" stop-color="#cfcdca"></stop>
+    <linearGradient id="pill" x1="512" y1="355" x2="512" y2="669" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1C1D22"/>
+      <stop offset="0.48" stop-color="#08090C"/>
+      <stop offset="1" stop-color="#030407"/>
     </linearGradient>
-
-    <linearGradient id="bezelInnerLip" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#1c1c1e"></stop>
-      <stop offset="0.5" stop-color="#0a0a0c"></stop>
-      <stop offset="1" stop-color="#2a2a2c"></stop>
+    <linearGradient id="blueBar" x1="0" y1="389" x2="0" y2="635" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#80BBFF"/>
+      <stop offset="0.55" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1E40AF"/>
     </linearGradient>
-
-    <linearGradient id="blackPill" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#1a1a1d"></stop>
-      <stop offset="0.5" stop-color="#0a0a0c"></stop>
-      <stop offset="1" stop-color="#050507"></stop>
+    <linearGradient id="cyanBar" x1="0" y1="389" x2="0" y2="635" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8AF5E7"/>
+      <stop offset="0.55" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#0891B2"/>
     </linearGradient>
-
-    <radialGradient id="blackPillTopGlow" cx="0.5" cy="0.1" r="0.7" fx="0.5" fy="0">
-      <stop offset="0" stop-color="#3a3a3e" stop-opacity="0.55"></stop>
-      <stop offset="0.6" stop-color="#1a1a1d" stop-opacity="0"></stop>
-    </radialGradient>
-
-    <linearGradient id="barBlue" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#7DB8FF"></stop>
-      <stop offset="0.5" stop-color="#3B82F6"></stop>
-      <stop offset="1" stop-color="#1E40AF"></stop>
+    <linearGradient id="greenBar" x1="0" y1="389" x2="0" y2="635" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A8F5CA"/>
+      <stop offset="0.55" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#15803D"/>
     </linearGradient>
-
-    <linearGradient id="barCyan" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#7FF1E0"></stop>
-      <stop offset="0.5" stop-color="#22D3EE"></stop>
-      <stop offset="1" stop-color="#0891B2"></stop>
-    </linearGradient>
-
-    <linearGradient id="barGreen" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#A7F3C8"></stop>
-      <stop offset="0.5" stop-color="#22C55E"></stop>
-      <stop offset="1" stop-color="#15803D"></stop>
-    </linearGradient>
-
-    <linearGradient id="barShine" x1="0.5" y1="0" x2="0.5" y2="0.7">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"></stop>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
-    </linearGradient>
-
-    <clipPath id="blackPillClip">
-      <rect x="201" y="355" width="622" height="314" rx="157" ry="157"></rect>
-    </clipPath>
   </defs>
 
-  
-  <g filter="url(#iconShadow)">
-    <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="url(#bodyMain)"></rect>
-    <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="url(#bodyTopGlow)"></rect>
-    <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="url(#bodyBottomShade)"></rect>
-    <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="black" filter="url(#bodyInnerShadow)"></rect>
+  <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="url(#bodySurface)"/>
+  <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="none" stroke="#8A8987" stroke-opacity="0.28" stroke-width="2"/>
 
-    
-    <path d="M 220 105 Q 512 86 804 105" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2" fill="none" stroke-linecap="round"></path>
+  <rect x="187" y="341" width="650" height="342" rx="171" ry="171" fill="url(#bezel)"/>
+  <rect x="187" y="341" width="650" height="342" rx="171" ry="171" fill="none" stroke="#3A3937" stroke-opacity="0.32" stroke-width="2"/>
 
-    
-    <rect x="72" y="72" width="880" height="880" rx="220" ry="220" fill="none" stroke="#8a8987" stroke-opacity="0.4" stroke-width="1.5"></rect>
-  </g>
+  <rect x="195" y="349" width="634" height="326" rx="163" ry="163" fill="url(#innerLip)"/>
+  <rect x="201" y="355" width="622" height="314" rx="157" ry="157" fill="url(#pill)"/>
+  <ellipse cx="512" cy="388" rx="230" ry="55" fill="#FFFFFF" opacity="0.07"/>
 
-  
-  
-  <g filter="url(#pillDropShadow)">
-    <rect x="187" y="341" width="650" height="342" rx="171" fill="url(#bezelChrome)"></rect>
-  </g>
-
-  <rect x="187" y="341" width="650" height="342" rx="171" fill="none" stroke="#3a3937" stroke-opacity="0.5" stroke-width="1.5"></rect>
-
-  <rect x="195" y="349" width="634" height="326" rx="163" fill="url(#bezelInnerLip)"></rect>
-  <rect x="201" y="355" width="622" height="314" rx="157" fill="url(#blackPill)"></rect>
-  <rect x="201" y="355" width="622" height="314" rx="157" fill="url(#blackPillTopGlow)"></rect>
-
-  
-  <g clip-path="url(#blackPillClip)">
-    <g filter="url(#barGlow)" opacity="0.5">
-      <rect x="341" y="464" width="38" height="96" rx="19" fill="#3B82F6"></rect>
-      <rect x="417" y="425" width="38" height="174" rx="19" fill="#22D3EE"></rect>
-      <rect x="493" y="389" width="38" height="246" rx="19" fill="#22C55E"></rect>
-      <rect x="569" y="425" width="38" height="174" rx="19" fill="#22D3EE"></rect>
-      <rect x="645" y="464" width="38" height="96" rx="19" fill="#3B82F6"></rect>
-    </g>
-
-    <rect x="341" y="464" width="38" height="96" rx="19" fill="url(#barBlue)"></rect>
-    <rect x="341" y="464" width="38" height="22" rx="19" fill="url(#barShine)"></rect>
-
-    <rect x="417" y="425" width="38" height="174" rx="19" fill="url(#barCyan)"></rect>
-    <rect x="417" y="425" width="38" height="34" rx="19" fill="url(#barShine)"></rect>
-
-    <rect x="493" y="389" width="38" height="246" rx="19" fill="url(#barGreen)"></rect>
-    <rect x="493" y="389" width="38" height="48" rx="19" fill="url(#barShine)"></rect>
-
-    <rect x="569" y="425" width="38" height="174" rx="19" fill="url(#barCyan)"></rect>
-    <rect x="569" y="425" width="38" height="34" rx="19" fill="url(#barShine)"></rect>
-
-    <rect x="645" y="464" width="38" height="96" rx="19" fill="url(#barBlue)"></rect>
-    <rect x="645" y="464" width="38" height="22" rx="19" fill="url(#barShine)"></rect>
-
-    <g opacity="0.7">
-      <ellipse cx="360" cy="472" rx="10" ry="2.5" fill="#ffffff" filter="url(#softGlow)"></ellipse>
-      <ellipse cx="436" cy="433" rx="10" ry="2.5" fill="#ffffff" filter="url(#softGlow)"></ellipse>
-      <ellipse cx="512" cy="397" rx="10" ry="2.5" fill="#ffffff" filter="url(#softGlow)"></ellipse>
-      <ellipse cx="588" cy="433" rx="10" ry="2.5" fill="#ffffff" filter="url(#softGlow)"></ellipse>
-      <ellipse cx="664" cy="472" rx="10" ry="2.5" fill="#ffffff" filter="url(#softGlow)"></ellipse>
-    </g>
-  </g>
+  <rect x="341" y="464" width="38" height="96" rx="19" ry="19" fill="url(#blueBar)"/>
+  <rect x="645" y="464" width="38" height="96" rx="19" ry="19" fill="url(#blueBar)"/>
+  <rect x="417" y="425" width="38" height="174" rx="19" ry="19" fill="url(#cyanBar)"/>
+  <rect x="569" y="425" width="38" height="174" rx="19" ry="19" fill="url(#cyanBar)"/>
+  <rect x="493" y="389" width="38" height="246" rx="19" ry="19" fill="url(#greenBar)"/>
 </svg>

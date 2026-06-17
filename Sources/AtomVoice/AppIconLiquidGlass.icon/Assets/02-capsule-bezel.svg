@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AtomVoice icon capsule bezel">
+  <title>AtomVoice icon capsule bezel</title>
+  <defs>
+    <linearGradient id="bezel" x1="512" y1="341" x2="512" y2="683" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9F8F4"/>
+      <stop offset="0.20" stop-color="#D8D3CB"/>
+      <stop offset="0.52" stop-color="#8E8A84"/>
+      <stop offset="0.80" stop-color="#DCD8D0"/>
+      <stop offset="1" stop-color="#BDB7AF"/>
+    </linearGradient>
+  </defs>
+  <rect x="187" y="341" width="650" height="342" rx="171" ry="171" fill="url(#bezel)"/>
+  <rect x="187" y="341" width="650" height="342" rx="171" ry="171" fill="none" stroke="#3A3937" stroke-opacity="0.32" stroke-width="2"/>
+</svg>
