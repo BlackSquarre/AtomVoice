@@ -39,7 +39,7 @@ enum RecordingSessionControllerTests {
             defer { harness.tearDown() }
             let generation = harness.enterCapturing()
             let callbacks = harness.controller.makeRecognitionSessionCallbacks(generation: generation)
-            _ = harness.session.start(audioFormat: nil, callbacks: callbacks)
+            harness.session.start(audioFormat: nil, callbacks: callbacks) { _ in }
 
             let source = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 160, fillValue: 0.25))
             let copy = try require(harness.session.acceptAudio(source))
@@ -85,6 +85,46 @@ enum RecordingSessionControllerTests {
             recognitionSession.emitPartial("hello")
 
             try expect(harness.presenter.events.contains(.updateText("hello")))
+        }
+
+        await runner.run("Recording session ignores a late start failure after stop") {
+            let settings = RecordingSessionTestSettings()
+            settings.apply()
+            defer { settings.restore() }
+
+            let recognitionSession = FakeRecognitionSession()
+            recognitionSession.completesStartImmediately = false
+            let harness = RecordingSessionHarness(session: recognitionSession)
+            defer { harness.tearDown() }
+
+            let request = harness.enterStarting()
+            harness.controller.continueStartRecording(startRequest: request)
+            try await waitForAsyncCallbacks()
+            try expect(recognitionSession.startCallCount == 1)
+
+            harness.controller.stop()
+            try await waitForAsyncCallbacks()
+            recognitionSession.completeNextStart(
+                with: .failed(
+                    RecognitionSessionFailure(
+                        message: "late failure",
+                        dismissAfter: 5,
+                        stopAudioEngine: false,
+                        recovery: nil
+                    )
+                )
+            )
+            try await waitForAsyncCallbacks()
+
+            try expect(harness.controller.state.phase != .errored)
+            try expect(
+                !harness.presenter.events.contains {
+                    if case .showError(let message, _, _) = $0 {
+                        return message == "late failure"
+                    }
+                    return false
+                }
+            )
         }
 
         await runner.run("Recording session fixture delivers output side effect through fake sink") {

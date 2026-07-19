@@ -8,10 +8,17 @@ final class TextInjector {
     }
 
     private static let injectionWatchdogTimeout: TimeInterval = 5.0
+    private static let pasteboardSnapshotTimeout: TimeInterval = 2.0
 
     private var pendingInjections: [PendingInjection] = []
-    private var isInjecting = false
-    private var currentInjectionID = UUID()
+    private var lifecycle = TextInjectionLifecycle()
+    private var activeTask: Task<Void, Never>?
+    private var watchdogTask: Task<Void, Never>?
+    private let pasteboardService: PasteboardServicing
+
+    init(pasteboardService: PasteboardServicing = SystemPasteboardService()) {
+        self.pasteboardService = pasteboardService
+    }
 
     func inject(text: String, completion: (() -> Void)? = nil) {
         if !Thread.isMainThread {
@@ -26,7 +33,7 @@ final class TextInjector {
     }
 
     private func processNextInjection() {
-        guard !isInjecting, !pendingInjections.isEmpty else { return }
+        guard !lifecycle.isActive, !pendingInjections.isEmpty else { return }
 
         let next = pendingInjections.removeFirst()
         guard !next.text.isEmpty else {
@@ -35,24 +42,20 @@ final class TextInjector {
             return
         }
 
-        isInjecting = true
         let injectionID = UUID()
-        currentInjectionID = injectionID
+        lifecycle.start(id: injectionID)
         let text = next.text
         let completion = next.completion
 
         // 主任务：跑完整粘贴流程，结束后在主线程上回收状态并推进队列。
         // (Main task: run the full paste pipeline, then reconcile state on main thread.)
-        Task { @MainActor [weak self] in
-            await self?.performInject(text: text)
+        activeTask = Task { @MainActor [weak self] in
+            await self?.performInject(text: text, injectionID: injectionID)
             self?.finishInjection(injectionID: injectionID, completion: completion)
         }
 
-        // Watchdog：5s 内未完成就强制回收状态、调 completion、继续推进。
-        // 与主任务用 injectionID 互相 gate，先到的一方负责调 completion。
-        // (Watchdog: force-reset and continue after 5s. Two tasks gate each other via injectionID;
-        //  whoever wins fires completion.)
-        Task { @MainActor [weak self] in
+        // Watchdog 只取消尚未改写剪贴板的任务；提交后必须等待恢复完成，避免新旧注入交叉。
+        watchdogTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.injectionWatchdogTimeout * 1_000_000_000))
             self?.handleWatchdog(injectionID: injectionID, textLength: text.count, completion: completion)
         }
@@ -60,46 +63,70 @@ final class TextInjector {
 
     @MainActor
     private func finishInjection(injectionID: UUID, completion: (() -> Void)?) {
-        guard isInjecting, currentInjectionID == injectionID else { return }
-        isInjecting = false
+        guard lifecycle.finish(id: injectionID) else { return }
+        watchdogTask?.cancel()
+        watchdogTask = nil
+        activeTask = nil
         completion?()
         processNextInjection()
     }
 
     @MainActor
     private func handleWatchdog(injectionID: UUID, textLength: Int, completion: (() -> Void)?) {
-        guard isInjecting, currentInjectionID == injectionID else { return }
-        DebugLog.error("[TextInjector] Injection timed out after \(Self.injectionWatchdogTimeout)s, resetting state and continuing queue, textLength=\(textLength)")
-        isInjecting = false
-        currentInjectionID = UUID()
-        completion?()
-        processNextInjection()
+        switch lifecycle.handleTimeout(id: injectionID) {
+        case .cancel:
+            DebugLog.error("[TextInjector] Injection timed out before clipboard commit after \(Self.injectionWatchdogTimeout)s, textLength=\(textLength)")
+            activeTask?.cancel()
+            activeTask = nil
+            watchdogTask = nil
+            completion?()
+            processNextInjection()
+        case .waitForCleanup:
+            DebugLog.error("[TextInjector] Injection exceeded \(Self.injectionWatchdogTimeout)s after clipboard commit; waiting for cleanup, textLength=\(textLength)")
+            watchdogTask = nil
+        case .stale:
+            break
+        }
     }
 
     @MainActor
-    private func performInject(text: String) async {
+    private func performInject(text: String, injectionID: UUID) async {
         // 在主线程上读取前台应用的 bundleID，命中内置兼容性清单时改用更长的粘贴延迟，避免远程桌面/虚拟机/串流类应用丢字符。
         // (Resolve frontmost app on main thread to pick per-app paste delay override for remote desktop / VM / streaming clients.)
         let compatProfile: PasteCompatibilityProfile? = PasteCompatibilityRegistry.profileForFrontmostApp()
 
         // 将获取光标后字符的跨进程 IPC 调用移至后台 Task，避免目标应用挂起时连带卡死主线程。
-        // (Move the cross-process AX read off the main actor so a hung target app doesn't freeze us.)
         let nextChar = await Task.detached(priority: .userInitiated) {
             Self.getCharacterAfterCursor()
         }.value
+        guard !Task.isCancelled,
+              lifecycle.transition(id: injectionID, from: .preparing, to: .snapshotting) else {
+            return
+        }
 
         var finalText = text
         if let nextChar, PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
             finalText = Self.removeTrailingPunctuation(text)
         }
 
-        // 保存当前剪贴板（Save current clipboard）
-        let pasteboard = NSPasteboard.general
-        let previousContents = savePasteboard(pasteboard)
+        let captureResult = await pasteboardService.capture(timeout: Self.pasteboardSnapshotTimeout)
+        guard !Task.isCancelled, lifecycle.isCurrent(injectionID) else { return }
+        guard case .captured(let snapshot) = captureResult else {
+            logCaptureFailure(captureResult)
+            return
+        }
 
-        // 将文本写入剪贴板（Set text to clipboard）
-        pasteboard.clearContents()
-        pasteboard.setString(finalText, forType: .string)
+        // 从这里开始剪贴板可能被改写，不能再由 watchdog 直接推进下一项。
+        guard lifecycle.transition(id: injectionID, from: .snapshotting, to: .committing) else { return }
+        let writeResult = await pasteboardService.write(
+            text: finalText,
+            replacing: snapshot
+        )
+        guard lifecycle.isCurrent(injectionID) else { return }
+        guard case .written(let injectedChangeCount) = writeResult else {
+            DebugLog.error("[TextInjector] Clipboard changed or could not be written before paste")
+            return
+        }
 
         // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check current input source, switch to ASCII if needed）
         let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
@@ -110,6 +137,7 @@ final class TextInjector {
 
         // 短暂等待输入源切换生效（Wait briefly for input source switch to take effect）
         await Self.sleep(seconds: needsSwitch ? 0.05 : 0.02)
+        guard lifecycle.isCurrent(injectionID) else { return }
         Self.simulatePaste()
 
         // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴；debug build 可在菜单调节。
@@ -118,6 +146,7 @@ final class TextInjector {
         //  Remote-desktop / VM / streaming clients matched by compatibility registry use a longer override to avoid dropped characters.)
         let pasteDelay = max(AppSettings.pasteDelay, compatProfile?.pasteDelay ?? 0)
         await Self.sleep(seconds: pasteDelay)
+        guard lifecycle.isCurrent(injectionID) else { return }
 
         if needsSwitch {
             TISSelectInputSource(originalSource)
@@ -125,7 +154,27 @@ final class TextInjector {
 
         // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard）
         await Self.sleep(seconds: 0.05)
-        restorePasteboard(pasteboard, contents: previousContents)
+        guard lifecycle.transition(id: injectionID, from: .committing, to: .restoring) else { return }
+        let restoreResult = await pasteboardService.restore(
+            snapshot,
+            expectedChangeCount: injectedChangeCount
+        )
+        if case .failed = restoreResult {
+            DebugLog.error("[TextInjector] Failed to restore clipboard contents")
+        }
+    }
+
+    private func logCaptureFailure(_ result: PasteboardCaptureResult) {
+        switch result {
+        case .captured:
+            break
+        case .timedOut:
+            DebugLog.error("[TextInjector] Clipboard snapshot timed out; paste was cancelled")
+        case .busy:
+            DebugLog.error("[TextInjector] Clipboard snapshot worker is still busy; paste was cancelled")
+        case .changed:
+            DebugLog.error("[TextInjector] Clipboard changed while taking a snapshot; paste was cancelled")
+        }
     }
 
     private static func sleep(seconds: Double) async {
@@ -248,39 +297,4 @@ final class TextInjector {
         keyUp?.post(tap: .cghidEventTap)
     }
 
-    // MARK: - Pasteboard Save/Restore
-
-    private struct PasteboardItem {
-        let type: NSPasteboard.PasteboardType
-        let data: Data
-    }
-
-    private func savePasteboard(_ pasteboard: NSPasteboard) -> [[PasteboardItem]] {
-        var allItems: [[PasteboardItem]] = []
-        for item in pasteboard.pasteboardItems ?? [] {
-            var itemData: [PasteboardItem] = []
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    itemData.append(PasteboardItem(type: type, data: data))
-                }
-            }
-            allItems.append(itemData)
-        }
-        return allItems
-    }
-
-    private func restorePasteboard(_ pasteboard: NSPasteboard, contents: [[PasteboardItem]]) {
-        pasteboard.clearContents()
-        if contents.isEmpty { return }
-
-        var items: [NSPasteboardItem] = []
-        for itemData in contents {
-            let item = NSPasteboardItem()
-            for entry in itemData {
-                item.setData(entry.data, forType: entry.type)
-            }
-            items.append(item)
-        }
-        pasteboard.writeObjects(items)
-    }
 }

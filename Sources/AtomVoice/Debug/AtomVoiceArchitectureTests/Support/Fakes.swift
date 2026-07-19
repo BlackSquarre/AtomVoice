@@ -215,6 +215,7 @@ final class FakeRecognitionSession: RecognitionSession {
     var preferredAudioFormat: AudioRouter.ConsumerFormat?
     var preflightResult: RecognitionSessionPreflightResult = .ready
     var startResult: RecognitionSessionStartResult = .started
+    var completesStartImmediately = true
     var stopResult: RecognitionSessionStopResult?
     var completesStopImmediately = true
 
@@ -227,6 +228,7 @@ final class FakeRecognitionSession: RecognitionSession {
     private(set) var lastStopImmediate = false
     private(set) var lastStopPunctuation: String?
     private(set) var copiedAudioBuffers: [AVAudioPCMBuffer] = []
+    private var pendingStartCompletions: [(RecognitionSessionStartResult) -> Void] = []
     private var pendingStopCompletion: ((RecognitionSessionStopResult) -> Void)?
 
     init(
@@ -255,12 +257,17 @@ final class FakeRecognitionSession: RecognitionSession {
 
     func start(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
         startCallCount += 1
         startAudioFormats.append(audioFormat)
         lastStartCallbacks = callbacks
-        return startResult
+        if completesStartImmediately {
+            completion(startResult)
+        } else {
+            pendingStartCompletions.append(completion)
+        }
     }
 
     func stop(
@@ -299,6 +306,12 @@ final class FakeRecognitionSession: RecognitionSession {
 
     func emitError(_ message: String) {
         lastStartCallbacks?.onError(message)
+    }
+
+    func completeNextStart(with result: RecognitionSessionStartResult? = nil) {
+        guard !pendingStartCompletions.isEmpty else { return }
+        let completion = pendingStartCompletions.removeFirst()
+        completion(result ?? startResult)
     }
 
     func completeStop(with result: RecognitionSessionStopResult? = nil) {

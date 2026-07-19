@@ -4,13 +4,22 @@ import CoreAudio
 import AudioTapShim
 
 final class AudioEngineController {
-    private(set) var engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
     private var tapInstalled = false
-    private let routeRecoveryQueue = DispatchQueue(label: "com.atomvoice.audioEngine.routeRecovery", qos: .userInitiated)
+    /// AVAudioEngine 不是线程安全对象；所有生命周期操作统一由此队列串行持有。
+    private let audioControlQueue = DispatchQueue(label: "com.atomvoice.audioEngine.control", qos: .userInitiated)
+    private let lifecycleLock = NSLock()
+    private var lifecycleGeneration = 0
+    private let inputReadinessLock = NSLock()
+    private var inputReadinessGeneration = 0
     private let routeRecoveryLock = NSLock()
     private var routeRecoveryToken = 0
-    private var idleHardwareReleaseToken = 0
     var onRouteRecoveryFailed: (() -> Void)?
+
+    /// 自动化测试不能访问真实麦克风；仅用于验证阻塞操作不会占用主线程。
+    private let inputReadinessOperationOverride: (() -> Bool)?
+    private let startOperationOverride: (() -> Bool)?
+    private let stopOperationOverride: (() -> Void)?
 
     /// 音频路由：tap 收到的 buffer 经 router 分发到各消费者（按目标 format 自动重采样）。
     /// 静音检测/频谱可视化通过 AudioAnalyzer（router 的 16kHz 消费者）实现，本类只负责 source。
@@ -41,8 +50,36 @@ final class AudioEngineController {
         _ = nextRouteRecoveryToken()
     }
 
-    private func cancelIdleHardwareRelease() {
-        idleHardwareReleaseToken += 1
+    private func nextLifecycleGeneration() -> Int {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        lifecycleGeneration += 1
+        return lifecycleGeneration
+    }
+
+    private func currentLifecycleGeneration() -> Int {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        return lifecycleGeneration
+    }
+
+    private func isCurrentLifecycleGeneration(_ generation: Int) -> Bool {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        return lifecycleGeneration == generation
+    }
+
+    private func nextInputReadinessGeneration() -> Int {
+        inputReadinessLock.lock()
+        defer { inputReadinessLock.unlock() }
+        inputReadinessGeneration += 1
+        return inputReadinessGeneration
+    }
+
+    private func isCurrentInputReadinessGeneration(_ generation: Int) -> Bool {
+        inputReadinessLock.lock()
+        defer { inputReadinessLock.unlock() }
+        return inputReadinessGeneration == generation
     }
 
     private func completeRouteRecovery(token: Int) {
@@ -58,7 +95,14 @@ final class AudioEngineController {
         return routeRecoveryToken == token
     }
 
-    init() {
+    init(
+        inputReadinessOperationOverride: (() -> Bool)? = nil,
+        startOperationOverride: (() -> Bool)? = nil,
+        stopOperationOverride: (() -> Void)? = nil
+    ) {
+        self.inputReadinessOperationOverride = inputReadinessOperationOverride
+        self.startOperationOverride = startOperationOverride
+        self.stopOperationOverride = stopOperationOverride
         // 监听音频路由变化（如摘下 AirPods）：engine 的 inputNode 不会自动跟随系统默认输入变化，
         // 必须在路由变化后主动 stop + reset，下次 start() 才能重新绑定到新的默认设备。
         registerConfigurationChangeObserver()
@@ -75,7 +119,7 @@ final class AudioEngineController {
 
     /// 销毁当前 engine 并新建一个：真实路由变化后唯一可靠的恢复路径。
     /// (Tear down current engine and create a fresh one — the only reliable recovery after real route changes.)
-    private func rebuildEngine() {
+    private func rebuildEngineOnControlQueue() {
         DebugLog.info("[AudioEngine] Rebuilding AVAudioEngine instance (start)")
         NotificationCenter.default.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: engine)
         if tapInstalled {
@@ -103,15 +147,22 @@ final class AudioEngineController {
 
     @objc private func handleConfigurationChange(_ note: Notification) {
         DebugLog.info("[AudioEngine] Received AVAudioEngineConfigurationChange")
-        // 通知可能在任意线程；统一切回主线程操作 engine 状态。
+        guard let notificationEngine = note.object as? AVAudioEngine else { return }
+        let notificationLifecycleGeneration = currentLifecycleGeneration()
+        // 通知可能在任意线程；统一切到音频控制队列操作 engine 状态。
         // Apple 行为：configuration change 时 engine 会自动 stop 自己；这里只需清掉 tap 状态，
         // 让下次 start() 走干净路径。不调用 engine.reset() —— 它会让 inputNode 的格式与 AU 配置不一致，
         // 导致 installTapOnBus 报 "Failed to create tap due to format mismatch"。
-        // (Notification can arrive on any thread; marshal to main. Per Apple, engine auto-stops on config change;
+        // (Notification can arrive on any thread; marshal to the control queue. Per Apple, engine auto-stops on config change;
         //  we only clear tap state. Do NOT call engine.reset() — it desynchronizes inputNode format from the AU
         //  and causes installTapOnBus to throw "format mismatch".)
-        DispatchQueue.main.async { [weak self] in
+        audioControlQueue.async { [weak self] in
             guard let self else { return }
+            guard self.engine === notificationEngine,
+                  self.isCurrentLifecycleGeneration(notificationLifecycleGeneration) else {
+                DebugLog.info("[AudioEngine] Ignoring stale ConfigurationChange")
+                return
+            }
             // 自触发窗口（engine.start 后 ~1s 内）：系统常会延迟回吐一次 ConfigurationChange，
             // 不代表真实路由变化，忽略。否则视为真实路由变化（如摘耳机），标记 engine 需要重建。
             // 真实路由变化后旧 AVAudioEngine 实例的 inputNode 会进入"format 缓存与底层 AU 不一致"
@@ -146,7 +197,8 @@ final class AudioEngineController {
             //  on the old instance and won't reflect the new device.)
             if wasActive {
                 let token = self.nextRouteRecoveryToken()
-                self.scheduleRouteRecovery(token: token)
+                let lifecycleGeneration = self.currentLifecycleGeneration()
+                self.scheduleRouteRecovery(token: token, lifecycleGeneration: lifecycleGeneration)
             } else {
                 let token = self.nextRouteRecoveryToken()
                 self.scheduleIdleRouteRebuild(token: token)
@@ -156,71 +208,87 @@ final class AudioEngineController {
 
     private func scheduleIdleRouteRebuild(token: Int) {
         DebugLog.info("[AudioEngine] Scheduled idle route rebuild token=\(token)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        audioControlQueue.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let self, self.isCurrentRouteRecovery(token) else { return }
             guard self.needsEngineRebuild else {
                 self.completeRouteRecovery(token: token)
                 return
             }
-            self.rebuildEngine()
+            self.rebuildEngineOnControlQueue()
             self.completeRouteRecovery(token: token)
             DebugLog.info("[AudioEngine] Pre-rebuilt after idle route change")
         }
     }
 
-    private func scheduleRouteRecovery(token: Int) {
-        DebugLog.info("[AudioEngine] Route-change recovery moved to background queue token=\(token)")
-        routeRecoveryQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            self?.recoverRouteAfterActiveChange(token: token)
+    private func scheduleRouteRecovery(token: Int, lifecycleGeneration: Int) {
+        DebugLog.info("[AudioEngine] Route-change recovery scheduled token=\(token)")
+        audioControlQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.recoverRouteAfterActiveChange(
+                token: token,
+                lifecycleGeneration: lifecycleGeneration,
+                deadline: Date().addingTimeInterval(1.5),
+                attempt: 1
+            )
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            guard let self, self.isCurrentRouteRecovery(token) else { return }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self,
+                  self.isCurrentRouteRecovery(token),
+                  self.isCurrentLifecycleGeneration(lifecycleGeneration) else { return }
             DebugLog.error("[AudioEngine] Route-change recovery watchdog timed out, ending current recording token=\(token)")
             self.completeRouteRecovery(token: token)
-            self.onRouteRecoveryFailed?()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isCurrentLifecycleGeneration(lifecycleGeneration) else { return }
+                self.onRouteRecoveryFailed?()
+            }
         }
     }
 
-    private func recoverRouteAfterActiveChange(token: Int) {
-        let deadline = Date().addingTimeInterval(1.5)
-        var attempt = 0
+    private func recoverRouteAfterActiveChange(
+        token: Int,
+        lifecycleGeneration: Int,
+        deadline: Date,
+        attempt: Int
+    ) {
+        guard isCurrentRouteRecovery(token),
+              isCurrentLifecycleGeneration(lifecycleGeneration) else { return }
 
-        while isCurrentRouteRecovery(token), Date() < deadline {
-            attempt += 1
+        rebuildEngineOnControlQueue()
+        guard isCurrentRouteRecovery(token),
+              isCurrentLifecycleGeneration(lifecycleGeneration) else { return }
+        DebugLog.info("[AudioEngine] Route-change background restart attempt \(attempt)")
+        let armSuccess = armEngineWithCurrentHandlers(context: "route-change re-arm")
 
-            // AVAudioEngine 不是线程安全的，必须在主线程操作 engine 状态（rebuild + arm）。
-            // 后台线程只负责重试间隔和 token 校验。
-            // (AVAudioEngine is not thread-safe; engine mutation (rebuild + arm) must happen on the main thread.
-            //  The background queue only handles retry intervals and token validation.)
-            var armSuccess = false
-            DispatchQueue.main.sync { [self] in
-                guard isCurrentRouteRecovery(token) else { return }
-                rebuildEngine()
-                guard isCurrentRouteRecovery(token) else { return }
-                DebugLog.info("[AudioEngine] Route-change background restart attempt \(attempt)")
-                armSuccess = armEngineWithCurrentHandlers(context: "route-change re-arm")
-            }
-
-            guard isCurrentRouteRecovery(token) else { return }
-
+        guard isCurrentRouteRecovery(token),
+              isCurrentLifecycleGeneration(lifecycleGeneration) else {
             if armSuccess {
-                guard isCurrentRouteRecovery(token) else {
-                    DispatchQueue.main.sync { [self] in stop() }
-                    return
-                }
-                completeRouteRecovery(token: token)
-                DebugLog.info("[AudioEngine] Seamlessly switched to new device after route change")
-                return
+                stopOnControlQueue()
             }
-
-            Thread.sleep(forTimeInterval: 0.15)
+            return
         }
 
-        guard isCurrentRouteRecovery(token) else { return }
-        DebugLog.error("[AudioEngine] Route-change background restart timed out, ending current recording")
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isCurrentRouteRecovery(token) else { return }
-            self.onRouteRecoveryFailed?()
+        if armSuccess {
+            completeRouteRecovery(token: token)
+            DebugLog.info("[AudioEngine] Seamlessly switched to new device after route change")
+            return
+        }
+
+        guard Date() < deadline else {
+            DebugLog.error("[AudioEngine] Route-change background restart timed out, ending current recording")
+            completeRouteRecovery(token: token)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isCurrentLifecycleGeneration(lifecycleGeneration) else { return }
+                self.onRouteRecoveryFailed?()
+            }
+            return
+        }
+
+        audioControlQueue.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            self?.recoverRouteAfterActiveChange(
+                token: token,
+                lifecycleGeneration: lifecycleGeneration,
+                deadline: deadline,
+                attempt: attempt + 1
+            )
         }
     }
 
@@ -383,34 +451,44 @@ final class AudioEngineController {
         let started = Date()
         let deadline = started.addingTimeInterval(timeout)
         let pollInterval: TimeInterval = 0.05
+        let generation = nextInputReadinessGeneration()
+
+        func finish(_ ready: Bool) {
+            DispatchQueue.main.async {
+                completion(ready)
+            }
+        }
 
         func poll(attempt: Int) {
-            DispatchQueue.main.async { [weak self] in
+            audioControlQueue.async { [weak self] in
                 guard let self else {
-                    completion(false)
+                    finish(false)
                     return
                 }
+                guard self.isCurrentInputReadinessGeneration(generation) else { return }
 
                 if self.needsEngineRebuild {
                     DebugLog.info("[AudioEngine] waitForInputReady: engine needs rebuild, rebuilding first")
-                    self.rebuildEngine()
+                    self.rebuildEngineOnControlQueue()
                 }
 
-                if self.isInputReady() {
+                let ready = self.isInputReady()
+                guard self.isCurrentInputReadinessGeneration(generation) else { return }
+                if ready {
                     let elapsed = Date().timeIntervalSince(started) * 1000
                     DebugLog.info("[AudioEngine] waitForInputReady ✓ ready after \(Int(elapsed))ms (attempts=\(attempt))")
-                    completion(true)
+                    finish(true)
                     return
                 }
 
                 guard Date() < deadline else {
                     let elapsed = Date().timeIntervalSince(started) * 1000
                     DebugLog.info("[AudioEngine] waitForInputReady ✗ final after \(Int(elapsed))ms (attempts=\(attempt))")
-                    completion(false)
+                    finish(false)
                     return
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + pollInterval) {
+                self.audioControlQueue.asyncAfter(deadline: .now() + pollInterval) {
                     poll(attempt: attempt + 1)
                 }
             }
@@ -419,8 +497,15 @@ final class AudioEngineController {
         poll(attempt: 1)
     }
 
+    func cancelInputReadinessCheck() {
+        _ = nextInputReadinessGeneration()
+    }
+
     /// 单次检查输入路径是否就绪（Single-shot check that input path is ready）
     private func isInputReady() -> Bool {
+        if let inputReadinessOperationOverride {
+            return inputReadinessOperationOverride()
+        }
         let devices = AudioEngineController.availableInputDevices()
         guard !devices.isEmpty else {
             DebugLog.info("[AudioEngine] isInputReady: no input devices")
@@ -523,13 +608,42 @@ final class AudioEngineController {
         }
     }
 
-    @discardableResult
-    func start() -> Bool {
-        cancelIdleHardwareRelease()
-        stop()
+    /// 在专用控制队列启动输入链路。CoreAudio 的蓝牙格式协商可能同步等待数秒，
+    /// 但不会再占用主线程。completion 始终回到主线程。
+    func start(completion: @escaping (Bool) -> Void) {
+        cancelInputReadinessCheck()
+        invalidateRouteRecovery()
+        let generation = nextLifecycleGeneration()
+        audioControlQueue.async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+
+            self.invalidateRouteRecovery()
+
+            let started = self.startOnControlQueue()
+            let isCurrent = self.isCurrentLifecycleGeneration(generation)
+            if started, !isCurrent {
+                // start() 阻塞期间可能已经松键或取消；不能让迟到结果复活旧录音。
+                self.stopOnControlQueue()
+            }
+
+            DispatchQueue.main.async {
+                completion(started && isCurrent)
+            }
+        }
+    }
+
+    private func startOnControlQueue() -> Bool {
+        if let startOperationOverride {
+            return startOperationOverride()
+        }
+
+        stopOnControlQueue()
 
         if needsEngineRebuild {
-            rebuildEngine()
+            rebuildEngineOnControlQueue()
         }
 
         // 应用输入设备：仅在用户明确选了具体设备时才 setProperty。
@@ -599,7 +713,19 @@ final class AudioEngineController {
     }
 
     func stop() {
+        cancelInputReadinessCheck()
         invalidateRouteRecovery()
+        _ = nextLifecycleGeneration()
+        audioControlQueue.async { [weak self] in
+            self?.stopOnControlQueue()
+        }
+    }
+
+    private func stopOnControlQueue() {
+        if let stopOperationOverride {
+            stopOperationOverride()
+            return
+        }
         if tapInstalled {
             engine.inputNode.removeTap(onBus: 0)
             tapInstalled = false
@@ -614,24 +740,15 @@ final class AudioEngineController {
     /// AirPods 这类蓝牙耳机会在输入链路存在时停留在通话/麦克风模式；但停止瞬间立即重建 engine
     /// 又容易打断正在播放的音乐，所以等 ASR final 收口后再空闲重建一次。
     func releaseHardwareAfterIdle(delay: TimeInterval = 1.5) {
-        if !Thread.isMainThread {
-            DispatchQueue.main.async { [weak self] in
-                self?.releaseHardwareAfterIdle(delay: delay)
-            }
-            return
-        }
-
-        idleHardwareReleaseToken += 1
-        let token = idleHardwareReleaseToken
-        DebugLog.info(String(format: "[AudioEngine] Scheduled idle input-hardware release %.1fs token=%d", delay, token))
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.idleHardwareReleaseToken == token else { return }
-            self.idleHardwareReleaseToken += 1
+        let generation = currentLifecycleGeneration()
+        DebugLog.info(String(format: "[AudioEngine] Scheduled idle input-hardware release %.1fs generation=%d", delay, generation))
+        audioControlQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.isCurrentLifecycleGeneration(generation) else { return }
             guard !self.tapInstalled, !self.engine.isRunning else {
                 DebugLog.info("[AudioEngine] Skipping idle release: engine is active again")
                 return
             }
-            self.rebuildEngine()
+            self.rebuildEngineOnControlQueue()
             DebugLog.info("[AudioEngine] Released idle input hardware")
         }
     }
@@ -640,10 +757,13 @@ final class AudioEngineController {
     /// 它可能正卡在 CoreAudio 硬件查询里；这里只标脏，等待下一次 start() 新建实例。
     func abandonAfterRouteRecoveryFailure() {
         invalidateRouteRecovery()
-        cancelIdleHardwareRelease()
-        tapInstalled = false
-        needsEngineRebuild = true
-        lastStartSucceededAt = nil
-        router.invalidate()
+        _ = nextLifecycleGeneration()
+        audioControlQueue.async { [weak self] in
+            guard let self else { return }
+            self.tapInstalled = false
+            self.needsEngineRebuild = true
+            self.lastStartSucceededAt = nil
+            self.router.invalidate()
+        }
     }
 }

@@ -337,26 +337,41 @@ final class RecordingSessionController {
         DispatchQueue.main.async { [weak self] in
             guard let self, isRecording, recordingGeneration == generation else { return }
             let callbacks = makeRecognitionSessionCallbacks(generation: generation)
-            switch selectedSession.start(audioFormat: selectedSession.preferredAudioFormat, callbacks: callbacks) {
-            case .started:
-                break
-            case .failed(let failure):
-                #if DEBUG_BUILD
-                preserveDebugAudioEvidence(reason: .sessionStartFailed)
-                #endif
-                dispatch(
-                    .sessionStartFailed(
-                        message: failure.message,
-                        dismissAfter: failure.dismissAfter,
-                        stopAudioEngine: failure.stopAudioEngine,
-                        recovery: failure.recovery.map {
-                            switch $0 {
-                            case .requestSherpaModelDownload(let redownload, let delay):
-                                return .requestSherpaModelDownload(redownload: redownload, delay: delay)
-                            }
-                        }
-                    )
-                )
+            selectedSession.start(
+                audioFormat: selectedSession.preferredAudioFormat,
+                callbacks: callbacks
+            ) { [weak self] result in
+                let handleResult = {
+                    guard let self,
+                          self.isRecording,
+                          self.recordingGeneration == generation else { return }
+                    switch result {
+                    case .started:
+                        self.dispatch(.sessionStartCompleted(generation: generation))
+                    case .failed(let failure):
+                        #if DEBUG_BUILD
+                        self.preserveDebugAudioEvidence(reason: .sessionStartFailed)
+                        #endif
+                        self.dispatch(
+                            .sessionStartFailed(
+                                message: failure.message,
+                                dismissAfter: failure.dismissAfter,
+                                stopAudioEngine: failure.stopAudioEngine,
+                                recovery: failure.recovery.map {
+                                    switch $0 {
+                                    case .requestSherpaModelDownload(let redownload, let delay):
+                                        return .requestSherpaModelDownload(redownload: redownload, delay: delay)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+                if Thread.isMainThread {
+                    handleResult()
+                } else {
+                    DispatchQueue.main.async(execute: handleResult)
+                }
             }
         }
     }
@@ -380,6 +395,7 @@ final class RecordingSessionController {
     // MARK: - 实时识别更新与状态（Real-time updates & state）
 
     private func cancelPendingStart() {
+        audioEngine.cancelInputReadinessCheck()
         _ = dispatch(.cancelRequested)
     }
 

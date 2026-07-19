@@ -74,8 +74,9 @@ protocol RecognitionSession: AnyObject {
     func preflight() -> RecognitionSessionPreflightResult
     func start(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult
+        callbacks: RecognitionSessionCallbacks,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    )
     func stop(
         immediate: Bool,
         appending punctuation: String?,
@@ -102,6 +103,7 @@ final class AppleRecognitionSession: RecognitionSession {
     private let engine: AppleSpeechASREngine
     private let audioEngine: AudioEngineController
     private var activeRouterConsumerID: UUID?
+    private var startAttempt = 0
 
     init(engine: AppleSpeechASREngine, audioEngine: AudioEngineController) {
         self.engine = engine
@@ -112,8 +114,11 @@ final class AppleRecognitionSession: RecognitionSession {
 
     func start(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
+        startAttempt += 1
+        let attempt = startAttempt
         callbacks.onShowInitial()
         if let error = engine.start(
             onResult: { text, isFinal in
@@ -129,26 +134,37 @@ final class AppleRecognitionSession: RecognitionSession {
                 }
             }
         ) {
-            return .failed(
+            completion(.failed(
                 RecognitionSessionFailure(
                     message: error,
                     dismissAfter: 5,
                     stopAudioEngine: false,
                     recovery: nil
                 )
-            )
+            ))
+            return
         }
 
-        guard audioEngine.start() else {
-            engine.cancel()
-            return .failed(.audioStartFailure())
-        }
-
-        activeRouterConsumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
+        let consumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
             guard callbacks.isRecordingCurrent() else { return }
             self?.engine.accept(buffer: buffer)
         }
-        return .started
+        activeRouterConsumerID = consumerID
+
+        audioEngine.start { [weak self] started in
+            guard let self else { return }
+            guard self.startAttempt == attempt, callbacks.isRecordingCurrent() else {
+                self.unregisterConsumer(consumerID)
+                return
+            }
+            guard started else {
+                self.engine.cancel()
+                self.unregisterConsumer(consumerID)
+                completion(.failed(.audioStartFailure()))
+                return
+            }
+            completion(.started)
+        }
     }
 
     func stop(
@@ -157,9 +173,10 @@ final class AppleRecognitionSession: RecognitionSession {
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStopResult) -> Void
     ) {
+        startAttempt += 1
+        unregisterConsumer()
         let text = engine.stopSynchronously()
         audioEngine.stop()
-        unregisterConsumer()
         audioEngine.releaseHardwareAfterIdle()
         completion(
             RecognitionSessionStopResult(
@@ -171,6 +188,7 @@ final class AppleRecognitionSession: RecognitionSession {
     }
 
     func cancel() {
+        startAttempt += 1
         engine.cancel()
         unregisterConsumer()
     }
@@ -178,6 +196,13 @@ final class AppleRecognitionSession: RecognitionSession {
     private func unregisterConsumer() {
         if let id = activeRouterConsumerID {
             audioEngine.router.unregister(id)
+            activeRouterConsumerID = nil
+        }
+    }
+
+    private func unregisterConsumer(_ id: UUID) {
+        audioEngine.router.unregister(id)
+        if activeRouterConsumerID == id {
             activeRouterConsumerID = nil
         }
     }
@@ -193,8 +218,9 @@ final class SherpaRecognitionSession: RecognitionSession {
 
     private let engine: SherpaOnnxASREngine
     private let audioEngine: AudioEngineController
-    private let preload = SherpaPreloadCoordinator()
+    private var activePreload: SherpaPreloadCoordinator?
     private var activeRouterConsumerID: UUID?
+    private var startAttempt = 0
 
     init(engine: SherpaOnnxASREngine, audioEngine: AudioEngineController) {
         self.engine = engine
@@ -214,13 +240,27 @@ final class SherpaRecognitionSession: RecognitionSession {
 
     func start(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
+        startAttempt += 1
+        let attempt = startAttempt
         if engine.isModelLoaded {
             callbacks.onShowInitial()
-            return startAfterModelLoad(audioFormat: audioFormat, callbacks: callbacks)
+            startAfterModelLoad(
+                audioFormat: audioFormat,
+                callbacks: callbacks,
+                attempt: attempt,
+                completion: completion
+            )
+        } else {
+            startWithDeferredModel(
+                audioFormat: audioFormat,
+                callbacks: callbacks,
+                attempt: attempt,
+                completion: completion
+            )
         }
-        return startWithDeferredModel(audioFormat: audioFormat, callbacks: callbacks)
     }
 
     func stop(
@@ -229,10 +269,12 @@ final class SherpaRecognitionSession: RecognitionSession {
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStopResult) -> Void
     ) {
+        startAttempt += 1
+        unregisterConsumer()
         let text = engine.stopSynchronously()
         audioEngine.stop()
-        preload.cancel()
-        unregisterConsumer()
+        activePreload?.cancel()
+        activePreload = nil
         audioEngine.releaseHardwareAfterIdle()
         completion(
             RecognitionSessionStopResult(
@@ -244,15 +286,19 @@ final class SherpaRecognitionSession: RecognitionSession {
     }
 
     func cancel() {
-        preload.cancel()
+        startAttempt += 1
+        activePreload?.cancel()
+        activePreload = nil
         engine.cancel()
         unregisterConsumer()
     }
 
     private func startAfterModelLoad(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        attempt: Int,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
         if let error = engine.start(
             onResult: { text, _ in
                 DispatchQueue.main.async {
@@ -262,89 +308,126 @@ final class SherpaRecognitionSession: RecognitionSession {
             },
             onError: { _ in }
         ) {
-            return .failed(startFailure(for: error, stopAudioEngine: false))
+            completion(.failed(startFailure(for: error, stopAudioEngine: false)))
+            return
         }
 
         callbacks.onShowRecording()
-        guard audioEngine.start() else {
-            engine.cancel()
-            return .failed(.audioStartFailure())
+        let consumerID = registerLiveConsumer(audioFormat: audioFormat, callbacks: callbacks)
+        audioEngine.start { [weak self] started in
+            guard let self else { return }
+            guard self.startAttempt == attempt, callbacks.isRecordingCurrent() else {
+                self.unregisterConsumer(consumerID)
+                return
+            }
+            guard started else {
+                self.engine.cancel()
+                self.unregisterConsumer(consumerID)
+                completion(.failed(.audioStartFailure()))
+                return
+            }
+            completion(.started)
         }
-        registerLiveConsumer(audioFormat: audioFormat, callbacks: callbacks)
-        return .started
     }
 
     private func startWithDeferredModel(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        attempt: Int,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
+        let preload = SherpaPreloadCoordinator()
+        activePreload = preload
         preload.begin()
         callbacks.onProgress(loc("sherpa.loadingModel"), true)
 
-        guard audioEngine.start() else {
-            preload.cancel()
-            return .failed(.audioStartFailure())
-        }
-
-        activeRouterConsumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
+        let consumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
             guard let self, callbacks.isRecordingCurrent() else { return }
-            let buffered = self.preload.appendIfActive(buffer, copyBuffer: callbacks.copyAudioBuffer)
+            let buffered = preload.appendIfActive(buffer, copyBuffer: callbacks.copyAudioBuffer)
             if !buffered {
                 self.engine.accept(buffer: buffer)
             }
         }
+        activeRouterConsumerID = consumerID
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        audioEngine.start { [weak self] started in
             guard let self else { return }
-            let error = self.engine.start(
-                onResult: { text, _ in
-                    DispatchQueue.main.async {
-                        guard callbacks.isRecordingCurrent() else { return }
-                        callbacks.onPartialResult(text, false)
-                    }
-                },
-                onError: { _ in }
-            )
+            guard self.startAttempt == attempt, callbacks.isRecordingCurrent() else {
+                self.unregisterConsumer(consumerID)
+                preload.cancel()
+                self.clearActivePreloadIfCurrent(preload)
+                return
+            }
+            guard started else {
+                self.unregisterConsumer(consumerID)
+                preload.cancel()
+                self.clearActivePreloadIfCurrent(preload)
+                completion(.failed(.audioStartFailure()))
+                return
+            }
 
-            DispatchQueue.main.async { [weak self] in
+            completion(.started)
+            // monitor 已随 started 结果启动，再发一次进度以建立模型加载 grace。
+            callbacks.onProgress(loc("sherpa.loadingModel"), true)
+
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self else { return }
-                guard callbacks.isRecordingCurrent() else {
-                    self.preload.cancel()
-                    return
-                }
-
-                if let error {
-                    self.preload.cancel()
-                    callbacks.onStartFailure(self.startFailure(for: error, stopAudioEngine: true))
-                    return
-                }
-
-                self.preload.drain(
-                    accept: { [weak self] buffer in
-                        self?.engine.accept(buffer: buffer)
-                    },
-                    onComplete: {
+                let error = self.engine.start(
+                    onResult: { text, _ in
                         DispatchQueue.main.async {
                             guard callbacks.isRecordingCurrent() else { return }
-                            callbacks.onShimmerChanged(false)
-                            callbacks.onShowRecording()
+                            callbacks.onPartialResult(text, false)
                         }
-                    }
+                    },
+                    onError: { _ in }
                 )
+
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    guard self.startAttempt == attempt, callbacks.isRecordingCurrent() else {
+                        self.unregisterConsumer(consumerID)
+                        preload.cancel()
+                        self.clearActivePreloadIfCurrent(preload)
+                        return
+                    }
+
+                    if let error {
+                        preload.cancel()
+                        self.clearActivePreloadIfCurrent(preload)
+                        callbacks.onStartFailure(self.startFailure(for: error, stopAudioEngine: true))
+                        return
+                    }
+
+                    preload.drain(
+                        accept: { [weak self] buffer in
+                            self?.engine.accept(buffer: buffer)
+                        },
+                        onComplete: { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self,
+                                      self.startAttempt == attempt,
+                                      callbacks.isRecordingCurrent() else { return }
+                                self.clearActivePreloadIfCurrent(preload)
+                                callbacks.onShimmerChanged(false)
+                                callbacks.onShowRecording()
+                            }
+                        }
+                    )
+                }
             }
         }
-
-        return .started
     }
 
     private func registerLiveConsumer(
         audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks
-    ) {
-        activeRouterConsumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
+    ) -> UUID {
+        let id = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
             guard callbacks.isRecordingCurrent() else { return }
             self?.engine.accept(buffer: buffer)
         }
+        activeRouterConsumerID = id
+        return id
     }
 
     private func startFailure(for error: String, stopAudioEngine: Bool) -> RecognitionSessionFailure {
@@ -366,6 +449,19 @@ final class SherpaRecognitionSession: RecognitionSession {
         if let id = activeRouterConsumerID {
             audioEngine.router.unregister(id)
             activeRouterConsumerID = nil
+        }
+    }
+
+    private func unregisterConsumer(_ id: UUID) {
+        audioEngine.router.unregister(id)
+        if activeRouterConsumerID == id {
+            activeRouterConsumerID = nil
+        }
+    }
+
+    private func clearActivePreloadIfCurrent(_ preload: SherpaPreloadCoordinator) {
+        if activePreload === preload {
+            activePreload = nil
         }
     }
 }
@@ -392,6 +488,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
     )
     private var activeRouterConsumerID: UUID?
     private var usingAppleStartFallback = false
+    private var startAttempt = 0
 
     #if DEBUG
     var debugIsUsingAppleStartFallback: Bool { usingAppleStartFallback }
@@ -425,8 +522,11 @@ final class DoubaoRecognitionSession: RecognitionSession {
 
     func start(
         audioFormat: AudioRouter.ConsumerFormat?,
-        callbacks: RecognitionSessionCallbacks
-    ) -> RecognitionSessionStartResult {
+        callbacks: RecognitionSessionCallbacks,
+        completion: @escaping (RecognitionSessionStartResult) -> Void
+    ) {
+        startAttempt += 1
+        let attempt = startAttempt
         DebugLog.info("[Session] Starting Doubao recording")
         fallback.beginWaitingForFirstResult()
         callbacks.onShowInitial()
@@ -465,9 +565,9 @@ final class DoubaoRecognitionSession: RecognitionSession {
             callbacks.onShimmerChanged(false)
             callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
             DebugLog.error("[Doubao] Start failed, falling back to Apple Speech: \(error)")
-            let result = appleSession.start(audioFormat: nil, callbacks: callbacks)
             callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
-            return result
+            appleSession.start(audioFormat: nil, callbacks: callbacks, completion: completion)
+            return
         }
 
         DispatchQueue.main.async {
@@ -475,17 +575,28 @@ final class DoubaoRecognitionSession: RecognitionSession {
             callbacks.onShimmerChanged(true)
         }
 
-        guard audioEngine.start() else {
-            cloudEngine.cancel()
-            return .failed(.audioStartFailure())
-        }
-
-        activeRouterConsumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
+        let consumerID = audioEngine.router.register(format: audioFormat) { [weak self] buffer in
             guard let self, callbacks.isRecordingCurrent() else { return }
             self.fallback.captureAudioBuffer(buffer, copyBuffer: callbacks.copyAudioBuffer)
             self.cloudEngine.accept(buffer: buffer)
         }
-        return .started
+        activeRouterConsumerID = consumerID
+
+        audioEngine.start { [weak self] started in
+            guard let self else { return }
+            guard self.startAttempt == attempt, callbacks.isRecordingCurrent() else {
+                self.unregisterConsumer(consumerID)
+                return
+            }
+            guard started else {
+                self.cloudEngine.cancel()
+                self.fallback.reset()
+                self.unregisterConsumer(consumerID)
+                completion(.failed(.audioStartFailure()))
+                return
+            }
+            completion(.started)
+        }
     }
 
     func stop(
@@ -494,6 +605,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStopResult) -> Void
     ) {
+        startAttempt += 1
         if usingAppleStartFallback {
             usingAppleStartFallback = false
             appleSession.stop(
@@ -505,8 +617,8 @@ final class DoubaoRecognitionSession: RecognitionSession {
             return
         }
 
-        audioEngine.stop()
         unregisterConsumer()
+        audioEngine.stop()
 
         if consumeFallbackIfNeeded(appending: immediate ? punctuation : nil, callbacks: callbacks, completion: completion) {
             return
@@ -556,6 +668,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
     }
 
     func cancel() {
+        startAttempt += 1
         usingAppleStartFallback = false
         let shouldStopAppleLiveFallback = fallback.cancel()
         cloudEngine.cancel()
@@ -684,6 +797,13 @@ final class DoubaoRecognitionSession: RecognitionSession {
     private func unregisterConsumer() {
         if let id = activeRouterConsumerID {
             audioEngine.router.unregister(id)
+            activeRouterConsumerID = nil
+        }
+    }
+
+    private func unregisterConsumer(_ id: UUID) {
+        audioEngine.router.unregister(id)
+        if activeRouterConsumerID == id {
             activeRouterConsumerID = nil
         }
     }

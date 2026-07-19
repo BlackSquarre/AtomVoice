@@ -100,5 +100,17 @@ enum SherpaPreloadTests {
             try expect(drained[1] === second)
             try expect(!coordinator.appendIfActive(first) { $0 })
         }
+        await runner.run("Sherpa preload cancellation is isolated per recording attempt") {
+            let oldAttempt = SherpaPreloadCoordinator()
+            let newAttempt = SherpaPreloadCoordinator()
+            let buffer = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 16, fillValue: 0.3))
+
+            oldAttempt.begin()
+            newAttempt.begin()
+            oldAttempt.cancel()
+
+            try expect(newAttempt.appendIfActive(buffer) { $0 })
+            newAttempt.cancel()
+        }
     }
 }

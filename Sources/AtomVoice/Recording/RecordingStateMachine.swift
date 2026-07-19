@@ -34,6 +34,7 @@ enum RecordingEvent: Equatable {
         lowerVolume: Bool
     )
     case sessionStartFailed(message: String, dismissAfter: TimeInterval, stopAudioEngine: Bool, recovery: RecordingRecovery?)
+    case sessionStartCompleted(generation: Int)
     case triggerReleased
     case immediateStop(appending: String?)
     case cancelRequested
@@ -237,12 +238,15 @@ struct RecordingStateMachine {
                 .cancelLLM,
                 .cancelSession(stopAudioEngine: false),
                 .notifyRecording(true),
-                .startSilenceMonitor,
                 .resetStreamSession,
                 .activateTextOutput,
             ])
             if lowerVolume { effects.append(.lowerVolume) }
             effects.append(.startSession(generation: next.recordingGeneration))
+
+        case .sessionStartCompleted(let generation):
+            guard next.phase == .capturing, next.recordingGeneration == generation else { break }
+            effects.append(.startSilenceMonitor)
 
         case .sessionStartFailed(let message, let dismissAfter, let stopAudioEngine, let recovery):
             next.phase = .errored

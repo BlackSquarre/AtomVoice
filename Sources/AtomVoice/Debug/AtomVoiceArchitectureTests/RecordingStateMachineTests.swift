@@ -184,6 +184,13 @@ enum RecordingStateMachineTests {
             try expect(capturing.sideEffects.contains(.notifyRecording(true)))
             try expect(capturing.sideEffects.contains(.lowerVolume))
             try expect(capturing.sideEffects.contains(.startSession(generation: 1)))
+            try expect(!capturing.sideEffects.contains(.startSilenceMonitor))
+
+            let started = RecordingStateMachine.reduce(
+                capturing.state,
+                .sessionStartCompleted(generation: 1)
+            )
+            try expect(started.sideEffects == [.startSilenceMonitor])
         }
         await runner.run("Recording state machine extends silence monitor during model loading grace") {
             var state = RecordingSessionState()
@@ -562,6 +569,7 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "hel", isFinal: false),
                 .asrPartial(text: "hello", isFinal: false),
                 .triggerReleased,
@@ -571,7 +579,7 @@ enum RecordingStateMachineTests {
             try expect(snapshot.effects.count == 19)
             try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
             try expect(snapshot.effects[1] == .validateStart(request: 1))
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .updateCapsuleText("hel"))
             try expect(snapshot.effects[18] == .stopSession(generation: 1, immediate: false, appending: nil))
             try expect(snapshot.state.phase == .idle)
@@ -586,13 +594,14 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "cancel me", isFinal: false),
                 .cancelRequested,
             ])
 
             try expect(snapshot.effects.count == 21)
             try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .updateCapsuleText("cancel me"))
             try expect(snapshot.effects[16] == .notifyRefining(false))
             try expect(snapshot.effects[18] == .cancelSession(stopAudioEngine: true))
@@ -609,6 +618,7 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "cloud draft", isFinal: false),
                 .fallbackStarted(engine: ASREngineRegistry.appleCode),
                 .triggerReleased,
@@ -616,7 +626,7 @@ enum RecordingStateMachineTests {
             ])
 
             try expect(snapshot.effects.count == 19)
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .updateCapsuleText("cloud draft"))
             try expect(snapshot.effects[11] == .showCapsule(.progressKey(messageKey: "menu.recognitionEngine.apple", hidesWaveform: false), ensurePanel: false))
             try expect(snapshot.effects[12] == .extendSilenceMonitor(by: 3))
@@ -634,13 +644,14 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "question", isFinal: false),
                 .immediateStop(appending: "?"),
                 .asrFinal(text: "question?", errorMessage: nil, appending: "?"),
             ])
 
             try expect(snapshot.effects.count == 17)
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .updateCapsuleText("question"))
             try expect(snapshot.effects[16] == .stopSession(generation: 1, immediate: true, appending: "?"))
             try expect(snapshot.state.phase == .idle)
@@ -655,12 +666,13 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "route text", isFinal: false),
                 .audioRouteRecoveryFailed,
             ])
 
             try expect(snapshot.effects.count == 21)
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[11] == .stopSilenceMonitor)
             try expect(snapshot.effects[16] == .abandonAudioRouteRecovery)
             try expect(snapshot.effects[18] == .cancelSession(stopAudioEngine: false))
@@ -678,6 +690,7 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .triggerReleased,
                 .asrFinal(text: "draft", errorMessage: nil, appending: nil),
                 .refiningStarted(text: "draft"),
@@ -685,7 +698,7 @@ enum RecordingStateMachineTests {
             ])
 
             try expect(snapshot.effects.count == 17)
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[14] == .stopSession(generation: 1, immediate: false, appending: nil))
             try expect(snapshot.effects[15] == .notifyRefining(true))
             try expect(snapshot.effects[16] == .waitForInputReady(request: 2))
@@ -702,13 +715,14 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .asrPartial(text: "buffered", isFinal: false),
                 .deferredCapsuleReveal,
             ])
 
             try expect(snapshot.effects.count == 11)
             try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .noteASRText("buffered"))
             try expect(snapshot.effects[10] == .activateTextOutput)
             try expect(!snapshot.effects.contains(.updateCapsuleText("buffered")))
@@ -725,6 +739,7 @@ enum RecordingStateMachineTests {
                     pendingRefinementText: nil,
                     lowerVolume: false
                 ),
+                .sessionStartCompleted(generation: 1),
                 .textOutputActivated(liveInsertion: true),
                 .liveInsertionCommitted(segment: "hello", latestText: "hello"),
                 .liveInsertionCommitFinished,
@@ -732,7 +747,7 @@ enum RecordingStateMachineTests {
 
             try expect(snapshot.effects.count == 10)
             try expect(snapshot.effects[0] == .waitForInputReady(request: 1))
-            try expect(snapshot.effects[8] == .startSession(generation: 1))
+            try expect(snapshot.effects[7] == .startSession(generation: 1))
             try expect(snapshot.effects[9] == .deliverText("hello"))
             try expect(snapshot.state.phase == .capturing)
             try expect(snapshot.state.liveInsertion.isActive)
