@@ -2,7 +2,7 @@ name: Sync to Gitee
 
 on:
   push:
-    branches: [ main, 'release/**' ]
+    branches: ['**']
   release:
     types: [ published ]
   delete:
@@ -15,7 +15,7 @@ on:
         type: string
 
 concurrency:
-  group: sync-to-gitee-${{ github.ref }}
+  group: sync-to-gitee
   cancel-in-progress: false
 
 jobs:
@@ -111,15 +111,38 @@ jobs:
           BODY=$(jq -c '.body' /tmp/release-info.json)
           PRERELEASE=$(jq -r '.prerelease' /tmp/release-info.json)
 
-          EXISTING_RELEASE_ID=$(curl -s "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases?access_token=$GITEE_TOKEN&page=1&per_page=100" \
-            | jq -r --arg tag "$TAG" 'map(select(.tag_name == $tag)) | first | .id // empty')
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "::error::GITEE_TOKEN is not configured"
+            exit 1
+          fi
+
+          TOKEN_STATUS=$(curl -sS -o /tmp/gitee-user.json -w '%{http_code}' \
+            "https://gitee.com/api/v5/user?access_token=$GITEE_TOKEN")
+          if [ "$TOKEN_STATUS" != "200" ]; then
+            MESSAGE=$(jq -r '.message // "Unknown Gitee API error"' /tmp/gitee-user.json 2>/dev/null || cat /tmp/gitee-user.json)
+            echo "::error::GITEE_TOKEN validation failed (HTTP $TOKEN_STATUS): $MESSAGE"
+            exit 1
+          fi
+
+          curl -fsS \
+            "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases?page=1&per_page=100" \
+            -o /tmp/gitee-releases.json
+          if [ "$(jq -r 'type' /tmp/gitee-releases.json)" != "array" ]; then
+            echo "::error::Gitee releases API returned an unexpected response"
+            jq -C . /tmp/gitee-releases.json || cat /tmp/gitee-releases.json
+            exit 1
+          fi
+
+          EXISTING_RELEASE_ID=$(jq -r --arg tag "$TAG" \
+            'map(select(.tag_name == $tag)) | first | .id // empty' \
+            /tmp/gitee-releases.json)
           if [ -n "$EXISTING_RELEASE_ID" ]; then
             echo "Reusing existing Gitee release $EXISTING_RELEASE_ID for $TAG"
             echo "release_id=$EXISTING_RELEASE_ID" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          RESP=$(jq -n \
+          CREATE_STATUS=$(jq -n \
             --arg token "$GITEE_TOKEN" \
             --arg tag "$TAG" \
             --arg name "$NAME" \
@@ -133,14 +156,15 @@ jobs:
               body: $body,
               target_commitish: $target,
               prerelease: $prerelease
-            }' | curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases" \
-            -H "Content-Type: application/json" \
-            -d @-)
+            }' | curl -sS -o /tmp/gitee-create-release.json -w '%{http_code}' \
+              -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases" \
+              -H "Content-Type: application/json" \
+              -d @-)
 
-          RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
+          RELEASE_ID=$(jq -r '.id // empty' /tmp/gitee-create-release.json)
           if [ -z "$RELEASE_ID" ]; then
-            echo "Error creating Gitee release:"
-            echo "$RESP" | jq -C . || echo "$RESP"
+            echo "::error::Failed to create Gitee release (HTTP $CREATE_STATUS)"
+            jq -C . /tmp/gitee-create-release.json || cat /tmp/gitee-create-release.json
             exit 1
           fi
           echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
@@ -157,9 +181,17 @@ jobs:
             NAME=$(echo "$asset" | jq -r '.name')
             URL=$(echo "$asset" | jq -r '.url')
             echo "Downloading: $NAME"
-            curl -sL "$URL" -o "/tmp/assets/$NAME"
+            curl -fsSL "$URL" -o "/tmp/assets/$NAME"
             echo "Uploading: $NAME"
-            curl -s -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
+            UPLOAD_STATUS=$(curl -sS -o /tmp/gitee-upload-response.json -w '%{http_code}' \
+              -X POST "https://gitee.com/api/v5/repos/blacksquarre/AtomVoice/releases/${{ steps.gitee.outputs.release_id }}/attach_files" \
               -F "access_token=$GITEE_TOKEN" \
-              -F "file=@/tmp/assets/$NAME" | jq -r '.browser_download_url // .message'
+              -F "file=@/tmp/assets/$NAME")
+            DOWNLOAD_URL=$(jq -r '.browser_download_url // empty' /tmp/gitee-upload-response.json)
+            if [ -z "$DOWNLOAD_URL" ]; then
+              echo "::error::Failed to upload $NAME to Gitee (HTTP $UPLOAD_STATUS)"
+              jq -C . /tmp/gitee-upload-response.json || cat /tmp/gitee-upload-response.json
+              exit 1
+            fi
+            echo "$DOWNLOAD_URL"
           done
