@@ -33,6 +33,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Use runner-selected Xcode
+        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+
       - name: Show Swift version
         run: swift --version
 
