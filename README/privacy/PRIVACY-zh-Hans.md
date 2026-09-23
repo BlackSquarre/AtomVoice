@@ -137,5 +137,5 @@ AtomVoice 面向一般 macOS 用户，不专门面向儿童。我们不会有意
 
 如果你对本隐私政策或 AtomVoice 的数据处理方式有疑问，可以通过以下方式联系：
 
-- 邮箱：[atomvoice@outlook.com](mailto:atomvoice@outlook.com)
+- 邮箱：[lingru@me.com](mailto:lingru@me.com)
 - GitHub：https://github.com/BlackSquarre/AtomVoice

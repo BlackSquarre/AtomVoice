@@ -137,5 +137,5 @@ We may update this Privacy Policy as application features change. Significant ch
 
 If you have questions about this Privacy Policy or how AtomVoice handles data, you can reach us at:
 
-- Email: [atomvoice@outlook.com](mailto:atomvoice@outlook.com)
+- Email: [lingru@me.com](mailto:lingru@me.com)
 - GitHub: https://github.com/BlackSquarre/AtomVoice

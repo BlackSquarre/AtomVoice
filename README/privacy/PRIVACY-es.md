@@ -137,5 +137,5 @@ Podemos actualizar esta Política de Privacidad a medida que cambien las funcion
 
 Si tiene preguntas sobre esta Política de Privacidad o cómo AtomVoice maneja los datos, puede contactarnos en:
 
-- Correo electrónico: [atomvoice@outlook.com](mailto:atomvoice@outlook.com)
+- Correo electrónico: [lingru@me.com](mailto:lingru@me.com)
 - GitHub: https://github.com/BlackSquarre/AtomVoice

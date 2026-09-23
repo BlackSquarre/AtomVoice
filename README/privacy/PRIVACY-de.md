@@ -137,5 +137,5 @@ Wir können diese Datenschutzrichtlinie aktualisieren, wenn sich die Anwendungsf
 
 Wenn Sie Fragen zu dieser Datenschutzrichtlinie oder zur Datenverarbeitung durch AtomVoice haben, erreichen Sie uns unter:
 
-- E-Mail: [atomvoice@outlook.com](mailto:atomvoice@outlook.com)
+- E-Mail: [lingru@me.com](mailto:lingru@me.com)
 - GitHub: https://github.com/BlackSquarre/AtomVoice
