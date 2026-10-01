@@ -52,13 +52,12 @@ AtomVoice no toma el control del método de entrada del sistema ni cambia cómo 
 ### UI y animación
 - **Forma de onda de espectro FFT de 5 bandas** ajustada a la voz humana (100–4200 Hz), impulsada por Accelerate
 - **Tres estilos de animación** — Dynamic Island (resorte estilo Spotlight + desenfoque gaussiano), Minimal, Ninguna — tres velocidades, compatible con ProMotion 120 Hz
-- **Liquid Glass** en macOS 26, **Visual Effect blur** en macOS 14/15
+- **Liquid Glass** en macOS 26/27, **Visual Effect blur** en macOS 14/15
 - **8 idiomas de UI**, detectados automáticamente desde el sistema
 
 ### Integración con el sistema
 - **Configuración inicial** para guiar permisos, modo de entrada y elección del motor de reconocimiento
 - **Actualización automática** desde GitHub Releases con verificación SHA256 y de firma (canal Beta opcional)
-- **Inicio al iniciar sesión** (SMAppService)
 - **Selector de dispositivo de entrada** — elige cualquier micrófono del sistema
 - **Resiliencia de ruta de audio** — la grabación puede recuperarse al conectar/desconectar auriculares, AirPods o cambiar dispositivo de entrada; el audio se remuestrea por motor
 - **Bajar el volumen del sistema mientras grabas** (opcional)

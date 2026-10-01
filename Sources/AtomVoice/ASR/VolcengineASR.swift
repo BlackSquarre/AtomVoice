@@ -118,8 +118,12 @@ struct VolcengineASRSettings {
 
     var endWindowSize: Int {
         guard AppSettings.silenceAutoStopEnabled else { return 600 }
-        let durationMS = Int(AppSettings.silenceDuration * 1000)
-        return min(3000, max(200, durationMS))
+        let duration = AppSettings.silenceDuration
+        // UserDefaults 可能被外部写入 NaN/无穷值；先过滤并在 Double 域限幅，
+        // 再转换为 Int，避免 Int(Double.nan/.infinity) 触发运行时崩溃。
+        guard duration.isFinite else { return 600 }
+        let durationMS = min(3000.0, max(200.0, duration * 1000.0))
+        return Int(durationMS)
     }
 
     var finalResultTimeout: Double {

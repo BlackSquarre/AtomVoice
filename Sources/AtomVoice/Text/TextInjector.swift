@@ -9,6 +9,11 @@ final class TextInjector {
 
     private static let injectionWatchdogTimeout: TimeInterval = 5.0
     private static let pasteboardSnapshotTimeout: TimeInterval = 2.0
+    // Cmd+V 只是把事件投递给目标应用；低配机器或被系统调度的应用可能在事件发送后
+    // 才真正读取剪贴板。恢复过早会让目标应用读到恢复前的旧内容，表现为粘贴上一条剪切板。
+    // (Paste is asynchronous. Keep the injected value alive after the event so a busy target
+    // cannot read the restored, stale clipboard contents.)
+    private static let postPasteReadGrace: TimeInterval = 0.75
 
     private var pendingInjections: [PendingInjection] = []
     private var lifecycle = TextInjectionLifecycle()
@@ -94,10 +99,21 @@ final class TextInjector {
         // 在主线程上读取前台应用的 bundleID，命中内置兼容性清单时改用更长的粘贴延迟，避免远程桌面/虚拟机/串流类应用丢字符。
         // (Resolve frontmost app on main thread to pick per-app paste delay override for remote desktop / VM / streaming clients.)
         let compatProfile: PasteCompatibilityProfile? = PasteCompatibilityRegistry.profileForFrontmostApp()
+        let targetApp = NSWorkspace.shared.frontmostApplication
+        let targetPID = targetApp?.processIdentifier
+        let targetBundleID = targetApp?.bundleIdentifier ?? "unknown"
+        let targetPIDDescription = targetPID.map { String($0) } ?? "nil"
+        let nativePastePID = BrowserPasteCompatibility.usesNativePaste(bundleID: targetApp?.bundleIdentifier)
+            ? targetApp?.processIdentifier : nil
+
+        DebugLog.info("[TextInjector] begin id=\(injectionID.uuidString) textLength=\(text.count) target=\(targetBundleID) pid=\(targetPIDDescription)")
 
         // 将获取光标后字符的跨进程 IPC 调用移至后台 Task，避免目标应用挂起时连带卡死主线程。
         let nextChar = await Task.detached(priority: .userInitiated) {
             Self.getCharacterAfterCursor()
+        }.value
+        let pasteMenuItem = await Task.detached(priority: .userInitiated) {
+            nativePastePID.flatMap { BrowserPasteCompatibility.pasteMenuItem(processID: $0) }
         }.value
         guard !Task.isCancelled,
               lifecycle.transition(id: injectionID, from: .preparing, to: .snapshotting) else {
@@ -116,6 +132,12 @@ final class TextInjector {
             return
         }
 
+        guard Self.frontmostProcessID() == targetPID else {
+            DebugLog.error("[TextInjector] Frontmost app changed before clipboard write; cancelling injection id=\(injectionID.uuidString)")
+            return
+        }
+        DebugLog.debug("[TextInjector] Clipboard captured id=\(injectionID.uuidString) changeCount=\(snapshot.changeCount)")
+
         // 从这里开始剪贴板可能被改写，不能再由 watchdog 直接推进下一项。
         guard lifecycle.transition(id: injectionID, from: .snapshotting, to: .committing) else { return }
         let writeResult = await pasteboardService.write(
@@ -127,6 +149,7 @@ final class TextInjector {
             DebugLog.error("[TextInjector] Clipboard changed or could not be written before paste")
             return
         }
+        DebugLog.debug("[TextInjector] Clipboard committed id=\(injectionID.uuidString) changeCount=\(injectedChangeCount)")
 
         // 检查当前输入源是否为 CJK，如需要则切换到 ASCII（Check current input source, switch to ASCII if needed）
         let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
@@ -138,7 +161,34 @@ final class TextInjector {
         // 短暂等待输入源切换生效（Wait briefly for input source switch to take effect）
         await Self.sleep(seconds: needsSwitch ? 0.05 : 0.02)
         guard lifecycle.isCurrent(injectionID) else { return }
-        Self.simulatePaste()
+        guard Self.frontmostProcessID() == targetPID else {
+            DebugLog.error("[TextInjector] Frontmost app changed before paste; restoring without posting event id=\(injectionID.uuidString)")
+            let restoreResult = await pasteboardService.restore(
+                snapshot,
+                expectedChangeCount: injectedChangeCount
+            )
+            if case .failed = restoreResult {
+                DebugLog.error("[TextInjector] Failed to restore clipboard after target change id=\(injectionID.uuidString)")
+            }
+            return
+        }
+        if let pasteMenuItem {
+            // 原生菜单触发 DOM paste，不经过网页 keydown 的快捷键拦截。
+            // 焦点已换到别的应用时不向原应用投递；后续仍恢复剪贴板和输入法。
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == nativePastePID {
+                let status = await Task.detached(priority: .userInitiated) {
+                    AXUIElementPerformAction(pasteMenuItem, kAXPressAction as CFString)
+                }.value
+                if status != .success {
+                    // 超时不代表没有执行，不能再发送 Command+V，以免重复写入。
+                    DebugLog.error("[TextInjector] Native browser paste failed status=\(status.rawValue)")
+                }
+                DebugLog.debug("[TextInjector] Native paste event posted id=\(injectionID.uuidString)")
+            }
+        } else {
+            Self.simulatePaste()
+            DebugLog.debug("[TextInjector] Cmd+V event posted id=\(injectionID.uuidString)")
+        }
 
         // 粘贴延迟：给目标 App（含 Electron 等慢应用）足够时间完成粘贴；debug build 可在菜单调节。
         // 远程桌面 / 虚拟机 / 串流类应用命中兼容性清单时使用更长的延迟，避免键盘转发掉字符。
@@ -152,8 +202,11 @@ final class TextInjector {
             TISSelectInputSource(originalSource)
         }
 
-        // 再等一帧后恢复剪贴板，确保输入法恢复不影响粘贴（Wait one more frame before restoring pasteboard）
-        await Self.sleep(seconds: 0.05)
+        // 再留出一段读取窗口后恢复剪贴板。单等一帧在低配机器上不够：Cmd+V 事件可能
+        // 尚未被目标应用处理，过早恢复会把旧剪贴板内容粘进去。
+        // (Allow a real read window before restoring; one run-loop frame is insufficient on slow machines.)
+        let readGrace = max(Self.postPasteReadGrace, (compatProfile?.pasteDelay ?? 0) * 1.5)
+        await Self.sleep(seconds: readGrace)
         guard lifecycle.transition(id: injectionID, from: .committing, to: .restoring) else { return }
         let restoreResult = await pasteboardService.restore(
             snapshot,
@@ -161,6 +214,8 @@ final class TextInjector {
         )
         if case .failed = restoreResult {
             DebugLog.error("[TextInjector] Failed to restore clipboard contents")
+        } else {
+            DebugLog.debug("[TextInjector] Clipboard restored id=\(injectionID.uuidString) result=\(String(describing: restoreResult))")
         }
     }
 
@@ -179,6 +234,10 @@ final class TextInjector {
 
     private static func sleep(seconds: Double) async {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }
+
+    private static func frontmostProcessID() -> pid_t? {
+        NSWorkspace.shared.frontmostApplication?.processIdentifier
     }
 
     // MARK: - 光标标点检测

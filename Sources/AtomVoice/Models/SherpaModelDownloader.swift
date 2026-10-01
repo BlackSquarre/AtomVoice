@@ -611,17 +611,21 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
         process.arguments = ["-tjf", archiveURL.path]
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        // 目录列表只从 stdout 读取；stderr 不参与校验，直接丢弃以免未消费
+        // 的错误管道阻塞 tar 进程。
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
+            // 必须在等待退出前读取管道，否则大型 tar 包的目录列表可能
+            // 填满缓冲区，tar 阻塞后父进程也会永久卡在 waitUntilExit。
+            let output = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else {
                 DebugLog.error("[Download] Failed to list tar entries status=\(process.terminationStatus)")
                 return false
             }
 
-            let output = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let listing = String(data: output, encoding: .utf8) else {
                 DebugLog.error("[Download] Tar entry listing is not valid UTF-8")
                 return false

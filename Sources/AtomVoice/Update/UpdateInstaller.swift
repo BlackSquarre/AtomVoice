@@ -118,14 +118,18 @@ final class BundleUpdateInstaller: UpdateInstaller {
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
         proc.arguments = ["-Z1", zipURL.path]
         proc.standardOutput = pipe
-        proc.standardError = Pipe()
+        // 校验只关心 stdout；丢弃 stderr，避免错误输出填满未消费的管道后
+        // 子进程无法退出。
+        proc.standardError = FileHandle.nullDevice
         try proc.run()
+        // 先消费输出再等待退出，避免 zip 条目较多时写满 pipe 缓冲区，
+        // 子进程阻塞写入而父进程永久等待退出。
+        let output = pipe.fileHandleForReading.readDataToEndOfFile()
         proc.waitUntilExit()
         guard proc.terminationStatus == 0 else {
             throw UpdateInstallError.zipListingFailed(proc.terminationStatus)
         }
 
-        let output = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let listing = String(data: output, encoding: .utf8) else {
             throw UpdateInstallError.invalidZipEntry("<invalid utf8>")
         }

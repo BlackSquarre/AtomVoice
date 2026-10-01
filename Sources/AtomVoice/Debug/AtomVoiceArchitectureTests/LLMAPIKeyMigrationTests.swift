@@ -68,5 +68,16 @@ enum LLMAPIKeyMigrationTests {
             try expect(backend.string(forKey: AppSettings.Keys.llmAPIKey) == nil)
             try expect(backend.bool(forKey: AppSettings.Keys.llmAPIKeyMigratedToKeychain, default: false))
         }
+
+        await runner.run("LLM settings reports Keychain write failures") {
+            let backend = InMemorySettingsBackend()
+            let keyStore = FakeLLMAPIKeyStore()
+            keyStore.shouldWriteSucceed = false
+            let settings = LLMSettings(backend: backend, apiKeyStore: keyStore)
+
+            try expect(!settings.saveAPIKey("unwritable-key"))
+            try expect(settings.apiKey.isEmpty)
+            try expect(keyStore.writes == ["unwritable-key"])
+        }
     }
 }

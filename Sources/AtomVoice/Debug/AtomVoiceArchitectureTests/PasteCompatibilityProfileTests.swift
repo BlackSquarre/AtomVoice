@@ -6,6 +6,25 @@ import Security
 
 enum PasteCompatibilityProfileTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Safari and independently installed PWAs use native paste") {
+            for bundleID in ["com.apple.Safari", "com.apple.SafariTechnologyPreview",
+                             "com.apple.Safari.WebApp.E59F6913-97EF-4C2F-B670-0530F7C1D80B",
+                             "com.apple.Safari.WebApp.another-site"] {
+                try expect(BrowserPasteCompatibility.usesNativePaste(bundleID: bundleID))
+            }
+            for bundleID in [nil, "", "com.apple.SafariOther", "com.apple.TextEdit", "com.google.Chrome"] {
+                try expect(!BrowserPasteCompatibility.usesNativePaste(bundleID: bundleID))
+            }
+        }
+        await runner.run("Native paste menu matching excludes modified and missing shortcuts") {
+            try expect(BrowserPasteCompatibility.isPasteShortcut(character: "V", modifiers: 0))
+            try expect(BrowserPasteCompatibility.isPasteShortcut(character: "v", modifiers: 0))
+            for modifiers in [nil, 1, 2, 4, 8, 3] {
+                try expect(!BrowserPasteCompatibility.isPasteShortcut(character: "v", modifiers: modifiers))
+            }
+            try expect(!BrowserPasteCompatibility.isPasteShortcut(character: nil, modifiers: 0))
+            try expect(!BrowserPasteCompatibility.isPasteShortcut(character: "c", modifiers: 0))
+        }
         await runner.run("Paste compatibility matches remote desktop apps") {
             let profile = try require(PasteCompatibilityRegistry.profile(forBundleID: "com.microsoft.rdc.macos"))
 

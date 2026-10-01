@@ -24,7 +24,13 @@ final class InterfaceSettings {
     }
 
     var triggerKeyCode: UInt16 {
-        get { UInt16(backend.integer(forKey: AppSettings.Keys.triggerKeyCode, default: Int(AppSettings.defaultTriggerKeyCode))) }
+        get {
+            let rawValue = backend.integer(
+                forKey: AppSettings.Keys.triggerKeyCode,
+                default: Int(AppSettings.defaultTriggerKeyCode)
+            )
+            return UInt16(exactly: rawValue) ?? AppSettings.defaultTriggerKeyCode
+        }
         set { backend.set(Int(newValue), forKey: AppSettings.Keys.triggerKeyCode) }
     }
 

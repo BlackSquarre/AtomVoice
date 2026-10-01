@@ -27,12 +27,19 @@ final class LLMSettings {
     var apiKey: String {
         get { apiKeyStore.read() ?? "" }
         set {
-            if newValue.isEmpty {
-                apiKeyStore.delete()
-            } else {
-                _ = apiKeyStore.write(newValue)
-            }
+            _ = saveAPIKey(newValue)
         }
+    }
+
+    /// 保存 API key，并把 Keychain 写入结果返回给设置界面。
+    /// (Save the API key and expose the Keychain result to settings UI.)
+    @discardableResult
+    func saveAPIKey(_ value: String) -> Bool {
+        if value.isEmpty {
+            apiKeyStore.delete()
+            return true
+        }
+        return apiKeyStore.write(value)
     }
 
     var model: String {
@@ -60,8 +67,18 @@ final class LLMSettings {
         }
         set {
             apiBaseURL = newValue.baseURL
-            apiKey = newValue.apiKey
+            _ = saveAPIKey(newValue.apiKey)
             model = newValue.model
         }
+    }
+
+    /// 更新连接配置；API key 写入失败时返回 false，其他非敏感设置仍会保存。
+    /// (Update connection settings; returns false if Keychain persistence fails.)
+    @discardableResult
+    func saveConnection(_ value: LLMConnectionSettings) -> Bool {
+        apiBaseURL = value.baseURL
+        let keySaved = saveAPIKey(value.apiKey)
+        model = value.model
+        return keySaved
     }
 }

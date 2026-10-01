@@ -107,6 +107,16 @@ final class FnKeyMonitor {
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             DebugLog.info("[FnKeyMonitor] Event tap was disabled by the system, restarting...")
+            // 事件 tap 被系统暂时禁用期间，用户可能已经松开触发键，但对应的
+            // keyUp/flagsChanged 事件不会再到达。清掉按下状态，否则恢复后第一
+            // 次 keyDown 会被误判为重复按下，录音也可能无法结束。
+            let wasDown = triggerIsDown
+            triggerIsDown = false
+            if wasDown {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onFnUp()
+                }
+            }
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
                 if !CGEvent.tapIsEnabled(tap: tap) {

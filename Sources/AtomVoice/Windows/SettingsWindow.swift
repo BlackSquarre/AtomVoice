@@ -638,11 +638,16 @@ final class SettingsWindowController: NSObject {
 
     @objc private func testConnection(_ sender: NSButton) {
         let originalConnection = AppSettings.llmConnection
-        AppSettings.llmConnection = LLMConnectionSettings(
+        let testConnection = LLMConnectionSettings(
             baseURL: apiBaseURLField.stringValue,
             apiKey: apiKeyField.stringValue,
             model: modelField.stringValue
         )
+        guard AppSettings.saveLLMConnection(testConnection) else {
+            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
+            statusLabel.textColor = .systemRed
+            return
+        }
 
         statusLabel.stringValue = loc("settings.testing")
         statusLabel.textColor = .secondaryLabelColor
@@ -657,11 +662,16 @@ final class SettingsWindowController: NSObject {
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        AppSettings.llmConnection = LLMConnectionSettings(
+        let connection = LLMConnectionSettings(
             baseURL: apiBaseURLField.stringValue,
             apiKey: apiKeyField.stringValue,
             model: modelField.stringValue
         )
+        guard AppSettings.saveLLMConnection(connection) else {
+            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
+            statusLabel.textColor = .systemRed
+            return
+        }
         let selectedDelay = delayOptions[delayPopup.indexOfSelectedItem]
         AppSettings.llmResultDelay = selectedDelay
         statusLabel.stringValue = loc("settings.saved")

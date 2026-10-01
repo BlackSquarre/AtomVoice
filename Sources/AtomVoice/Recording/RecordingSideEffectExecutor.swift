@@ -46,6 +46,7 @@ extension RecordingSessionController {
         case .dismissCapsule:
             presenter.dismiss(completion: nil)
         case .deliverText(let text):
+            DebugLog.info("[TextOutput] deliver textLength=\(text.count) sink=\(activeOutputSink.descriptor.code)")
             activeOutputSink.deliver(text: text, completion: nil)
         case .startLLM:
             break

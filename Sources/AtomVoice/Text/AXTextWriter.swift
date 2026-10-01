@@ -39,6 +39,13 @@ final class AXTextWriter {
             #endif
             return nil
         }
+        guard CFGetTypeID(focused) == AXUIElementGetTypeID() else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] focused element returned unexpected AX type")
+            #endif
+            return nil
+        }
+        // 已用 CFTypeID 确认类型，桥接为 AXUIElement 不会再触发异常类型崩溃。
         return (focused as! AXUIElement)
     }
 
@@ -48,7 +55,8 @@ final class AXTextWriter {
         // 黑名单优先：已知不可靠的 app 直接走兜底
         // (Blacklist first: known-unreliable apps fall back regardless of writability flag)
         if let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-           unreliableAXBundleIDs.contains(bundleID) {
+           (unreliableAXBundleIDs.contains(bundleID)
+            || BrowserPasteCompatibility.usesNativePaste(bundleID: bundleID)) {
             return false
         }
         guard let element = copyFocusedElement() else { return false }
@@ -74,8 +82,16 @@ final class AXTextWriter {
             #endif
             return nil
         }
+        guard CFGetTypeID(rangeRef) == AXValueGetTypeID() else {
+            #if DEBUG_BUILD
+            DebugLog.debug("[AXTextWriter] selected range returned unexpected AX type")
+            #endif
+            return nil
+        }
+        // 已用 CFTypeID 确认类型，再进行 CoreFoundation 桥接。
+        let rangeValue = rangeRef as! AXValue
         var range = CFRange()
-        guard AXValueGetValue(rangeRef as! AXValue, .cfRange, &range) else {
+        guard AXValueGetValue(rangeValue, .cfRange, &range) else {
             #if DEBUG_BUILD
             DebugLog.debug("[AXTextWriter] read selected range value failed")
             #endif

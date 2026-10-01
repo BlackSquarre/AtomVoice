@@ -46,13 +46,12 @@ AtomVoice does not take over your system input method or change how you type. Ke
 ### UI & animation
 - **5-band FFT spectrum waveform** tuned for the human voice (100–4200 Hz), driven by Accelerate
 - **Three animation styles** — Dynamic Island (Spotlight-style spring + Gaussian blur), Minimal, None — three speeds, ProMotion 120 Hz aware
-- **Liquid Glass** on macOS 26, Visual Effect blur on macOS 14/15
+- **Liquid Glass** on macOS 26/27, Visual Effect blur on macOS 14/15
 - **8 UI languages**, auto-detected from system
 
 ### System integration
 - **First-run setup** guides permissions, input mode, and recognition-engine choice
 - **Auto update** from GitHub Releases with SHA256 and code-signature verification (optional Beta channel)
-- **Launch at login** (SMAppService)
 - **Audio input device picker** — choose any system microphone
 - **Audio route resilience** — recording can recover when headphones, AirPods, or input devices change mid-session; audio is resampled per recognition engine
 - **Lower system volume while recording** (optional)

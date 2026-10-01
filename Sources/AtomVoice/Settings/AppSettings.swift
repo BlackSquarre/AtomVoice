@@ -213,6 +213,11 @@ enum AppSettings {
         set { llm.connection = newValue }
     }
 
+    @discardableResult
+    static func saveLLMConnection(_ value: LLMConnectionSettings) -> Bool {
+        llm.saveConnection(value)
+    }
+
     static var autoPunctuationEnabled: Bool {
         get { recognition.autoPunctuationEnabled }
         set { recognition.autoPunctuationEnabled = newValue }
