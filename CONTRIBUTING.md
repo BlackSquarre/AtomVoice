@@ -21,14 +21,15 @@ AtomVoice is currently maintained primarily by one developer. The architecture h
 - ASR engines share the `RecognitionSession` lifecycle and remain pluggable.
 - Capsule UI animation strategies are separated from view state.
 - Settings use typed stores with injectable backends for testing.
-- The project has 200+ lightweight architecture tests that run in CI.
+- The project has 205 lightweight architecture tests that run in CI.
+- CI currently tests macOS 14, macOS 15, and macOS 26 on both Apple Silicon and Intel where runners are available; GitHub does not currently provide a macOS 27 hosted runner.
 
 The project is still evolving:
 
 - Several heavy components intentionally have a single owner, including `AudioEngineController`, `TextInjector`, `LLMRefiner`, and Sherpa models.
 - Automated tests cover pure logic and state transitions; UI and system integrations still need manual verification.
 - Some behavior depends on the macOS version and on specific hardware such as USB DACs, AirPods, and wired headsets.
-- The English documentation is still being expanded.
+- The contributor guide is available in English and Chinese; feature documentation continues to evolve with the codebase.
 
 If you are comfortable contributing while the project continues to mature, you are welcome to participate. If you need an industrial-grade framework, experiment in your own fork before opening a PR.
 
@@ -49,6 +50,9 @@ make run
 
 # Run the architecture tests
 make test
+
+# Check localization coverage
+make lint-loc
 ```
 
 ### Common first-run issues
@@ -56,6 +60,7 @@ make test
 - **Signing fails:** `make dev` uses the Apple Development identity configured for this machine. If you do not have a signing identity, use `swift build -c release` to verify compilation; an unsigned app cannot reliably request recording or Accessibility access on macOS.
 - **`make test` fails:** Check `swift --version` and confirm Swift 5.9 or newer. The test entry point is the custom `AtomVoiceArchitectureTests` runner, not XCTest.
 - **Sherpa models do not download:** The first launch guides you through the download. To test without network access, select Apple Speech.
+- **The selected Xcode toolchain is not found:** If `xcode-select -p` points to Command Line Tools, set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for the command you are running.
 
 ## Project structure
 
@@ -118,6 +123,7 @@ Trigger key down
 2. Run `make test` and `make lint-loc`.
 3. Run `make dev` and manually verify the changed behavior. Tests cover pure logic; system and UI behavior still needs a human check.
 4. Use a short English commit message that explains why the change is needed, for example: `Fix headphone double-tap sticking when fallback engaged`.
+5. Do not run the release workflow unless a maintainer explicitly requests a release. Release builds update version metadata and produce signed packages.
 
 ### PR description template
 
@@ -142,7 +148,7 @@ Trigger key down
 - Route every new user-visible string through `loc()` and update all eight localization directories.
 - Wrap Debug-only code in `#if DEBUG_BUILD`.
 - Do not add new `UserDefaults` or `Keychain` keys without preserving compatibility with released versions.
-- Read the repository instructions in `AGENTS.md` and `CODEX.md` before making architectural changes.
+- Before changing an architectural boundary, explain the ownership and lifecycle impact in the PR and align with a maintainer first.
 
 ### PRs that are not accepted
 
@@ -215,14 +221,15 @@ AtomVoice 当前由 1 人主力开发,**架构刚完成一轮系统化解耦**:
 - ASR 引擎:统一 `RecognitionSession` lifecycle,三家(Apple / Sherpa / Doubao)实现可插拔
 - 胶囊 UI:动画 strategy 与 view 状态隔离
 - 设置:typed stores(可注入 backend,便于测试)
-- 测试:160+ 条架构测试,CI 自动跑
+- 测试:205 条架构测试,CI 自动跑
+- CI 当前覆盖 macOS 14、macOS 15 和 macOS 26,并在可用的 Apple Silicon 与 Intel runner 上运行；GitHub 目前还没有 macOS 27 hosted runner。
 
 但项目仍然**不是十全十美的开源项目**:
 
 - 部分模块仍由单一 owner 持有(`AudioEngineController` / `TextInjector` / `LLMRefiner` / Sherpa 模型),改动需要小心
 - 自动化测试覆盖纯逻辑和状态转移,**UI 与系统调用仍需手动验证**
-- 部分行为依赖 macOS 版本(15+)和具体硬件(USB DAC、AirPods、有线耳机)
-- 英文版文档不齐全
+- 部分行为依赖 macOS 版本(14+)和具体硬件(USB DAC、AirPods、有线耳机)
+- 贡献指南现已提供英文和中文版本,功能文档会随代码继续更新
 
 如果你能接受"边贡献边补齐",欢迎来。如果你期待一个工业级框架,建议先在自己的 fork 里实验一段时间再提 PR。
 
@@ -245,6 +252,9 @@ make run
 
 # 跑测试
 make test
+
+# 检查本地化覆盖
+make lint-loc
 ```
 
 ### 第一次跑遇到问题?
@@ -252,6 +262,7 @@ make test
 - **签名失败**:`make dev` 默认用本机 Apple Development 证书。如果你没有 Apple ID 或不想配证书,改用 `swift build -c release` 验证能编译即可,不能直接 run(macOS 不让未签名 app 录音、用辅助功能)。
 - **`make test` 失败**:先 `swift --version` 确认 Swift 5.9+。当前测试入口是自定义 `AtomVoiceArchitectureTests` runner,不是系统 XCTest。
 - **Sherpa 模型不会下载**:首次启动会引导下载。如果想本地测试不依赖网络,可直接用 Apple Speech 引擎。
+- **找不到 Xcode 工具链**:如果 `xcode-select -p` 指向 Command Line Tools,可为当前命令设置 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`。
 
 ---
 
@@ -323,6 +334,7 @@ FnKey 按下
 2. **跑 `make test` + `make lint-loc` 通过**。CI 也会跑,但你先跑可以省一轮。
 3. **跑 `make dev` 启动一次,手动验证你的改动确实工作**。测试覆盖纯逻辑,UI 行为仍需要你的眼睛。
 4. **提交信息用英文**,简短描述"为什么"。例:`Fix headphone double-tap sticking when fallback engaged`。
+5. **不要自行运行发版流程**。只有维护者明确要求发版时,才运行 release 命令；发版会更新版本信息并生成签名安装包。
 
 ### PR 描述模板
 
@@ -347,7 +359,7 @@ FnKey 按下
 - 新增用户可见字符串**必须 `loc()`**,**必须同步 8 个 lproj**(CI 的 `make lint-loc` 会拦)
 - Debug-only 代码**必须包在 `#if DEBUG_BUILD`**,release 构建不传 `DEBUG_BUILD`
 - **不要新增 `UserDefaults` / `Keychain` key 字符串**(会破坏已发版用户设置兼容)
-- 详细规则见 [`CLAUDE.md`](CLAUDE.md)
+- 修改架构边界前,需要在 PR 中说明 owner 和生命周期影响,并先与维护者对齐。
 
 ### 不接受的 PR
 
