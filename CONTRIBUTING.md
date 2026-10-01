@@ -1,3 +1,196 @@
+# AtomVoice Contribution Guide
+
+## About the project
+
+AtomVoice is a macOS 14+ menu bar voice-input app built with pure Swift and AppKit. It is designed to be offline-first, privacy-controlled, and lightweight.
+
+Its main capabilities include:
+
+- Hold a shortcut key to speak and inject the recognized text into any editing control.
+- Choose among Apple Speech, local Sherpa-ONNX, and Doubao Cloud ASR.
+- Optionally refine recognized text with OpenAI-, Anthropic-, or compatible LLM endpoints.
+- Use the interface in eight languages: Simplified Chinese, Traditional Chinese, English, Japanese, Korean, Spanish, French, and German.
+
+The source is fully open source. Contributions of all kinds are welcome.
+
+## Current project status
+
+AtomVoice is currently maintained primarily by one developer. The architecture has recently gone through a systematic decoupling pass:
+
+- Recording state uses a reducer and a single dispatch entry point.
+- ASR engines share the `RecognitionSession` lifecycle and remain pluggable.
+- Capsule UI animation strategies are separated from view state.
+- Settings use typed stores with injectable backends for testing.
+- The project has 200+ lightweight architecture tests that run in CI.
+
+The project is still evolving:
+
+- Several heavy components intentionally have a single owner, including `AudioEngineController`, `TextInjector`, `LLMRefiner`, and Sherpa models.
+- Automated tests cover pure logic and state transitions; UI and system integrations still need manual verification.
+- Some behavior depends on the macOS version and on specific hardware such as USB DACs, AirPods, and wired headsets.
+- The English documentation is still being expanded.
+
+If you are comfortable contributing while the project continues to mature, you are welcome to participate. If you need an industrial-grade framework, experiment in your own fork before opening a PR.
+
+## Quick start
+
+### Build and run
+
+```bash
+# Clone
+git clone https://github.com/<your-fork>/AtomVoice.git
+cd AtomVoice
+
+# Build, sign, and create dist/Test/AtomVoice.app
+make dev
+
+# Build and run in release mode
+make run
+
+# Run the architecture tests
+make test
+```
+
+### Common first-run issues
+
+- **Signing fails:** `make dev` uses the Apple Development identity configured for this machine. If you do not have a signing identity, use `swift build -c release` to verify compilation; an unsigned app cannot reliably request recording or Accessibility access on macOS.
+- **`make test` fails:** Check `swift --version` and confirm Swift 5.9 or newer. The test entry point is the custom `AtomVoiceArchitectureTests` runner, not XCTest.
+- **Sherpa models do not download:** The first launch guides you through the download. To test without network access, select Apple Speech.
+
+## Project structure
+
+```text
+Sources/AtomVoice/
+├── App/              # AppDelegate composition root
+├── ASR/              # ASR engines and RecognitionSession lifecycle
+├── Audio/            # AVAudioEngine, AudioRouter, AudioAnalyzer, VolumeController
+├── Input/            # FnKeyMonitor, HeadphoneMonitor, trigger keys
+├── Menu/             # Menu bar controllers
+├── Models/           # Data models and localization support
+├── Permissions/      # PermissionService
+├── Recording/        # RecordingSessionController and state machine
+├── Settings/         # AppSettings and typed stores
+├── Text/             # TextInjector, TextOutputSink, LLMRefiner, finalizer
+├── Update/           # UpdateChecker
+└── Windows/          # OOBE, settings, about, capsule, and permission windows
+```
+
+The main path is:
+
+```text
+Trigger key down
+  → RecordingSessionController.dispatch(.triggerPressed)
+  → RecordingStateMachine.reduce → side effects
+  → RecordingSideEffectExecutor
+  → RecognitionSession.start
+  → ASR partial/final callbacks
+  → RecognitionResultFinalizer
+  → TextOutputSink.deliver / TextInjector.inject
+```
+
+## Ways to contribute
+
+### Especially welcome
+
+1. **Improve translations:** Fix missing or unnatural text in any of the eight localization directories. Run `make lint-loc` to check coverage.
+2. **Add an ASR engine:** Implement `RecognitionSession` and register the engine in `ASREngineProvider.recognitionSession(for:audioEngine:)`. Discuss the engine choice in an issue first.
+3. **Fix device compatibility:** Reports and patches for USB DACs, AirPods, and wired headsets are useful. The archived headphone debugging notes contain prior examples.
+4. **Expand Sherpa presets:** Add models to the Sherpa downloader catalog when they meet the project constraints, including macOS arm64 support and an available quantized build.
+
+### Discuss first in an issue
+
+5. **Add an LLM provider:** The current implementation supports OpenAI, Anthropic, and compatible endpoints. Explain the API compatibility before adding another provider.
+6. **Add a trigger-key mode:** New modes affect `FnKeyMonitor` and the recording state machine, so align on the design first.
+7. **Support an older macOS version:** The minimum is currently macOS 14. Supporting macOS 13 would require resolving API differences and should be discussed first.
+
+### Directions currently out of scope
+
+- iOS or iPadOS ports.
+- Direct Apple Intelligence integration that requires a newer macOS-only capability.
+- Paid features or subscriptions.
+- A heavy SwiftUI rewrite of the existing menu bar, capsule, and settings UI.
+
+## Contribution workflow
+
+### Before opening a PR
+
+1. Open an issue to discuss the direction, except for translations and small spelling fixes. Changes larger than roughly 50 lines should be aligned before implementation.
+2. Run `make test` and `make lint-loc`.
+3. Run `make dev` and manually verify the changed behavior. Tests cover pure logic; system and UI behavior still needs a human check.
+4. Use a short English commit message that explains why the change is needed, for example: `Fix headphone double-tap sticking when fallback engaged`.
+
+### PR description template
+
+```markdown
+## What changed
+(1–3 sentences)
+
+## Why
+(1–3 sentences explaining the motivation)
+
+## Validation
+- [ ] make test
+- [ ] make lint-loc
+- [ ] Manually verified scenario A
+- [ ] Manually verified scenario B
+```
+
+### Code style
+
+- Write code comments in Chinese.
+- Use English for commit messages and PR descriptions.
+- Route every new user-visible string through `loc()` and update all eight localization directories.
+- Wrap Debug-only code in `#if DEBUG_BUILD`.
+- Do not add new `UserDefaults` or `Keychain` keys without preserving compatibility with released versions.
+- Read the repository instructions in `AGENTS.md` and `CODEX.md` before making architectural changes.
+
+### PRs that are not accepted
+
+- Reducer or state-machine changes without tests.
+- Opportunistic large refactors mixed with bug fixes.
+- Changes to existing UserDefaults keys.
+- Changes to defaults without explaining the motivation.
+- New Sherpa runtime dependencies.
+- Sentry, Crashlytics, or other third-party telemetry SDKs.
+
+## Reporting bugs
+
+Open a GitHub issue. A useful report includes:
+
+- macOS version (`sw_vers`)
+- AtomVoice version from the About window
+- Trigger condition, target app, ASR engine, input device, and output device
+- Expected behavior versus actual behavior
+- Debug logs from `make dev`, when available
+- Device name for USB or Bluetooth headset issues
+
+Screenshots and videos are optional except for layout problems; logs are usually more useful.
+
+## Security issues
+
+See [`SECURITY.md`](SECURITY.md). Do not open a public issue for security problems such as API-key exposure, unexpected audio or text uploads, tamperable settings, or an update path that bypasses SHA256 and signature verification. Send a report to the maintainer's email listed on the GitHub profile with `[SECURITY]` in the subject.
+
+## Community guidelines
+
+Focus on the issue rather than the person, record decisions publicly, and do not harass others. The detailed standard is [Contributor Covenant 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+
+## Maintainer commitment
+
+- First response to a PR within seven days, even if only to acknowledge it.
+- Small fixes under 50 lines with tests are normally merged or declined within two weeks.
+- Larger changes may take longer; progress will be communicated in the issue.
+- PRs will not be closed without an explanation.
+- Contributors will not be asked to sign a CLA that transfers their rights.
+- Contributor code will not be rewritten and credited to the maintainer without discussion.
+
+## Contact
+
+- GitHub Issues are preferred.
+- Use the maintainer's GitHub profile email for security disclosures or when email is necessary.
+- Project discussion stays on GitHub so decisions remain searchable and traceable.
+
+---
+
 # AtomVoice 贡献指南
 
 ## 项目介绍
