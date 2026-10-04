@@ -1,6 +1,6 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.11.5
+VERSION     = 0.11.6
 BUILD_DIR   = .build/release
 RELEASE_BUILD_ROOT = .build/release-artifacts
 DIST_DIR    = dist
@@ -10,6 +10,9 @@ DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
+
+# SwiftPM 在不同 Xcode 版本下使用不同的 release 二进制输出目录。
+release_binary = $(firstword $(wildcard $(1)/*-apple-macosx/release/$(APP_NAME)) $(wildcard $(1)/out/Products/Release/$(APP_NAME)))
 
 .PHONY: build dev run install clean release sherpa-memory doctor test lint-loc \
         clean-release-cache release-cold release-fast release-verify build-release-binaries \
@@ -116,14 +119,14 @@ build-debug-x86_64:
 
 package-arm64:
 	@echo "→ Packaging Apple Silicon (arm64)..."
-	$(call bundle_app,$(RELEASE_BUILD_ROOT)/arm64/arm64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
+	$(call bundle_app,$(call release_binary,$(RELEASE_BUILD_ROOT)/arm64),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-AppleSilicon.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Apple Silicon done"
 
 package-x86_64:
 	@echo "→ Packaging Intel (x86_64)..."
-	$(call bundle_app,$(RELEASE_BUILD_ROOT)/x86_64/x86_64-apple-macosx/release/$(APP_NAME),$(DIST_DIR)/$(APP_NAME).app)
+	$(call bundle_app,$(call release_binary,$(RELEASE_BUILD_ROOT)/x86_64),$(DIST_DIR)/$(APP_NAME).app)
 	cd $(DIST_DIR) && zip -qr "$(APP_NAME)-$(VERSION)-Intel.zip" $(APP_NAME).app
 	rm -rf $(DIST_DIR)/$(APP_NAME).app
 	@echo "  Intel done"
@@ -131,8 +134,8 @@ package-x86_64:
 package-universal:
 	@echo "→ Packaging Universal (Apple Silicon + Intel)..."
 	lipo -create \
-		$(RELEASE_BUILD_ROOT)/arm64/arm64-apple-macosx/release/$(APP_NAME) \
-		$(RELEASE_BUILD_ROOT)/x86_64/x86_64-apple-macosx/release/$(APP_NAME) \
+		$(call release_binary,$(RELEASE_BUILD_ROOT)/arm64) \
+		$(call release_binary,$(RELEASE_BUILD_ROOT)/x86_64) \
 		-output $(DIST_DIR)/$(APP_NAME)-universal-bin
 	$(call bundle_app,$(DIST_DIR)/$(APP_NAME)-universal-bin,$(DIST_DIR)/$(APP_NAME).app)
 	rm -f $(DIST_DIR)/$(APP_NAME)-universal-bin
@@ -143,8 +146,8 @@ package-universal:
 package-debug-universal:
 	@echo "→ Packaging Debug Universal (Apple Silicon + Intel)..."
 	lipo -create \
-		$(RELEASE_BUILD_ROOT)/debug-arm64/arm64-apple-macosx/release/$(APP_NAME) \
-		$(RELEASE_BUILD_ROOT)/debug-x86_64/x86_64-apple-macosx/release/$(APP_NAME) \
+		$(call release_binary,$(RELEASE_BUILD_ROOT)/debug-arm64) \
+		$(call release_binary,$(RELEASE_BUILD_ROOT)/debug-x86_64) \
 		-output $(DIST_DIR)/$(APP_NAME)-debug-universal-bin
 	$(call bundle_app,$(DIST_DIR)/$(APP_NAME)-debug-universal-bin,$(DIST_DIR)/$(APP_NAME).app)
 	rm -f $(DIST_DIR)/$(APP_NAME)-debug-universal-bin

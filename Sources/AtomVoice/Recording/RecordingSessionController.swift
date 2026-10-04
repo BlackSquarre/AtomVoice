@@ -26,6 +26,10 @@ final class RecordingSessionController {
     /// (Cancel before a new start only when the previous recognition session actually started.)
     var recognitionSessionStarted = false
     private var captureConsumerID: UUID?
+    private var pendingPreparedSession: (any RecognitionSession)?
+    private var pendingPrepareResult: RecognitionSessionPreflightResult?
+    private var pendingCaptureReady: Bool?
+    private var startPreflightEventEmitted = false
     var pendingStopForPresentation: Bool { pendingStop != nil }
     private var captureEngineCode: String?
     private var recognitionReady: Bool {
@@ -303,16 +307,31 @@ final class RecordingSessionController {
         recordingAudioInput = RecordingAudioInput()
         recognitionReady = false
         pendingStop = nil
+        pendingPreparedSession = nil
+        pendingPrepareResult = nil
+        pendingCaptureReady = nil
+        startPreflightEventEmitted = false
         if let id = captureConsumerID { audioEngine.router.unregister(id) }
         let input = recordingAudioInput
         captureEngineCode = AppSettings.normalizedRecognitionEngine
         let format: AudioRouter.ConsumerFormat? = captureEngineCode == ASREngineRegistry.appleCode ? nil : .voice16k
         captureConsumerID = audioEngine.router.register(format: format) { buffer in input.accept(buffer) }
-        // 先提交收音，主线程随后立即呈现；磁盘预检和引擎准备均不占用这一入口。
+        let selectedSession = recognitionSession(for: captureEngineCode ?? AppSettings.normalizedRecognitionEngine)
+        pendingPreparedSession = selectedSession
+        selectedSession.prepare { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.state.acceptsStartRequest(startRequest),
+                      self.pendingPreparedSession === selectedSession else { return }
+                self.pendingPrepareResult = result
+                self.emitStartPreflightIfReady(request: startRequest)
+            }
+        }
+        // 音频设备启动和 ASR prepare 并行执行；两者都完成后才进入 startValidated。
         audioEngine.start { [weak self] ready in
             guard let self, self.state.acceptsStartRequest(startRequest) else { return }
             DebugLog.info("[RecordingLatency] capture ready ms=\((ProcessInfo.processInfo.systemUptime - self.captureRequestedAt) * 1000)")
-            self.dispatch(.inputPreflightCompleted(request: startRequest, ready: ready || self.pendingStop != nil))
+            self.pendingCaptureReady = ready || self.pendingStop != nil
+            self.emitStartPreflightIfReady(request: startRequest)
             if !ready && self.pendingStop == nil {
                 self.stopCapture()
                 self.onRecordingStateChanged?(false)
@@ -336,6 +355,19 @@ final class RecordingSessionController {
         DebugLog.info("[RecordingLatency] initial UI submitted ms=\((ProcessInfo.processInfo.systemUptime - captureRequestedAt) * 1000)")
     }
 
+    private func emitStartPreflightIfReady(request: Int) {
+        guard !startPreflightEventEmitted,
+              let captureReady = pendingCaptureReady else { return }
+        if !captureReady {
+            startPreflightEventEmitted = true
+            dispatch(.inputPreflightCompleted(request: request, ready: false))
+            return
+        }
+        guard pendingPrepareResult != nil else { return }
+        startPreflightEventEmitted = true
+        dispatch(.inputPreflightCompleted(request: request, ready: true))
+    }
+
     func stopCapture() {
         recordingAudioInput.seal()
         if let id = captureConsumerID {
@@ -351,10 +383,17 @@ final class RecordingSessionController {
         // Sherpa 引擎：直接按当前 preset 实读磁盘判断；isReady 内部含一次轻量自愈
         // (Sherpa engine: read disk for current preset; isReady includes one lightweight self-heal pass)
         let engine = captureEngineCode ?? AppSettings.normalizedRecognitionEngine
-        let selectedSession = recognitionSession(for: engine)
-        selectedSession.prepare { [weak self] result in
-            guard let self, self.state.acceptsStartRequest(startRequest) else { return }
-            self.completeStartPreflight(result, selectedSession: selectedSession)
+        let selectedSession = pendingPreparedSession ?? recognitionSession(for: engine)
+        if pendingPreparedSession === selectedSession {
+            guard let result = pendingPrepareResult else { return }
+            pendingPreparedSession = nil
+            pendingPrepareResult = nil
+            completeStartPreflight(result, selectedSession: selectedSession)
+        } else {
+            selectedSession.prepare { [weak self] result in
+                guard let self, self.state.acceptsStartRequest(startRequest) else { return }
+                self.completeStartPreflight(result, selectedSession: selectedSession)
+            }
         }
     }
 

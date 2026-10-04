@@ -168,10 +168,10 @@ final class SherpaOnnxASREngine: ASREngine {
     func audioConsumer() -> (AVAudioPCMBuffer) -> Void {
         let token = currentGeneration
         return { [self] buffer in
-            operations.async { [self] in
-                guard currentGeneration == token else { return }
-                recognizer.accept(buffer: buffer)
-            }
+            guard currentGeneration == token else { return }
+            // RecordingAudioInput 已在自己的串行队列中交接并持有 buffer；
+            // 识别器内部还有独立串行队列，这里无需再包一层每帧 async。
+            recognizer.accept(buffer: buffer)
         }
     }
 
@@ -270,10 +270,9 @@ final class VolcengineASREngine: ASREngine {
     func audioConsumer() -> (AVAudioPCMBuffer) -> Void {
         let token = currentGeneration
         return { [self] buffer in
-            preparationQueue.async { [self] in
-                guard currentGeneration == token else { return }
-                recognizer.accept(buffer: buffer)
-            }
+            guard currentGeneration == token else { return }
+            // CloudASRRecognizerController 自己负责串行化转换和发送。
+            recognizer.accept(buffer: buffer)
         }
     }
 
