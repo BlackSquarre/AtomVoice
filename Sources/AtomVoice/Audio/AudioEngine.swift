@@ -35,6 +35,10 @@ final class AudioEngineController {
     /// 标记：真实路由变化后 engine 实例已不可用，下次 start() 前必须重建。
     /// (Flag: real route-change occurred; engine is corrupted, must rebuild before next start().)
     private var needsEngineRebuild = false
+    /// 同一轮生命周期只保留一个延迟释放任务，避免多个停止层级重复安排硬件重建。
+    /// (Keep one delayed hardware-release task per lifecycle generation.)
+    private let idleReleaseLock = NSLock()
+    private var idleReleaseScheduledGeneration: Int?
     #if DEBUG_BUILD
     private var lastInputProbeLogTime: CFAbsoluteTime = 0
     #endif
@@ -741,6 +745,13 @@ final class AudioEngineController {
     /// 又容易打断正在播放的音乐，所以等 ASR final 收口后再空闲重建一次。
     func releaseHardwareAfterIdle(delay: TimeInterval = 1.5) {
         let generation = currentLifecycleGeneration()
+        idleReleaseLock.lock()
+        let alreadyScheduled = idleReleaseScheduledGeneration == generation
+        if !alreadyScheduled {
+            idleReleaseScheduledGeneration = generation
+        }
+        idleReleaseLock.unlock()
+        guard !alreadyScheduled else { return }
         DebugLog.info(String(format: "[AudioEngine] Scheduled idle input-hardware release %.1fs generation=%d", delay, generation))
         audioControlQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, self.isCurrentLifecycleGeneration(generation) else { return }

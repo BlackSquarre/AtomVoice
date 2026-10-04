@@ -22,6 +22,9 @@ final class RecordingSessionController {
     private let liveInsertionAdapter = AppleLiveInsertionAdapter()
     var recognitionSession: (any RecognitionSession)?
     var recordingAudioInput = RecordingAudioInput()
+    /// 仅在识别会话真正启动后才允许启动新会话前取消，避免 idle 状态重复排队 cancel。
+    /// (Cancel before a new start only when the previous recognition session actually started.)
+    var recognitionSessionStarted = false
     private var captureConsumerID: UUID?
     var pendingStopForPresentation: Bool { pendingStop != nil }
     private var captureEngineCode: String?
@@ -385,7 +388,10 @@ final class RecordingSessionController {
             ? recognitionSession?.currentText.trimmingCharacters(in: .whitespacesAndNewlines)
             : nil
         let pendingRefinementText = state.isRefining ? state.pendingRefinementText : nil
-        if recognitionSession !== selectedSession { recognitionSession?.cancel() }
+        if recognitionSession !== selectedSession {
+            recognitionSession?.cancel()
+            recognitionSessionStarted = false
+        }
         recognitionSession = selectedSession
         _ = dispatch(
             .recognitionCapabilitiesResolved(
@@ -410,7 +416,7 @@ final class RecordingSessionController {
 
     func startRecognitionSession(generation: Int) {
         guard let selectedSession = recognitionSession else { return }
-        DispatchQueue.main.async { [weak self] in
+        let start = { [weak self] in
             guard let self, isRecording, recordingGeneration == generation else { return }
             let callbacks = makeRecognitionSessionCallbacks(generation: generation)
             selectedSession.start(
@@ -423,6 +429,7 @@ final class RecordingSessionController {
                           self.recordingGeneration == generation else { return }
                     switch result {
                     case .started:
+                        self.recognitionSessionStarted = true
                         self.recognitionReady = true
                         if let stop = self.pendingStop {
                             self.pendingStop = nil
@@ -455,6 +462,11 @@ final class RecordingSessionController {
                     DispatchQueue.main.async(execute: handleResult)
                 }
             }
+        }
+        if Thread.isMainThread {
+            start()
+        } else {
+            DispatchQueue.main.async(execute: start)
         }
     }
 
@@ -597,6 +609,7 @@ final class RecordingSessionController {
             guard let self, self.recordingGeneration == generation else { return }
             session.stop(immediate: immediate, appending: punctuation, callbacks: callbacks) { [weak self] result in
                 guard let self, self.recordingGeneration == generation else { return }
+                self.recognitionSessionStarted = false
                 DebugLog.info("[RecordingLatency] final decode ms=\((ProcessInfo.processInfo.systemUptime - stoppedAt) * 1000)")
                 self.dispatch(.asrFinal(text: result.text, errorMessage: result.errorMessage,
                                        appending: result.appendingImmediatePunctuation))

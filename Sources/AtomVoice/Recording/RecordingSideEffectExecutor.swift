@@ -24,12 +24,14 @@ extension RecordingSessionController {
         case .stopSession(let generation, let immediate, let punctuation):
             stopRecognitionSession(generation: generation, immediate: immediate, appending: punctuation)
         case .cancelSession(let stopAudioEngine):
-            recognitionSession?.cancel()
+            if recognitionSessionStarted {
+                recognitionSession?.cancel()
+                recognitionSessionStarted = false
+            }
             if state.phase != .capturing { recordingAudioInput.cancel() }
             if stopAudioEngine {
                 recordingAudioInput.cancel()
                 stopCapture()
-                audioEngine.releaseHardwareAfterIdle()
             }
         case .showCapsule(let presentation, let ensurePanel):
             presentCapsule(presentation, ensurePanel: ensurePanel)

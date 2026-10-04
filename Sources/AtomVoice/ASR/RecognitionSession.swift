@@ -104,12 +104,10 @@ final class AppleRecognitionSession: RecognitionSession {
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = nil
 
     private let engine: AppleSpeechASREngine
-    private let audioEngine: AudioEngineController
     private var startAttempt = 0
 
-    init(engine: AppleSpeechASREngine, audioEngine: AudioEngineController) {
+    init(engine: AppleSpeechASREngine) {
         self.engine = engine
-        self.audioEngine = audioEngine
     }
 
     var currentText: String { engine.currentText }
@@ -158,7 +156,6 @@ final class AppleRecognitionSession: RecognitionSession {
     ) {
         startAttempt += 1
         let text = engine.stopSynchronously()
-        audioEngine.releaseHardwareAfterIdle()
         completion(
             RecognitionSessionStopResult(
                 text: text,
@@ -185,12 +182,10 @@ final class SherpaRecognitionSession: RecognitionSession {
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
 
     private let engine: SherpaOnnxASREngine
-    private let audioEngine: AudioEngineController
     private var startAttempt = 0
 
-    init(engine: SherpaOnnxASREngine, audioEngine: AudioEngineController) {
+    init(engine: SherpaOnnxASREngine) {
         self.engine = engine
-        self.audioEngine = audioEngine
     }
 
     var currentText: String { engine.currentText }
@@ -306,7 +301,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
         audioEngine: AudioEngineController
     ) {
         self.cloudEngine = cloudEngine
-        self.appleSession = AppleRecognitionSession(engine: appleEngine, audioEngine: audioEngine)
+        self.appleSession = AppleRecognitionSession(engine: appleEngine)
         self.speechRecognizerProvider = speechRecognizerProvider
         self.audioEngine = audioEngine
     }
@@ -425,7 +420,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
             let text = cloudEngine.currentText
             cloudEngine.cancel()
             fallback.reset()
-            audioEngine.releaseHardwareAfterIdle()
             completion(
                 RecognitionSessionStopResult(
                     text: text,
@@ -452,7 +446,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
                     )
                 } else {
                     self.fallback.finishSuccessfulCloudRecognition()
-                    self.audioEngine.releaseHardwareAfterIdle()
                     completion(
                         RecognitionSessionStopResult(
                             text: recognizedText,
@@ -548,7 +541,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
                 cachedText: "",
                 liveText: fallbackSnapshot.liveFallbackText
             )
-            audioEngine.releaseHardwareAfterIdle()
             completion(
                 RecognitionSessionStopResult(
                     text: text,
@@ -579,7 +571,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
                     cachedText: appleText,
                     liveText: fallbackSnapshot.liveFallbackText
                 )
-                self.audioEngine.releaseHardwareAfterIdle()
                 completion(
                     RecognitionSessionStopResult(
                         text: recognizedText,

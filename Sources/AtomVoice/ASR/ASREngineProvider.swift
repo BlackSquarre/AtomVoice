@@ -78,12 +78,12 @@ final class ASREngineProvider: ASREngineProviding {
             return session
         case ASREngineRegistry.sherpaCode:
             if let sherpaRecognitionSession { return sherpaRecognitionSession }
-            let session = SherpaRecognitionSession(engine: sherpaEngine(), audioEngine: audioEngine)
+            let session = SherpaRecognitionSession(engine: sherpaEngine())
             sherpaRecognitionSession = session
             return session
         default:
             if let appleRecognitionSession { return appleRecognitionSession }
-            let session = AppleRecognitionSession(engine: appleEngine(), audioEngine: audioEngine)
+            let session = AppleRecognitionSession(engine: appleEngine())
             appleRecognitionSession = session
             return session
         }

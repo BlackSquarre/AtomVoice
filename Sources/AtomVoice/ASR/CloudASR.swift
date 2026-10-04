@@ -59,6 +59,13 @@ final class CloudAudioConverter {
 
     func convert(_ buffer: AVAudioPCMBuffer) -> Data? {
         let inputFormat = buffer.format
+        if inputFormat.sampleRate == outputFormat.sampleRate,
+           inputFormat.channelCount == 1,
+           inputFormat.commonFormat == .pcmFormatFloat32,
+           !inputFormat.isInterleaved,
+           let channelData = buffer.floatChannelData {
+            return convertFloat32ToPCM16(channelData[0], frameCount: Int(buffer.frameLength))
+        }
         let description = "\(inputFormat.sampleRate)-\(inputFormat.channelCount)-\(inputFormat.commonFormat.rawValue)-\(inputFormat.isInterleaved)"
         if converter == nil || description != inputFormatDescription {
             converter = AVAudioConverter(from: inputFormat, to: outputFormat)
@@ -111,6 +118,26 @@ final class CloudAudioConverter {
         data.withUnsafeMutableBytes { raw in
             guard let dst = raw.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
             vDSP_vfix16(floatPtr, 1, dst, 1, vDSP_Length(frameCount))
+        }
+        return data
+    }
+
+    private func convertFloat32ToPCM16(_ source: UnsafePointer<Float>, frameCount: Int) -> Data? {
+        guard frameCount > 0 else { return nil }
+        var clipped = [Float](repeating: 0, count: frameCount)
+        clipped.withUnsafeMutableBufferPointer { destination in
+            var lower: Float = -1.0
+            var upper: Float = 1.0
+            vDSP_vclip(source, 1, &lower, &upper, destination.baseAddress!, 1, vDSP_Length(frameCount))
+            var scale: Float = Float(Int16.max)
+            vDSP_vsmul(destination.baseAddress!, 1, &scale, destination.baseAddress!, 1, vDSP_Length(frameCount))
+        }
+        var data = Data(count: frameCount * MemoryLayout<Int16>.size)
+        data.withUnsafeMutableBytes { raw in
+            guard let dst = raw.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            clipped.withUnsafeBufferPointer { values in
+                vDSP_vfix16(values.baseAddress!, 1, dst, 1, vDSP_Length(frameCount))
+            }
         }
         return data
     }
