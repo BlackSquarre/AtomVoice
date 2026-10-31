@@ -7,6 +7,7 @@ DIST_DIR    = dist
 APP_BUNDLE  = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
+CODE_SIGN_IDENTITY ?= Apple Development: Lingru Miao (555ZHJ6B72)
 export DEVELOPER_DIR
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
@@ -165,5 +166,5 @@ define bundle_app
 	cp -R Resources/*.lproj "$(2)/Contents/Resources/"
 	cp -R Resources/Icons "$(2)/Contents/Resources/"
 	find "$(2)/Contents/Resources" -name "*.strings" | while read f; do printf '\xef\xbb\xbf' > "$$f.tmp" && cat "$$f" >> "$$f.tmp" && mv "$$f.tmp" "$$f"; done
-	codesign --force --sign "Apple Development: miaolingru@gmail.com (XJS89V9J9T)" --entitlements AtomVoice.entitlements "$(2)"
+	codesign --force --sign "$(CODE_SIGN_IDENTITY)" --entitlements AtomVoice.entitlements "$(2)"
 endef

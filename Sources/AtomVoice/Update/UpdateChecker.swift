@@ -8,7 +8,8 @@ final class UpdateChecker {
     static let shared = UpdateChecker()
 
     private static let bundleIdentifier = "com.blacksquarre.AtomVoice"
-    private static let teamIdentifier = "NC623693G3"
+    // 本次手动迁移后的更新包只信任当前团队；保留完整的 Apple 签名链和 bundle ID 校验。
+    private static let teamIdentifier = "DD4V6SJ9XL"
     private let releaseSource: ReleaseSource
     private let installer: UpdateInstaller
 
