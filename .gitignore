@@ -14,6 +14,7 @@ SHERPA_MODELS.md
 localdoc/
 
 # 本地工具与 IDE 工作区
+.omo/
 .sisyphus/
 .vscode/
 tmp/
