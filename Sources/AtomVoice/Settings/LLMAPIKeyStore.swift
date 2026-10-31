@@ -1,10 +1,15 @@
 import Foundation
 
 protocol LLMAPIKeyStoring: AnyObject {
-    func read() -> String?
+    func readResult() -> KeychainStringReadResult
     @discardableResult
     func write(_ value: String) -> Bool
-    func delete()
+    @discardableResult
+    func delete() -> Bool
+}
+
+extension LLMAPIKeyStoring {
+    func read() -> String? { readResult().string }
 }
 
 final class LLMAPIKeyStore: LLMAPIKeyStoring {
@@ -13,8 +18,8 @@ final class LLMAPIKeyStore: LLMAPIKeyStoring {
     private static let service = "com.blacksquarre.AtomVoice.llm"
     private static let account = "apiKey"
 
-    func read() -> String? {
-        KeychainStore.string(service: Self.service, account: Self.account)
+    func readResult() -> KeychainStringReadResult {
+        KeychainStore.readString(service: Self.service, account: Self.account)
     }
 
     @discardableResult
@@ -22,7 +27,8 @@ final class LLMAPIKeyStore: LLMAPIKeyStoring {
         KeychainStore.setString(value, service: Self.service, account: Self.account)
     }
 
-    func delete() {
+    @discardableResult
+    func delete() -> Bool {
         KeychainStore.delete(service: Self.service, account: Self.account)
     }
 }

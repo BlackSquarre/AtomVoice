@@ -260,8 +260,8 @@ final class LLMRefiner {
 
     // MARK: - 测试连接（非流式）
 
-    func testConnection(completion: @escaping (Bool, String) -> Void) {
-        let connection = AppSettings.llmConnection
+    func testConnection(connection: LLMConnectionSettings? = nil, completion: @escaping (Bool, String) -> Void) {
+        let connection = connection ?? AppSettings.llmConnection
         let baseURL = connection.baseURL
         let apiKey = connection.apiKey
         let model = connection.model

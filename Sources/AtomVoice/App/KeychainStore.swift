@@ -1,8 +1,23 @@
 import Foundation
 import Security
 
+enum KeychainStringReadResult: Equatable {
+    case value(String)
+    case notFound
+    case failure(OSStatus)
+
+    var string: String? {
+        guard case .value(let value) = self else { return nil }
+        return value
+    }
+}
+
 enum KeychainStore {
     static func string(service: String, account: String) -> String? {
+        readString(service: service, account: account).string
+    }
+
+    static func readString(service: String, account: String) -> KeychainStringReadResult {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -13,11 +28,34 @@ enum KeychainStore {
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess,
-              let data = item as? Data,
-              let value = String(data: data, encoding: .utf8)
-        else { return nil }
-        return value
+        return readResult(status: status, data: item as? Data)
+    }
+
+    static func readResult(status: OSStatus, data: Data?) -> KeychainStringReadResult {
+        if status == errSecItemNotFound { return .notFound }
+        guard status == errSecSuccess else { return .failure(status) }
+        guard let data, let value = String(data: data, encoding: .utf8) else {
+            return .failure(errSecDecode)
+        }
+        return .value(value)
+    }
+
+    /// 空字段是否代表清空，取决于界面当时实际读到的内容；失败不能当作未配置。
+    static func saveString(
+        _ value: String,
+        previousRead: () -> KeychainStringReadResult,
+        write: (String) -> Bool,
+        delete: () -> Bool
+    ) -> Bool {
+        guard value.isEmpty else { return write(value) }
+        switch previousRead() {
+        case .value:
+            return delete()
+        case .notFound:
+            return true
+        case .failure:
+            return false
+        }
     }
 
     static func setString(_ value: String, service: String, account: String) -> Bool {
@@ -61,12 +99,14 @@ enum KeychainStore {
         return false
     }
 
-    static func delete(service: String, account: String) {
+    @discardableResult
+    static func delete(service: String, account: String) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
     }
 }

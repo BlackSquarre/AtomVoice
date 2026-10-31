@@ -8,6 +8,7 @@ final class DoubaoSettingsTab: ASRSettingsTab {
 
     private weak var textFieldDelegate: NSTextFieldDelegate?
     private var doubaoAPIKeyField: NSSecureTextField!
+    private var apiKeyReadResult: KeychainStringReadResult = .notFound
     private var doubaoModelPopup: NSPopUpButton!
     private var doubaoEndpointField: NSTextField!
     private let doubaoModelOptions: [DoubaoModelKind] = [.v2, .v1]
@@ -113,7 +114,8 @@ final class DoubaoSettingsTab: ASRSettingsTab {
     }
 
     func refresh() {
-        let doubaoSettings = VolcengineASRSettings.load()
+        apiKeyReadResult = VolcengineASRSettings.savedAPIKeyReadResult
+        let doubaoSettings = VolcengineASRSettings.load(apiKey: apiKeyReadResult.string ?? "")
         doubaoAPIKeyField?.stringValue = doubaoSettings.apiKey
         let currentKind = DoubaoModelKind.from(resourceID: doubaoSettings.resourceID)
         if let idx = doubaoModelOptions.firstIndex(of: currentKind) {
@@ -127,9 +129,11 @@ final class DoubaoSettingsTab: ASRSettingsTab {
     }
 
     func save() -> ASRSettingsTabSaveOutcome {
-        guard VolcengineASRSettings.saveAPIKey(doubaoAPIKeyField.stringValue) else {
+        guard VolcengineASRSettings.saveAPIKey(doubaoAPIKeyField.stringValue, previousRead: apiKeyReadResult) else {
             return .failed(message: loc("doubao.settings.keychainFailed"), color: .systemRed)
         }
+        let savedKey = doubaoAPIKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        apiKeyReadResult = savedKey.isEmpty ? .notFound : .value(savedKey)
 
         let selectedKind = doubaoModelOptions[doubaoModelPopup.indexOfSelectedItem]
         VolcengineASRSettings(

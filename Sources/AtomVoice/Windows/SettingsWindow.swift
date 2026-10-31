@@ -397,9 +397,8 @@ final class SettingsWindowController: NSObject {
     private var providerPopup: NSPopUpButton!
     private var apiBaseURLField: NSTextField!
     private var apiKeyField: NSSecureTextField!
+    private var apiKeyReadResult: KeychainStringReadResult = .notFound
     private var modelField: NSTextField!
-    private var delayPopup: NSPopUpButton!
-    private let delayOptions: [Double] = [0, 0.5, 1.0, 1.5, 2.0]
     private var statusLabel: NSTextField!
     private let llmRefiner: LLMRefiner
     private var providerEditor: ProviderEditorController?
@@ -454,12 +453,6 @@ final class SettingsWindowController: NSObject {
         modelField      = SettingsUI.makeField(placeholder: AppSettings.defaultLLMModel, delegate: self)
         modelField.toolTip = loc("tooltip.settings.model")
 
-        delayPopup = NSPopUpButton()
-        delayPopup.toolTip = loc("tooltip.settings.delay")
-        for v in delayOptions {
-            delayPopup.addItem(withTitle: v == 0 ? loc("settings.delay.immediate") : String(format: "%.1fs", v))
-        }
-
         let promptBtn = SettingsUI.makeButton(loc("settings.prompt.edit"), target: self, action: #selector(editPrompt(_:)))
         promptBtn.toolTip = loc("tooltip.settings.prompt")
 
@@ -488,12 +481,6 @@ final class SettingsWindowController: NSObject {
         providerCtrl.spacing = gap
         providerCtrl.alignment = .centerY
 
-        // 延迟行：popup 固定宽，不拉伸（Delay row: popup fixed width, no stretch）
-        let delayWrap = NSStackView(views: [delayPopup])
-        delayWrap.orientation = .horizontal
-        delayWrap.alignment = .centerY
-        delayPopup.widthAnchor.constraint(equalToConstant: 110).isActive = true
-
         // ── 表单垂直 StackView ────────────────────────────────（Form vertical StackView）
         let form = NSStackView()
         form.orientation = .vertical
@@ -507,7 +494,6 @@ final class SettingsWindowController: NSObject {
             (loc("settings.apiKey"),       apiKeyField),
             (loc("settings.model"),        modelField),
             (loc("settings.prompt.label"), promptBtn),
-            (loc("settings.delay"),        delayWrap),
         ]
         for (text, ctrl) in formRows {
             let row = SettingsUI.makeFormRow(labelText: text, control: ctrl, spacing: gap)
@@ -586,18 +572,14 @@ final class SettingsWindowController: NSObject {
         providerPopup?.removeAllItems()
         providers.forEach { providerPopup?.addItem(withTitle: $0.name) }
 
-        let connection = AppSettings.llmConnection
-        let savedURL = connection.baseURL
+        apiKeyReadResult = AppSettings.llm.apiKeyReadResult
+        let savedURL = AppSettings.llmAPIBaseURL
         let matchIdx = providers.firstIndex { $0.baseURL == savedURL } ?? (providers.count - 1)
         providerPopup?.selectItem(at: matchIdx)
 
         apiBaseURLField?.stringValue = savedURL
-        apiKeyField?.stringValue = connection.apiKey
-        modelField?.stringValue = connection.model
-        let delay = AppSettings.llmResultDelay
-        // 选中最近的选项（Select closest option）
-        let closestIdx = delayOptions.enumerated().min(by: { abs($0.element - delay) < abs($1.element - delay) })?.offset ?? 1
-        delayPopup?.selectItem(at: closestIdx)
+        apiKeyField?.stringValue = apiKeyReadResult.string ?? ""
+        modelField?.stringValue = AppSettings.llmModel
         statusLabel?.stringValue     = ""
     }
 
@@ -637,26 +619,24 @@ final class SettingsWindowController: NSObject {
     }
 
     @objc private func testConnection(_ sender: NSButton) {
-        let originalConnection = AppSettings.llmConnection
+        if case .failure = apiKeyReadResult, apiKeyField.stringValue.isEmpty {
+            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
+            statusLabel.textColor = .systemRed
+            return
+        }
         let testConnection = LLMConnectionSettings(
             baseURL: apiBaseURLField.stringValue,
             apiKey: apiKeyField.stringValue,
             model: modelField.stringValue
         )
-        guard AppSettings.saveLLMConnection(testConnection) else {
-            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
-            statusLabel.textColor = .systemRed
-            return
-        }
-
         statusLabel.stringValue = loc("settings.testing")
         statusLabel.textColor = .secondaryLabelColor
 
-        llmRefiner.testConnection { [weak self] success, msg in
+        // 测试仅使用当前表单，不临时覆写钥匙串，也不在异步完成后恢复旧空值。
+        llmRefiner.testConnection(connection: testConnection) { [weak self] success, msg in
             DispatchQueue.main.async {
                 self?.statusLabel.stringValue = success ? loc("settings.connected") : loc("settings.connectFailed", msg)
                 self?.statusLabel.textColor = success ? .systemGreen : .systemRed
-                AppSettings.llmConnection = originalConnection
             }
         }
     }
@@ -667,13 +647,11 @@ final class SettingsWindowController: NSObject {
             apiKey: apiKeyField.stringValue,
             model: modelField.stringValue
         )
-        guard AppSettings.saveLLMConnection(connection) else {
+        guard AppSettings.saveLLMConnection(connection, previousKeyRead: apiKeyReadResult) else {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
             return
         }
-        let selectedDelay = delayOptions[delayPopup.indexOfSelectedItem]
-        AppSettings.llmResultDelay = selectedDelay
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
         window?.close()

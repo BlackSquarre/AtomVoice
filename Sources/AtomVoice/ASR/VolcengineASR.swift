@@ -45,27 +45,32 @@ struct VolcengineASRSettings {
     static var defaultResourceID: String { DoubaoModelKind.v2.resourceID }
 
     static var savedAPIKey: String {
-        KeychainStore.string(service: keychainService, account: keychainAccount) ?? ""
+        savedAPIKeyReadResult.string ?? ""
+    }
+
+    static var savedAPIKeyReadResult: KeychainStringReadResult {
+        KeychainStore.readString(service: keychainService, account: keychainAccount)
     }
 
     static var hasAPIKey: Bool {
         !savedAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    static func saveAPIKey(_ value: String) -> Bool {
+    static func saveAPIKey(_ value: String, previousRead: KeychainStringReadResult? = nil) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            KeychainStore.delete(service: keychainService, account: keychainAccount)
-            return true
-        }
-        return KeychainStore.setString(trimmed, service: keychainService, account: keychainAccount)
+        return KeychainStore.saveString(
+            trimmed,
+            previousRead: { previousRead ?? savedAPIKeyReadResult },
+            write: { KeychainStore.setString($0, service: keychainService, account: keychainAccount) },
+            delete: { KeychainStore.delete(service: keychainService, account: keychainAccount) }
+        )
     }
 
-    static func load() -> VolcengineASRSettings {
+    static func load(apiKey: String? = nil) -> VolcengineASRSettings {
         let backend = AppSettings.backend
         return VolcengineASRSettings(
             endpoint: backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint),
-            apiKey: savedAPIKey,
+            apiKey: apiKey ?? savedAPIKey,
             resourceID: backend.string(forKey: AppSettings.Keys.doubaoASRResourceID, default: defaultResourceID),
             enableITN: backend.bool(forKey: AppSettings.Keys.doubaoASREnableITN, default: true),
             enableDDC: backend.bool(forKey: AppSettings.Keys.doubaoASREnableDDC, default: false),

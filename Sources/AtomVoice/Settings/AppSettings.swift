@@ -214,8 +214,8 @@ enum AppSettings {
     }
 
     @discardableResult
-    static func saveLLMConnection(_ value: LLMConnectionSettings) -> Bool {
-        llm.saveConnection(value)
+    static func saveLLMConnection(_ value: LLMConnectionSettings, previousKeyRead: KeychainStringReadResult? = nil) -> Bool {
+        llm.saveConnection(value, previousKeyRead: previousKeyRead)
     }
 
     static var autoPunctuationEnabled: Bool {

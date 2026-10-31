@@ -4,6 +4,7 @@ final class DoubaoSettingsWindowController: NSObject {
     var onClose: (() -> Void)?
     private var window: NSWindow?
     private var apiKeyField: NSSecureTextField!
+    private var apiKeyReadResult: KeychainStringReadResult = .notFound
     private var modelPopup: NSPopUpButton!
     private var endpointField: NSTextField!
     private let modelOptions: [DoubaoModelKind] = [.v2, .v1]
@@ -145,7 +146,8 @@ final class DoubaoSettingsWindowController: NSObject {
     }
 
     private func refreshFields() {
-        let settings = VolcengineASRSettings.load()
+        apiKeyReadResult = VolcengineASRSettings.savedAPIKeyReadResult
+        let settings = VolcengineASRSettings.load(apiKey: apiKeyReadResult.string ?? "")
         apiKeyField?.stringValue = settings.apiKey
         let currentKind = DoubaoModelKind.from(resourceID: settings.resourceID)
         if let idx = modelOptions.firstIndex(of: currentKind) {
@@ -160,7 +162,7 @@ final class DoubaoSettingsWindowController: NSObject {
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        guard VolcengineASRSettings.saveAPIKey(apiKeyField.stringValue) else {
+        guard VolcengineASRSettings.saveAPIKey(apiKeyField.stringValue, previousRead: apiKeyReadResult) else {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
             return
