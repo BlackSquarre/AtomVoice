@@ -108,21 +108,12 @@ final class TextInjector {
 
         DebugLog.info("[TextInjector] begin id=\(injectionID.uuidString) textLength=\(text.count) target=\(targetBundleID) pid=\(targetPIDDescription)")
 
-        // 将获取光标后字符的跨进程 IPC 调用移至后台 Task，避免目标应用挂起时连带卡死主线程。
-        let nextChar = await Task.detached(priority: .userInitiated) {
-            Self.getCharacterAfterCursor()
-        }.value
         let pasteMenuItem = await Task.detached(priority: .userInitiated) {
             nativePastePID.flatMap { BrowserPasteCompatibility.pasteMenuItem(processID: $0) }
         }.value
         guard !Task.isCancelled,
               lifecycle.transition(id: injectionID, from: .preparing, to: .snapshotting) else {
             return
-        }
-
-        var finalText = text
-        if let nextChar, PunctuationProcessor.isSentenceEndingPunctuation(nextChar) {
-            finalText = Self.removeTrailingPunctuation(text)
         }
 
         let captureResult = await pasteboardService.capture(timeout: Self.pasteboardSnapshotTimeout)
@@ -132,6 +123,21 @@ final class TextInjector {
             return
         }
 
+        var finalText = text
+        if CursorPunctuationProbe.needsLookup(text) {
+            // 快照完成后才查询光标，缩短结果到写入的间隔；局部 AX 失败时直接保留原文。
+            let probe = Task.detached(priority: .userInitiated) {
+                CursorPunctuationProbe.textForInsertion(text, targetPID: targetPID,
+                                                       access: SystemCursorPunctuationAccess(),
+                                                       isCancelled: { Task.isCancelled })
+            }
+            finalText = await withTaskCancellationHandler(operation: {
+                await probe.value
+            }, onCancel: {
+                probe.cancel()
+            })
+        }
+        guard !Task.isCancelled, lifecycle.isCurrent(injectionID) else { return }
         guard Self.frontmostProcessID() == targetPID else {
             DebugLog.error("[TextInjector] Frontmost app changed before clipboard write; cancelling injection id=\(injectionID.uuidString)")
             return
@@ -238,53 +244,6 @@ final class TextInjector {
 
     private static func frontmostProcessID() -> pid_t? {
         NSWorkspace.shared.frontmostApplication?.processIdentifier
-    }
-
-    // MARK: - 光标标点检测
-
-    /// 获取当前聚焦输入框中光标后方的第一个字符（Get the first character after cursor in the currently focused text field）
-    private static func getCharacterAfterCursor() -> Character? {
-        let systemWide = AXUIElementCreateSystemWide()
-
-        // 获取当前聚焦的 UI 元素（Get the currently focused UI element）
-        var focused: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard result == .success, let focusedElement = focused else { return nil }
-        guard CFGetTypeID(focusedElement) == AXUIElementGetTypeID() else { return nil }
-        let focusedUIElement = focusedElement as! AXUIElement
-
-        // 获取选区范围（光标位置）（Get selection range / cursor position）
-        var selectedRange: CFTypeRef?
-        let rangeResult = AXUIElementCopyAttributeValue(focusedUIElement, kAXSelectedTextRangeAttribute as CFString, &selectedRange)
-        guard rangeResult == .success, let range = selectedRange else { return nil }
-
-        guard CFGetTypeID(range) == AXValueGetTypeID() else { return nil }
-        let axValue = range as! AXValue
-        var rangeValue = CFRange()
-        AXValueGetValue(axValue, .cfRange, &rangeValue)
-
-        // 获取输入框文本内容（Get text field content）
-        var value: CFTypeRef?
-        let textResult = AXUIElementCopyAttributeValue(focusedUIElement, kAXValueAttribute as CFString, &value)
-        guard textResult == .success, let text = value as? String else { return nil }
-
-        // 计算光标后方位置（Calculate position after cursor）
-        // AX API 的 CFRange 使用 UTF-16 偏移，需用 UTF16View 索引（AX API's CFRange uses UTF-16 offsets, must use UTF16View indexing）
-        let utf16 = text.utf16
-        let nextIndex = rangeValue.location + rangeValue.length
-        guard nextIndex >= 0, nextIndex < utf16.count else { return nil }
-        let utf16Index = utf16.index(utf16.startIndex, offsetBy: nextIndex)
-        guard let charIndex = utf16Index.samePosition(in: text) else { return nil }
-        return text[charIndex]
-    }
-
-    /// 移除文本末尾的标点符号（Remove trailing punctuation from text）
-    private static func removeTrailingPunctuation(_ text: String) -> String {
-        var trimmed = text
-        while let last = trimmed.last, PunctuationProcessor.isSentenceEndingPunctuation(last) {
-            trimmed = String(trimmed.dropLast())
-        }
-        return trimmed
     }
 
     private static func isCJKInputSource(_ source: TISInputSource) -> Bool {

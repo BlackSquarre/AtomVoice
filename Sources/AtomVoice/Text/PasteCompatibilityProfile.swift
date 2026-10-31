@@ -24,8 +24,8 @@ enum PasteCompatibilityCategory {
         switch self {
         case .electron:       return 0.25
         case .virtualMachine: return 0.35
-        case .remoteDesktop:  return 0.40
-        case .gameStreaming:  return 0.50
+        case .remoteDesktop:  return 0.70
+        case .gameStreaming:  return 0.80
         }
     }
 }

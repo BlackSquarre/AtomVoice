@@ -6,10 +6,10 @@ import Security
 
 enum PasteCompatibilityProfileTests {
     static func run(_ runner: inout TestRunner) async {
-        await runner.run("Safari and independently installed PWAs use native paste") {
+        await runner.run("Safari PWAs and ChatGPT use native paste") {
             for bundleID in ["com.apple.Safari", "com.apple.SafariTechnologyPreview",
                              "com.apple.Safari.WebApp.E59F6913-97EF-4C2F-B670-0530F7C1D80B",
-                             "com.apple.Safari.WebApp.another-site"] {
+                             "com.apple.Safari.WebApp.another-site", "com.openai.codex"] {
                 try expect(BrowserPasteCompatibility.usesNativePaste(bundleID: bundleID))
             }
             for bundleID in [nil, "", "com.apple.SafariOther", "com.apple.TextEdit", "com.google.Chrome"] {
@@ -30,7 +30,7 @@ enum PasteCompatibilityProfileTests {
 
             try expect(profile.displayName == "Microsoft Remote Desktop")
             try expect(profile.category == .remoteDesktop)
-            try expect(approximatelyEqual(profile.pasteDelay, 0.40))
+            try expect(approximatelyEqual(profile.pasteDelay, 0.70))
         }
         await runner.run("Paste compatibility matches Apple screen sharing") {
             let profile = try require(PasteCompatibilityRegistry.profile(forBundleID: "com.apple.ScreenSharing"))
@@ -51,7 +51,7 @@ enum PasteCompatibilityProfileTests {
 
             try expect(profile.displayName == "Parsec")
             try expect(profile.category == .gameStreaming)
-            try expect(approximatelyEqual(profile.pasteDelay, 0.50))
+            try expect(approximatelyEqual(profile.pasteDelay, 0.80))
         }
         await runner.run("Paste compatibility returns nil for unknown bundle IDs") {
             try expect(PasteCompatibilityRegistry.profile(forBundleID: "com.microsoft.VSCode") == nil)

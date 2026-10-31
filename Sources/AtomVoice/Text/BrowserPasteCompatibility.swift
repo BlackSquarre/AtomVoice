@@ -2,12 +2,13 @@ import Cocoa
 import ApplicationServices
 
 enum BrowserPasteCompatibility {
-    /// Safari 网页和独立 Web App 共用 WebKit，不能依赖 AX 文本写入。
+    /// 网页容器不能依赖 AX 文本写入，改为通过 AX 按目标 App 的原生 Paste 菜单。
     static func usesNativePaste(bundleID: String?) -> Bool {
         guard let bundleID else { return false }
         return bundleID == "com.apple.Safari"
             || bundleID == "com.apple.SafariTechnologyPreview"
             || bundleID.hasPrefix("com.apple.Safari.WebApp.")
+            || bundleID == "com.openai.codex"
     }
 
     /// AX 菜单修饰位中的 Command 是隐含值；零表示仅 Command，不能匹配粘贴并匹配样式等动作。
