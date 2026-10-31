@@ -37,7 +37,7 @@ extension RecordingSessionController {
             presentCapsule(presentation, ensurePanel: ensurePanel)
         case .updateCapsuleText(let text):
             ASRLatencyProbe.mark(text, stage: "side_effect_update_capsule")
-            presenter.present(.updateText(text))
+            if isRecordingOrStarting { presenter.present(.updateText(text)) }
             streamSession?.update(currentText: text)
         case .updateCapsuleBands:
             break
@@ -108,8 +108,10 @@ extension RecordingSessionController {
         case .recording:
             presenter.present(.showRecording)
         case .progress(let text, let hidesWaveform):
+            guard isRecordingOrStarting else { return }
             presenter.present(.showProgress(text: text, hidesWaveform: hidesWaveform))
         case .progressKey(let messageKey, let hidesWaveform):
+            guard isRecordingOrStarting else { return }
             presenter.present(.showProgress(text: loc(messageKey), hidesWaveform: hidesWaveform))
         case .error(let message, let dismissAfter):
             presenter.present(.showError(message: message, dismissAfter: dismissAfter, ensurePanel: ensurePanel))

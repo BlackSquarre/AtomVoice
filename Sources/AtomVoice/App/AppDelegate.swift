@@ -201,12 +201,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleTriggerDown() {
-        if session.isShowingError {
-            session.dismissError()
-            return
-        }
         if AppSettings.silenceAutoStopEnabled && session.isRecordingOrStarting {
             session.stop()
+            return
+        }
+        if session.isShowingError {
+            session.dismissError()
             return
         }
         sherpaLifecycle.cancelAutoUnload()

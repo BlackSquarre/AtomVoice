@@ -6,6 +6,50 @@ import Security
 
 enum CapsuleAnimationTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Successful result cleanup without a panel is immediate and reports its reason") {
+            try await MainActor.run {
+                let window = CapsuleWindowController()
+                let animation = FakeResultDismissAnimationStrategy()
+                window.animationStrategy = animation
+                window.presentationID = 7
+                window.recordingClickEnabled = true
+                var observedReason: CapsuleDismissReason?
+                window.onDidDismiss = { observedReason = $0 }
+                let presenter = RecordingSessionPresenter(capsuleWindow: window)
+
+                presenter.dismissRecognitionImmediately()
+
+                try expect(window.panel == nil)
+                try expect(window.contentView == nil)
+                try expect(window.animationSurfaceView == nil)
+                try expect(window.waveformView == nil)
+                try expect(window.presentationID == 8)
+                try expect(!window.recordingClickEnabled)
+                try expect(!window.isShowingError)
+                try expect(animation.stopCount == 1)
+                try expect(animation.dismissCount == 0)
+                try expect(observedReason == .recordingResultSubmitted)
+            }
+        }
+        await runner.run("Capsule optimizing invalidates the previous error dismissal") {
+            var state = CapsuleErrorPresentationState()
+            let error = state.begin()
+            try expect(state.acceptsDismissal(generation: error))
+            state.clear()
+            try expect(!state.isShowingError)
+            try expect(!state.acceptsDismissal(generation: error))
+        }
+        await runner.run("Capsule newer errors reject older dismissal callbacks") {
+            var state = CapsuleErrorPresentationState()
+            let first = state.begin()
+            let second = state.begin()
+            try expect(!state.acceptsDismissal(generation: first))
+            try expect(state.acceptsDismissal(generation: second))
+            state.clear()
+            let third = state.begin()
+            try expect(!state.acceptsDismissal(generation: second))
+            try expect(state.acceptsDismissal(generation: third))
+        }
         await runner.run("Capsule animation selection preserves style compatibility") {
             let defaultSelection = CapsuleAnimationSelection.resolve(styleCode: nil)
             try expect(defaultSelection.style == .spotlight)
@@ -291,4 +335,14 @@ enum CapsuleAnimationTests {
         }
 #endif
     }
+}
+
+private final class FakeResultDismissAnimationStrategy: CapsuleAnimationStrategy {
+    let currentInset: CGFloat = 0
+    private(set) var stopCount = 0
+    private(set) var dismissCount = 0
+
+    func animateIn(host: CapsuleAnimationHost) {}
+    func dismiss(host: CapsuleDismissHost) { dismissCount += 1 }
+    func stop() { stopCount += 1 }
 }

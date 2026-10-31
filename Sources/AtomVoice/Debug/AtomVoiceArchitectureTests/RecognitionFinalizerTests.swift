@@ -6,6 +6,144 @@ import Security
 
 enum RecognitionFinalizerTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("A synchronous output callback starting another recording prevents old result hiding") {
+            let harness = RecognitionFinalizerHarness()
+            harness.sink.onDeliver = { harness.generation += 1 }
+            harness.finish("old")
+            try expect(harness.sink.deliveredTexts == ["old"])
+            try expect(harness.presenter.events.isEmpty)
+        }
+        await runner.run("An empty live remainder hides immediately without waiting for its earlier paste") {
+            let harness = RecognitionFinalizerHarness()
+            var waitedForPriorOutput = false
+            harness.finish("already sent", liveInsertion: .init(isActive: true, committedText: "already sent"),
+                           waitForPriorOutput: { _ in waitedForPriorOutput = true })
+            try expect(harness.sink.deliveredTexts.isEmpty)
+            try expect(!waitedForPriorOutput)
+            try expect(harness.presenter.events == ["dismissImmediately"])
+        }
+        await runner.run("Immediate punctuation hides after queuing and does not wait for prior output") {
+            let harness = RecognitionFinalizerHarness()
+            harness.sink.completesDeliveriesImmediately = false
+            var waitedForPriorOutput = false
+            harness.finish("", mode: .immediate(appending: "?"),
+                           waitForPriorOutput: { _ in waitedForPriorOutput = true })
+            try expect(harness.sink.deliveredTexts == ["?"])
+            try expect(harness.presenter.events == ["dismissImmediately"])
+            try expect(!waitedForPriorOutput)
+        }
+        await runner.run("Errors still wait for prior output and stale errors cannot reopen a newer capsule") {
+            let harness = RecognitionFinalizerHarness()
+            var finishPriorOutput: (() -> Void)?
+            harness.finish("", errorMessage: "No speech", waitForPriorOutput: { finishPriorOutput = $0 })
+            try expect(harness.presenter.events.isEmpty)
+            try expect(finishPriorOutput != nil)
+            harness.generation += 1
+            finishPriorOutput?()
+            try expect(harness.presenter.events.isEmpty)
+        }
+        await runner.run("Finalizer queues text before immediately hiding without waiting for cleanup") {
+            let harness = RecognitionFinalizerHarness()
+            harness.sink.completesDeliveriesImmediately = false
+            var queuedBeforeHide = false
+            harness.presenter.onDismissImmediately = {
+                queuedBeforeHide = harness.sink.deliveredTexts == ["hello"]
+            }
+            harness.finish("hello")
+            try expect(harness.sink.deliveredTexts == ["hello"])
+            try expect(queuedBeforeHide)
+            try expect(harness.presenter.events == ["dismissImmediately"])
+            try expect(harness.sink.pendingDeliveryCompletions.count == 1)
+            harness.sink.completeNextDelivery()
+            try expect(harness.presenter.events == ["dismissImmediately"])
+        }
+        await runner.run("Old paste completion cannot dismiss a newer recording presentation") {
+            let harness = RecognitionFinalizerHarness()
+            harness.sink.completesDeliveriesImmediately = false
+            harness.finish("old")
+            harness.generation += 1
+            harness.sink.completeNextDelivery()
+            try expect(harness.presenter.events == ["dismissImmediately"])
+        }
+        await runner.run("LLM stays visible until its result then hides without the saved display delay") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 2
+            harness.refiner.delayCompletion = true
+            harness.finish("hello")
+            try expect(harness.presenter.events == ["refining"])
+            try expect(harness.sink.deliveredTexts.isEmpty)
+            harness.refiner.pendingCompletion?("polished", nil)
+            try await waitForAsyncCallbacks()
+            try expect(harness.sink.deliveredTexts == ["polished"], "Display delay must not postpone output")
+            try expect(harness.presenter.events.last == "dismissImmediately")
+            harness.generation += 1
+            let events = harness.presenter.events
+            try await waitForAsyncCallbacks()
+            try expect(harness.sink.deliveredTexts == ["polished"])
+            try expect(harness.presenter.events == events)
+        }
+        await runner.run("LLM result hides before a slower paste transaction finishes") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.settings.llmResultDelay = 2
+            harness.refiner.nextResult = "polished"
+            harness.sink.completesDeliveriesImmediately = false
+            harness.finish("hello")
+            try await waitForAsyncCallbacks()
+            try expect(harness.sink.deliveredTexts == ["polished"])
+            try expect(harness.presenter.events.last == "dismissImmediately")
+            let events = harness.presenter.events
+            harness.sink.completeNextDelivery()
+            try expect(harness.presenter.events == events)
+        }
+        await runner.run("Finalizer preserves immediate mode without punctuation") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.finish("hello", mode: .immediate(appending: nil))
+            try expect(harness.refiner.requests.isEmpty)
+            try expect(harness.sink.deliveredTexts == ["hello"])
+        }
+        await runner.run("Finalizer waits for stream finalization then immediately hides without display delay") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmResultDelay = 2
+            let stream = FakeTextStreamSession()
+            stream.completesFinalizationImmediately = false
+            harness.finish("hello", streamSession: stream)
+            try expect(stream.finalizedReplacements.count == 1)
+            try expect(harness.presenter.events.isEmpty)
+            try expect(harness.clearedStreamCount == 0)
+            try expect(stream.cancelCount == 0)
+            stream.completeFinalization()
+            try expect(harness.presenter.events == ["dismissImmediately"])
+            try expect(harness.clearedStreamCount == 1)
+        }
+        await runner.run("Old streaming completion cannot clear a newer session or presentation") {
+            let harness = RecognitionFinalizerHarness()
+            let stream = FakeTextStreamSession()
+            stream.completesFinalizationImmediately = false
+            harness.finish("hello", mode: .immediate(appending: nil), streamSession: stream)
+            harness.generation += 1
+            stream.completeFinalization()
+            try expect(harness.presenter.events.isEmpty)
+            try expect(harness.clearedStreamCount == 0)
+        }
+        await runner.run("LLM error remains in progress until fallback paste completes") {
+            let harness = RecognitionFinalizerHarness()
+            harness.settings.llmEnabled = true
+            harness.settings.llmAPIKey = "test-key"
+            harness.refiner.nextError = "LLM failed"
+            harness.sink.completesDeliveriesImmediately = false
+            harness.finish("hello")
+            try await waitForAsyncCallbacks()
+            try expect(harness.sink.deliveredTexts == ["hello"])
+            try expect(harness.presenter.events == ["refining"])
+            harness.sink.completeNextDelivery()
+            try expect(harness.presenter.events == ["refining", "error:LLM failed:3.0"])
+        }
         await runner.run("Text processor registry stops at first handler") {
             let first = FakeTextProcessor(id: "first", output: nil)
             let second = FakeTextProcessor(id: "second", output: "handled")
@@ -28,7 +166,7 @@ enum RecognitionFinalizerTests {
 
             harness.finish("hello")
 
-            try expect(harness.presenter.events == ["update:hello.", "dismiss"])
+            try expect(harness.presenter.events == ["update:hello.", "dismissImmediately"])
             try expect(harness.sink.deliveredTexts == ["hello."])
             try expect(processor.lastContext?.isImmediateFinish == false)
         }
@@ -40,7 +178,7 @@ enum RecognitionFinalizerTests {
 
             harness.finish("hello", streamSession: stream)
 
-            try expect(harness.presenter.events == ["update:hello.", "dismiss"])
+            try expect(harness.presenter.events == ["update:hello.", "dismissImmediately"])
             try expect(stream.finalizedReplacements == ["hello."])
             try expect(stream.cancelCount == 0)
             try expect(harness.clearedStreamCount == 1)
@@ -72,7 +210,7 @@ enum RecognitionFinalizerTests {
             try await waitForAsyncCallbacks()
 
             try expect(harness.refiner.requests == ["hello."])
-            try expect(harness.presenter.events == ["update:hello.", "refining", "update:pol", "update:polished.", "dismiss"])
+            try expect(harness.presenter.events == ["update:hello.", "refining", "update:pol", "update:polished.", "dismissImmediately"])
             try expect(harness.sink.deliveredTexts == ["polished."])
         }
         await runner.run("Recognition finalizer delivers processed text when LLM fails") {

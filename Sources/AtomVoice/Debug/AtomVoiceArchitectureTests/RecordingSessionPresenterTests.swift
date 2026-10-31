@@ -39,6 +39,19 @@ private final class FakePartialTextUpdateScheduler: PartialTextUpdateScheduling 
 
 enum RecordingSessionPresenterTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Immediate recognition dismissal cancels pending partial presentation") {
+            let scheduler = FakePartialTextUpdateScheduler()
+            let throttler = PartialTextUpdateThrottler(scheduler: scheduler)
+            var delivered: [String] = []
+            throttler.submit("first") { delivered.append($0) }
+            throttler.submit("pending") { delivered.append($0) }
+            let presenter = RecordingSessionPresenter(
+                capsuleWindow: CapsuleWindowController(), partialTextUpdateThrottler: throttler
+            )
+            presenter.dismissRecognitionImmediately()
+            scheduler.fireNext()
+            try expect(delivered == ["first"])
+        }
         await runner.run("Partial text throttler coalesces updates during cooldown") {
             let scheduler = FakePartialTextUpdateScheduler()
             let throttler = PartialTextUpdateThrottler(interval: 1.0 / 30.0, scheduler: scheduler)

@@ -1,6 +1,12 @@
 import AVFoundation
 import Accelerate
 
+struct AudioAnalysisFrame {
+    let bands: [Float]
+    let isVoiceLike: Bool
+    let capturedAt: TimeInterval
+}
+
 /// 音频分析器：5 段人声频谱可视化。
 /// 订阅 AudioRouter 的 16kHz mono Float32 通道，固定 SR 让频段配置和阈值不再随设备漂移。
 /// 回调全部在内部 worker queue 触发，调用方负责切回主线程消费。
@@ -8,11 +14,11 @@ import Accelerate
 ///  Subscribes to AudioRouter's 16kHz channel; fixed SR keeps band ranges and thresholds stable.
 ///  Callbacks fire on internal worker queue; caller dispatches to main as needed.)
 ///
-/// 注：静音自动停止已迁移到 ASRSilenceMonitor（基于 ASR 文本心跳），
-/// 噪声环境下的鲁棒性远胜能量域 VAD。本类不再承担静音判定。
+/// 本类提供声音证据；是否自动停止仍由 ASRSilenceMonitor 结合文字和用户设置决定。
 final class AudioAnalyzer {
     /// FFT 频段更新时触发（在 worker queue 上）
     var onBands: (([Float]) -> Void)?
+    var onAnalysis: ((AudioAnalysisFrame) -> Void)?
 
     // FFT
     private let fftSize = 1024
@@ -32,7 +38,6 @@ final class AudioAnalyzer {
         (1500, 2800),
         (2800, 4200),
     ]
-    private let visualBarProfile: [Float] = [0.40, 0.68, 1.0, 0.68, 0.40]
     private let voicePresenceWeights: [Float] = [0.25, 0.85, 1.0, 0.75, 0.20]
     private let bandNoiseFloors: [Float] = [-50, -57, -61, -64, -66]
 
@@ -55,7 +60,7 @@ final class AudioAnalyzer {
     }
 
     /// 来自 AudioRouter 16kHz 通道的 buffer。在调用线程同步拷贝 samples，剩余处理异步到 bufferQueue。
-    func accept(_ buffer: AVAudioPCMBuffer) {
+    func accept(_ buffer: AVAudioPCMBuffer, capturedAt: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         guard let channelData = buffer.floatChannelData else { return }
         let count = Int(buffer.frameLength)
         guard count > 0 else { return }
@@ -64,27 +69,30 @@ final class AudioAnalyzer {
         let sampleRate = Float(buffer.format.sampleRate)
 
         bufferQueue.async { [weak self] in
-            self?.processSamplesOnWorker(samples: samples, sampleRate: sampleRate)
+            self?.processSamplesOnWorker(samples: samples, sampleRate: sampleRate, capturedAt: capturedAt)
         }
     }
 
     // MARK: - Worker
 
-    private func processSamplesOnWorker(samples: [Float], sampleRate: Float) {
+    private func processSamplesOnWorker(samples: [Float], sampleRate: Float, capturedAt: TimeInterval) {
         sampleBuffer.append(contentsOf: samples)
 
         // 攒够 fftSize 后做 FFT，50% 重叠提高时间分辨率
         var offset = 0
         while sampleBuffer.count - offset >= fftSize {
-            let bands = sampleBuffer.withUnsafeBufferPointer { bufPtr -> [Float] in
-                guard let base = bufPtr.baseAddress else { return [Float](repeating: 0, count: 5) }
-                return computeBands(samplesPointer: base.advanced(by: offset), sampleRate: sampleRate)
+            // 按窗口位置回推输入时间，worker 积压不能把旧音频变成新的续录证据。
+            let frameTime = capturedAt - Double(sampleBuffer.count - offset - fftSize) / Double(sampleRate)
+            let frame = sampleBuffer.withUnsafeBufferPointer { bufPtr -> AudioAnalysisFrame in
+                computeFrame(samplesPointer: bufPtr.baseAddress!.advanced(by: offset),
+                             sampleRate: sampleRate, capturedAt: frameTime)
             }
             #if DEBUG_BUILD
-            logBandsIfNeeded(bands, sampleRate: sampleRate)
+            logBandsIfNeeded(frame.bands, sampleRate: sampleRate)
             #endif
             offset += fftSize / 2
-            onBands?(bands)
+            onAnalysis?(frame)
+            onBands?(frame.bands)
         }
         if offset > 0 {
             sampleBuffer.removeSubrange(0..<offset)
@@ -93,9 +101,10 @@ final class AudioAnalyzer {
 
     // MARK: - FFT
 
-    private func computeBands(samplesPointer: UnsafePointer<Float>, sampleRate: Float) -> [Float] {
+    private func computeFrame(samplesPointer: UnsafePointer<Float>, sampleRate: Float,
+                              capturedAt: TimeInterval) -> AudioAnalysisFrame {
         guard let fftSetup else {
-            return [Float](repeating: 0, count: 5)
+            return AudioAnalysisFrame(bands: [Float](repeating: 0, count: 5), isVoiceLike: false, capturedAt: capturedAt)
         }
 
         let halfSize = fftSize / 2
@@ -107,7 +116,7 @@ final class AudioAnalyzer {
         var real = [Float](repeating: 0, count: halfSize)
         var imag = [Float](repeating: 0, count: halfSize)
 
-        let bands: [Float] = real.withUnsafeMutableBufferPointer { realBuf in
+        let frame: AudioAnalysisFrame = real.withUnsafeMutableBufferPointer { realBuf in
             imag.withUnsafeMutableBufferPointer { imagBuf in
                 var split = DSPSplitComplex(realp: realBuf.baseAddress!,
                                             imagp: imagBuf.baseAddress!)
@@ -139,17 +148,53 @@ final class AudioAnalyzer {
                 }
 
                 let spectralPresence = self.weightedAverage(spectralLevels, weights: self.voicePresenceWeights)
-                let voiceEnergy = self.voiceGate(spectralPresence)
 
-                return spectralLevels.enumerated().map { (i, spectral) in
-                    let profile = i < self.visualBarProfile.count ? self.visualBarProfile[i] : 1
-                    let texture = 0.99 + spectral * 0.025
-                    return max(0, min(1, voiceEnergy * profile * texture))
+                let bands = spectralLevels.map { spectral in
+                    // 每条以自身频段为主，少量整体能量保持窄频声音的连贯感。
+                    // 轻压缩让低声更容易看见，静音底仍由上面的频谱噪声门控制。
+                    let level = self.voiceGate(spectral * 0.82 + spectralPresence * 0.18)
+                    return pow(level, 0.85)
                 }
+                return AudioAnalysisFrame(bands: bands,
+                                          isVoiceLike: self.onAnalysis != nil && self.isVoiceLike(
+                                            samplesPointer: samplesPointer, mags: mags, sampleRate: sampleRate),
+                                          capturedAt: capturedAt)
             }
         }
 
-        return bands
+        return frame
+    }
+
+    /// 复用当前 FFT 筛选有声段；稳定长音仍算声音，不按音量方差把它判成噪声。
+    /// 这是轻量证据，无法区分与人声频谱相似的机器长音，文字心跳仍需兜底。
+    private func isVoiceLike(samplesPointer: UnsafePointer<Float>, mags: [Float], sampleRate: Float) -> Bool {
+        var rms: Float = 0
+        var peak: Float = 0
+        vDSP_rmsqv(samplesPointer, 1, &rms, vDSP_Length(fftSize))
+        vDSP_maxmgv(samplesPointer, 1, &peak, vDSP_Length(fftSize))
+        guard rms.isFinite, rms >= 0.0012589254, peak / rms <= 10 else { return false }
+
+        let binWidth = sampleRate / Float(fftSize)
+        let lower = max(1, Int(ceil(70 / binWidth)))
+        let upper = min(mags.count - 1, Int(4200 / binWidth))
+        guard lower + 2 <= upper else { return false }
+        var totalPower: Float = 0
+        var voicePower: Float = 0
+        var strongestCluster: Float = 0
+        var previousPower: Float = 0
+        var secondPreviousPower: Float = 0
+        for index in 1..<mags.count {
+            let power = mags[index] * mags[index]
+            totalPower += power
+            if index >= lower && index <= upper {
+                voicePower += power
+                strongestCluster = max(strongestCluster, power + previousPower + secondPreviousPower)
+                secondPreviousPower = previousPower
+                previousPower = power
+            }
+        }
+        guard totalPower.isFinite, totalPower > 0, voicePower > 0 else { return false }
+        return voicePower / totalPower >= 0.55 && strongestCluster / voicePower >= 0.20
     }
 
     private func bandEnergy(mags: [Float], loIdx: Int, hiIdx: Int) -> Float {

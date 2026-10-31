@@ -1,8 +1,37 @@
 import Cocoa
 
+/// 波形只在绘制节拍平滑一次；真实时间常数不随音频回调频率或显示帧率漂移。
+struct WaveformEnvelope {
+    static let bandCount = 5
+    private var targets = [Double](repeating: 0, count: WaveformEnvelope.bandCount)
+    private(set) var levels = [Double](repeating: 0, count: WaveformEnvelope.bandCount)
+
+    mutating func updateBands(_ bands: [Float]) {
+        for index in targets.indices {
+            let value = index < bands.count ? Double(bands[index]) : 0
+            targets[index] = value.isFinite && value >= 0.008 ? min(1, value) : 0
+        }
+    }
+
+    mutating func advance(by elapsed: TimeInterval) {
+        guard elapsed.isFinite, elapsed > 0 else { return }
+        let attack = 1 - exp(-elapsed / 0.028)
+        let release = 1 - exp(-elapsed / 0.110)
+        for index in levels.indices {
+            let coefficient = targets[index] > levels[index] ? attack : release
+            levels[index] += (targets[index] - levels[index]) * coefficient
+        }
+    }
+
+    mutating func reset() {
+        targets = [Double](repeating: 0, count: Self.bandCount)
+        levels = targets
+    }
+}
+
 final class WaveformView: NSView {
     // MARK: - Layout
-    private let barCount = 5
+    private let barCount = WaveformEnvelope.bandCount
     private let barWidth: CGFloat  = 3.0   // 5根 × 3 + 4间距 × 2 = 23pt，居中在28pt容器内（5 bars × 3 + 4 gaps × 2 = 23pt, centered in 28pt container）
     private let barSpacing: CGFloat = 2.0
     private let minBarHeight: CGFloat = 3.0
@@ -14,19 +43,12 @@ final class WaveformView: NSView {
     private let initPhases: [CGFloat] = [0.0, 2.1, 0.8, 2.9, 1.4]
 
     // MARK: - 状态
-    private var bandLevels: [CGFloat] = [0, 0, 0, 0, 0]   // 来自 FFT 的 5 个频段能量（5 band energy levels from FFT）
-
+    private var envelope = WaveformEnvelope()
     private var barHeights: [CGFloat]
     private var displayTime: CGFloat = 0
     private var isAnimating = false
     private var timer: Timer?
-    private var lastTickDate: Date = Date()
-
-    // MARK: - 响应速度
-    // attack 快（说话时立刻响应），release 慢（有余韵感）（Attack is fast (responds immediately when speaking), release is slow (has lingering feel)）
-    private let attackCoeff:  CGFloat = 0.86   // 开口时马上响应（Responds immediately when speaking）
-    private let releaseCoeff: CGFloat = 0.12   // 回落慢一点，保留阻尼和余韵（Falls back slowly, preserving damping and afterglow）
-    private let levelDeadband: CGFloat = 0.025  // 吃掉小幅抖动，避免细碎弹跳（Absorbs small jitter, avoids fine bouncing）
+    private var lastTickUptime: TimeInterval = ProcessInfo.processInfo.systemUptime
 
     // 待机呼吸幅度（无声时轻微摆动）（Idle breathing amplitude (slight sway when silent)）
     private let idleAmplitude: CGFloat = 0.03
@@ -50,36 +72,19 @@ final class WaveformView: NSView {
 
     /// 接收来自 AudioEngine FFT 的 5 频段能量（0-1）（Receive 5-band energy (0-1) from AudioEngine FFT）
     func updateBands(_ bands: [Float]) {
-        for i in 0..<min(bands.count, barCount) {
-            let target = filteredLevel(CGFloat(bands[i]), current: bandLevels[i])
-            let current = bandLevels[i]
-            if target > current {
-                bandLevels[i] += (target - current) * attackCoeff
-            } else {
-                bandLevels[i] += (target - current) * releaseCoeff
-            }
-        }
+        envelope.updateBands(bands)
     }
 
     /// 兼容旧的 RMS 接口（全频段同等驱动）（Compatible with legacy RMS interface (all bands driven equally)）
     func updateRMS(_ rms: Float) {
-        let level = CGFloat(rms)
-        for i in 0..<barCount {
-            let current = bandLevels[i]
-            let target = filteredLevel(level, current: current)
-            if target > current {
-                bandLevels[i] += (target - current) * attackCoeff
-            } else {
-                bandLevels[i] += (target - current) * releaseCoeff
-            }
-        }
+        updateBands(Array(repeating: rms, count: barCount))
     }
 
     func stopAnimating() {
         isAnimating = false
         timer?.invalidate()
         timer = nil
-        bandLevels     = [0, 0, 0, 0, 0]
+        envelope.reset()
         displayTime = 0
         for i in 0..<barCount { barHeights[i] = minBarHeight }
         needsDisplay = true
@@ -94,7 +99,7 @@ final class WaveformView: NSView {
 
     private func startAnimating() {
         isAnimating = true
-        lastTickDate = Date()
+        lastTickUptime = ProcessInfo.processInfo.systemUptime
         timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             guard let self, self.isAnimating else { return }
             self.tick()
@@ -103,15 +108,16 @@ final class WaveformView: NSView {
     }
 
     private func tick() {
-        let now = Date()
-        let dt = CGFloat(now.timeIntervalSince(lastTickDate))
-        lastTickDate = now
-        displayTime += dt
+        let now = ProcessInfo.processInfo.systemUptime
+        let dt = now - lastTickUptime
+        lastTickUptime = now
+        displayTime += CGFloat(dt)
+        envelope.advance(by: dt)
 
         for i in 0..<barCount {
             // 正弦波只做轻微调制，真实音量决定主体高度。（Sine wave only provides subtle modulation; real volume determines bar height.）
             let sine = sin(displayTime * oscFreqs[i] + initPhases[i])  // -1…1
-            let level = bandLevels[i]
+            let level = CGFloat(envelope.levels[i])
 
             let pulse = 0.97 + 0.03 * sine
             let quietness = max(0, 1 - level * 5)
@@ -119,20 +125,11 @@ final class WaveformView: NSView {
             let normalized = min(1, level * pulse + idle)
             let targetHeight = minBarHeight + (maxBarHeight - minBarHeight) * normalized
 
-            // 竖条高度平滑追踪目标（Bar height smoothly tracks target）
-            let coeff: CGFloat = targetHeight > barHeights[i] ? 0.46 : 0.16
-            barHeights[i] += (targetHeight - barHeights[i]) * coeff
-            barHeights[i] = max(minBarHeight, min(maxBarHeight, barHeights[i]))
+            // envelope 已完成平滑，高度不再叠加第二层阻尼。
+            barHeights[i] = max(minBarHeight, min(maxBarHeight, targetHeight))
         }
 
         needsDisplay = true
-    }
-
-    private func filteredLevel(_ target: CGFloat, current: CGFloat) -> CGFloat {
-        let clamped = max(0, min(1, target))
-        if clamped < 0.015 { return 0 }
-        if current < 0.02, clamped > current { return clamped }
-        return abs(clamped - current) < levelDeadband ? current : clamped
     }
 
     // MARK: - Draw

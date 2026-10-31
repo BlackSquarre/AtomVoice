@@ -1,5 +1,10 @@
 import Cocoa
 
+enum CapsuleDismissReason: Equatable {
+    case standard
+    case recordingResultSubmitted
+}
+
 private final class CapsuleDragGestureRecognizer: NSGestureRecognizer {
     private let dragThreshold: CGFloat
     private var startScreenPoint: NSPoint?
@@ -151,13 +156,30 @@ private final class CapsuleClickOverlayView: NSView, NSGestureRecognizerDelegate
     }
 }
 
+/// 同一面板进入新状态后，旧错误提示的延迟收起必须失效。
+struct CapsuleErrorPresentationState {
+    private var generation = 0
+    private var activeGeneration: Int?
+
+    var isShowingError: Bool { activeGeneration != nil }
+
+    mutating func begin() -> Int {
+        generation += 1
+        activeGeneration = generation
+        return generation
+    }
+
+    mutating func clear() { activeGeneration = nil }
+    func acceptsDismissal(generation: Int) -> Bool { activeGeneration == generation }
+}
+
 final class CapsuleWindowController {
     enum DisplayMode {
         case normal
         case download
     }
 
-    var onDidDismiss: (() -> Void)?
+    var onDidDismiss: ((CapsuleDismissReason) -> Void)?
     var panel: NSPanel?
     var waveformView: WaveformView?
     private var textLabel: NSTextField?
@@ -169,7 +191,8 @@ final class CapsuleWindowController {
     private var downloadProgressValue: Double = 0
     var waveformVisible = true
     var presentationID = 0
-    private(set) var isShowingError = false
+    private var errorPresentation = CapsuleErrorPresentationState()
+    var isShowingError: Bool { errorPresentation.isShowingError }
     private var displayMode: DisplayMode = .normal
     var recordingClickEnabled = false
     var onRecordingClick: (() -> Void)?
@@ -406,7 +429,7 @@ final class CapsuleWindowController {
             // 上一次 showError 的 3 秒延迟尚未结束时重新录音，先清理旧面板（Previous showError 3s delay hasn't ended when re-recording, clean up old panel first）
             cleanup()
         }
-        isShowingError = false
+        errorPresentation.clear()
         presentationID += 1
         self.displayMode = displayMode
 
@@ -663,6 +686,7 @@ final class CapsuleWindowController {
     }
 
     func updateText(_ text: String, completion: (() -> Void)? = nil) {
+        errorPresentation.clear()
         // 紧凑状态模式下不展示实时识别文字，避免胶囊跟着文字变长变短
         // (In compact status mode skip live text — keeps capsule width fixed and statusy)
         if compactStatusKey != nil {
@@ -674,6 +698,7 @@ final class CapsuleWindowController {
     }
 
     private func updateStatusText(_ text: String, completion: (() -> Void)? = nil) {
+        errorPresentation.clear()
         updateVisibleText(text, completion: completion)
     }
 
@@ -701,6 +726,7 @@ final class CapsuleWindowController {
     }
 
     func showProgress(_ text: String, hidesWaveform: Bool = true) {
+        errorPresentation.clear()
         guard panel != nil else {
             show(showRecordingTimer: false, initialText: text, showWaveformInitially: !hidesWaveform)
             refiningLabel?.isHidden = true
@@ -729,6 +755,7 @@ final class CapsuleWindowController {
     }
 
     func showDownloadProgress(_ text: String, progress: Double) {
+        errorPresentation.clear()
         downloadProgressValue = min(max(progress, 0), 1)
         guard panel != nil, displayMode == .download else {
             show(showRecordingTimer: false, initialText: text, showWaveformInitially: false, displayMode: .download)
@@ -803,6 +830,7 @@ final class CapsuleWindowController {
     }
 
     func showRecording() {
+        errorPresentation.clear()
         displayMode = .normal
         downloadTrackLayer?.removeFromSuperlayer()
         downloadTrackLayer = nil
@@ -821,27 +849,29 @@ final class CapsuleWindowController {
         ensureVisible()
         let currentPanel = panel
         let currentPresentationID = presentationID
-        isShowingError = true
+        let errorGeneration = errorPresentation.begin()
         stopShimmer()
         refiningLabel?.isHidden = true
         textLabel?.isHidden = false
         // 错误展示要看清完整文案，强制退出紧凑模式
         // (Errors need full visibility — leave compact mode)
         compactStatusKey = nil
-        updateText("⚠️ \(message)")
-        // 在 updateText 之后设置红色（updateText 会重置为默认颜色）（Set red color after updateText — updateText resets to default color）
+        // 错误文案绕过正常文本恢复入口，保留本次错误的收起凭据。
+        updateVisibleText("⚠️ \(message)")
         textLabel?.textColor = .systemRed
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self,
                   self.panel === currentPanel,
-                  self.presentationID == currentPresentationID
+                  self.presentationID == currentPresentationID,
+                  self.errorPresentation.acceptsDismissal(generation: errorGeneration)
             else { return }
             self.dismiss()
         }
     }
 
     func showRefining() {
+        errorPresentation.clear()
         textLabel?.isHidden = true
         refiningLabel?.isHidden = false
         waveformView?.stopAnimating()
@@ -859,6 +889,7 @@ final class CapsuleWindowController {
     /// 进入紧凑模式：窄胶囊 + 只显示固定状态文案（如"正在输入"）
     /// (Enter compact mode: narrow capsule + fixed status text such as "Typing")
     func enterCompactStatusMode(statusKey: String) {
+        errorPresentation.clear()
         compactStatusKey = statusKey
         guard let label = textLabel else { return }
         let displayText = loc(statusKey)
@@ -872,6 +903,7 @@ final class CapsuleWindowController {
     /// 切换紧凑模式下的状态文案（typing → refining 等场景）
     /// (Switch the compact mode status text — e.g. typing → refining)
     func updateCompactStatus(statusKey: String) {
+        errorPresentation.clear()
         compactStatusKey = statusKey
         guard let label = textLabel else { return }
         let displayText = loc(statusKey)
@@ -900,17 +932,23 @@ final class CapsuleWindowController {
     // MARK: - Dismiss
 
     func dismiss(completion: (() -> Void)? = nil) {
-        isShowingError = false
+        errorPresentation.clear()
         guard let panel = panel else { completion?(); return }
         animationStrategy.stop()
         animationStrategy.dismiss(host: makeDismissHost(panel: panel, completion: completion))
+    }
+
+    /// 成功结果已提交，立即让出输入区域，不经过退场动画，也不取消输出事务。
+    func dismissRecordingResultImmediately() {
+        recordingClickEnabled = false
+        cleanup(reason: .recordingResultSubmitted)
     }
 
     // MARK: - Debug 计时器
 
     // MARK: - Cleanup
 
-    func cleanup() {
+    func cleanup(reason: CapsuleDismissReason = .standard) {
         let dismissHandler = onDidDismiss
         panel?.orderOut(nil)
         stopShimmer()
@@ -919,7 +957,7 @@ final class CapsuleWindowController {
         downloadTrackLayer = nil
         downloadFillLayer = nil
         downloadProgressValue = 0
-        isShowingError = false
+        errorPresentation.clear()
         presentationID += 1
         #if DEBUG_BUILD
         elapsedTimerStrategy.stop()
@@ -934,7 +972,7 @@ final class CapsuleWindowController {
         compactStatusKey = nil
         displayMode = .normal
         panel = nil
-        dismissHandler?()
+        dismissHandler?(reason)
     }
 }
 

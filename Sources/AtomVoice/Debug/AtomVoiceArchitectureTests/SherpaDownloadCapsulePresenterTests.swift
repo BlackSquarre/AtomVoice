@@ -4,6 +4,64 @@ import Foundation
 
 enum SherpaDownloadCapsulePresenterTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Recording result submission suppresses current download progress and successful completion") {
+            var recording = true
+            let capsule = FakeDownloadCapsulePresenter()
+            let presenter = SherpaDownloadCapsulePresenter(
+                capsulePresenter: capsule, isRecording: { recording },
+                now: { Date(timeIntervalSince1970: 1) }, scheduleAfter: { _, _ in }
+            )
+            presenter.updateProgress(progress: 0.2, message: "Deferred", force: true)
+            recording = false
+            presenter.handleCapsuleDidDismiss(reason: .recordingResultSubmitted)
+            presenter.updateProgress(progress: 0.7, message: "Still downloading", force: false)
+            presenter.handleCapsuleDidDismiss()
+            presenter.finishDownload(success: true, error: nil)
+            try expect(capsule.events.isEmpty)
+
+            presenter.updateProgress(progress: 0.1, message: "Next download", force: true)
+            try expect(capsule.events == ["progress:0.10:Next download"])
+        }
+        await runner.run("Explicit download presentation can resume after successful recording hide") {
+            let capsule = FakeDownloadCapsulePresenter()
+            let presenter = SherpaDownloadCapsulePresenter(
+                capsulePresenter: capsule, isRecording: { false },
+                now: { Date(timeIntervalSince1970: 1) }, scheduleAfter: { _, _ in }
+            )
+            presenter.updateProgress(progress: 0.1, message: "Started", force: true)
+            presenter.handleCapsuleDidDismiss(reason: .recordingResultSubmitted)
+            presenter.updateProgress(progress: 0.2, message: "Hidden", force: false)
+            presenter.updateProgress(progress: 0.3, message: "Requested", force: true)
+            try expect(capsule.events == ["progress:0.10:Started", "progress:0.30:Requested"])
+        }
+        await runner.run("Suppressed download still reports errors and does not block later downloads") {
+            var recording = true
+            let capsule = FakeDownloadCapsulePresenter()
+            let presenter = SherpaDownloadCapsulePresenter(
+                capsulePresenter: capsule, isRecording: { recording },
+                now: { Date(timeIntervalSince1970: 1) }, scheduleAfter: { _, _ in }
+            )
+            presenter.updateProgress(progress: 0.1, message: "Deferred", force: true)
+            recording = false
+            presenter.handleCapsuleDidDismiss(reason: .recordingResultSubmitted)
+            presenter.finishDownload(success: false, error: "network")
+            try expect(capsule.events == ["error:\(loc("sherpa.download.failed", "network")):6.0"])
+            presenter.updateProgress(progress: 0.1, message: "Next", force: true)
+            try expect(capsule.events.last == "progress:0.10:Next")
+        }
+        await runner.run("A pending download success does not reopen after recording result submission") {
+            var recording = true
+            let capsule = FakeDownloadCapsulePresenter()
+            let presenter = SherpaDownloadCapsulePresenter(
+                capsulePresenter: capsule, isRecording: { recording },
+                now: { Date(timeIntervalSince1970: 1) }, scheduleAfter: { _, _ in }
+            )
+            presenter.finishDownload(success: true, error: nil)
+            recording = false
+            presenter.handleCapsuleDidDismiss(reason: .recordingResultSubmitted)
+            presenter.handleCapsuleDidDismiss()
+            try expect(capsule.events.isEmpty)
+        }
         await runner.run("updateProgress shows download progress when not recording") {
             var currentDate = Date(timeIntervalSince1970: 1)
             let capsule = FakeDownloadCapsulePresenter()
@@ -170,7 +228,7 @@ enum SherpaDownloadCapsulePresenterTests {
             try expect(capsule.events == ["dismiss"])
 
             window.panel = nil
-            window.onDidDismiss?()
+            window.onDidDismiss?(.standard)
 
             try expect(capsule.events == ["dismiss", "progress:0.60:Deferred"])
         }
@@ -196,7 +254,7 @@ enum SherpaDownloadCapsulePresenterTests {
             try expect(capsule.events == ["dismiss"])
 
             // 模拟识别结果胶囊仍在，占用同一个 window。
-            window.onDidDismiss?()
+            window.onDidDismiss?(.standard)
 
             try expect(capsule.events == ["dismiss"])
         }

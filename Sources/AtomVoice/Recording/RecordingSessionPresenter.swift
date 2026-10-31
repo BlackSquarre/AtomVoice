@@ -1,5 +1,38 @@
 import Foundation
 
+/// 音频分析比主线程展示更快时，只保留最新帧，避免排队播放过时的声音条。
+final class CapsuleAudioFrameDelivery {
+    private let lock = NSLock()
+    private let schedule: (@escaping () -> Void) -> Void
+    private var latestFrame: AudioAnalysisFrame?
+    private var deliveryScheduled = false
+
+    init(schedule: @escaping (@escaping () -> Void) -> Void = { action in
+        DispatchQueue.main.async(execute: action)
+    }) {
+        self.schedule = schedule
+    }
+
+    func submit(_ frame: AudioAnalysisFrame, deliver: @escaping (AudioAnalysisFrame) -> Void) {
+        lock.lock()
+        latestFrame = frame
+        let needsScheduling = !deliveryScheduled
+        deliveryScheduled = true
+        lock.unlock()
+        guard needsScheduling else { return }
+
+        schedule { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            let frame = self.latestFrame
+            self.latestFrame = nil
+            self.deliveryScheduled = false
+            self.lock.unlock()
+            if let frame { deliver(frame) }
+        }
+    }
+}
+
 protocol PartialTextUpdateScheduledTask: AnyObject {
     func cancel()
 }
@@ -93,6 +126,7 @@ enum RecordingSessionPresentationEvent: Equatable {
     case showProgress(text: String, hidesWaveform: Bool)
     case showError(message: String, dismissAfter: TimeInterval, ensurePanel: Bool)
     case showRefining
+    case showOptimizing
     case updateText(String)
     case updateBands([Float])
     case startShimmer
@@ -133,6 +167,7 @@ protocol RecordingSessionPresenting: RecognitionResultPresenting {
 final class RecordingSessionPresenter: RecordingSessionPresenting {
     private let capsuleWindow: CapsuleWindowController
     private let partialTextUpdateThrottler: PartialTextUpdateThrottler
+    private var isOptimizingPresentation = false
 
     init(
         capsuleWindow: CapsuleWindowController,
@@ -149,6 +184,7 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
     func present(_ event: RecordingSessionPresentationEvent) {
         switch event {
         case .updateText(let text):
+            guard !isOptimizingPresentation else { return }
             ASRLatencyProbe.mark(text, stage: "presenter_update_text")
             partialTextUpdateThrottler.submit(text) { [weak self] latestText in
                 self?.capsuleWindow.updateText(latestText)
@@ -160,8 +196,12 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
         case .stopShimmer:
             capsuleWindow.stopShimmer()
         default:
-            partialTextUpdateThrottler.flush { [weak self] latestText in
-                self?.capsuleWindow.updateText(latestText)
+            if case .showOptimizing = event {
+                partialTextUpdateThrottler.cancel()
+            } else {
+                partialTextUpdateThrottler.flush { [weak self] latestText in
+                    self?.capsuleWindow.updateText(latestText)
+                }
             }
             applyImmediatePresentation(event)
         }
@@ -170,27 +210,32 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
     private func applyImmediatePresentation(_ event: RecordingSessionPresentationEvent) {
         switch event {
         case .showInitial(let compactStatusKey):
+            isOptimizingPresentation = false
             capsuleWindow.show(compactStatusKey: compactStatusKey)
         case .showRecording:
+            isOptimizingPresentation = false
             capsuleWindow.showRecording()
         case let .showProgress(text, hidesWaveform):
             capsuleWindow.showProgress(text, hidesWaveform: hidesWaveform)
         case let .showError(message, dismissAfter, ensurePanel):
+            isOptimizingPresentation = false
             if ensurePanel {
                 capsuleWindow.show()
             }
             capsuleWindow.showError(message, dismissAfter: dismissAfter)
         case .showRefining:
             capsuleWindow.showRefining()
+        case .showOptimizing:
+            isOptimizingPresentation = true
+            capsuleWindow.showProgress(loc("capsule.optimizing"), hidesWaveform: true)
         case .updateText, .updateBands, .startShimmer, .stopShimmer:
             break
         }
     }
 
     func dismiss(completion: (() -> Void)? = nil) {
-        partialTextUpdateThrottler.flush { [weak self] latestText in
-            self?.capsuleWindow.updateText(latestText)
-        }
+        partialTextUpdateThrottler.cancel()
+        isOptimizingPresentation = false
         capsuleWindow.dismiss(completion: completion)
     }
 
@@ -199,7 +244,7 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
     }
 
     func showRecognitionRefining() {
-        present(.showRefining)
+        present(.showOptimizing)
     }
 
     func showRecognitionError(_ message: String, dismissAfter: TimeInterval) {
@@ -211,5 +256,11 @@ final class RecordingSessionPresenter: RecordingSessionPresenting {
 
     func dismissRecognition(completion: (() -> Void)?) {
         dismiss(completion: completion)
+    }
+
+    func dismissRecognitionImmediately() {
+        partialTextUpdateThrottler.cancel()
+        isOptimizingPresentation = false
+        capsuleWindow.dismissRecordingResultImmediately()
     }
 }

@@ -57,6 +57,7 @@ final class FakeTextProcessor: TextPostProcessor {
 
 final class FakeRecognitionPresenter: RecognitionResultPresenting {
     private(set) var events: [String] = []
+    var onDismissImmediately: (() -> Void)?
 
     func updateRecognitionText(_ text: String) {
         events.append("update:\(text)")
@@ -74,11 +75,17 @@ final class FakeRecognitionPresenter: RecognitionResultPresenting {
         events.append("dismiss")
         completion?()
     }
+
+    func dismissRecognitionImmediately() {
+        events.append("dismissImmediately")
+        onDismissImmediately?()
+    }
 }
 
 final class FakeRecordingSessionPresenter: RecordingSessionPresenting {
     private(set) var events: [RecordingSessionPresentationEvent] = []
     private(set) var dismissCount = 0
+    private(set) var immediateDismissCount = 0
     var isShowingError = false
 
     func present(_ event: RecordingSessionPresentationEvent) {
@@ -108,6 +115,11 @@ final class FakeRecordingSessionPresenter: RecordingSessionPresenting {
 
     func dismissRecognition(completion: (() -> Void)?) {
         dismiss(completion: completion)
+    }
+
+    func dismissRecognitionImmediately() {
+        immediateDismissCount += 1
+        dismiss(completion: nil)
     }
 }
 
@@ -145,6 +157,7 @@ final class FakeTextOutputSink: TextOutputSink {
     private(set) var deliveredTexts: [String] = []
     private(set) var beginStreamCount = 0
     private(set) var pendingDeliveryCompletions: [(() -> Void)?] = []
+    var onDeliver: (() -> Void)?
 
     init(
         code: String = "fake",
@@ -166,6 +179,7 @@ final class FakeTextOutputSink: TextOutputSink {
 
     func deliver(text: String, completion: (() -> Void)?) {
         deliveredTexts.append(text)
+        onDeliver?()
         if completesDeliveriesImmediately {
             completion?()
         } else {
@@ -186,6 +200,8 @@ final class FakeTextOutputSink: TextOutputSink {
 }
 
 final class FakeTextStreamSession: TextStreamSession {
+    var completesFinalizationImmediately = true
+    private var pendingFinalization: (() -> Void)?
     private(set) var updates: [String] = []
     private(set) var finalizedReplacements: [String?] = []
     private(set) var cancelCount = 0
@@ -196,6 +212,13 @@ final class FakeTextStreamSession: TextStreamSession {
 
     func finalize(replacingWith finalText: String?, completion: (() -> Void)?) {
         finalizedReplacements.append(finalText)
+        if completesFinalizationImmediately { completion?() }
+        else { pendingFinalization = completion }
+    }
+
+    func completeFinalization() {
+        let completion = pendingFinalization
+        pendingFinalization = nil
         completion?()
     }
 

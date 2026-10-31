@@ -187,7 +187,8 @@ final class RecognitionFinalizerHarness {
         engineCode: String = ASREngineRegistry.appleCode,
         errorMessage: String? = nil,
         liveInsertion: RecognitionLiveInsertionSnapshot = RecognitionLiveInsertionSnapshot(isActive: false, committedText: ""),
-        streamSession: TextStreamSession? = nil
+        streamSession: TextStreamSession? = nil,
+        waitForPriorOutput: @escaping (@escaping () -> Void) -> Void = { $0() }
     ) {
         finalizer.finish(
             RecognitionResultFinalizer.Request(
@@ -198,7 +199,8 @@ final class RecognitionFinalizerHarness {
                 liveInsertion: liveInsertion,
                 streamSession: streamSession,
                 clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 },
-                generation: generation
+                generation: generation,
+                waitForPriorOutput: waitForPriorOutput
             )
         )
     }

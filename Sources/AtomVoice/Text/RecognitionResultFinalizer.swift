@@ -6,6 +6,7 @@ protocol RecognitionResultPresenting: AnyObject {
     func showRecognitionRefining()
     func showRecognitionError(_ message: String, dismissAfter: TimeInterval)
     func dismissRecognition(completion: (() -> Void)?)
+    func dismissRecognitionImmediately()
 }
 
 // LLM 润色协议：生产代码用 LLMRefiner，测试用 fake。
@@ -52,6 +53,7 @@ final class RecognitionResultFinalizer {
         let clearStreamSession: () -> Void
         let generation: Int
         var preparedText: String? = nil
+        var waitForPriorOutput: (@escaping () -> Void) -> Void = { $0() }
     }
 
     private let presenter: RecognitionResultPresenting
@@ -78,6 +80,7 @@ final class RecognitionResultFinalizer {
     }
 
     func finish(_ request: Request) {
+        guard isGenerationValid(request.generation) else { return }
         let rawText = remainingTextAfterLiveInsertion(
             request.recognizedText,
             liveInsertion: request.liveInsertion
@@ -132,7 +135,7 @@ final class RecognitionResultFinalizer {
         }
 
         if rawText.isEmpty {
-            showRecordingResultErrorOrDismiss(errorMessage)
+            showRecordingResultErrorOrDismiss(errorMessage, request: request)
             return
         }
 
@@ -150,23 +153,16 @@ final class RecognitionResultFinalizer {
                     self.onRefiningStateChanged?(false, nil)
                     if let errorMessage {
                         // LLM 失败时保持原行为：先把未润色文本上屏，同时展示错误。
-                        self.outputSinkProvider().deliver(text: processedText, completion: nil)
-                        self.presenter.showRecognitionError(errorMessage, dismissAfter: 3)
+                        self.deliverAndFinish(processedText, request: request, errorMessage: errorMessage)
                         return
                     }
                     let finalText = refined ?? processedText
                     self.presenter.updateRecognitionText(finalText)
-                    let delay = self.settingsProvider().llmResultDelay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                        guard let self, self.isGenerationValid(request.generation) else { return }
-                        self.presenter.dismissRecognition {
-                            self.outputSinkProvider().deliver(text: finalText, completion: nil)
-                        }
-                    }
+                    self.deliverAndFinish(finalText, request: request)
                 }
             }
         } else {
-            dismissAndDeliver(processedText)
+            deliverAndFinish(processedText, request: request)
         }
     }
 
@@ -196,26 +192,19 @@ final class RecognitionResultFinalizer {
                     self.onRefiningStateChanged?(false, nil)
                     let finalText = refined ?? processedText
                     let replacement = llmError != nil ? processedText : finalText
-                    self.finalizeStreamSession(session, replacingWith: replacement, request: request)
                     if let llmError {
-                        self.presenter.showRecognitionError(llmError, dismissAfter: 3)
+                        self.finalizeStreamSession(session, replacingWith: replacement, request: request,
+                                                   errorMessage: llmError)
                     } else {
                         self.presenter.updateRecognitionText(finalText)
-                        let delay = self.settingsProvider().llmResultDelay
-                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                            guard let self, self.isGenerationValid(request.generation) else { return }
-                            self.presenter.dismissRecognition(completion: nil)
-                        }
+                        self.finalizeStreamSession(session, replacingWith: replacement, request: request)
                     }
                 }
             }
         } else {
             // 无 LLM：仅在自动标点改了文本时做替换；否则原样提交即可。
             let replacement: String? = (processedText != rawText) ? processedText : nil
-            presenter.dismissRecognition { [weak self] in
-                guard let self, self.isGenerationValid(request.generation) else { return }
-                self.finalizeStreamSession(session, replacingWith: replacement, request: request)
-            }
+            finalizeStreamSession(session, replacingWith: replacement, request: request)
         }
     }
 
@@ -239,30 +228,24 @@ final class RecognitionResultFinalizer {
             }
             let processedText = processedTextForFinalResult(rawText, isImmediateFinish: true, request: request)
             let finalText = textByAppendingImmediatePunctuation(punctuation, to: processedText)
-            presenter.dismissRecognition { [weak self] in
-                self?.finalizeStreamSession(
-                    session,
-                    replacingWith: finalText != rawText ? finalText : nil,
-                    request: request
-                )
-            }
+            finalizeStreamSession(session, replacingWith: finalText != rawText ? finalText : nil, request: request)
             return
         }
 
         if rawText.isEmpty {
             if let errorMessage, punctuation?.isEmpty ?? true {
-                presenter.showRecognitionError(errorMessage, dismissAfter: 5)
+                finishPresentation(request: request, errorMessage: errorMessage, errorDismissAfter: 5)
                 return
             }
 
-            dismissAndDeliverPunctuationOnly(punctuation)
+            deliverPunctuationOnlyAndFinish(punctuation, request: request)
             return
         }
 
         let processedText = processedTextForFinalResult(rawText, isImmediateFinish: true, request: request)
         let finalText = textByAppendingImmediatePunctuation(punctuation, to: processedText)
 
-        dismissAndDeliver(finalText)
+        deliverAndFinish(finalText, request: request)
     }
 
     // MARK: - 文本处理
@@ -378,12 +361,8 @@ final class RecognitionResultFinalizer {
 
     // MARK: - 收尾动作
 
-    private func showRecordingResultErrorOrDismiss(_ errorMessage: String?) {
-        if let errorMessage {
-            presenter.showRecognitionError(errorMessage, dismissAfter: 5)
-        } else {
-            presenter.dismissRecognition(completion: nil)
-        }
+    private func showRecordingResultErrorOrDismiss(_ errorMessage: String?, request: Request) {
+        finishPresentation(request: request, errorMessage: errorMessage, errorDismissAfter: 5)
     }
 
     private func cancelStreamingResult(
@@ -393,7 +372,7 @@ final class RecognitionResultFinalizer {
     ) {
         session.cancel()
         request.clearStreamSession()
-        showRecordingResultErrorOrDismiss(errorMessage)
+        showRecordingResultErrorOrDismiss(errorMessage, request: request)
     }
 
     private func cancelStreamingImmediateResult(
@@ -405,36 +384,70 @@ final class RecognitionResultFinalizer {
         session.cancel()
         request.clearStreamSession()
         if let errorMessage, punctuation?.isEmpty ?? true {
-            presenter.showRecognitionError(errorMessage, dismissAfter: 5)
+            finishPresentation(request: request, errorMessage: errorMessage, errorDismissAfter: 5)
             return
         }
-        dismissAndDeliverPunctuationOnly(punctuation)
+        deliverPunctuationOnlyAndFinish(punctuation, request: request)
     }
 
     private func finalizeStreamSession(
         _ session: TextStreamSession,
         replacingWith replacement: String?,
-        request: Request
+        request: Request,
+        errorMessage: String? = nil
     ) {
-        session.finalize(replacingWith: replacement) {
+        guard isGenerationValid(request.generation) else { return }
+        var didComplete = false
+        session.finalize(replacingWith: replacement) { [weak self] in
+            guard let self, self.isGenerationValid(request.generation), !didComplete else { return }
+            didComplete = true
             request.clearStreamSession()
+            if let errorMessage {
+                self.finishPresentation(request: request, errorMessage: errorMessage)
+            } else {
+                // 流式端可能尚未提交最终替换；保留至 finalize 完成，再立即让开。
+                self.dismissSuccessfulResult(request: request)
+            }
         }
     }
 
-    private func dismissAndDeliver(_ text: String) {
-        // 上屏不等胶囊消失动画：立即注入，消失动画并行播放，省掉一次动画时长的延迟。
-        // 胶囊是 nonactivating panel，不抢焦点，粘贴始终发往前台 App，不受其显隐影响。
-        // (Inject immediately; the capsule fades out in parallel. It's a non-activating panel,
-        //  so paste always targets the frontmost app regardless of capsule visibility.)
-        outputSinkProvider().deliver(text: text, completion: nil)
-        presenter.dismissRecognition(completion: nil)
+    private func deliverAndFinish(_ text: String, request: Request, errorMessage: String? = nil) {
+        guard isGenerationValid(request.generation) else { return }
+        // 文字先进入独立输出队列，成功胶囊立即让开；剪贴板保护不依赖 UI 生命周期。
+        var didComplete = false
+        outputSinkProvider().deliver(text: text) { [weak self] in
+            guard let self, self.isGenerationValid(request.generation), !didComplete else { return }
+            didComplete = true
+            if let errorMessage {
+                self.finishPresentation(request: request, errorMessage: errorMessage)
+            }
+        }
+        if errorMessage == nil { dismissSuccessfulResult(request: request) }
     }
 
-    private func dismissAndDeliverPunctuationOnly(_ punctuation: String?) {
-        // 上屏不等胶囊消失动画（同 dismissAndDeliver）。(Inject without waiting for the dismiss animation.)
+    private func deliverPunctuationOnlyAndFinish(_ punctuation: String?, request: Request) {
         if let punctuation, !punctuation.isEmpty {
-            outputSinkProvider().deliver(text: punctuation, completion: nil)
+            deliverAndFinish(punctuation, request: request)
+        } else {
+            finishPresentation(request: request, errorMessage: nil)
         }
-        presenter.dismissRecognition(completion: nil)
+    }
+
+    private func dismissSuccessfulResult(request: Request) {
+        // 输出端可能同步回调并开启新一轮，提交后再次核对，不能隐藏新胶囊。
+        guard isGenerationValid(request.generation) else { return }
+        presenter.dismissRecognitionImmediately()
+    }
+
+    private func finishPresentation(request: Request, errorMessage: String?, errorDismissAfter: TimeInterval = 3) {
+        guard let errorMessage else {
+            dismissSuccessfulResult(request: request)
+            return
+        }
+        // 错误仍等既有输出事务收尾后展示；成功不等待旧实时粘贴、清理或结果展示延迟。
+        request.waitForPriorOutput { [weak self] in
+            guard let self, self.isGenerationValid(request.generation) else { return }
+            self.presenter.showRecognitionError(errorMessage, dismissAfter: errorDismissAfter)
+        }
     }
 }

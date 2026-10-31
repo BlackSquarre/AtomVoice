@@ -38,6 +38,7 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
     private var sherpaDownloadCapsuleProgress: Double = 0
     private var sherpaDownloadCapsuleLastUpdate = Date.distantPast
     private var pendingCompletion: PendingCompletion?
+    private var suppressCurrentDownloadPresentation = false
 
     convenience init(
         capsuleWindow: CapsuleWindowController,
@@ -60,18 +61,19 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
         self.isRecording = isRecording
         self.now = now
         self.scheduleAfter = scheduleAfter
-        self.capsuleWindow?.onDidDismiss = { [weak self] in
-            self?.handleCapsuleDidDismiss()
+        self.capsuleWindow?.onDidDismiss = { [weak self] reason in
+            self?.handleCapsuleDidDismiss(reason: reason)
         }
     }
 
     /// 收到下载进度时调用（节流逻辑内部处理，每 250ms 最多刷一次）。
     func updateProgress(progress: Double, message: String, force: Bool) {
+        if force { suppressCurrentDownloadPresentation = false }
         sherpaDownloadCapsuleActive = true
         sherpaDownloadCapsuleMessage = message
         sherpaDownloadCapsuleProgress = min(max(progress, 0), 1)
         pendingCompletion = nil
-        guard canPresentDownloadCapsule else {
+        guard !suppressCurrentDownloadPresentation, canPresentDownloadCapsule else {
             sherpaDownloadDeferredByRecording = true
             return
         }
@@ -98,6 +100,12 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
         sherpaDownloadDeferredByRecording = false
         sherpaDownloadCapsuleMessage = nil
         sherpaDownloadCapsuleProgress = success ? 1 : sherpaDownloadCapsuleProgress
+        let wasSuppressed = suppressCurrentDownloadPresentation
+        suppressCurrentDownloadPresentation = false
+        if success && wasSuppressed {
+            pendingCompletion = nil
+            return
+        }
         guard canPresentDownloadCapsule else {
             pendingCompletion = PendingCompletion(
                 success: success,
@@ -127,6 +135,7 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
 
     /// session.onRecordingStateChanged 触发时调用。
     func handleRecordingStateChanged(active: Bool) {
+        if active { suppressCurrentDownloadPresentation = false }
         guard sherpaDownloadCapsuleActive else { return }
         if active {
             sherpaDownloadDeferredByRecording = true
@@ -134,7 +143,12 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
         }
     }
 
-    private func handleCapsuleDidDismiss() {
+    func handleCapsuleDidDismiss(reason: CapsuleDismissReason = .standard) {
+        if reason == .recordingResultSubmitted {
+            // 结果已提交后给输入框让位；当前下载继续，进度和成功提示不再自动弹回。
+            suppressCurrentDownloadPresentation = sherpaDownloadCapsuleActive
+            if pendingCompletion?.success == true { pendingCompletion = nil }
+        }
         guard capsuleWindow?.isVisible != true else { return }
 
         if let pendingCompletion, canPresentDownloadCapsule {
@@ -149,6 +163,7 @@ final class SherpaDownloadCapsulePresenter: SherpaDownloadReporting {
         }
 
         guard sherpaDownloadCapsuleActive,
+              !suppressCurrentDownloadPresentation,
               sherpaDownloadDeferredByRecording,
               canPresentDownloadCapsule,
               let message = sherpaDownloadCapsuleMessage else { return }

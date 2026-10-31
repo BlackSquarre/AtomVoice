@@ -16,37 +16,54 @@ extension RecordingSessionController {
                 self?.copyAudioBuffer(buffer)
             },
             onPartialResult: { [weak self] text, isFinal in
-                guard let self else { return }
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecording || self.state.phase == .stopping else { return }
                 ASRLatencyProbe.mark(text, stage: "callbacks_partial", isFinal: isFinal)
                 self.dispatch(.asrPartial(text: text, isFinal: isFinal))
                 self.commitAppleLiveSegmentIfNeeded(from: text, isFinal: isFinal)
             },
             onError: { [weak self] message in
-                self?.showCapsuleError(message, dismissAfter: 5)
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                self.showCapsuleError(message, dismissAfter: 5)
             },
             onShowInitial: { [weak self] in
-                if self?.pendingStopForPresentation != true { self?.showInitialCapsule() }
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                self.showInitialCapsule()
             },
             onShowRecording: { [weak self] in
-                if self?.pendingStopForPresentation != true { self?.showRecordingCapsule() }
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                self.showRecordingCapsule()
             },
             onProgress: { [weak self] text, hidesWaveform in
-                if self?.pendingStopForPresentation != true { self?.showCapsuleProgress(text, hidesWaveform: hidesWaveform) }
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                self.showCapsuleProgress(text, hidesWaveform: hidesWaveform)
             },
             onDisplayText: { [weak self] text in
-                self?.updateCapsuleText(text)
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                self.updateCapsuleText(text)
             },
             onShimmerChanged: { [weak self] active in
-                active ? self?.applyCapsuleShimmer() : self?.stopCapsuleShimmer()
+                guard let self, self.recordingGeneration == generation,
+                      self.isRecordingOrStarting else { return }
+                active ? self.applyCapsuleShimmer() : self.stopCapsuleShimmer()
             },
             onEffectiveEngineChanged: { [weak self] code in
-                self?.dispatch(.fallbackStarted(engine: code))
+                guard let self, self.recordingGeneration == generation,
+                      self.state.isRecordingOrStarting || self.state.phase == .stopping else { return }
+                self.dispatch(.fallbackStarted(engine: code))
             },
             onStartFailure: { [weak self] failure in
+                guard let self, self.recordingGeneration == generation,
+                      self.state.isRecordingOrStarting else { return }
                 #if DEBUG_BUILD
-                self?.preserveDebugAudioEvidence(reason: .sessionStartFailed)
+                self.preserveDebugAudioEvidence(reason: .sessionStartFailed)
                 #endif
-                self?.dispatch(
+                self.dispatch(
                     .sessionStartFailed(
                         message: failure.message,
                         dismissAfter: failure.dismissAfter,
@@ -61,10 +78,12 @@ extension RecordingSessionController {
                 )
             },
             onWaitingForFinalResultChanged: { [weak self] waiting in
-                self?.dispatch(waiting ? .doubaoFinalWaitStarted : .doubaoFinalWaitEnded)
+                guard let self, self.recordingGeneration == generation else { return }
+                self.dispatch(waiting ? .doubaoFinalWaitStarted : .doubaoFinalWaitEnded)
             },
             onResetLiveInsertion: { [weak self] in
-                self?.dispatch(.liveInsertionReset)
+                guard let self, self.recordingGeneration == generation else { return }
+                self.dispatch(.liveInsertionReset)
             }
         )
     }
