@@ -308,8 +308,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 representedObject: ""
             )
         )
-        submenu.addItem(.separator())
-        for device in AudioEngineController.availableInputDevices() {
+        let devices = AudioEngineController.availableInputDevices()
+        if !devices.isEmpty {
+            submenu.addItem(.separator())
+        }
+        for device in devices {
             submenu.addItem(
                 makeMenuItem(
                     title: device.name,
@@ -319,6 +322,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 )
             )
         }
+        submenu.addItem(.separator())
+        submenu.addItem(
+            makeMenuItem(
+                title: loc("menu.audioInput.openSystemSettings"),
+                action: #selector(openSystemSoundSettings(_:)),
+                imageName: "gear"
+            )
+        )
         item.submenu = submenu
         return item
     }
@@ -762,6 +773,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         guard let uid = sender.representedObject as? String else { return }
         AppSettings.audioInputDeviceUID = uid
         rebuildMenu()
+    }
+
+    @objc private func openSystemSoundSettings(_ sender: NSMenuItem) {
+        let workspace = NSWorkspace.shared
+        let settingsURLs = [
+            "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+            "x-apple.systempreferences:com.apple.preference.sound",
+        ]
+        for urlString in settingsURLs {
+            if let url = URL(string: urlString), workspace.open(url) {
+                return
+            }
+        }
+        if let settingsURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.systempreferences") {
+            workspace.open(settingsURL)
+        }
     }
 
     @objc private func selectAnimation(_ sender: NSMenuItem) {

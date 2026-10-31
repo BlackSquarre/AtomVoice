@@ -10,6 +10,7 @@
 "menu.sherpaOpenFolder" = "開啟 Sherpa 資料夾";
 "menu.audioInput" = "輸入裝置";
 "menu.audioInput.default" = "系統預設";
+"menu.audioInput.openSystemSettings" = "在系統設定中開啟…";
 "menu.animation" = "動畫效果";
 "menu.animation.dynamicIsland" = "靈動島";
 "menu.animation.minimal" = "簡約模式";
@@ -80,6 +81,7 @@
 
 /* Capsule */
 "capsule.refining" = "優化中...";
+"capsule.optimizing" = "正在最佳化…";
 "capsule.streaming.typing" = "輸入中...";
 
 /* About */

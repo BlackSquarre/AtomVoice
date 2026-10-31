@@ -10,6 +10,7 @@
 "menu.sherpaOpenFolder" = "Open Sherpa Folder";
 "menu.audioInput" = "Input Device";
 "menu.audioInput.default" = "System Default";
+"menu.audioInput.openSystemSettings" = "Open in System Settings…";
 "menu.animation" = "Animation";
 "menu.animation.dynamicIsland" = "Dynamic Island";
 "menu.animation.minimal" = "Minimal";
@@ -80,6 +81,7 @@
 
 /* Capsule */
 "capsule.refining" = "Refining...";
+"capsule.optimizing" = "Optimizing…";
 "capsule.streaming.typing" = "Typing...";
 
 /* About */

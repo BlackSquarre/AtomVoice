@@ -10,6 +10,7 @@
 "menu.sherpaOpenFolder" = "Sherpa 폴더 열기";
 "menu.audioInput" = "입력 장치";
 "menu.audioInput.default" = "시스템 기본값";
+"menu.audioInput.openSystemSettings" = "시스템 설정에서 열기…";
 "menu.animation" = "애니메이션";
 "menu.animation.dynamicIsland" = "다이나믹 아일랜드";
 "menu.animation.minimal" = "미니멀";
@@ -80,6 +81,7 @@
 
 /* Capsule */
 "capsule.refining" = "최적화 중...";
+"capsule.optimizing" = "최적화 중…";
 "capsule.streaming.typing" = "입력 중...";
 
 /* About */
