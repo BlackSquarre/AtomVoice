@@ -29,7 +29,6 @@ final class ASRSettingsWindowController: NSObject {
 
     func showWindow() {
         if let window {
-            refreshFields()
             WindowPresenter.shared.bringToFront(window)
             return
         }
@@ -159,33 +158,10 @@ final class ASRSettingsWindowController: NSObject {
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        // 保存豆包设置（Save Doubao settings）
-        switch doubaoTab.save() {
-        case .saved, .deferred:
-            break
-        case let .failed(message, color):
-            statusLabel.stringValue = message
-            statusLabel.textColor = color
-            return
-        }
-
-        // 保存 Sherpa 设置（Save Sherpa settings）
-        switch sherpaTab.save() {
-        case .saved:
-            break
-        case let .failed(message, color):
-            statusLabel.stringValue = message
-            statusLabel.textColor = color
-            return
-        case .deferred:
-            _ = appleTab.save()
-            return
-        }
-
-        // 保存 Apple 设置（Save Apple settings）
-        switch appleTab.save() {
-        case .saved, .deferred:
-            break
+        // 保留全窗保存范围；只提交有修改的页，失败或异步安装未完成时不关闭窗口。
+        switch ASRSettingsCommitter.save([doubaoTab, sherpaTab, appleTab]) {
+        case .saved: break
+        case .deferred: return
         case let .failed(message, color):
             statusLabel.stringValue = message
             statusLabel.textColor = color
@@ -206,8 +182,12 @@ final class ASRSettingsWindowController: NSObject {
 
 extension ASRSettingsWindowController: NSTabViewDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        // 标签页切换时刷新（Refresh when switching tabs）
-        refreshFields()
+        // 只刷新状态，表单草稿保留到保存或关闭。
+        switch tabViewItem?.identifier as? String {
+        case "sherpa": sherpaTab.refreshStatus()
+        case "apple": appleTab.refreshStatus()
+        default: doubaoTab.refreshStatus()
+        }
     }
 }
 

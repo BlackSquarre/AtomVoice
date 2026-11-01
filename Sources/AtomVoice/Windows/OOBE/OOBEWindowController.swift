@@ -6,7 +6,7 @@ import Cocoa
 // (5-step linear flow: Welcome → Permissions → Trigger Key → Engine → Done)
 
 final class OOBEWindowController: NSObject {
-    static let completionDefaultsKey = "hasCompletedOOBE"
+    static let completionDefaultsKey = OOBESettings.completionDefaultsKey
 
     /// OOBE 完成回调（Called when user finishes OOBE）
     var onFinish: ((_ engineCode: String, _ triggerKeyCode: UInt16) -> Void)?

@@ -36,6 +36,24 @@ private final class FakeLLMAPIKeyStore: LLMAPIKeyStoring {
 
 enum LLMAPIKeyMigrationTests {
     static func run(_ runner: inout TestRunner) async {
+        for deleting in [false, true] {
+            await runner.run("LLM failed connection commit preserves URL model and key, deleting=\(deleting)") {
+                let backend = InMemorySettingsBackend()
+                let keyStore = FakeLLMAPIKeyStore()
+                keyStore.storedValue = "old-key"
+                let settings = LLMSettings(backend: backend, apiKeyStore: keyStore)
+                settings.apiBaseURL = "https://old.invalid/v1"
+                settings.model = "old-model"
+                keyStore.shouldWriteSucceed = false
+                keyStore.shouldDeleteSucceed = false
+                let changed = LLMConnectionSettings(baseURL: "https://new.invalid/v1", apiKey: deleting ? "" : "new-key", model: "new-model")
+                try expect(!settings.saveConnection(changed, previousKeyRead: .value("old-key")))
+                try expect(settings.apiBaseURL == "https://old.invalid/v1")
+                try expect(settings.model == "old-model")
+                try expect(keyStore.storedValue == "old-key")
+            }
+        }
+
         await runner.run("LLM migration preserves legacy data and flag when Keychain read is denied") {
             let backend = InMemorySettingsBackend()
             let keyStore = FakeLLMAPIKeyStore()

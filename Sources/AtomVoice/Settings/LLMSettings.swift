@@ -69,19 +69,16 @@ final class LLMSettings {
             )
         }
         set {
-            apiBaseURL = newValue.baseURL
-            _ = saveAPIKey(newValue.apiKey)
-            model = newValue.model
+            _ = saveConnection(newValue)
         }
     }
 
-    /// 更新连接配置；API key 写入失败时返回 false，其他非敏感设置仍会保存。
-    /// (Update connection settings; returns false if Keychain persistence fails.)
+    /// 先提交密钥；失败时保留整组旧连接配置。
     @discardableResult
     func saveConnection(_ value: LLMConnectionSettings, previousKeyRead: KeychainStringReadResult? = nil) -> Bool {
+        guard saveAPIKey(value.apiKey, previousRead: previousKeyRead) else { return false }
         apiBaseURL = value.baseURL
-        let keySaved = saveAPIKey(value.apiKey, previousRead: previousKeyRead)
         model = value.model
-        return keySaved
+        return true
     }
 }

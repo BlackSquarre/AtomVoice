@@ -8,7 +8,7 @@ final class DoubaoSettingsTab: ASRSettingsTab {
 
     private weak var textFieldDelegate: NSTextFieldDelegate?
     private var doubaoAPIKeyField: NSSecureTextField!
-    private var apiKeyReadResult: KeychainStringReadResult = .notFound
+    private let editor = DoubaoSettingsEditor()
     private var doubaoModelPopup: NSPopUpButton!
     private var doubaoEndpointField: NSTextField!
     private let doubaoModelOptions: [DoubaoModelKind] = [.v2, .v1]
@@ -114,8 +114,7 @@ final class DoubaoSettingsTab: ASRSettingsTab {
     }
 
     func refresh() {
-        apiKeyReadResult = VolcengineASRSettings.savedAPIKeyReadResult
-        let doubaoSettings = VolcengineASRSettings.load(apiKey: apiKeyReadResult.string ?? "")
+        let doubaoSettings = editor.reload()
         doubaoAPIKeyField?.stringValue = doubaoSettings.apiKey
         let currentKind = DoubaoModelKind.from(resourceID: doubaoSettings.resourceID)
         if let idx = doubaoModelOptions.firstIndex(of: currentKind) {
@@ -128,23 +127,23 @@ final class DoubaoSettingsTab: ASRSettingsTab {
         doubaoGlobalInfoLabel?.stringValue = doubaoSettings.globalSummary
     }
 
+    private var draft: DoubaoSettingsDraft {
+        var value = editor.baseline!
+        value.apiKey = doubaoAPIKeyField.stringValue
+        value.model = doubaoModelOptions[doubaoModelPopup.indexOfSelectedItem]
+        value.endpoint = doubaoEndpointField.stringValue
+        value.enableITN = doubaoITNCheckbox.state == .on
+        value.enableDDC = doubaoDDCCheckbox.state == .on
+        value.enableNonstream = doubaoNonstreamCheckbox.state == .on
+        return value
+    }
+
+    var hasChanges: Bool { editor.baseline != nil && editor.hasChanges(draft) }
+
     func save() -> ASRSettingsTabSaveOutcome {
-        guard VolcengineASRSettings.saveAPIKey(doubaoAPIKeyField.stringValue, previousRead: apiKeyReadResult) else {
+        guard editor.save(draft) else {
             return .failed(message: loc("doubao.settings.keychainFailed"), color: .systemRed)
         }
-        let savedKey = doubaoAPIKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        apiKeyReadResult = savedKey.isEmpty ? .notFound : .value(savedKey)
-
-        let selectedKind = doubaoModelOptions[doubaoModelPopup.indexOfSelectedItem]
-        VolcengineASRSettings(
-            endpoint: doubaoEndpointField.stringValue,
-            apiKey: doubaoAPIKeyField.stringValue,
-            resourceID: selectedKind.resourceID,
-            enableITN: doubaoITNCheckbox.state == .on,
-            enableDDC: doubaoDDCCheckbox.state == .on,
-            enableNonstream: doubaoNonstreamCheckbox.state == .on,
-            selectedLanguage: AppSettings.selectedLanguage
-        ).persistNonSecretFields()
         return .saved
     }
 

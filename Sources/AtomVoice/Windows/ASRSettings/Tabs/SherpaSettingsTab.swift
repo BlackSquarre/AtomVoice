@@ -6,6 +6,21 @@ final class SherpaSettingsTab: ASRSettingsTab {
     private let parentWindow: () -> NSWindow?
     private let onStatusChanged: (String, NSColor) -> Void
     private weak var sherpaDownloadReporter: SherpaDownloadReporting?
+    private struct SavedFields: Equatable {
+        let modelID: String?
+        let unload: Bool
+        let minutes: Int
+    }
+    private var baseline: SavedFields?
+    private var fields: SavedFields {
+        .init(modelID: selectedModelID, unload: sherpaAutoUnloadCheckbox?.state == .on,
+              minutes: (sherpaAutoUnloadPopup?.selectedItem?.representedObject as? Int) ?? 15)
+    }
+    var hasChanges: Bool { baseline != nil && fields != baseline }
+    func refreshStatus() {
+        rebuildSherpaModelList()
+        updateSherpaStatus()
+    }
     private var sherpaRadioButtons: [NSButton] = []
     private var sherpaButtonModelIDs: [NSButton: String] = [:]
     private var sherpaStatusLabel: NSTextField!
@@ -174,28 +189,30 @@ final class SherpaSettingsTab: ASRSettingsTab {
         rebuildSherpaModelList()
         updateSherpaAutoUnloadControls()
         updateSherpaStatus()
+        baseline = fields
     }
     func save() -> ASRSettingsTabSaveOutcome {
+        guard hasChanges else { return .saved }
+        let submitted = fields
         if let preset = selectedPreset {
             if !preset.isDownloaded {
                 persistSherpaAutoUnloadSettings()
-                startSherpaSettingsDownload(preset: preset, activateOnSuccess: true) { [weak self] success in
-                    if success {
-                        self?.onStatusChanged(loc("settings.saved"), .systemGreen)
-                    }
-                }
+                baseline = .init(modelID: baseline?.modelID, unload: submitted.unload, minutes: submitted.minutes)
+                startSherpaSettingsDownload(preset: preset, activateOnSuccess: true)
                 onStatusChanged(loc("asrSettings.sherpa.downloading"), .systemBlue)
                 return .deferred
             } else {
-                AppSettings.sherpaModelPresetID = preset.id
+                SherpaModelSelection.shared.selectPreset(preset.id)
             }
         }
         persistSherpaAutoUnloadSettings()
+        baseline = fields
         return .saved
     }
     /// 按当前识别语言重建模型列表，已下载组在前
     /// (Rebuild model list under current recognition language, downloaded group first)
-    private func rebuildSherpaModelList() {
+    private func rebuildSherpaModelList(selecting modelID: String? = nil) {
+        let draftModelID = modelID ?? selectedModelID
         sherpaRadioStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         sherpaRadioButtons = []
         sherpaButtonModelIDs = [:]
@@ -207,7 +224,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         // (Current preset id; fall back to language default if it's not in this language's list)
         let savedID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID)
         let validIDs = Set(presets.map { $0.id })
-        let activeID = savedID.flatMap { validIDs.contains($0) ? $0 : nil }
+        let activeID = (draftModelID ?? savedID).flatMap { validIDs.contains($0) ? $0 : nil }
             ?? SherpaModelPreset.defaultModelID(forRecognitionLanguage: lang)
 
         if !downloaded.isEmpty {
@@ -301,43 +318,25 @@ final class SherpaSettingsTab: ASRSettingsTab {
         sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
         sherpaStatusLabel?.textColor = .systemBlue
         sherpaDownloadReporter?.updateProgress(progress: 0, message: sherpaStatusLabel.stringValue, force: false)
-        let downloader = SherpaModelDownloader.shared
-        downloader.addObserver(
-            progress: { [weak self] _, _, overallProgress, message in
+        let selectionWhenRequested = selectedModelID
+        let coordinator = SherpaDownloadCoordinator(downloader: .shared, reporter: sherpaDownloadReporter)
+        let result = coordinator.start(preset: preset, runtimeOnly: runtimeOnly, activateOnSuccess: activateOnSuccess,
+            progress: { [weak self] _ in
                 self?.sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
-                self?.sherpaDownloadReporter?.updateProgress(progress: overallProgress, message: message, force: false)
-            },
-            complete: { [weak self] success, error in
+            }, completion: { [weak self] success, error in
                 guard let self else { return }
-                let targetReady = runtimeOnly || preset.isDownloaded
-                self.sherpaDownloadReporter?.finishDownload(
-                    success: success && targetReady,
-                    error: error,
-                    successMessageKey: runtimeOnly ? "sherpa.runtime.download.complete" : "sherpa.download.complete",
-                    failureMessageKey: runtimeOnly ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
-                )
-                if success && targetReady {
-                    if activateOnSuccess {
-                        AppSettings.sherpaModelPresetID = preset.id
-                    }
-                    self.rebuildSherpaModelList()
-                    self.updateSherpaStatus()
-                    let completeKey = runtimeOnly ? "sherpa.runtime.download.complete" : "sherpa.download.complete"
-                    self.setSherpaStatus(loc(completeKey), color: .systemGreen)
-                } else if success {
-                    self.rebuildSherpaModelList()
-                    self.updateSherpaStatus()
-                } else {
-                    self.rebuildSherpaModelList()
-                    self.updateSherpaStatus()
-                    let failedKey = runtimeOnly ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
-                    self.setSherpaStatus(loc(failedKey, error ?? "Unknown error"), color: .systemRed)
+                let preserveLaterDraft = self.selectedModelID != selectionWhenRequested
+                if success && activateOnSuccess, let old = self.baseline {
+                    self.baseline = .init(modelID: preset.id, unload: old.unload, minutes: old.minutes)
                 }
-                completion?(success && targetReady)
-            }
-        )
-
-        let result = downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly)
+                self.rebuildSherpaModelList(selecting: success && activateOnSuccess && !preserveLaterDraft ? preset.id : nil)
+                self.updateSherpaStatus()
+                let key = success
+                    ? (runtimeOnly ? "sherpa.runtime.download.complete" : "sherpa.download.complete")
+                    : (runtimeOnly ? "sherpa.runtime.download.failed" : "sherpa.download.failed")
+                self.setSherpaStatus(success ? loc(key) : loc(key, error ?? "Unknown error"), color: success ? .systemGreen : .systemRed)
+                completion?(success)
+            })
         if result == .alreadyDownloading {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
             sherpaDownloadReporter?.updateProgress(progress: 0, message: sherpaStatusLabel.stringValue, force: false)
@@ -353,21 +352,18 @@ final class SherpaSettingsTab: ASRSettingsTab {
     @objc private func sherpaLanguageChanged(_ sender: NSPopUpButton) {
         guard let item = sender.selectedItem,
               let code = item.representedObject as? String else { return }
-        AppSettings.sherpaRecognitionLanguage = code
-        // 切换语言后，若当前 preset 不在新语言列表中，自动切到该语言默认模型
-        // (After language switch, if current preset isn't in new list, auto-select language default)
-        let presets = SherpaModelPreset.presets(forRecognitionLanguage: code)
-        let savedID = AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID)
-        if savedID == nil || !presets.contains(where: { $0.id == savedID }) {
-            AppSettings.sherpaModelPresetID = SherpaModelPreset.defaultModelID(forRecognitionLanguage: code)
-        }
+        SherpaModelSelection.shared.changeLanguage(code)
+        sherpaRadioButtons.forEach { $0.state = .off }
         rebuildSherpaModelList()
+        if let old = baseline {
+            baseline = .init(modelID: selectedModelID, unload: old.unload, minutes: old.minutes)
+        }
         updateSherpaStatus()
     }
     @objc private func sherpaProviderChanged(_ sender: NSPopUpButton) {
         guard let item = sender.selectedItem,
               let provider = item.representedObject as? String else { return }
-        AppSettings.sherpaProvider = provider
+        SherpaModelSelection.shared.selectProvider(provider)
     }
     @objc private func sherpaAutoUnloadChanged(_ sender: NSButton) {
         sherpaAutoUnloadPopup?.isEnabled = sender.state == .on
@@ -382,19 +378,10 @@ final class SherpaSettingsTab: ASRSettingsTab {
         alert.addButton(withTitle: loc("common.cancel"))
         guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else { return }
         do {
-            try FileManager.default.removeItem(at: preset.modelDirectory)
+            try SherpaResourceInstaller.removeModel(preset)
         } catch {
             setSherpaStatus(loc("asrSettings.sherpa.delete.failed", error.localizedDescription), color: .systemRed)
             return
-        }
-        // 导入预设：同步从持久化记录中移除（Imported preset: also remove its persisted record）
-        if preset.isImported {
-            SherpaImportedPresetStore.shared.remove(id: preset.id)
-            // 当前正用着这个 preset，则切回该语言的内置默认
-            // (If this was the active preset, fall back to language default)
-            if AppSettings.backend.string(forKey: AppSettings.Keys.sherpaModelPresetID) == preset.id {
-                AppSettings.sherpaModelPresetID = SherpaModelPreset.defaultModelID(forRecognitionLanguage: preset.language)
-            }
         }
         rebuildSherpaModelList()
         updateSherpaStatus()
@@ -457,13 +444,15 @@ final class SherpaSettingsTab: ASRSettingsTab {
             self.sherpaImportFlow = nil
             guard let record else { return }  // 取消或失败已在 flow 内提示（cancel/failure already alerted）
             // 导入成功 → 自动选中并刷新（On success, auto-select and refresh）
-            AppSettings.sherpaRecognitionLanguage = record.language
-            AppSettings.sherpaModelPresetID = record.id
+            SherpaModelSelection.shared.select(language: record.language, presetID: record.id)
             // 同步语言下拉（Sync language popup）
             if let item = self.sherpaLanguagePopup.menu?.items.first(where: { ($0.representedObject as? String) == record.language }) {
                 self.sherpaLanguagePopup.select(item)
             }
-            self.rebuildSherpaModelList()
+            if let old = self.baseline {
+                self.baseline = .init(modelID: record.id, unload: old.unload, minutes: old.minutes)
+            }
+            self.rebuildSherpaModelList(selecting: record.id)
             self.updateSherpaStatus()
             self.setSherpaStatus(loc("sherpa.import.success", record.id), color: .systemGreen)
         }

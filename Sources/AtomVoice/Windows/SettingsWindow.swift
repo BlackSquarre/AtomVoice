@@ -1,45 +1,5 @@
 import Cocoa
 
-// MARK: - 数据模型
-
-struct LLMProvider: Codable {
-    var name: String
-    var baseURL: String
-    var defaultModel: String
-}
-
-final class ProviderStore {
-    static let key = AppSettings.Keys.llmProviders
-
-    static var defaults: [LLMProvider] {
-        [
-            LLMProvider(name: loc("provider.preset.openai"),    baseURL: "https://api.openai.com/v1",                         defaultModel: AppSettings.defaultLLMModel),
-            LLMProvider(name: loc("provider.preset.anthropic"), baseURL: "https://api.anthropic.com/v1",                      defaultModel: "claude-sonnet-4-6"),
-            LLMProvider(name: loc("provider.preset.deepseek"),  baseURL: "https://api.deepseek.com/v1",                       defaultModel: "deepseek-v4-flash"),
-            LLMProvider(name: loc("provider.preset.moonshot"),  baseURL: "https://api.moonshot.cn/v1",                        defaultModel: "kimi-latest"),
-            LLMProvider(name: loc("provider.preset.alibaba"),   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel: "qwen-turbo-latest"),
-            LLMProvider(name: loc("provider.preset.zhipu"),     baseURL: "https://open.bigmodel.cn/api/paas/v4",              defaultModel: "glm-4-flash"),
-            LLMProvider(name: loc("provider.preset.lingyi"),    baseURL: "https://api.lingyiwanwu.com/v1",                    defaultModel: "yi-lightning"),
-            LLMProvider(name: loc("provider.preset.groq"),      baseURL: "https://api.groq.com/openai/v1",                    defaultModel: "llama-3.3-70b-versatile"),
-            LLMProvider(name: loc("provider.preset.ollama"),    baseURL: "http://localhost:11434/v1",                         defaultModel: "qwen2.5:1.5b"),
-            LLMProvider(name: loc("provider.preset.custom"),    baseURL: "",                                                  defaultModel: ""),
-        ]
-    }
-
-    static func load() -> [LLMProvider] {
-        guard let data = AppSettings.backend.data(forKey: key),
-              let list = try? JSONDecoder().decode([LLMProvider].self, from: data)
-        else { return defaults }
-        return list
-    }
-
-    static func save(_ list: [LLMProvider]) {
-        if let data = try? JSONEncoder().encode(list) {
-            AppSettings.backend.set(data, forKey: key)
-        }
-    }
-}
-
 // MARK: - 服务商编辑器
 
 final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate {
@@ -411,7 +371,6 @@ final class SettingsWindowController: NSObject {
 
     func showWindow() {
         if let w = window {
-            refreshFields()
             WindowPresenter.shared.bringToFront(w)
             return
         }
@@ -600,7 +559,16 @@ final class SettingsWindowController: NSObject {
     @objc private func editProviders(_ sender: NSButton) {
         guard let w = window else { return }
         let editor = ProviderEditorController()
-        editor.onDone = { [weak self] _ in self?.refreshFields() }
+        editor.onDone = { [weak self] _ in
+            guard let self else { return }
+            // 服务商列表更新不覆盖连接表单的未保存内容。
+            self.providers = ProviderStore.load()
+            self.providerPopup.removeAllItems()
+            self.providers.forEach { self.providerPopup.addItem(withTitle: $0.name) }
+            if let index = self.providers.firstIndex(where: { $0.baseURL == self.apiBaseURLField.stringValue }) {
+                self.providerPopup.selectItem(at: index)
+            }
+        }
         providerEditor = editor
         editor.show(in: w) { [weak self] in
             // sheet 关闭后立即释放 editor 实例，回收内存

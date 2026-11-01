@@ -1,6 +1,7 @@
 import Foundation
 
 final class OOBESettings {
+    static let completionDefaultsKey = "hasCompletedOOBE"
     private let backend: SettingsBackend
 
     init(backend: SettingsBackend) {
@@ -8,8 +9,8 @@ final class OOBESettings {
     }
 
     var hasCompletedOOBE: Bool {
-        get { backend.bool(forKey: OOBEWindowController.completionDefaultsKey, default: false) }
-        set { backend.set(newValue, forKey: OOBEWindowController.completionDefaultsKey) }
+        get { backend.bool(forKey: Self.completionDefaultsKey, default: false) }
+        set { backend.set(newValue, forKey: Self.completionDefaultsKey) }
     }
 
     var headphoneControlAlertShown: Bool {

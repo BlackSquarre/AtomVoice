@@ -4,7 +4,7 @@ final class DoubaoSettingsWindowController: NSObject {
     var onClose: (() -> Void)?
     private var window: NSWindow?
     private var apiKeyField: NSSecureTextField!
-    private var apiKeyReadResult: KeychainStringReadResult = .notFound
+    private let editor = DoubaoSettingsEditor()
     private var modelPopup: NSPopUpButton!
     private var endpointField: NSTextField!
     private let modelOptions: [DoubaoModelKind] = [.v2, .v1]
@@ -16,7 +16,6 @@ final class DoubaoSettingsWindowController: NSObject {
 
     func showWindow() {
         if let window {
-            refreshFields()
             WindowPresenter.shared.bringToFront(window)
             return
         }
@@ -146,8 +145,7 @@ final class DoubaoSettingsWindowController: NSObject {
     }
 
     private func refreshFields() {
-        apiKeyReadResult = VolcengineASRSettings.savedAPIKeyReadResult
-        let settings = VolcengineASRSettings.load(apiKey: apiKeyReadResult.string ?? "")
+        let settings = editor.reload()
         apiKeyField?.stringValue = settings.apiKey
         let currentKind = DoubaoModelKind.from(resourceID: settings.resourceID)
         if let idx = modelOptions.firstIndex(of: currentKind) {
@@ -161,23 +159,23 @@ final class DoubaoSettingsWindowController: NSObject {
         statusLabel?.stringValue = ""
     }
 
+    private var draft: DoubaoSettingsDraft {
+        var value = editor.baseline!
+        value.apiKey = apiKeyField.stringValue
+        value.model = modelOptions[modelPopup.indexOfSelectedItem]
+        value.endpoint = endpointField.stringValue
+        value.enableITN = itnCheckbox.state == .on
+        value.enableDDC = ddcCheckbox.state == .on
+        value.enableNonstream = nonstreamCheckbox.state == .on
+        return value
+    }
+
     @objc private func saveSettings(_ sender: NSButton) {
-        guard VolcengineASRSettings.saveAPIKey(apiKeyField.stringValue, previousRead: apiKeyReadResult) else {
+        guard editor.save(draft) else {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
             return
         }
-
-        let selectedKind = modelOptions[modelPopup.indexOfSelectedItem]
-        VolcengineASRSettings(
-            endpoint: endpointField.stringValue,
-            apiKey: apiKeyField.stringValue,
-            resourceID: selectedKind.resourceID,
-            enableITN: itnCheckbox.state == .on,
-            enableDDC: ddcCheckbox.state == .on,
-            enableNonstream: nonstreamCheckbox.state == .on,
-            selectedLanguage: AppSettings.selectedLanguage
-        ).persistNonSecretFields()
 
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen

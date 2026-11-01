@@ -146,7 +146,7 @@ enum AppSettings {
             Keys.doubaoASREnableNonstream: false,
             Keys.doubaoASRPrivacyAccepted: false,
             Keys.pasteDelay: defaultPasteDelay,
-            OOBEWindowController.completionDefaultsKey: false,
+            OOBESettings.completionDefaultsKey: false,
         ])
     }
 

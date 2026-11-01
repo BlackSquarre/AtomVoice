@@ -5,6 +5,10 @@ final class AppleSettingsTab: ASRSettingsTab {
     let identifier = "apple"
     let label = loc("asrSettings.tab.apple")
 
+    private var savedEnabled = false
+    var hasChanges: Bool { (appleEnableCheckbox?.state == .on) != savedEnabled }
+    func refreshStatus() { updateAppleStatus() }
+
     private var appleEnableCheckbox: NSButton!
     private var appleStatusLabel: NSTextField!
 
@@ -29,6 +33,7 @@ final class AppleSettingsTab: ASRSettingsTab {
 
         // 启用复选框（Enable checkbox）
         let isEnabled = AppSettings.appleOnDeviceRecognitionEnabled
+        savedEnabled = isEnabled
         appleEnableCheckbox = SettingsUI.makeCheckbox(title: loc("asrSettings.apple.enable"), tooltip: "")
         appleEnableCheckbox.state = isEnabled ? .on : .off
         appleEnableCheckbox.isEnabled = isSupported
@@ -79,7 +84,9 @@ final class AppleSettingsTab: ASRSettingsTab {
     }
 
     func save() -> ASRSettingsTabSaveOutcome {
+        guard hasChanges else { return .saved }
         persistAppleSettings()
+        savedEnabled = appleEnableCheckbox.state == .on
         return .saved
     }
 
