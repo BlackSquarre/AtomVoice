@@ -11,9 +11,13 @@ enum WaveformResponseValidationTests {
             let actual = try await productionBands(samples)
             let reference = SpectrumModel(candidate: true).analyze(samples)
             try expect(actual.count == reference.count)
-            let error = zip(actual, reference).flatMap { pair in
-                zip(pair.0, pair.1.levels).map { abs(Double($0) - $1) }
-            }.max() ?? 0
+            var error: Double = 0
+            for (actualFrame, referenceFrame) in zip(actual, reference) {
+                for (actualLevel, referenceLevel) in zip(actualFrame, referenceFrame.levels) {
+                    let difference = abs(Double(actualLevel) - referenceLevel)
+                    error = max(error, difference)
+                }
+            }
             try expect(error < 0.000_01, "Production DSP should retain the approved 1024 point mapping")
             print(String(format: "WAVEFORM reference max_error=%.8f frames=%d", error, actual.count))
         }
