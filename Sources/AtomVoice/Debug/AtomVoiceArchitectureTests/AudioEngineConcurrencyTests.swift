@@ -47,6 +47,7 @@ enum AudioEngineConcurrencyTests {
                 },
                 stopOperationOverride: {}
             )
+            defer { engine.stop() }
 
             let startedAt = Date()
             let heartbeatDelay = await withCheckedContinuation { continuation in
@@ -61,9 +62,17 @@ enum AudioEngineConcurrencyTests {
             }
 
             try expect(heartbeatDelay < 0.1, "main queue heartbeat was delayed by audio start")
-            try await Task.sleep(nanoseconds: 350_000_000)
-            try expect(results.value(for: "start") == true)
-            engine.stop()
+            #if arch(x86_64)
+            let completionTimeout: TimeInterval = 1.5
+            #else
+            let completionTimeout: TimeInterval = 0.75
+            #endif
+            let startResult = await waitForAudioStartResult(
+                results,
+                key: "start",
+                timeout: completionTimeout
+            )
+            try expect(startResult == true, "audio start result was \(String(describing: startResult)) after waiting up to \(completionTimeout)s")
         }
 
         await runner.run("Audio engine stop invalidates a blocked start") {
