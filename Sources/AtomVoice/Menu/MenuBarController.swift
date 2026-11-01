@@ -518,12 +518,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private var hasAllPermissions: Bool {
         let currentEngine = AppSettings.normalizedRecognitionEngine
-        let speechRequired = asrEngineRegistry.isApple(currentEngine)
-        return permissionService.hasRequiredPermissions(speechRequired: speechRequired)
+        return permissionService.readiness(for: currentEngine).primaryReady
     }
 
     private static func supportsOnDeviceRecognition(for languageCode: String) -> Bool {
-        SFSpeechRecognizer(locale: Locale(identifier: languageCode))?.supportsOnDeviceRecognition == true
+        AppleSpeechCapabilities.supportsOnDeviceRecognition(for: languageCode)
     }
 
     private func makeMenuItem(

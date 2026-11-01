@@ -96,9 +96,19 @@ final class PermissionService {
     static let shared = PermissionService(access: SystemPermissionAccess())
 
     private let access: PermissionAccessing
+    private let resetter: PermissionResetting
 
-    init(access: PermissionAccessing) {
+    init(access: PermissionAccessing, resetter: PermissionResetting = SystemPermissionResetter()) {
         self.access = access
+        self.resetter = resetter
+    }
+
+    func resetPermissions(doneMessage: String) { resetter.resetPermissions(doneMessage: doneMessage) }
+
+    func readiness(for engineCode: String) -> PermissionReadiness {
+        let requirements = PermissionRequirements.forEngine(engineCode)
+        return .init(primaryReady: requirements.primary.allSatisfy { status(for: $0) == .granted },
+            recoveryReady: requirements.recovery.allSatisfy { status(for: $0) == .granted })
     }
 
     func status(for kind: PermissionKind) -> PermissionStatus {
@@ -142,24 +152,17 @@ final class PermissionService {
     }
 
     func requestStartupPermissions(alertPresenter: AlertPresenting = AlertPresenter.shared) {
-        access.requestMicrophone { granted in
-            if !granted {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = loc("permission.mic.title")
-                    alert.informativeText = loc("permission.mic.message")
-                    alertPresenter.runModalAlert(alert)
-                }
-            }
-        }
-
-        access.requestSpeechRecognition { granted in
-            if !granted {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = loc("permission.speech.requiredTitle")
-                    alert.informativeText = loc("permission.speech.message")
-                    alertPresenter.runModalAlert(alert)
+        for kind in PermissionRequirements.startupRequests {
+            let request: (@escaping (Bool) -> Void) -> Void = kind == .microphone
+                ? access.requestMicrophone : access.requestSpeechRecognition
+            request { granted in
+                if !granted {
+                    DispatchQueue.main.async {
+                        let alert = NSAlert()
+                        alert.messageText = kind == .microphone ? loc("permission.mic.title") : loc("permission.speech.requiredTitle")
+                        alert.informativeText = kind == .microphone ? loc("permission.mic.message") : loc("permission.speech.message")
+                        alertPresenter.runModalAlert(alert)
+                    }
                 }
             }
         }

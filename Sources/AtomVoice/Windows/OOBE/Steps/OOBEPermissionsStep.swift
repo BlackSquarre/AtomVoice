@@ -79,9 +79,9 @@ final class OOBEPermissionsStep: OOBEStep {
     }
     private func refreshPermissions() {
         guard permissionCards.count >= 3 else { return }
-        permissionCards[0].update(status: permissionService.status(for: .accessibility))
-        permissionCards[1].update(status: permissionService.status(for: .microphone))
-        permissionCards[2].update(status: permissionService.status(for: .speechRecognition))
+        for (card, kind) in zip(permissionCards, PermissionRequirements.onboarding) {
+            card.update(status: permissionService.status(for: kind))
+        }
     }
 
     @objc private func permTapped(_ sender: NSButton) {

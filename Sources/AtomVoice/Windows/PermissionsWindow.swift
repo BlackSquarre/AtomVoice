@@ -258,9 +258,9 @@ final class PermissionsWindowController: NSObject {
 
     func refresh() {
         guard rowViews.count >= 3 else { return }
-        rowViews[0].update(status: permissionService.status(for: .accessibility))
-        rowViews[1].update(status: permissionService.status(for: .microphone))
-        rowViews[2].update(status: permissionService.status(for: .speechRecognition))
+        for (row, kind) in zip(rowViews, PermissionRequirements.onboarding) {
+            row.update(status: permissionService.status(for: kind))
+        }
     }
 
     // MARK: - Actions
@@ -279,20 +279,12 @@ final class PermissionsWindowController: NSObject {
         alert.addButton(withTitle: loc("permissions.reset.confirm.ok"))
         alert.addButton(withTitle: loc("settings.cancel"))
         guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else { return }
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        task.arguments = ["-a", "Terminal", "--args", "-e",
-            "tccutil reset Microphone com.blacksquarre.AtomVoice && " +
-            "tccutil reset SpeechRecognition com.blacksquarre.AtomVoice && " +
-            "printf '%s\\n' \(shellQuoted(loc("permissions.reset.terminalDone")))"]
-        try? task.run()
+        permissionService.resetPermissions(doneMessage: loc("permissions.reset.terminalDone"))
     }
 
     @objc private func closeWindow() { window?.close() }
 
-    private func shellQuoted(_ value: String) -> String {
-        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
-    }
+
 }
 
 // MARK: - NSWindowDelegate

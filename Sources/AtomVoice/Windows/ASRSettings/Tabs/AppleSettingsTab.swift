@@ -20,7 +20,7 @@ final class AppleSettingsTab: ASRSettingsTab {
 
         // 当前状态（Current status）
         let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
+        let isSupported = AppleSpeechCapabilities.supportsOnDeviceRecognition(for: currentLang)
 
         appleStatusLabel = NSTextField(labelWithString: "")
         appleStatusLabel.font = .systemFont(ofSize: 13)
@@ -85,7 +85,7 @@ final class AppleSettingsTab: ASRSettingsTab {
 
     private func updateAppleStatus() {
         let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
+        let isSupported = AppleSpeechCapabilities.supportsOnDeviceRecognition(for: currentLang)
 
         if isSupported {
             appleStatusLabel?.stringValue = loc("asrSettings.apple.status") + " ✓ " + loc("asrSettings.apple.modelDownloaded")
@@ -99,7 +99,7 @@ final class AppleSettingsTab: ASRSettingsTab {
     private func persistAppleSettings() {
         let appleEnabled = appleEnableCheckbox.state == .on
         let currentLang = AppSettings.selectedLanguage
-        let isSupported = SFSpeechRecognizer(locale: Locale(identifier: currentLang))?.supportsOnDeviceRecognition == true
+        let isSupported = AppleSpeechCapabilities.supportsOnDeviceRecognition(for: currentLang)
         if appleEnabled && !isSupported {
             // 不支持时强制关闭（Force off when unsupported）
             AppSettings.appleOnDeviceRecognitionEnabled = false
