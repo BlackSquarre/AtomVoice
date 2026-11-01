@@ -215,11 +215,8 @@ final class SherpaModelChooserController: NSObject {
     @objc private func confirmTapped() {
         guard let lang = languagePopup.selectedItem?.representedObject as? String,
               let preset = currentSelectedPreset() else { return }
-        AppSettings.sherpaRecognitionLanguage = lang
-        AppSettings.sherpaModelPresetID = preset.id
-        if let provider = providerPopup.selectedItem?.representedObject as? String {
-            AppSettings.sherpaProvider = provider
-        }
+        SherpaModelSelection.shared.select(language: lang, presetID: preset.id,
+            provider: providerPopup.selectedItem?.representedObject as? String)
         let result: (String, String)? = (lang, preset.id)
         endModal(result: result)
     }

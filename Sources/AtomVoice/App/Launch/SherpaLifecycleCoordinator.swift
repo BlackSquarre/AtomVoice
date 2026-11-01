@@ -99,10 +99,12 @@ final class SherpaLifecycleCoordinator {
             name: AppSettingsEventBus.recognitionEngineNotification,
             object: notificationObject
         )
+        notificationCenter.addObserver(self, selector: #selector(resourcesDidChange), name: .sherpaResourcesDidChange, object: nil)
     }
 
     /// applicationWillTerminate / deinit 调用。
     func stop() {
+        notificationCenter.removeObserver(self, name: .sherpaResourcesDidChange, object: nil)
         memoryPressureSource?.cancel()
         memoryPressureSource = nil
         cancelAutoUnload()
@@ -134,6 +136,12 @@ final class SherpaLifecycleCoordinator {
         cancelAutoUnload()
         pendingSherpaModelRelease = false
         provider.releaseSherpaEngine()
+    }
+
+    @objc private func resourcesDidChange(_ notification: Notification) {
+        if let presetID = notification.object as? String, presetID != selectedSherpaPresetID { return }
+        // 原有单 owner 在当前录音结束后释放，下一轮从新资源加载。
+        handleSherpaSelectionChange()
     }
 
     @objc private func recognitionEngineDefaultsDidChange() {

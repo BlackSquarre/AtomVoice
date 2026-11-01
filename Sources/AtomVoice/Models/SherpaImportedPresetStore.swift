@@ -14,34 +14,47 @@ final class SherpaImportedPresetStore {
     static let shared = SherpaImportedPresetStore()
     private static let key = AppSettings.Keys.sherpaImportedPresets
 
-    private(set) var records: [SherpaImportedPresetRecord] = []
+    private let backend: SettingsBackend
+    private let lock = NSRecursiveLock()
+    private var storedRecords: [SherpaImportedPresetRecord] = []
+    var records: [SherpaImportedPresetRecord] {
+        lock.lock(); defer { lock.unlock() }
+        return storedRecords
+    }
 
-    init() { reload() }
+    init(backend: SettingsBackend = AppSettings.backend) { self.backend = backend; reload() }
 
     func reload() {
-        guard let data = AppSettings.backend.data(forKey: Self.key) else {
-            records = []
+        lock.lock(); defer { lock.unlock() }
+        guard let data = backend.data(forKey: Self.key) else {
+            storedRecords = []
             return
         }
-        records = (try? JSONDecoder().decode([SherpaImportedPresetRecord].self, from: data)) ?? []
+        storedRecords = (try? JSONDecoder().decode([SherpaImportedPresetRecord].self, from: data)) ?? []
     }
 
-    func save() {
-        if let data = try? JSONEncoder().encode(records) {
-            AppSettings.backend.set(data, forKey: Self.key)
-        }
+    @discardableResult
+    func save() -> Bool { persist(records) }
+
+    private func persist(_ next: [SherpaImportedPresetRecord]) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let data = try? JSONEncoder().encode(next) else { return false }
+        backend.set(data, forKey: Self.key)
+        guard backend.data(forKey: Self.key) == data else { return false }
+        storedRecords = next
+        return true
     }
 
-    func add(_ record: SherpaImportedPresetRecord) {
-        // 同 id 替换；防止重复（Replace by id; prevent duplicates）
-        records.removeAll { $0.id == record.id }
-        records.append(record)
-        save()
+    @discardableResult
+    func add(_ record: SherpaImportedPresetRecord) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return persist(storedRecords.filter { $0.id != record.id } + [record])
     }
 
-    func remove(id: String) {
-        records.removeAll { $0.id == id }
-        save()
+    @discardableResult
+    func remove(id: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return persist(storedRecords.filter { $0.id != id })
     }
 
     /// 转成 SherpaModelPreset 列表，便于和内置 preset 统一处理

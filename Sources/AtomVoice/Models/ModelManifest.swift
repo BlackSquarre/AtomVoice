@@ -75,16 +75,16 @@ struct ModelManifest: Codable, Equatable {
 
     /// 检查所有文件都存在且非空（Check all listed files exist and non-empty）
     func isComplete(in directory: URL) -> Bool {
-        guard SherpaModelPreset.isUsableFile(directory.appendingPathComponent(encoder)),
-              SherpaModelPreset.isUsableFile(directory.appendingPathComponent(decoder)),
-              SherpaModelPreset.isUsableFile(directory.appendingPathComponent(tokens)) else {
+        guard SherpaResources.isUsableFile(directory.appendingPathComponent(encoder)),
+              SherpaResources.isUsableFile(directory.appendingPathComponent(decoder)),
+              SherpaResources.isUsableFile(directory.appendingPathComponent(tokens)) else {
             return false
         }
 
         switch family {
         case .onlineTransducer:
             guard let joiner else { return false }
-            return SherpaModelPreset.isUsableFile(directory.appendingPathComponent(joiner))
+            return SherpaResources.isUsableFile(directory.appendingPathComponent(joiner))
         case .onlineParaformer:
             return true
         }
@@ -110,7 +110,7 @@ struct ModelManifest: Codable, Equatable {
             }
             return url
         }
-        let onnx = regular.filter { $0.pathExtension.lowercased() == "onnx" && SherpaModelPreset.isUsableFile($0) }
+        let onnx = regular.filter { $0.pathExtension.lowercased() == "onnx" && SherpaResources.isUsableFile($0) }
 
         func relativePath(_ url: URL) -> String {
             let base = directory.standardizedFileURL.path
@@ -136,7 +136,7 @@ struct ModelManifest: Codable, Equatable {
             return relativePath(selected)
         }
 
-        let tokens = regular.first { $0.lastPathComponent == "tokens.txt" && SherpaModelPreset.isUsableFile($0) }
+        let tokens = regular.first { $0.lastPathComponent == "tokens.txt" && SherpaResources.isUsableFile($0) }
         guard let tokensName = tokens.map(relativePath) else { return nil }
 
         if let encoder = pick(component: "encoder", preferInt8: true),
@@ -184,6 +184,11 @@ struct ModelManifest: Codable, Equatable {
         }
 
         return nil
+    }
+
+    /// 纯查询：缺失缓存时扫描，但不写入文件。
+    static func inspect(in directory: URL) -> ModelManifest? {
+        load(from: directory) ?? discover(in: directory)
     }
 
     /// 综合接入点：先读已保存的 manifest，缺失则扫描；扫描成功后写回缓存

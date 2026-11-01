@@ -233,7 +233,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.menuBarController.rebuildMenuPublic()
                 switch engine {
                 case ASREngineRegistry.sherpaCode:
-                    if !SherpaModelDownloader.isReady() {
+                    if !SherpaModelDownloader.ensureReady() {
                         self.promptSherpaDownloadPublic()
                     }
                 case VolcengineASRSettings.engineCode:
@@ -257,45 +257,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     fileprivate func promptSherpaDownloadPublic() { promptSherpaDownload() }
 
-    private func startSherpaDownload() {
-        if SherpaModelDownloader.isReady() { return }
-        let downloader = SherpaModelDownloader.shared
-        let reporter: SherpaDownloadReporting = sherpaDownloadCapsulePresenter
-        let runtimeReady = SherpaModelDownloader.runtimeRequiredFiles().allSatisfy {
-            SherpaModelPreset.isUsableFile($0.url)
-        }
-        let modelReady = SherpaModelPreset.current.isDownloaded
-        let punctuationReady = SherpaModelPreset.isUsableFile(SherpaModelDownloader.punctuationRequiredFile())
-        let runtimeOnlyRepair = !runtimeReady && modelReady && punctuationReady
-        let initialMessage = runtimeOnlyRepair
-            ? loc("sherpa.runtime.downloading.start")
-            : loc("sherpa.downloading.start")
-        reporter.updateProgress(
-            progress: 0,
-            message: initialMessage,
-            force: false
-        )
-        downloader.addObserver(
-            progress: { [weak reporter] _, _, overallProgress, message in
-                reporter?.updateProgress(progress: overallProgress, message: message, force: false)
-            },
-            complete: { [weak reporter] success, error in
-                reporter?.finishDownload(
-                    success: success,
-                    error: error,
-                    successMessageKey: runtimeOnlyRepair ? "sherpa.runtime.download.complete" : "sherpa.download.complete",
-                    failureMessageKey: runtimeOnlyRepair ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
-                )
-            }
-        )
-        _ = downloader.startDownload()
+    private func startSherpaDownload(replaceModel: Bool = false) {
+        if !replaceModel && SherpaModelDownloader.ensureReady() { return }
+        SherpaDownloadCoordinator(downloader: .shared, reporter: sherpaDownloadCapsulePresenter)
+            .start(replaceModel: replaceModel)
     }
 
     private func promptSherpaDownload() { showSherpaDownloadPrompt(message: loc("sherpa.download.message")) }
 
-    private func promptSherpaReDownload() { showSherpaDownloadPrompt(message: loc("sherpa.redownload.message")) }
+    private func promptSherpaReDownload() { showSherpaDownloadPrompt(message: loc("sherpa.redownload.message"), replaceModel: true) }
 
-    private func showSherpaDownloadPrompt(message: String) {
+    private func showSherpaDownloadPrompt(message: String, replaceModel: Bool = false) {
         let alert = NSAlert()
         alert.messageText = loc("sherpa.download.title")
         alert.informativeText = message
@@ -303,7 +275,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: loc("sherpa.download.confirm"))
         alert.addButton(withTitle: loc("common.cancel"))
         if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
-            startSherpaDownload()
+            startSherpaDownload(replaceModel: replaceModel)
         }
     }
 

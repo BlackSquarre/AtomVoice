@@ -3,6 +3,21 @@ import Foundation
 
 enum SherpaLifecycleCoordinatorTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Sherpa resource replacement defers old owner release until recording ends") {
+            let harness = SherpaLifecycleHarness(engine: ASREngineRegistry.sherpaCode, isRecording: true)
+            harness.session.requiresModelReloadOnRouteChange = true
+            harness.provider.hasSherpaEngineValue = true
+            harness.coordinator.start()
+            harness.notificationCenter.post(name: .sherpaResourcesDidChange, object: nil)
+            try expect(harness.provider.releaseCount == 0)
+            harness.session.isRecording = false
+            harness.coordinator.performPostRecordingCleanup()
+            try expect(harness.provider.releaseCount == 1)
+            harness.coordinator.stop()
+            harness.notificationCenter.post(name: .sherpaResourcesDidChange, object: nil)
+            try expect(harness.provider.releaseCount == 1)
+        }
+
         await runner.run("engine change from Sherpa to non-Sherpa releases model immediately when not recording") {
             let harness = SherpaLifecycleHarness(engine: ASREngineRegistry.sherpaCode, isRecording: false)
             harness.provider.isSherpaModelLoadedValue = true

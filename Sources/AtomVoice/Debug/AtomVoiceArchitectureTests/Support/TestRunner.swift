@@ -93,3 +93,12 @@ func restoreDefaultsObject(_ object: Any?, forKey key: String) {
     }
 }
 
+
+// 阻塞 fixture 只占后台队列，不在 async 上下文直接调用 noasync 的 semaphore.wait。
+func waitForSignal(_ semaphore: DispatchSemaphore, timeout: TimeInterval) async -> Bool {
+    await withCheckedContinuation { continuation in
+        DispatchQueue.global(qos: .userInitiated).async {
+            continuation.resume(returning: semaphore.wait(timeout: .now() + timeout) == .success)
+        }
+    }
+}

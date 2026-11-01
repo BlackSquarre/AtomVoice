@@ -613,7 +613,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         #endif
 
-        if asrEngineRegistry.isSherpa(code), !SherpaModelDownloader.isReady() {
+        if asrEngineRegistry.isSherpa(code), !SherpaModelDownloader.ensureReady() {
             let alert = NSAlert()
             alert.messageText = loc("sherpa.download.title")
             alert.informativeText = loc("sherpa.download.message")

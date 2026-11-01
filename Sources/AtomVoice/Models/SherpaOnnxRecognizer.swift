@@ -11,7 +11,7 @@ enum SherpaOnnxStartFailureKind {
 }
 
 final class SherpaOnnxRecognizerController {
-    static let punctuationModelName = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8"
+    static let punctuationModelName = SherpaResourcePaths.punctuationName
 
     /// 当前选中的模型预设（Currently selected model preset）
     static var currentPreset: SherpaModelPreset {
@@ -78,30 +78,14 @@ final class SherpaOnnxRecognizerController {
     }
 
     static var supportDirectory: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("AtomVoice/SherpaOnnx", isDirectory: true)
+        SherpaResourcePaths.current.support
     }
 
-    static var runtimeLibDirectory: URL {
-        supportDirectory.appendingPathComponent("runtime/lib", isDirectory: true)
-    }
-
-    static var modelsDirectory: URL {
-        supportDirectory.appendingPathComponent("models", isDirectory: true)
-    }
-
-    static var modelDirectory: URL {
-        modelsDirectory.appendingPathComponent(modelName, isDirectory: true)
-    }
-
-    static var punctuationModelDirectory: URL {
-        modelsDirectory.appendingPathComponent(punctuationModelName, isDirectory: true)
-    }
-
-    static func createSupportDirectories() throws {
-        try FileManager.default.createDirectory(at: runtimeLibDirectory, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
-    }
+    static var runtimeLibDirectory: URL { SherpaResourcePaths.current.runtime }
+    static var modelsDirectory: URL { SherpaResourcePaths.current.models }
+    static var modelDirectory: URL { modelsDirectory.appendingPathComponent(modelName, isDirectory: true) }
+    static var punctuationModelDirectory: URL { SherpaResourcePaths.current.punctuation }
+    static func createSupportDirectories() throws { try SherpaResourcePaths.current.createDirectories() }
 
     static func openSupportDirectory() {
         do { try createSupportDirectories() }
