@@ -36,9 +36,8 @@ protocol UpdateInstaller: AnyObject {
     /// (Synchronously verify SHA256; throws UpdateInstallError on failure.)
     func verifyChecksum(zipURL: URL, listing: String, assetName: String) throws
 
-    /// 同步解压 zip，返回解压出的 .app URL。
-    /// (Synchronously unzip; returns the URL of the extracted .app bundle.)
-    func extractZip(_ zipURL: URL) throws -> URL
+    /// 同步解压 zip，返回拥有解压目录的 .app 阶段资源。
+    func extractZip(_ zipURL: URL) throws -> OwnedUpdateArtifact
 
     /// 同步校验 .app 的 bundle id、版本、代码签名。
     /// (Synchronously validate the .app's bundle id, version, and code signature.)
@@ -87,11 +86,15 @@ final class BundleUpdateInstaller: UpdateInstaller {
         }
     }
 
-    func extractZip(_ zipURL: URL) throws -> URL {
+    func extractZip(_ zipURL: URL) throws -> OwnedUpdateArtifact {
         let fm = FileManager.default
         let updateDir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("AtomVoiceUpdate-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: updateDir, withIntermediateDirectories: true)
+        var didTransferOwnership = false
+        defer {
+            if !didTransferOwnership { try? fm.removeItem(at: updateDir) }
+        }
 
         try validateZipEntries(zipURL)
 
@@ -109,7 +112,9 @@ final class BundleUpdateInstaller: UpdateInstaller {
         guard apps.count == 1, let newApp = apps.first else {
             throw UpdateInstallError.appNotFound
         }
-        return newApp
+        let artifact = OwnedUpdateArtifact(url: newApp, directoryURL: updateDir)
+        didTransferOwnership = true
+        return artifact
     }
 
     private func validateZipEntries(_ zipURL: URL) throws {
@@ -204,7 +209,22 @@ final class BundleUpdateInstaller: UpdateInstaller {
         let scriptPath = (NSTemporaryDirectory() as NSString)
             .appendingPathComponent("atomvoice_update_\(UUID().uuidString).sh")
 
-        let script = """
+        let script = Self.installationScript
+
+        var didLaunch = false
+        defer {
+            if !didLaunch { try? FileManager.default.removeItem(atPath: scriptPath) }
+        }
+        try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        proc.arguments = [scriptPath, currentBundlePath, newPath, tmpDir]
+        try proc.run()
+        didLaunch = true
+    }
+
+    static let installationScript = """
         #!/bin/bash
         set -euo pipefail
         current_path="$1"
@@ -232,14 +252,6 @@ final class BundleUpdateInstaller: UpdateInstaller {
           exit 1
         fi
         """
-
-        try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [scriptPath, currentBundlePath, newPath, tmpDir]
-        try proc.run()
-    }
 
     static func securityErrorDescription(_ status: OSStatus, detail: String? = nil) -> String {
         let message = SecCopyErrorMessageString(status, nil) as String? ?? "OSStatus \(status)"

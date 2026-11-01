@@ -1,9 +1,6 @@
-import Cocoa
+import Foundation
 
-/// 自动更新协调器：维护检查/下载/重启的状态机和 UI，把网络 I/O 委托给 ReleaseSource，
-/// 把文件/签名/安装委托给 UpdateInstaller。
-/// (Auto-update coordinator: owns the check/download/restart state machine and UI;
-/// delegates network I/O to ReleaseSource and file/signature/install to UpdateInstaller.)
+/// 更新状态与阶段资源 owner；网络、安装及 AppKit 呈现分别委托。
 final class UpdateChecker {
     static let shared = UpdateChecker()
 
@@ -29,14 +26,22 @@ final class UpdateChecker {
         )
     }
 
-    init(releaseSource: ReleaseSource, installer: UpdateInstaller) {
+    private let presenter: UpdatePresenting
+    private let currentVersion: () -> String
+    private let currentBundlePath: () -> String
+
+    init(releaseSource: ReleaseSource, installer: UpdateInstaller,
+         presenter: UpdatePresenting = AppKitUpdatePresenter(),
+         currentVersion: @escaping () -> String = { AppBundleInfo.shortVersion },
+         currentBundlePath: @escaping () -> String = { Bundle.main.bundlePath }) {
         self.releaseSource = releaseSource
         self.installer = installer
+        self.presenter = presenter
+        self.currentVersion = currentVersion
+        self.currentBundlePath = currentBundlePath
     }
 
-    private var progressWindow: NSWindow?
-    private var progressLabel: NSTextField?
-    private enum UpdateState {
+    enum UpdateState: Equatable {
         case idle
         case checking
         case prompting
@@ -44,30 +49,28 @@ final class UpdateChecker {
         case readyToRestart
         case applying
     }
-    private var state: UpdateState = .idle
+    private(set) var state: UpdateState = .idle
     private var pendingUserVisibleCheck = false
-    private var pendingRestartPrompt: (version: String, newAppURL: URL)?
+    private struct PendingInstallation {
+        let release: ReleaseInfo
+        let application: OwnedUpdateArtifact
+        var promptWhenAvailable: Bool
+    }
+    private var pendingInstallation: PendingInstallation?
     var shouldDeferRestartPrompt: (() -> Bool)?
 
-    // MARK: - 公开 API
+    // MARK: - 检查与下载
 
-    /// 检查更新（Check for updates）
-    /// - Parameter silent: true = 无新版时不弹提示，启动时后台静默检查用。
-    /// (true = no alert when up-to-date, for silent background check on launch.)
     func checkForUpdates(silent: Bool = false) {
-        guard state == .idle else {
-            if state == .checking, !silent {
-                pendingUserVisibleCheck = true
-            }
-            if !silent {
-                progressWindow?.makeKeyAndOrderFront(nil)
-            }
+        // 用户主动稍后后保持安静；手动检查仍拉取最新 release，不能锁定旧版本。
+        if state == .readyToRestart, silent { return }
+        guard state == .idle || state == .readyToRestart else {
+            if state == .checking, !silent { pendingUserVisibleCheck = true }
+            if !silent { presenter.bringProgressToFront() }
             return
         }
-
         state = .checking
         pendingUserVisibleCheck = !silent
-
         let includeBeta = AppSettings.includeBetaUpdates
         #if DEBUG_BUILD
         let preferDebugBuild = AppSettings.updateToDebugBuilds
@@ -77,239 +80,143 @@ final class UpdateChecker {
         releaseSource.fetchLatestRelease(includeBeta: includeBeta, preferDebugBuild: preferDebugBuild) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self, self.state == .checking else { return }
-                let shouldShowResult = self.pendingUserVisibleCheck
+                let visible = self.pendingUserVisibleCheck
                 self.pendingUserVisibleCheck = false
-
                 switch result {
-                case .failure(let err):
-                    self.state = .idle
-                    if shouldShowResult {
-                        self.showAlert(title: loc("update.error.title"),
-                                       message: loc("update.error.fetch", err.localizedDescription))
+                case .failure(let error):
+                    self.state = self.restingState
+                    if visible {
+                        self.presenter.showAlert(title: loc("update.error.title"),
+                            message: loc("update.error.fetch", error.localizedDescription))
                     }
-                case .success(let release):
-                    self.handleRelease(release, silent: !shouldShowResult)
+                case .success(let release): self.handleRelease(release, silent: !visible)
                 }
             }
         }
     }
 
-    func resumeDeferredRestartPromptIfPossible() {
-        guard state == .readyToRestart,
-              let pendingRestartPrompt,
-              shouldDeferRestartPrompt?() != true else { return }
-
-        self.pendingRestartPrompt = nil
-        showRestartPrompt(version: pendingRestartPrompt.version, newAppURL: pendingRestartPrompt.newAppURL)
-    }
-
-    // MARK: - 版本比对与提示
-
     private func handleRelease(_ release: ReleaseInfo, silent: Bool) {
-        let current = AppBundleInfo.shortVersion
-        guard isNewer(release.version, than: current) else {
-            state = .idle
+        let current = currentVersion()
+        guard Self.isNewer(release.version, than: current) else {
+            state = restingState
             if !silent {
-                showAlert(title: loc("update.upToDate.title"),
-                          message: loc("update.upToDate.message", current))
+                presenter.showAlert(title: loc("update.upToDate.title"), message: loc("update.upToDate.message", current))
             }
             return
         }
-
-        let badges = [
-            release.isPreRelease ? loc("update.beta") : nil,
-            release.isDebugBuild ? loc("update.debug") : nil,
-        ].compactMap { $0 }
-        let displayVersion = badges.isEmpty
-            ? release.version
-            : "\(release.version) (\(badges.joined(separator: ", ")))"
-
-        let alert = NSAlert()
-        alert.messageText = loc("update.available.title")
-        alert.informativeText = loc("update.available.message", displayVersion, current)
-        alert.addButton(withTitle: loc("update.install"))
-        alert.addButton(withTitle: loc("update.later"))
+        if pendingInstallation?.release == release {
+            state = .readyToRestart
+            showRestartPrompt()
+            return
+        }
         state = .prompting
-        guard AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn else {
-            state = .idle
+        guard presenter.confirmDownload(version: release.version, currentVersion: current,
+            isPreRelease: release.isPreRelease, isDebugBuild: release.isDebugBuild) else {
+            state = restingState
             return
         }
         startDownload(release)
     }
 
-    // MARK: - 下载
-
     private func startDownload(_ release: ReleaseInfo) {
         guard state == .prompting else { return }
         state = .downloading
-        showProgress(loc("update.downloading", release.version))
-
-        releaseSource.downloadAsset(release) { [weak self] downloadResult in
+        presenter.showProgress(loc("update.downloading", release.version))
+        releaseSource.downloadAsset(release) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
-                switch downloadResult {
-                case .failure(let error):
-                    self.closeProgress()
-                    self.state = .idle
-                    self.showAlert(title: loc("update.error.title"),
-                                   message: loc("update.error.download", error.localizedDescription))
-                case .success(let tmpURL):
-                    self.updateProgressLabel(loc("update.verifying"))
-                    self.verifyAndInstall(zipURL: tmpURL, release: release)
+                guard let self, self.state == .downloading else { return }
+                switch result {
+                case .failure(let error): self.failDownload(error)
+                case .success(let archive):
+                    self.presenter.updateProgressLabel(loc("update.verifying"))
+                    self.verifyAndInstall(archive: archive, release: release)
                 }
             }
         }
     }
 
-    private func verifyAndInstall(zipURL: URL, release: ReleaseInfo) {
-        releaseSource.fetchChecksumsListing(for: release) { [weak self] listingResult in
+    private func failDownload(_ error: Error) {
+        presenter.closeProgress()
+        state = restingState
+        presenter.showAlert(title: loc("update.error.title"), message: loc("update.error.download", error.localizedDescription))
+    }
+
+    private func verifyAndInstall(archive: OwnedUpdateArtifact, release: ReleaseInfo) {
+        releaseSource.fetchChecksumsListing(for: release) { [weak self] result in
             guard let self else { return }
-            switch listingResult {
+            switch result {
             case .failure(let error):
                 DispatchQueue.main.async {
-                    self.closeProgress()
-                    self.state = .idle
-                    self.showAlert(title: loc("update.error.title"),
-                                   message: loc("update.error.install", "Failed to fetch SHA256SUMS.txt: \(error.localizedDescription)"))
+                    self.failInstallation("Failed to fetch SHA256SUMS.txt: \(error.localizedDescription)")
                 }
             case .success(let listing):
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        try self.installer.verifyChecksum(zipURL: zipURL, listing: listing, assetName: release.assetName)
-                        DispatchQueue.main.async { self.updateProgressLabel(loc("update.installing")) }
-                        let newApp = try self.installer.extractZip(zipURL)
-                        let current = AppBundleInfo.shortVersion
-                        try self.installer.validateDownloadedApp(newApp, currentVersion: current, expectedVersion: release.version)
+                        try self.installer.verifyChecksum(zipURL: archive.url, listing: listing, assetName: release.assetName)
+                        DispatchQueue.main.async { self.presenter.updateProgressLabel(loc("update.installing")) }
+                        let application = try self.installer.extractZip(archive.url)
+                        try self.installer.validateDownloadedApp(application.url, currentVersion: self.currentVersion(), expectedVersion: release.version)
                         DispatchQueue.main.async {
                             guard self.state == .downloading else { return }
-                            self.closeProgress()
-                            self.promptRestart(version: release.version, newAppURL: newApp)
+                            self.presenter.closeProgress()
+                            self.pendingInstallation = .init(release: release, application: application, promptWhenAvailable: true)
+                            self.state = .readyToRestart
+                            self.resumeDeferredRestartPromptIfPossible()
                         }
                     } catch {
-                        DispatchQueue.main.async {
-                            self.closeProgress()
-                            self.state = .idle
-                            self.showAlert(title: loc("update.error.title"),
-                                           message: loc("update.error.install", error.localizedDescription))
-                        }
+                        DispatchQueue.main.async { self.failInstallation(error.localizedDescription) }
                     }
                 }
             }
         }
     }
 
-    // MARK: - 安装与重启
-
-    private func promptRestart(version: String, newAppURL: URL) {
+    private func failInstallation(_ message: String) {
         guard state == .downloading else { return }
-        state = .readyToRestart
+        presenter.closeProgress()
+        state = restingState
+        presenter.showAlert(title: loc("update.error.title"), message: loc("update.error.install", message))
+    }
+
+    // MARK: - 待安装文件与进程交接
+
+    private var restingState: UpdateState { pendingInstallation == nil ? .idle : .readyToRestart }
+
+    func resumeDeferredRestartPromptIfPossible() {
+        guard state == .readyToRestart, pendingInstallation?.promptWhenAvailable == true,
+              shouldDeferRestartPrompt?() != true else { return }
+        showRestartPrompt()
+    }
+
+    private func showRestartPrompt() {
+        guard state == .readyToRestart, var pending = pendingInstallation else { return }
         if shouldDeferRestartPrompt?() == true {
-            pendingRestartPrompt = (version: version, newAppURL: newAppURL)
+            pending.promptWhenAvailable = true
+            pendingInstallation = pending
             return
         }
-        showRestartPrompt(version: version, newAppURL: newAppURL)
+        pending.promptWhenAvailable = false
+        pendingInstallation = pending
+        // 与下载确认一样，modal 期间不重入检查或再次呈现。
+        state = .prompting
+        let restartNow = presenter.confirmRestart(version: pending.release.version)
+        state = .readyToRestart
+        if restartNow { applyAndRelaunch(pending.application) }
     }
 
-    private func showRestartPrompt(version: String, newAppURL: URL) {
-        guard state == .readyToRestart else { return }
-        let alert = NSAlert()
-        alert.alertStyle = .critical
-        alert.messageText = loc("update.done.title")
-        alert.informativeText = loc("update.done.message", version)
-        alert.addButton(withTitle: loc("update.restart"))
-        alert.addButton(withTitle: loc("update.later"))
-
-        // 强提醒：抢占前台 + Dock 跳动直到用户响应。
-        // (Strong attention: come to foreground + bounce Dock until the user responds.)
-        NSApp.activate(ignoringOtherApps: true)
-        let attentionRequest = NSApp.requestUserAttention(.criticalRequest)
-
-        let response = AlertPresenter.shared.runModalAlert(alert)
-        NSApp.cancelUserAttentionRequest(attentionRequest)
-        if response == .alertFirstButtonReturn {
-            applyAndRelaunch(newAppURL: newAppURL)
-        } else {
-            state = .idle
-        }
-    }
-
-    private func applyAndRelaunch(newAppURL: URL) {
+    private func applyAndRelaunch(_ application: OwnedUpdateArtifact) {
         guard state == .readyToRestart else { return }
         state = .applying
         do {
-            try installer.applyAndRelaunch(newAppURL: newAppURL, currentBundlePath: Bundle.main.bundlePath)
-            NSApp.terminate(nil)
+            try installer.applyAndRelaunch(newAppURL: application.url, currentBundlePath: currentBundlePath())
+            application.handOffToInstaller()
+            pendingInstallation = nil
+            presenter.terminateApplication()
         } catch {
+            // 脚本尚未接管：保留资源供用户稍后手动重试。
             state = .readyToRestart
-            showAlert(title: loc("update.error.title"),
-                      message: loc("update.error.install", error.localizedDescription))
+            presenter.showAlert(title: loc("update.error.title"), message: loc("update.error.install", error.localizedDescription))
         }
-    }
-
-    // MARK: - 进度窗口
-
-    private func showProgress(_ message: String) {
-        let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 90),
-            styleMask: [.titled, .fullSizeContentView],
-            backing: .buffered, defer: false
-        )
-        w.title = loc("update.progress.title")
-        w.titlebarAppearsTransparent = true
-        w.isMovableByWindowBackground = true
-        w.isReleasedWhenClosed = false
-
-        let cv = w.contentView!
-
-        let label = NSTextField(labelWithString: message)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 13)
-        label.alignment = .center
-        progressLabel = label
-
-        let bar = NSProgressIndicator()
-        bar.style = .bar
-        bar.isIndeterminate = true
-        bar.translatesAutoresizingMaskIntoConstraints = false
-        bar.startAnimation(nil)
-
-        cv.addSubview(label)
-        cv.addSubview(bar)
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: cv.topAnchor, constant: 22),
-            label.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 20),
-            label.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -20),
-            bar.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 10),
-            bar.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 20),
-            bar.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -20),
-        ])
-
-        progressWindow = w
-        w.center()
-        WindowPresenter.shared.bringToFront(w)
-    }
-
-    private func updateProgressLabel(_ message: String) {
-        progressLabel?.stringValue = message
-    }
-
-    private func closeProgress() {
-        if let w = progressWindow {
-            w.close()
-            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
-        }
-        progressWindow = nil
-        progressLabel = nil
-    }
-
-    // MARK: - 辅助
-
-    private func showAlert(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.addButton(withTitle: loc("common.ok"))
-        AlertPresenter.shared.runModalAlert(alert)
     }
 
     struct ParsedVersion {

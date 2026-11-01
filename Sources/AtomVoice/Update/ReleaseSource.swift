@@ -21,9 +21,8 @@ protocol ReleaseSource: AnyObject {
         completion: @escaping (Result<ReleaseInfo, Error>) -> Void
     )
 
-    /// 下载资产到临时文件，返回该临时文件 URL。
-    /// (Download the asset zip to a temp file; return the temp URL.)
-    func downloadAsset(_ release: ReleaseInfo, completion: @escaping (Result<URL, Error>) -> Void)
+    /// 下载回调内取得自有文件；调用方持有对象期间文件保持可读。
+    func downloadAsset(_ release: ReleaseInfo, completion: @escaping (Result<OwnedUpdateArtifact, Error>) -> Void)
 
     /// 拉取 SHA256SUMS.txt 全文。
     /// (Fetch SHA256SUMS.txt listing as a string.)
@@ -95,11 +94,15 @@ final class GitHubReleaseSource: ReleaseSource {
         }.resume()
     }
 
-    func downloadAsset(_ release: ReleaseInfo, completion: @escaping (Result<URL, Error>) -> Void) {
+    func downloadAsset(_ release: ReleaseInfo, completion: @escaping (Result<OwnedUpdateArtifact, Error>) -> Void) {
         session.downloadTask(with: release.downloadURL) { tmpURL, _, error in
             if let error { completion(.failure(error)); return }
             guard let tmpURL else { completion(.failure(URLError(.badServerResponse))); return }
-            completion(.success(tmpURL))
+            do {
+                completion(.success(try OwnedUpdateArtifact.acquireDownload(tmpURL)))
+            } catch {
+                completion(.failure(error))
+            }
         }.resume()
     }
 
