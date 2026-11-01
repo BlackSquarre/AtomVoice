@@ -30,6 +30,8 @@ jobs:
             runner: macos-26
           - name: macOS 26 Intel
             runner: macos-26-intel
+          - name: macOS 27 Apple Silicon
+            runner: xcode-27
     steps:
       - uses: actions/checkout@v5
 
