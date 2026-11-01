@@ -34,8 +34,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -56,12 +54,10 @@ enum RecordingStateMachineTests {
         await runner.run("Recording session state clears refining and Doubao wait") {
             var state = RecordingSessionState()
 
-            step(&state, .refiningStarted(text: "pending"))
+            step(&state, .refiningStarted)
             try expect(state.isRefining)
-            try expect(state.pendingRefinementText == "pending")
             step(&state, .refiningFinished)
             try expect(!state.isRefining)
-            try expect(state.pendingRefinementText == nil)
 
             step(&state, .doubaoFinalWaitStarted)
             try expect(state.isWaitingForDoubaoFinalResult)
@@ -72,8 +68,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -171,8 +165,6 @@ enum RecordingStateMachineTests {
                 start.state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: true
                 )
             )
@@ -199,8 +191,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.sherpaCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -209,9 +199,9 @@ enum RecordingStateMachineTests {
 
             try expect(result.sideEffects == [.extendSilenceMonitor(by: 15)])
         }
-        await runner.run("Recording state machine delivers pending Doubao and refinement text on new start") {
+        await runner.run("Recording state machine starts without taking ownership of old final text") {
             var state = RecordingSessionState()
-            step(&state, .refiningStarted(text: "old llm"))
+            step(&state, .refiningStarted)
             step(&state, .triggerPressed(deferCapsulePresentation: false))
             step(&state, .doubaoFinalWaitStarted)
 
@@ -219,16 +209,12 @@ enum RecordingStateMachineTests {
                 state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: "cloud text",
-                    pendingRefinementText: "old llm",
                     lowerVolume: false
                 )
             )
 
             try expect(!result.state.isWaitingForDoubaoFinalResult)
             try expect(!result.state.isRefining)
-            try expect(result.sideEffects.contains(.deliverText("cloud text")))
-            try expect(result.sideEffects.contains(.deliverText("old llm")))
             try expect(result.sideEffects.contains(.notifyRefining(false)))
         }
         await runner.run("Recording state machine stops normal recording") {
@@ -238,8 +224,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -259,8 +243,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -278,13 +260,10 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
             state.liveInsertion.isActive = true
-            state.pendingRefinementText = "pending"
 
             let cancelled = RecordingStateMachine.reduce(state, .cancelRequested)
 
@@ -319,8 +298,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -348,8 +325,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: VolcengineASRSettings.engineCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -369,8 +344,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -388,8 +361,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -407,8 +378,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -425,8 +394,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: VolcengineASRSettings.engineCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -445,8 +412,6 @@ enum RecordingStateMachineTests {
                 &state,
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 )
             )
@@ -538,26 +503,12 @@ enum RecordingStateMachineTests {
 
             try expect(!finished.state.liveInsertion.pasteInFlight)
         }
-        await runner.run("Recording state machine records LLM result") {
+        await runner.run("Recording state machine tracks actual finalizer refining completion") {
             var state = RecordingSessionState()
-            step(&state, .refiningStarted(text: "draft"))
-
-            let result = RecordingStateMachine.reduce(state, .llmResult(text: "polished"))
-
-            try expect(result.state.phase == .idle)
-            try expect(!result.state.isRefining)
-            try expect(result.sideEffects.contains(.notifyRefining(false)))
-            try expect(result.sideEffects.contains(.deliverText("polished")))
-        }
-        await runner.run("Recording state machine records LLM error") {
-            var state = RecordingSessionState()
-            step(&state, .refiningStarted(text: "draft"))
-
-            let result = RecordingStateMachine.reduce(state, .llmError(message: "bad"))
-
-            try expect(result.state.phase == .errored)
-            try expect(!result.state.isRefining)
-            try expect(result.sideEffects.contains(.showCapsule(.error(message: "bad", dismissAfter: 3), ensurePanel: false)))
+            step(&state, .refiningStarted)
+            let result = RecordingStateMachine.reduce(state, .refiningFinished)
+            try expect(result.state.phase == .idle && !result.state.isRefining)
+            try expect(result.sideEffects == [.notifyRefining(false)])
         }
         await runner.run("Reducer normal recording flow snapshot") {
             let snapshot = collectSnapshot([
@@ -565,8 +516,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -590,8 +539,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -614,8 +561,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: VolcengineASRSettings.engineCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -640,8 +585,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -662,8 +605,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -686,14 +627,12 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
                 .triggerReleased,
                 .asrFinal(text: "draft", errorMessage: nil, appending: nil),
-                .refiningStarted(text: "draft"),
+                .refiningStarted,
                 .triggerPressed(deferCapsulePresentation: false),
             ])
 
@@ -711,8 +650,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),
@@ -735,8 +672,6 @@ enum RecordingStateMachineTests {
                 .inputPreflightCompleted(request: 1, ready: true),
                 .startValidated(
                     engine: ASREngineRegistry.appleCode,
-                    pendingDoubaoText: nil,
-                    pendingRefinementText: nil,
                     lowerVolume: false
                 ),
                 .sessionStartCompleted(generation: 1),

@@ -150,14 +150,9 @@ final class LLMRefiner {
 
     // MARK: 系统提示词
 
-    private var currentSystemPrompt: String {
-        let custom = AppSettings.llmSystemPrompt
-        return custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? Self.currentDefaultSystemPrompt : custom
-    }
+    static var currentDefaultSystemPrompt: String { defaultSystemPrompt(language: AppSettings.selectedLanguage) }
 
-    static var currentDefaultSystemPrompt: String {
-        let lang = AppSettings.selectedLanguage
+    static func defaultSystemPrompt(language lang: String) -> String {
         let base = """
         You are an editor for raw speech-to-text dictation before it is pasted into a text field.
 
@@ -212,34 +207,16 @@ final class LLMRefiner {
     func refine(text: String,
                 onProgress: ((String) -> Void)? = nil,
                 completion: @escaping (String?, String?) -> Void) {
-        let connection = AppSettings.llmConnection
-        let baseURL = connection.baseURL
-        let apiKey = connection.apiKey
-        let model = connection.model
+        refine(text: text, configuration: .current, onProgress: onProgress, completion: completion)
+    }
 
-        guard !apiKey.isEmpty else { completion(nil, loc("error.noApiKey")); return }
-
-        let isAnthropic = Self.isAnthropicURL(baseURL)
-        let urlString   = Self.buildURL(base: baseURL)
-        DebugLog.debug("[LLMRefiner] refine: \(urlString)")
-        guard let url = URL(string: urlString) else { completion(nil, loc("error.invalidUrl")); return }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-        Self.setAuth(request: &request, apiKey: apiKey, isAnthropic: isAnthropic)
-
-        let body: [String: Any] = isAnthropic
-            ? ["model": model, "system": currentSystemPrompt,
-               "messages": [["role": "user", "content": text]],
-               "max_tokens": 1024, "temperature": 0.1, "stream": true]
-            : ["model": model,
-               "messages": [["role": "system", "content": currentSystemPrompt],
-                             ["role": "user",   "content": text]],
-               "temperature": 0.1, "max_tokens": 1024, "stream": true]
-
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    func refine(text: String, configuration: LLMRefinementConfiguration,
+                onProgress: ((String) -> Void)? = nil,
+                completion: @escaping (String?, String?) -> Void) {
+        let request: URLRequest
+        do { request = try LLMRequestBuilder.refinement(text: text, configuration: configuration) }
+        catch { completion(nil, error.localizedDescription); return }
+        let isAnthropic = Self.isAnthropicURL(configuration.connection.baseURL)
 
         // 取消上一次未完成的请求（Cancel the previous unfinished request）
         streamDelegate?.cancelled = true
@@ -276,7 +253,7 @@ final class LLMRefiner {
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 10
-        Self.setAuth(request: &request, apiKey: apiKey, isAnthropic: isAnthropic)
+        LLMRequestBuilder.setAuth(request: &request, apiKey: apiKey, isAnthropic: isAnthropic)
 
         let body: [String: Any] = isAnthropic
             ? ["model": model, "messages": [["role": "user", "content": "Hi"]], "max_tokens": 5]
@@ -306,28 +283,9 @@ final class LLMRefiner {
 
     // MARK: - 静态工具
 
-    static func isAnthropicURL(_ base: String) -> Bool {
-        base.contains("anthropic.com")
-    }
-
-    /// 根据 provider 类型构建正确的 endpoint URL（Build the correct endpoint URL based on provider type）
-    static func buildURL(base: String) -> String {
-        var b = base
-        while b.hasSuffix("/") { b = String(b.dropLast()) }
-        if isAnthropicURL(base) {
-            return b.hasSuffix("/messages") ? b : b + "/messages"
-        }
-        return buildCompletionsURL(base: base)
-    }
-
-    /// 兼容旧调用路径（OpenAI 系列）（Backward-compatible with legacy call paths (OpenAI series)）
-    static func buildCompletionsURL(base: String) -> String {
-        var b = base
-        while b.hasSuffix("/") { b = String(b.dropLast()) }
-        if b.hasSuffix("/chat/completions") { return b }
-        if b.hasSuffix("/chat") { return b + "/completions" }
-        return b + "/chat/completions"
-    }
+    static func isAnthropicURL(_ base: String) -> Bool { LLMRequestBuilder.isAnthropicURL(base) }
+    static func buildURL(base: String) -> String { LLMRequestBuilder.buildURL(base: base) }
+    static func buildCompletionsURL(base: String) -> String { LLMRequestBuilder.buildCompletionsURL(base: base) }
 
     /// 返回尾部 UTF-8 不完整序列之前的边界；调用方假设网络流此前缀本身合法。
     /// (Return the prefix boundary before an incomplete trailing UTF-8 sequence.)
@@ -379,12 +337,5 @@ final class LLMRefiner {
         return 0
     }
 
-    private static func setAuth(request: inout URLRequest, apiKey: String, isAnthropic: Bool) {
-        if isAnthropic {
-            request.addValue(apiKey,        forHTTPHeaderField: "x-api-key")
-            request.addValue("2023-06-01",  forHTTPHeaderField: "anthropic-version")
-        } else {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-    }
+
 }

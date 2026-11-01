@@ -156,6 +156,27 @@ enum RecordingSessionControllerTests {
             try expect(sink.deliveredTexts == ["Hello. ", "remaining tail"])
         }
 
+        await runner.run("Unsubmitted live segment remains in final remainder without immediate retry") {
+            let settings = RecordingSessionTestSettings()
+            settings.apply()
+            defer { settings.restore() }
+            AppSettings.appleLiveInsertionEnabled = true
+            let sink = FakeTextOutputSink(completesDeliveriesImmediately: false)
+            sink.submission = .notSubmitted
+            let session = FakeRecognitionSession()
+            let harness = RecordingSessionHarness(session: session, outputSink: sink)
+            defer { harness.tearDown() }
+            harness.controller.start()
+            try await waitForAsyncCallbacks()
+            session.emitPartial("Hello. tail")
+            try expect(harness.controller.state.liveInsertion.committedText.isEmpty)
+            sink.completeNextDelivery(result: .init(submission: .notSubmitted, cleanup: .notNeeded))
+            try expect(sink.deliveredTexts == ["Hello. "])
+            harness.controller.stop()
+            try await waitForAsyncCallbacks()
+            try expect(sink.deliveredTexts == ["Hello. ", "Hello. tail"])
+        }
+
         await runner.run("Recording session fixture starts fake recognition without real audio input") {
             let settings = RecordingSessionTestSettings()
             settings.apply(outputSinkCode: "fake-streaming")
@@ -177,7 +198,6 @@ enum RecordingSessionControllerTests {
 
             try expect(harness.provider.requestedRecognitionCodes == [ASREngineRegistry.appleCode])
             try expect(recognitionSession.startCallCount == 1)
-            try expect(recognitionSession.startAudioFormats.first == .voice16k)
             try expect(outputSink.beginStreamCount == 1)
             try expect(harness.controller.streamSession === streamSession)
         }
@@ -191,7 +211,7 @@ enum RecordingSessionControllerTests {
             defer { harness.tearDown() }
             let generation = harness.enterCapturing()
             let callbacks = harness.controller.makeRecognitionSessionCallbacks(generation: generation)
-            harness.session.start(audioFormat: nil, callbacks: callbacks) { _ in }
+            harness.session.start(callbacks: callbacks) { _ in }
 
             let source = try require(makePCMBuffer(sampleRate: 16_000, frameLength: 160, fillValue: 0.25))
             let copy = try require(harness.session.acceptAudio(source))
@@ -330,32 +350,37 @@ enum RecordingSessionControllerTests {
             try await waitForAsyncCallbacks()
             harness.controller.stop()
             try await waitForAsyncCallbacks()
+            // 固定第二轮仍在准备中，避免依赖两个后台队列谁先完成的偶然顺序。
+            session.completesPreparationImmediately = false
             harness.controller.start()
             session.completeStop()
             try expect(harness.controller.state.isStarting)
-            try expect(harness.outputSink.deliveredTexts.isEmpty)
+            try expect(harness.outputSink.deliveredTexts == ["old"])
+            session.completePreparation()
             try await waitForAsyncCallbacks()
             try expect(harness.controller.isRecording)
             harness.controller.cancel()
         }
 
-        await runner.run("Recording session fixture delivers output side effect through fake sink") {
+        await runner.run("Recording finalizer delivers output through fake sink") {
             let settings = RecordingSessionTestSettings()
             settings.apply(outputSinkCode: "fake")
             defer { settings.restore() }
 
             let harness = RecordingSessionHarness()
             defer { harness.tearDown() }
-            harness.enterCapturing()
-
-            harness.controller.execute(.deliverText("hello"))
+            harness.session.currentText = "hello"
+            harness.controller.start()
+            try await waitForAsyncCallbacks()
+            harness.controller.stop()
+            try await waitForAsyncCallbacks()
 
             try expect(harness.outputSink.deliveredTexts == ["hello"])
         }
     }
 }
 
-private final class RecordingSessionTestSettings {
+final class RecordingSessionTestSettings {
     private let defaults = UserDefaults.standard
     private let selectedLanguage: Any?
     private let recognitionEngine: Any?

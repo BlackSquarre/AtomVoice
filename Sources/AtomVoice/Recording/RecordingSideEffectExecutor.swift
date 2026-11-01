@@ -24,9 +24,10 @@ extension RecordingSessionController {
         case .stopSession(let generation, let immediate, let punctuation):
             stopRecognitionSession(generation: generation, immediate: immediate, appending: punctuation)
         case .cancelSession(let stopAudioEngine):
-            if recognitionSessionStarted {
+            if recognitionSessionStarted || recognitionSessionStarting {
                 recognitionSession?.cancel()
                 recognitionSessionStarted = false
+                recognitionSessionStarting = false
             }
             if state.phase != .capturing { recordingAudioInput.cancel() }
             if stopAudioEngine {
@@ -39,20 +40,14 @@ extension RecordingSessionController {
             ASRLatencyProbe.mark(text, stage: "side_effect_update_capsule")
             if isRecordingOrStarting { presenter.present(.updateText(text)) }
             streamSession?.update(currentText: text)
-        case .updateCapsuleBands:
-            break
         case .startShimmer:
             presenter.present(.startShimmer)
         case .stopShimmer:
             presenter.present(.stopShimmer)
         case .dismissCapsule:
             presenter.dismiss(completion: nil)
-        case .deliverText(let text):
-            DebugLog.info("[TextOutput] deliver textLength=\(text.count) sink=\(activeOutputSink.descriptor.code)")
-            activeOutputSink.deliver(text: text, completion: nil)
-        case .startLLM:
-            break
         case .cancelLLM:
+            finishPendingRefinement()
             llmRefiner.cancel()
         case .lowerVolume:
             volumeController.saveAndDecreaseVolume()

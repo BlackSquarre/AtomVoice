@@ -29,8 +29,6 @@ enum RecordingEvent: Equatable {
     case recognitionCapabilitiesResolved(mutableCapsulePreview: Bool)
     case startValidated(
         engine: String,
-        pendingDoubaoText: String?,
-        pendingRefinementText: String?,
         lowerVolume: Bool
     )
     case sessionStartFailed(message: String, dismissAfter: TimeInterval, stopAudioEngine: Bool, recovery: RecordingRecovery?)
@@ -44,25 +42,23 @@ enum RecordingEvent: Equatable {
     case fallbackStarted(engine: String)
     case doubaoFinalWaitStarted
     case doubaoFinalWaitEnded
-    case refiningStarted(text: String?)
+    case refiningStarted
     case refiningFinished
-    case llmResult(text: String)
-    case llmError(message: String)
-    case timeout
     case textOutputActivated(liveInsertion: Bool)
+    case preparationStopRequested(RecordingPreparationStop)
+    case deferredCapsuleReset
     case deferredCapsuleReveal
     case capsulePresentationRequested(RecordingCapsulePresentationRequest)
     case capsuleTextUpdated(String)
-    case capsuleBandsUpdated
     case shimmerChanged(Bool)
     case silenceMonitorGraceRequested(duration: TimeInterval)
     case liveInsertionProgressCleared
     case liveInsertionReset
     case liveInsertionDeferred(text: String, isFinal: Bool)
     case liveInsertionLatestObserved(text: String)
+    case liveInsertionCommitStarted
     case liveInsertionCommitted(segment: String, latestText: String)
     case liveInsertionCommitFinished
-    case teardownCompleted
 }
 
 enum RecordingRecovery: Equatable {
@@ -77,12 +73,9 @@ enum RecordingSideEffect: Equatable {
     case cancelSession(stopAudioEngine: Bool)
     case showCapsule(RecordingCapsulePresentationRequest, ensurePanel: Bool)
     case updateCapsuleText(String)
-    case updateCapsuleBands
     case startShimmer
     case stopShimmer
     case dismissCapsule
-    case deliverText(String)
-    case startLLM(String)
     case cancelLLM
     case lowerVolume
     case restoreVolume
@@ -155,7 +148,6 @@ struct RecordingSessionState: Equatable {
     fileprivate(set) var startRequestGeneration = 0
     fileprivate(set) var isRefining = false
     fileprivate(set) var isWaitingForDoubaoFinalResult = false
-    var pendingRefinementText: String?
     var mutableCapsulePreviewEnabled = true
     var textOutputActivated = false
     var liveInsertion = RecordingLiveInsertionState()
@@ -223,21 +215,12 @@ struct RecordingStateMachine {
             guard next.phase == .starting || next.phase == .capturing else { break }
             next.mutableCapsulePreviewEnabled = mutableCapsulePreview
 
-        case .startValidated(let engine, let pendingDoubaoText, let pendingRefinementText, let lowerVolume):
+        case .startValidated(let engine, let lowerVolume):
             guard next.phase == .starting else { break }
-            if next.isWaitingForDoubaoFinalResult {
-                next.isWaitingForDoubaoFinalResult = false
-                if let pendingDoubaoText, !pendingDoubaoText.isEmpty {
-                    effects.append(.deliverText(pendingDoubaoText))
-                }
-            }
+            next.isWaitingForDoubaoFinalResult = false
             if next.isRefining {
                 next.isRefining = false
-                next.pendingRefinementText = nil
                 effects.append(.notifyRefining(false))
-                if let pendingRefinementText, !pendingRefinementText.isEmpty {
-                    effects.append(.deliverText(pendingRefinementText))
-                }
             }
             next.phase = .capturing
             next.currentRecordingEngine = engine
@@ -255,7 +238,17 @@ struct RecordingStateMachine {
 
         case .sessionStartCompleted(let generation):
             guard next.phase == .capturing, next.recordingGeneration == generation else { break }
-            effects.append(.startSilenceMonitor)
+            next.recognitionReady = true
+            if let stop = next.preparationStop {
+                next.preparationStop = nil
+                next.phase = .stopping
+                next.textOutputActivated = false
+                next.deferredCapsule.reset()
+                effects.append(contentsOf: commonStopEffects())
+                effects.append(.stopSession(generation: generation, immediate: stop.immediate, appending: stop.punctuation))
+            } else {
+                effects.append(.startSilenceMonitor)
+            }
 
         case .sessionStartFailed(let message, let dismissAfter, let stopAudioEngine, let recovery):
             next.phase = .errored
@@ -294,6 +287,8 @@ struct RecordingStateMachine {
                 if next.phase == .starting {
                     next.phase = .cancelled
                     next.startRequestGeneration += 1
+                    next.recognitionReady = false
+                    next.preparationStop = nil
                     next.deferredCapsule.reset()
                 }
                 break
@@ -347,51 +342,34 @@ struct RecordingStateMachine {
                 effects.append(.extendSilenceMonitor(by: 3))
             }
 
-        case .teardownCompleted:
-            next.phase = .idle
-
         case .doubaoFinalWaitStarted:
             next.isWaitingForDoubaoFinalResult = true
 
         case .doubaoFinalWaitEnded:
             next.isWaitingForDoubaoFinalResult = false
 
-        case .refiningStarted(let text):
+        case .refiningStarted:
             next.phase = .refining
             next.isRefining = true
-            next.pendingRefinementText = text
             effects.append(.notifyRefining(true))
 
         case .refiningFinished:
             next.phase = .idle
             next.isRefining = false
-            next.pendingRefinementText = nil
             effects.append(.notifyRefining(false))
-
-        case .llmResult(let text):
-            next.phase = .idle
-            next.isRefining = false
-            next.pendingRefinementText = nil
-            effects.append(contentsOf: [.notifyRefining(false), .deliverText(text)])
-
-        case .llmError(let message):
-            next.phase = .errored
-            next.isRefining = false
-            next.pendingRefinementText = nil
-            effects.append(contentsOf: [
-                .notifyRefining(false),
-                .showCapsule(.error(message: message, dismissAfter: 3), ensurePanel: false),
-            ])
-
-        case .timeout:
-            guard next.phase == .capturing else { break }
-            effects.append(.stopSession(generation: next.recordingGeneration, immediate: false, appending: nil))
 
         case .textOutputActivated(let liveInsertion):
             guard next.phase == .capturing, !next.textOutputActivated else { break }
             next.textOutputActivated = true
             next.liveInsertion.isActive = liveInsertion
             next.liveInsertion.clearProgress()
+
+        case .preparationStopRequested(let stop):
+            guard next.isRecordingOrStarting, !next.recognitionReady, next.preparationStop == nil else { break }
+            next.preparationStop = stop
+
+        case .deferredCapsuleReset:
+            next.deferredCapsule.reset()
 
         case .deferredCapsuleReveal:
             next.deferredCapsule.reset()
@@ -409,11 +387,6 @@ struct RecordingStateMachine {
                 next.deferredCapsule.recognizedText = text
             } else {
                 effects.append(.updateCapsuleText(text))
-            }
-
-        case .capsuleBandsUpdated:
-            if !next.deferredCapsule.isDeferred {
-                effects.append(.updateCapsuleBands)
             }
 
         case .shimmerChanged(let active):
@@ -441,6 +414,9 @@ struct RecordingStateMachine {
         case .liveInsertionLatestObserved(let text):
             guard next.liveInsertion.isActive else { break }
             next.liveInsertion.latestText = text
+
+        case .liveInsertionCommitStarted:
+            next.liveInsertion.pasteInFlight = true
 
         case .liveInsertionCommitted(let segment, let latestText):
             next.liveInsertion.latestText = latestText
@@ -472,7 +448,6 @@ private extension RecordingSessionState {
         preparationStop = nil
         isRefining = false
         isWaitingForDoubaoFinalResult = false
-        pendingRefinementText = nil
         mutableCapsulePreviewEnabled = true
         textOutputActivated = false
         liveInsertion.reset()

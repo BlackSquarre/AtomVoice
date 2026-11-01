@@ -68,13 +68,10 @@ func makeRecognitionSessionCallbacks(
         copyAudioBuffer: { buffer in buffer },
         onPartialResult: { _, _ in },
         onError: { _ in },
-        onShowInitial: {},
         onShowRecording: {},
         onProgress: { _, _ in },
-        onDisplayText: { _ in },
         onShimmerChanged: { _ in },
         onEffectiveEngineChanged: { _ in },
-        onStartFailure: { _ in },
         onWaitingForFinalResultChanged: { _ in },
         onResetLiveInsertion: {}
     )
@@ -133,8 +130,6 @@ final class RecordingSessionHarness {
             &state,
             .startValidated(
                 engine: engine,
-                pendingDoubaoText: nil,
-                pendingRefinementText: nil,
                 lowerVolume: false
             )
         )
@@ -159,7 +154,7 @@ final class RecognitionFinalizerHarness {
     private(set) var clearedStreamCount = 0
     var generation = 0
     var isRefining = false
-    private let finalizer: RecognitionResultFinalizer
+    let finalizer: RecognitionResultFinalizer
 
     init(processors: [TextPostProcessor] = []) {
         let settings = RecognitionFinalizerSettingsBox()
@@ -188,6 +183,7 @@ final class RecognitionFinalizerHarness {
         errorMessage: String? = nil,
         liveInsertion: RecognitionLiveInsertionSnapshot = RecognitionLiveInsertionSnapshot(isActive: false, committedText: ""),
         streamSession: TextStreamSession? = nil,
+        isOutputValid: (() -> Bool)? = nil,
         waitForPriorOutput: @escaping (@escaping () -> Void) -> Void = { $0() }
     ) {
         finalizer.finish(
@@ -200,6 +196,7 @@ final class RecognitionFinalizerHarness {
                 streamSession: streamSession,
                 clearStreamSession: { [weak self] in self?.clearedStreamCount += 1 },
                 generation: generation,
+                isOutputValid: isOutputValid,
                 waitForPriorOutput: waitForPriorOutput
             )
         )

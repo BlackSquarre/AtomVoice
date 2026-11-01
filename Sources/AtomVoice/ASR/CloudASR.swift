@@ -2,13 +2,43 @@ import Accelerate
 import AVFoundation
 import Foundation
 
+/// 云端层保留分类与显示文案；恢复决策不再在多个调用方重复解析文案。
+struct CloudASRFailure {
+    enum Kind { case transport, server, protocolMessage, timeout }
+    let kind: Kind
+    let message: String
+    let isBenignSocketClosure: Bool
+
+    init(kind: Kind, message: String) {
+        self.kind = kind
+        self.message = message
+        // 沿用既有兼容匹配，不扩大静默错误范围。
+        let lowercased = message.lowercased()
+        isBenignSocketClosure = lowercased.contains("socket") && (
+            lowercased.contains("not connected") || lowercased.contains("未连接") || lowercased.contains("未能完成"))
+    }
+}
+
+/// PCM16 mono 的传输参数由服务商给出，时长保留现有默认值。
+struct CloudASRAudioConfiguration {
+    var sampleRate: Double = 16_000
+    var lowLatencyChunkDuration: Double = 0.1
+    var standardChunkDuration: Double = 0.2
+    var lowLatencyWindow: Double = 1
+    var minimumUsefulDuration: Double = 0.25
+    var connectionTimeout: Double = 2
+
+    var consumerFormat: AudioRouter.ConsumerFormat { .init(sampleRate: sampleRate, channelCount: 1) }
+    func byteCount(duration: Double) -> Int { Int(sampleRate * duration) * MemoryLayout<Int16>.size }
+}
+
 // MARK: - 通用云端 ASR 协议（Common cloud ASR protocols）
 
 /// 云端 ASR 连接代理（Cloud ASR connection delegate）
 protocol CloudASRConnectionDelegate: AnyObject {
     func connectionDidOpen(_ connection: CloudASRConnection)
     func connection(_ connection: CloudASRConnection, didReceiveText text: String, isFinal: Bool)
-    func connection(_ connection: CloudASRConnection, didFailWithError error: String)
+    func connection(_ connection: CloudASRConnection, didFailWithError error: CloudASRFailure)
 }
 
 /// 云端 ASR 连接（Cloud ASR connection）
@@ -36,24 +66,26 @@ protocol CloudASRProvider {
     /// 创建新连接；返回 nil 表示无法创建（Create a new connection; nil means creation failed）
     func createConnection() -> CloudASRConnection?
 
-    /// 打开设置窗口（Open the settings window）
-    func showSettings()
+    var audioConfiguration: CloudASRAudioConfiguration { get }
 
     /// 最终结果等待超时（秒）（Final-result wait timeout in seconds）
     var finalResultTimeout: Double { get }
 }
 
-// MARK: - 通用音频转换器（16kHz mono pcm_s16le）（Common audio converter）
+extension CloudASRProvider {
+    var audioConfiguration: CloudASRAudioConfiguration { .init() }
+}
 
-/// 通用云端 ASR 音频转换器：将 AVAudioPCMBuffer 转为 16kHz mono pcm_s16le
-/// (Cloud audio converter: converts AVAudioPCMBuffer to 16kHz mono pcm_s16le)
+// MARK: - 通用音频转换器（PCM16 mono，采样率由配置声明）
+
+/// 通用云端 ASR 音频转换器：按服务商配置转为 mono pcm_s16le。
 final class CloudAudioConverter {
-    private let outputFormat = AVAudioFormat(
-        commonFormat: .pcmFormatFloat32,
-        sampleRate: 16_000,
-        channels: 1,
-        interleaved: false
-    )!
+    private let outputFormat: AVAudioFormat
+
+    init(sampleRate: Double = 16_000) {
+        outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate,
+                                    channels: 1, interleaved: false)!
+    }
     private var converter: AVAudioConverter?
     private var inputFormatDescription = ""
 
@@ -158,13 +190,15 @@ final class CloudASRRecognizerController: NSObject {
 
     private let provider: CloudASRProvider
     private let queue = DispatchQueue(label: "com.atomvoice.cloudASR")
-    private let lowLatencyChunkSizeBytes = 16_000 / 10 * 2  // 100ms, mono, int16
-    private let standardChunkSizeBytes = 16_000 / 5 * 2  // 200ms, mono, int16
-    private let lowLatencyWindowBytes = 16_000 * 2  // 前 1 秒用小包降低首包等待时间（Use small packets for the first second to reduce first-packet latency）
-    private let minimumUsefulAudioBytes = 16_000 / 4 * 2  // 250ms, mono, int16
+    private let audioConfiguration: CloudASRAudioConfiguration
+    private var lowLatencyChunkSizeBytes: Int { audioConfiguration.byteCount(duration: audioConfiguration.lowLatencyChunkDuration) }
+    private var standardChunkSizeBytes: Int { audioConfiguration.byteCount(duration: audioConfiguration.standardChunkDuration) }
+    private var lowLatencyWindowBytes: Int { audioConfiguration.byteCount(duration: audioConfiguration.lowLatencyWindow) }
+    private var minimumUsefulAudioBytes: Int { audioConfiguration.byteCount(duration: audioConfiguration.minimumUsefulDuration) }
+    var preferredAudioFormat: AudioRouter.ConsumerFormat { audioConfiguration.consumerFormat }
 
     private var connection: CloudASRConnection?
-    private var converter = CloudAudioConverter()
+    private var converter: CloudAudioConverter
     private var chunkBuffer = Data()
     private var state: State = .idle
     private var finishAfterConnect = false
@@ -179,12 +213,14 @@ final class CloudASRRecognizerController: NSObject {
     }
     private var finishCompletion: ((String, String?) -> Void)?
     private var onResult: ((String, Bool) -> Void)?
-    private var onError: ((String) -> Void)?
+    private var onError: ((CloudASRFailure) -> Void)?
     private var sentAudioBytes = 0
     private var sessionID = 0
 
     init(provider: CloudASRProvider) {
         self.provider = provider
+        audioConfiguration = provider.audioConfiguration
+        converter = CloudAudioConverter(sampleRate: audioConfiguration.sampleRate)
     }
 
     var currentText: String {
@@ -195,7 +231,7 @@ final class CloudASRRecognizerController: NSObject {
     var engineCode: String { provider.engineCode }
 
     func start(onResult: @escaping (String, Bool) -> Void,
-               onError: @escaping (String) -> Void) -> String? {
+               onError: @escaping (CloudASRFailure) -> Void) -> String? {
         if let error = provider.validateCredentials() {
             DebugLog.error("[CloudASR] Credential validation failed: \(error)")
             return error
@@ -211,7 +247,7 @@ final class CloudASRRecognizerController: NSObject {
             self.sessionID += 1
             let sessionID = self.sessionID
             self.connection = connection
-            self.converter = CloudAudioConverter()
+            self.converter = CloudAudioConverter(sampleRate: self.audioConfiguration.sampleRate)
             self.chunkBuffer = Data()
             self.state = .connecting
             self.finishAfterConnect = false
@@ -227,14 +263,14 @@ final class CloudASRRecognizerController: NSObject {
             connection.resume()
 
             // 连接超时（Connection timeout）
-            self.queue.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self.queue.asyncAfter(deadline: .now() + self.audioConfiguration.connectionTimeout) { [weak self] in
                 guard let self,
                       self.sessionID == sessionID,
                       self.connection === connection,
                       self.state == .connecting
                 else { return }
-                DebugLog.error("[CloudASR] Connection timed out (2s), sessionID=\(sessionID)")
-                self.failLocked(loc("cloudASR.error.connectionFailed", loc("cloudASR.error.timeout")))
+                DebugLog.error("[CloudASR] Connection timed out (\(self.audioConfiguration.connectionTimeout)s), sessionID=\(sessionID)")
+                self.failLocked(.init(kind: .timeout, message: loc("cloudASR.error.connectionFailed", loc("cloudASR.error.timeout"))))
             }
         }
 
@@ -335,13 +371,14 @@ final class CloudASRRecognizerController: NSObject {
         }
     }
 
-    private func failLocked(_ message: String) {
+    private func failLocked(_ failure: CloudASRFailure) {
+        let message = failure.message
         DebugLog.error("[CloudASR] Recognition failed: \(message), state=\(self.state), sentBytes=\(self.sentAudioBytes)")
         DebugLog.error("[CloudASR] error: \(message)")
         if state == .finishing || finishCompletion != nil {
             let audioBytes = sentAudioBytes + chunkBuffer.count
             let noUsefulRecognition = lastText.isEmpty && (
-                audioBytes < minimumUsefulAudioBytes || isBenignStopError(message)
+                audioBytes < minimumUsefulAudioBytes || failure.isBenignSocketClosure
             )
             completeStopLocked(text: lastText, error: noUsefulRecognition ? nil : (lastText.isEmpty ? message : nil))
             return
@@ -349,7 +386,7 @@ final class CloudASRRecognizerController: NSObject {
         let callback = onError
         cancelLocked()
         DispatchQueue.main.async {
-            callback?(message)
+            callback?(failure)
         }
     }
 
@@ -376,7 +413,7 @@ final class CloudASRRecognizerController: NSObject {
         finishCompletion = nil
         connection?.cancel()
         connection = nil
-        converter = CloudAudioConverter()
+        converter = CloudAudioConverter(sampleRate: audioConfiguration.sampleRate)
         chunkBuffer.removeAll()
         finishAfterConnect = false
         lastText = ""
@@ -433,8 +470,8 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
         }
     }
 
-    func connection(_ connection: CloudASRConnection, didFailWithError error: String) {
-        DebugLog.error("[CloudASR] Connection error callback: \(error)")
+    func connection(_ connection: CloudASRConnection, didFailWithError error: CloudASRFailure) {
+        DebugLog.error("[CloudASR] Connection error callback: \(error.message)")
         queue.async { [weak self] in
             guard let self,
                   self.connection === connection
@@ -443,15 +480,5 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
         }
     }
 
-    private func isBenignStopError(_ message: String) -> Bool {
-        // 无语音或极短录音停止时，服务端/系统可能先关闭 WebSocket；这类错误应按空识别处理。
-        // (When stopping silence or very short recordings, the server/system may close the WebSocket first;
-        // treat these as empty recognition rather than user-visible failures.)
-        let lowercased = message.lowercased()
-        return lowercased.contains("socket") && (
-            lowercased.contains("not connected") ||
-            lowercased.contains("未连接") ||
-            lowercased.contains("未能完成")
-        )
-    }
+
 }

@@ -11,30 +11,28 @@ import Speech
 /// - 不持有胶囊 / 录音 generation / streamSession 等编排状态——这些归 AppDelegate（未来 RecordingSessionController）。
 final class AppleLiveFallbackStrategy {
     private let audioEngine: AudioEngineController
+    private let audioFormat: AudioRouter.ConsumerFormat
     private let fallback: DoubaoFallbackCoordinator
     private let speechRecognizerProvider: () -> SpeechRecognizerController
 
     init(audioEngine: AudioEngineController,
          fallback: DoubaoFallbackCoordinator,
+         audioFormat: AudioRouter.ConsumerFormat = .voice16k,
          speechRecognizerProvider: @escaping () -> SpeechRecognizerController) {
         self.audioEngine = audioEngine
         self.fallback = fallback
+        self.audioFormat = audioFormat
         self.speechRecognizerProvider = speechRecognizerProvider
     }
 
     /// 判断豆包错误是否属于"长按不说话"误报：录音中无任何识别文本时的 Socket 未连接错误。
     /// (Whether the Doubao error is a benign "user held the trigger silently" socket-disconnect false positive.)
-    func isBenignSilenceError(_ message: String, cloudCurrentText: String) -> Bool {
+    func isBenignSilenceError(_ failure: CloudASRFailure, cloudCurrentText: String) -> Bool {
         guard cloudCurrentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               fallback.liveDisplayText().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return false }
 
-        let lowercased = message.lowercased()
-        return lowercased.contains("socket") && (
-            lowercased.contains("not connected") ||
-            lowercased.contains("未连接") ||
-            lowercased.contains("未能完成")
-        )
+        return failure.isBenignSocketClosure
     }
 
     /// 启动 Apple 实时回退识别。
@@ -63,21 +61,18 @@ final class AppleLiveFallbackStrategy {
                 DebugLog.error("[AppleLiveFallback] \(error)")
             },
             onRequestSwitch: { [weak self] newRequest in
-                // 续录滚动换 request 时同样用 16kHz，与初次接入及回灌音频保持一致。
-                // (Rolling re-segmentation also switches at 16kHz to stay consistent.)
-                self?.audioEngine.switchRequest(newRequest, format: .voice16k)
+                // 续录沿用云端采集配置（豆包仍为 16kHz），与初次接入和回灌一致。
+                self?.audioEngine.switchRequest(newRequest, format: self?.audioFormat)
             }
         )
 
         if let request {
             // 先把豆包断流前最近几秒的回看音频回灌给 Apple，补回"豆包已收音但识别结果未回传"的
-            // 交接缺口；再接上实时流。回看音频与实时流同为 16kHz，重叠部分的去重交给 combinedText。
-            // (Replay the last few seconds of look-back audio into Apple to recover the hand-off gap,
-            //  then attach the live stream. Both are 16kHz; overlap de-dup is handled by combinedText.)
+            // 交接缺口；再按同一配置接实时流，重叠去重交给 combinedText。
             for buffer in fallback.rollingBufferSnapshot() {
                 request.append(buffer)
             }
-            audioEngine.switchRequest(request, format: .voice16k)
+            audioEngine.switchRequest(request, format: audioFormat)
         }
         return initialText
     }

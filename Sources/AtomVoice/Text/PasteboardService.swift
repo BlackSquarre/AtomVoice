@@ -22,6 +22,7 @@ enum PasteboardWriteResult {
     case written(changeCount: Int)
     case changed
     case failed
+    case failedAfterRollback(PasteboardRestoreResult)
 }
 
 enum PasteboardRestoreResult {
@@ -132,8 +133,7 @@ final class SystemPasteboardAccess: PasteboardAccessing {
 
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
-            _ = restore(snapshot, expectedChangeCount: pasteboard.changeCount)
-            return .failed
+            return .failedAfterRollback(restore(snapshot, expectedChangeCount: pasteboard.changeCount))
         }
         return .written(changeCount: pasteboard.changeCount)
     }

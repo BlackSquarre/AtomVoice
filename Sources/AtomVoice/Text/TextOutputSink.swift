@@ -1,6 +1,23 @@
 import Cocoa
 import Carbon
 
+// 只记录平台可以证明的发送事实；事件发送不代表目标应用确认收字。
+enum TextDeliverySubmission: Equatable {
+    case notSubmitted
+    case eventPosted
+}
+
+struct TextDeliveryResult: Equatable {
+    let submission: TextDeliverySubmission
+    let cleanup: TextDeliveryCleanup
+}
+
+enum TextDeliveryCleanup: Equatable {
+    case notNeeded
+    case completed
+    case failed
+}
+
 // 文本输出端描述：用于菜单展示与能力查询
 // (Text output sink descriptor: used for menu display and capability queries)
 struct TextOutputSinkDescriptor {
@@ -32,13 +49,17 @@ protocol TextOutputSink: AnyObject {
     var descriptor: TextOutputSinkDescriptor { get }
     /// 一次性投递（粘贴模式使用）
     /// (One-shot delivery — used by paste mode)
-    func deliver(text: String, completion: (() -> Void)?)
+    func deliver(text: String, onSubmission: ((TextDeliverySubmission) -> Void)?, completion: ((TextDeliveryResult) -> Void)?)
     /// 创建流式会话；不支持流式或当前环境不可用时返回 nil
     /// (Create a streaming session; nil if streaming unsupported or not available right now)
     func beginStream() -> TextStreamSession?
 }
 
 extension TextOutputSink {
+    func deliver(text: String, completion: ((TextDeliveryResult) -> Void)?) {
+        deliver(text: text, onSubmission: nil, completion: completion)
+    }
+
     func beginStream() -> TextStreamSession? { nil }
 }
 
@@ -93,8 +114,8 @@ final class PasteboardInjectSink: TextOutputSink {
         self.injector = injector
     }
 
-    func deliver(text: String, completion: (() -> Void)?) {
-        injector.inject(text: text, completion: completion)
+    func deliver(text: String, onSubmission: ((TextDeliverySubmission) -> Void)?, completion: ((TextDeliveryResult) -> Void)?) {
+        injector.inject(text: text, onSubmission: onSubmission, completion: completion)
     }
 }
 
@@ -126,8 +147,8 @@ final class StreamingInjectSink: TextOutputSink {
 
     /// 流式 sink 的"一次性投递"路径：仅在外部直接调用 deliver 时（少见）走 paste 兜底
     /// (One-shot path of the streaming sink: only used if deliver is called directly — paste fallback)
-    func deliver(text: String, completion: (() -> Void)?) {
-        injector.inject(text: text, completion: completion)
+    func deliver(text: String, onSubmission: ((TextDeliverySubmission) -> Void)?, completion: ((TextDeliveryResult) -> Void)?) {
+        injector.inject(text: text, onSubmission: onSubmission, completion: completion)
     }
 }
 
@@ -244,20 +265,20 @@ private final class PasteStreamSession: TextStreamSession {
                     self.drainIfIdle()
                     return
                 }
-                self.injector.inject(text: newSuffix) { [weak self] in
+                self.injector.inject(text: newSuffix, completion: { [weak self] _ in
                     guard let self else { return }
                     self.insertedText = target
                     self.operationInFlight = false
                     self.drainIfIdle()
-                }
+                })
             }
         } else {
-            injector.inject(text: newSuffix) { [weak self] in
+            injector.inject(text: newSuffix, completion: { [weak self] _ in
                 guard let self else { return }
                 self.insertedText = target
                 self.operationInFlight = false
                 self.drainIfIdle()
-            }
+            })
         }
     }
 

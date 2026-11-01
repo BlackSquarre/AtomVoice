@@ -52,13 +52,13 @@ enum ASRProviderTests {
             try expect(apple.preferredAudioFormat == nil)
             try expect(apple.supportsMutableCapsulePreview)
             try expect(apple.supportsLiveInsertion)
-            try expect(!apple.supportsServerFallback)
+            try expect(apple.recognitionResources == [ASREngineRegistry.appleCode])
             try expect(sherpa.supportsMutableCapsulePreview)
             try expect(sherpa.preferredAudioFormat == .voice16k)
             try expect(!sherpa.supportsLiveInsertion)
             try expect(doubao.supportsMutableCapsulePreview)
             try expect(doubao.preferredAudioFormat == .voice16k)
-            try expect(doubao.supportsServerFallback)
+            try expect(doubao.recognitionResources == [ASREngineRegistry.appleCode, VolcengineASRSettings.engineCode])
         }
         await runner.run("ASR provider retains Sherpa session across asynchronous release") {
             let provider = ASREngineProvider()

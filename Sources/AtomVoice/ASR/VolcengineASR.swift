@@ -151,11 +151,11 @@ struct VolcengineASRSettings {
         return loc("doubao.settings.globalSummary", language, punctuation, delay)
     }
 
-    func requestPayload() -> [String: Any] {
+    func requestPayload(audioConfiguration: CloudASRAudioConfiguration = .init()) -> [String: Any] {
         let audio: [String: Any] = [
             "format": "pcm",
             "codec": "raw",
-            "rate": 16000,
+            "rate": Int(audioConfiguration.sampleRate),
             "bits": 16,
             "channel": 1,
             "language": volcengineLanguage,
@@ -194,6 +194,7 @@ struct VolcengineASRSettings {
 final class VolcengineASRProvider: CloudASRProvider {
     let engineCode = VolcengineASRSettings.engineCode
     let displayName = "豆包云端 ASR"
+    let audioConfiguration = CloudASRAudioConfiguration()
 
     /// 长生命周期的共享 URLSession：复用同一个 session 让 URLSession 内部可以做 TLS session
     /// resumption 与连接池缓存，第二次以后的 WebSocket 握手能省掉一次完整 TLS handshake。
@@ -222,7 +223,7 @@ final class VolcengineASRProvider: CloudASRProvider {
         request.addValue(connectID, forHTTPHeaderField: "X-Api-Connect-Id")
         request.addValue("-1", forHTTPHeaderField: "X-Api-Sequence")
 
-        guard let initialFrame = try? VolcengineASRProtocolCodec.makeFullClientRequest(payload: settings.requestPayload()) else {
+        guard let initialFrame = try? VolcengineASRProtocolCodec.makeFullClientRequest(payload: settings.requestPayload(audioConfiguration: audioConfiguration)) else {
             return nil
         }
 
@@ -232,10 +233,6 @@ final class VolcengineASRProvider: CloudASRProvider {
         #endif
 
         return VolcengineASRConnection(session: sharedSession, request: request, initialFrame: initialFrame)
-    }
-
-    func showSettings() {
-        // 由 AppDelegate 调用 DoubaoSettingsWindowController
     }
 
     var finalResultTimeout: Double {
@@ -327,7 +324,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
                     DebugLog.error("[VolcengineASR] send error: \(error.localizedDescription)")
                     let nsError = error as NSError
                     if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
-                    self.delegate?.connection(self, didFailWithError: loc("doubao.error.sendFailed", error.localizedDescription))
+                    self.delegate?.connection(self, didFailWithError: .init(kind: .transport, message: loc("doubao.error.sendFailed", error.localizedDescription)))
                     return
                 }
                 completion?()
@@ -351,7 +348,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
                     DebugLog.error("[VolcengineASR] receive error: \(error.localizedDescription)")
                     let nsError = error as NSError
                     if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
-                    self.delegate?.connection(self, didFailWithError: loc("doubao.error.connectionFailed", error.localizedDescription))
+                    self.delegate?.connection(self, didFailWithError: .init(kind: .transport, message: loc("doubao.error.connectionFailed", error.localizedDescription)))
                 }
             }
         }
@@ -363,7 +360,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
         case .data(let messageData):
             data = messageData
         case .string(let text):
-            delegate?.connection(self, didFailWithError: loc("doubao.error.server", text))
+            delegate?.connection(self, didFailWithError: .init(kind: .server, message: loc("doubao.error.server", text)))
             return
         @unknown default:
             return
@@ -372,7 +369,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
         do {
             let response = try VolcengineASRProtocolCodec.parseServerMessage(data)
             if let errorMessage = response.errorMessage {
-                delegate?.connection(self, didFailWithError: loc("doubao.error.server", errorMessage))
+                delegate?.connection(self, didFailWithError: .init(kind: .server, message: loc("doubao.error.server", errorMessage)))
                 return
             }
             if let text = response.text {
@@ -380,7 +377,7 @@ extension VolcengineASRConnection: URLSessionWebSocketDelegate {
                 delegate?.connection(self, didReceiveText: text, isFinal: response.isFinal)
             }
         } catch {
-            delegate?.connection(self, didFailWithError: error.localizedDescription)
+            delegate?.connection(self, didFailWithError: .init(kind: .protocolMessage, message: error.localizedDescription))
         }
     }
 }

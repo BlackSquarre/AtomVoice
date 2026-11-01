@@ -18,12 +18,14 @@ final class RecordingSessionController {
     private let textOutputSinkRegistry: TextOutputSinkRegistry
     let volumeController: VolumeController
     private let asrEngineProvider: ASREngineProviding
+    private var finalizations: [RecordingFinalization] = []
     private let recognitionFinalizer: RecognitionResultFinalizer
+    private var liveInsertionDelivery = LiveInsertionDelivery()
     private let liveInsertionAdapter = AppleLiveInsertionAdapter()
     var recognitionSession: (any RecognitionSession)?
     var recordingAudioInput = RecordingAudioInput()
-    /// 仅在识别会话真正启动后才允许启动新会话前取消，避免 idle 状态重复排队 cancel。
-    /// (Cancel before a new start only when the previous recognition session actually started.)
+    /// 记录已提交与已启动的识别任务，取消覆盖准备中任务，idle 不重复取消。
+    var recognitionSessionStarting = false
     var recognitionSessionStarted = false
     private var pendingLiveInsertionPresentationCompletions: [() -> Void] = []
     private var captureConsumerID: UUID?
@@ -35,11 +37,9 @@ final class RecordingSessionController {
     private var captureEngineCode: String?
     private var recognitionReady: Bool {
         get { state.recognitionReady }
-        set { state.recognitionReady = newValue }
     }
     private var pendingStop: RecordingPreparationStop? {
         get { state.preparationStop }
-        set { state.preparationStop = newValue }
     }
     private var captureRequestedAt = ProcessInfo.processInfo.systemUptime
 
@@ -59,9 +59,8 @@ final class RecordingSessionController {
     var isRecording: Bool { state.isRecording }
     var isRefining: Bool { state.isRefining }
     private var isStarting: Bool { state.isStarting }
-    private(set) var currentRecordingEngine: String {
+    var currentRecordingEngine: String {
         get { state.currentRecordingEngine }
-        set { state.currentRecordingEngine = newValue }
     }
     var recordingGeneration: Int {
         get { state.recordingGeneration }
@@ -136,20 +135,24 @@ final class RecordingSessionController {
             textPostProcessorRegistry: textPostProcessorRegistry,
             outputSinkProvider: { textOutputSinkRegistry.current() },
             settingsProvider: {
-                RecognitionResultFinalizer.Settings(
+                let connection = AppSettings.llmConnection
+                return RecognitionResultFinalizer.Settings(
                     language: AppSettings.selectedLanguage,
                     llmEnabled: AppSettings.llmEnabled,
-                    llmAPIKey: AppSettings.llmAPIKey,
-                    llmResultDelay: AppSettings.llmResultDelay
+                    llmAPIKey: connection.apiKey,
+                    llmResultDelay: AppSettings.llmResultDelay,
+                    autoPunctuationEnabled: AppSettings.autoPunctuationEnabled,
+                    llmConnection: connection,
+                    llmSystemPrompt: AppSettings.llmSystemPrompt
                 )
             }
         )
         self.recognitionFinalizer = finalizer
         
-        finalizer.onRefiningStateChanged = { [weak self] refining, text in
+        finalizer.onRefiningStateChanged = { [weak self] refining, _ in
             guard let self else { return }
             if refining {
-                self.dispatch(.refiningStarted(text: text))
+                self.dispatch(.refiningStarted)
             } else {
                 self.dispatch(.refiningFinished)
             }
@@ -210,7 +213,7 @@ final class RecordingSessionController {
     // MARK: - 胶囊延迟呈现（Deferred capsule presentation）
 
     private func resetDeferredCapsulePresentation() {
-        state.deferredCapsule.reset()
+        dispatch(.deferredCapsuleReset)
     }
 
     func activateTextOutputForRecordingIfNeeded() {
@@ -218,6 +221,7 @@ final class RecordingSessionController {
         if activeOutputSink.descriptor.supportsStreaming {
             streamSession = activeOutputSink.beginStream()
         }
+        liveInsertionDelivery = LiveInsertionDelivery()
         let liveInsertionActive = streamSession == nil &&
             (recognitionSession?.supportsLiveInsertion == true) &&
             AppSettings.appleLiveInsertionEnabled &&
@@ -266,8 +270,12 @@ final class RecordingSessionController {
 
     func showCapsuleProgress(_ text: String, hidesWaveform: Bool = true) {
         _ = dispatch(.capsulePresentationRequested(.progress(text: text, hidesWaveform: hidesWaveform)))
-        if text == loc("sherpa.loadingModel") {
-            _ = dispatch(.silenceMonitorGraceRequested(duration: sherpaModelLoadingSilenceGrace))
+    }
+
+    func recognitionPreparationStageChanged(_ stage: RecognitionPreparationStage) {
+        switch stage {
+        case .loadingModel:
+            dispatch(.silenceMonitorGraceRequested(duration: sherpaModelLoadingSilenceGrace))
         }
     }
 
@@ -301,17 +309,16 @@ final class RecordingSessionController {
     private func startRecording(deferCapsulePresentation: Bool = false) {
         if pendingStop != nil {
             cancelRecording()
-            pendingStop = nil
         }
         _ = dispatch(.triggerPressed(deferCapsulePresentation: deferCapsulePresentation))
     }
 
     func waitForInputReady(startRequest: Int) {
         captureRequestedAt = ProcessInfo.processInfo.systemUptime
-        recordingAudioInput.cancel()
+        if !finalizations.contains(where: { $0.audioInput === recordingAudioInput && $0.isOutputValid }) {
+            recordingAudioInput.cancel()
+        }
         recordingAudioInput = RecordingAudioInput()
-        recognitionReady = false
-        pendingStop = nil
         pendingLiveInsertionPresentationCompletions.removeAll()
         pendingPreparedSession = nil
         pendingPrepareResult = nil
@@ -320,19 +327,10 @@ final class RecordingSessionController {
         if let id = captureConsumerID { audioEngine.router.unregister(id) }
         let input = recordingAudioInput
         captureEngineCode = AppSettings.normalizedRecognitionEngine
-        let format: AudioRouter.ConsumerFormat? = captureEngineCode == ASREngineRegistry.appleCode ? nil : .voice16k
-        captureConsumerID = audioEngine.router.register(format: format) { buffer in input.accept(buffer) }
         let selectedSession = recognitionSession(for: captureEngineCode ?? AppSettings.normalizedRecognitionEngine)
+        captureConsumerID = audioEngine.router.register(format: selectedSession.preferredAudioFormat) { buffer in input.accept(buffer) }
         pendingPreparedSession = selectedSession
-        selectedSession.prepare { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self, self.state.acceptsStartRequest(startRequest),
-                      self.pendingPreparedSession === selectedSession else { return }
-                self.pendingPrepareResult = result
-                self.emitStartPreflightIfReady(request: startRequest)
-            }
-        }
-        // 音频设备启动和 ASR prepare 并行执行；两者都完成后才进入 startValidated。
+        // 先提交收音，再并行准备 ASR；两者都完成后才进入 startValidated。
         audioEngine.start { [weak self] ready in
             guard let self, self.state.acceptsStartRequest(startRequest) else { return }
             DebugLog.info("[RecordingLatency] capture ready ms=\((ProcessInfo.processInfo.systemUptime - self.captureRequestedAt) * 1000)")
@@ -341,6 +339,14 @@ final class RecordingSessionController {
             if !ready && self.pendingStop == nil {
                 self.stopCapture()
                 self.onRecordingStateChanged?(false)
+            }
+        }
+        selectedSession.prepare { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.state.acceptsStartRequest(startRequest),
+                      self.pendingPreparedSession === selectedSession else { return }
+                self.pendingPrepareResult = result
+                self.emitStartPreflightIfReady(request: startRequest)
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
@@ -386,8 +392,7 @@ final class RecordingSessionController {
 
     func continueStartRecording(startRequest: Int) {
         guard state.acceptsStartRequest(startRequest) else { return }
-        // Sherpa 引擎：直接按当前 preset 实读磁盘判断；isReady 内部含一次轻量自愈
-        // (Sherpa engine: read disk for current preset; isReady includes one lightweight self-heal pass)
+        // 准备结果属于本次请求；资源检查及显式补缺由 session 的 prepare 承担。
         let engine = captureEngineCode ?? AppSettings.normalizedRecognitionEngine
         let selectedSession = pendingPreparedSession ?? recognitionSession(for: engine)
         if pendingPreparedSession === selectedSession {
@@ -429,13 +434,24 @@ final class RecordingSessionController {
             return
         }
 
-        let pendingDoubaoText = state.isWaitingForDoubaoFinalResult
-            ? recognitionSession?.currentText.trimmingCharacters(in: .whitespacesAndNewlines)
-            : nil
-        let pendingRefinementText = state.isRefining ? state.pendingRefinementText : nil
+        // 先采集、先准备；只在复用同一识别资源前等待原轮 stop 屏障。
+        if let pending = finalizations.first(where: {
+            $0.isRecognitionPending && !$0.resources.isDisjoint(with: selectedSession.recognitionResources)
+        }) {
+            let request = startRequestGeneration
+            pending.whenRecognitionFinished { [weak self] in
+                guard let self, self.state.acceptsStartRequest(request) else { return }
+                self.completeStartPreflight(.ready, selectedSession: selectedSession)
+            }
+            return
+        }
         if recognitionSession !== selectedSession {
-            recognitionSession?.cancel()
+            let priorResources = recognitionSession?.recognitionResources ?? []
+            if !finalizations.contains(where: { $0.isRecognitionPending && !$0.resources.isDisjoint(with: priorResources) }) {
+                recognitionSession?.cancel()
+            }
             recognitionSessionStarted = false
+            recognitionSessionStarting = false
         }
         recognitionSession = selectedSession
         _ = dispatch(
@@ -452,8 +468,6 @@ final class RecordingSessionController {
         _ = dispatch(
             .startValidated(
                 engine: selectedSession.code,
-                pendingDoubaoText: pendingDoubaoText,
-                pendingRefinementText: pendingRefinementText,
                 lowerVolume: lowerVolume
             )
         )
@@ -464,8 +478,8 @@ final class RecordingSessionController {
         let start = { [weak self] in
             guard let self, isRecording, recordingGeneration == generation else { return }
             let callbacks = makeRecognitionSessionCallbacks(generation: generation)
+            recognitionSessionStarting = true
             selectedSession.start(
-                audioFormat: selectedSession.preferredAudioFormat,
                 callbacks: callbacks
             ) { [weak self] result in
                 let handleResult = {
@@ -474,14 +488,9 @@ final class RecordingSessionController {
                           self.recordingGeneration == generation else { return }
                     switch result {
                     case .started:
+                        self.recognitionSessionStarting = false
                         self.recognitionSessionStarted = true
-                        self.recognitionReady = true
-                        if let stop = self.pendingStop {
-                            self.pendingStop = nil
-                            self.completeDeferredStop(stop)
-                        } else {
-                            self.dispatch(.sessionStartCompleted(generation: generation))
-                        }
+                        self.dispatch(.sessionStartCompleted(generation: generation))
                     case .failed(let failure):
                         #if DEBUG_BUILD
                         self.preserveDebugAudioEvidence(reason: .sessionStartFailed)
@@ -537,7 +546,6 @@ final class RecordingSessionController {
         stopCapture()
         onRecordingStateChanged?(false)
         recordingAudioInput.cancel()
-        pendingStop = nil
         pendingLiveInsertionPresentationCompletions.removeAll()
         presenter.dismiss(completion: nil)
         audioEngine.cancelInputReadinessCheck()
@@ -578,6 +586,10 @@ final class RecordingSessionController {
     }
 
     private func cancelRecording() {
+        recognitionFinalizer.discardPendingRefinement()
+        let cancelling = finalizations.filter { $0.generation == recordingGeneration }
+        cancelling.forEach { $0.cancel() }
+        finalizations.removeAll { !$0.isRecognitionPending }
         guard isRecording || isRefining || state.phase == .stopping else {
             cancelPendingStart()
             resetDeferredCapsulePresentation()
@@ -602,7 +614,7 @@ final class RecordingSessionController {
     private func deferStopIfPreparing(immediate: Bool, punctuation: String?) -> Bool {
         guard state.isRecordingOrStarting, !recognitionReady else { return false }
         guard pendingStop == nil else { return true }
-        pendingStop = RecordingPreparationStop(immediate: immediate, punctuation: punctuation)
+        dispatch(.preparationStopRequested(.init(immediate: immediate, punctuation: punctuation)))
         stopCapture()
         asrSilenceMonitor.stop()
         onRecordingStateChanged?(false)
@@ -612,85 +624,67 @@ final class RecordingSessionController {
         return true
     }
 
-    private func completeDeferredStop(_ stop: RecordingPreparationStop) {
-        dispatch(stop.immediate ? .immediateStop(appending: stop.punctuation) : .triggerReleased)
+    func finishPendingRefinement() {
+        recognitionFinalizer.finishPendingRefinement()
     }
 
     func stopRecognitionSession(generation: Int, immediate: Bool, appending punctuation: String?) {
         guard let session = recognitionSession else { return }
         stopCapture()
         presenter.present(.showOptimizing)
-        let callbacks = makeRecognitionSessionCallbacks(generation: generation)
+        let input = recordingAudioInput
+        let context = RecordingFinalization(
+            generation: generation, audioInput: input, resources: session.recognitionResources, engineCode: currentRecordingEngine,
+            liveInsertion: .init(isActive: state.liveInsertion.isActive,
+                                 committedText: state.liveInsertion.committedText, delivery: liveInsertionDelivery),
+            streamSession: streamSession, settings: recognitionFinalizer.captureSettings(), outputSink: activeOutputSink)
+        finalizations.append(context)
+        let callbacks = makeRecognitionSessionCallbacks(generation: generation, finalization: context, audioInput: input)
         let stoppedAt = ProcessInfo.processInfo.systemUptime
-        var didFinish = false
-        recordingAudioInput.finish { [weak self] in
-            guard let self, self.recordingGeneration == generation else { return }
+        input.finish { [weak self] in
+            guard let self, context.isOutputValid, context.isRecognitionPending else { return }
             session.stop(immediate: immediate, appending: punctuation, callbacks: callbacks) { [weak self] result in
-                guard let self, self.recordingGeneration == generation, !didFinish else { return }
-                didFinish = true
-                self.recognitionSessionStarted = false
+                guard let self, context.isOutputValid, context.completeRecognition() else { return }
+                if self.recognitionSession === session {
+                    self.recognitionSessionStarted = false
+                    self.recognitionSessionStarting = false
+                }
                 DebugLog.info("[RecordingLatency] final decode ms=\((ProcessInfo.processInfo.systemUptime - stoppedAt) * 1000)")
-                self.dispatch(.asrFinal(text: result.text, errorMessage: result.errorMessage,
-                                       appending: result.appendingImmediatePunctuation))
-                // 余下文本立即进入输出队列；只让呈现收尾等待在途实时上屏，避免下一轮开始丢掉尾文。
-                self.finishRecognizedResult(result.text, errorMsg: result.errorMessage,
-                                            immediate: immediate, appending: result.appendingImmediatePunctuation)
+                if self.recordingGeneration == generation {
+                    self.dispatch(.asrFinal(text: result.text, errorMessage: result.errorMessage,
+                                           appending: result.appendingImmediatePunctuation))
+                }
+                self.finalizeRecognizedResult(result, immediate: immediate, context: context)
+                self.delegate?.sessionDidEnd()
+                context.releaseRecognitionWaiters()
             }
         }
     }
 
-    private func finishRecording(with recognizedText: String, errorMsg: String? = nil) {
-        defer { delegate?.sessionDidEnd() }
-        finalizeRecognizedResult(recognizedText, mode: .normal, errorMsg: errorMsg)
-    }
-
-    private func finishImmediateRecording(with recognizedText: String, appending punctuation: String?, errorMsg: String? = nil) {
-        defer { delegate?.sessionDidEnd() }
-        finalizeRecognizedResult(recognizedText, mode: .immediate(appending: punctuation), errorMsg: errorMsg)
-    }
-
-    private func finishRecognizedResult(_ text: String, errorMsg: String? = nil, immediate: Bool, appending punctuation: String? = nil) {
-        if immediate {
-            finishImmediateRecording(with: text, appending: punctuation, errorMsg: errorMsg)
-        } else {
-            finishRecording(with: text, errorMsg: errorMsg)
-        }
-    }
-
-    private func finalizeRecognizedResult(
-        _ text: String,
-        mode: RecognitionFinalizationMode,
-        errorMsg: String?
-    ) {
-        let generation = recordingGeneration
-        let finalizingStream = streamSession
-        recognitionFinalizer.finish(
-            RecognitionResultFinalizer.Request(
-                recognizedText: text,
-                errorMessage: errorMsg,
-                mode: mode,
-                engineCode: currentRecordingEngine,
-                liveInsertion: RecognitionLiveInsertionSnapshot(
-                    isActive: state.liveInsertion.isActive,
-                    committedText: state.liveInsertion.committedText
-                ),
-                streamSession: finalizingStream,
-                clearStreamSession: { [weak self] in
-                    guard let self, self.recordingGeneration == generation,
-                          self.streamSession === finalizingStream else { return }
-                    self.streamSession = nil
-                },
-                generation: generation,
-                waitForPriorOutput: { [weak self] completion in
-                    guard let self, self.recordingGeneration == generation else { return }
-                    if self.state.liveInsertion.pasteInFlight {
-                        self.pendingLiveInsertionPresentationCompletions.append(completion)
-                    } else {
-                        completion()
-                    }
-                }
-            )
-        )
+    private func finalizeRecognizedResult(_ result: RecognitionSessionStopResult, immediate: Bool,
+                                          context: RecordingFinalization) {
+        let finalizingStream = context.streamSession
+        var request = RecognitionResultFinalizer.Request(
+            recognizedText: result.text, errorMessage: result.errorMessage,
+            mode: immediate ? .immediate(appending: result.appendingImmediatePunctuation) : .normal,
+            engineCode: context.engineCode, liveInsertion: context.liveInsertion,
+            streamSession: finalizingStream,
+            clearStreamSession: { [weak self] in
+                guard let self, self.recordingGeneration == context.generation,
+                      self.streamSession === finalizingStream else { return }
+                self.streamSession = nil
+            }, generation: context.generation,
+            waitForPriorOutput: { [weak self] completion in
+                guard let self, self.recordingGeneration == context.generation else { return }
+                if self.state.liveInsertion.pasteInFlight {
+                    self.pendingLiveInsertionPresentationCompletions.append(completion)
+                } else { completion() }
+            })
+        request.isOutputValid = { context.isOutputValid }
+        request.settingsSnapshot = context.settings
+        request.outputSink = context.outputSink
+        request.onFinished = { [weak self] in self?.finalizations.removeAll { $0 === context } }
+        recognitionFinalizer.finish(request)
     }
 
     // MARK: - Apple live insertion 段落提交（Apple live segment commit）
@@ -712,15 +706,23 @@ final class RecordingSessionController {
             isFinal: isFinal
         ) else { return }
 
-        _ = dispatch(.liveInsertionCommitted(segment: decision.segment, latestText: text))
+        _ = dispatch(.liveInsertionCommitStarted)
+        let delivery = liveInsertionDelivery
+        delivery.begin(decision.segment)
         let generation = recordingGeneration
-        activeOutputSink.deliver(text: decision.segment) { [weak self] in
+        activeOutputSink.deliver(text: decision.segment, onSubmission: { [weak self] submission in
+            guard delivery.resolve(.init(submission: submission, cleanup: .notNeeded)) else { return }
+            guard let self, self.recordingGeneration == generation else { return }
+            if submission == .eventPosted {
+                self.dispatch(.liveInsertionCommitted(segment: decision.segment, latestText: self.state.liveInsertion.latestText))
+            }
+        }) { [weak self] result in
             guard let self, self.recordingGeneration == generation else { return }
             self.dispatch(.liveInsertionCommitFinished)
             let presentationCompletions = self.pendingLiveInsertionPresentationCompletions
             self.pendingLiveInsertionPresentationCompletions.removeAll()
             presentationCompletions.forEach { $0() }
-            if self.isRecording {
+            if self.isRecording && result.submission == .eventPosted {
                 self.commitAppleLiveSegmentIfNeeded(from: self.state.liveInsertion.latestText, isFinal: false)
             }
         }

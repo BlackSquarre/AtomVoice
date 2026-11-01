@@ -2,11 +2,11 @@ import AVFoundation
 import Foundation
 
 extension RecordingSessionController {
-    func makeRecognitionSessionCallbacks(generation: Int) -> RecognitionSessionCallbacks {
+    func makeRecognitionSessionCallbacks(generation: Int, finalization: RecordingFinalization? = nil, audioInput: RecordingAudioInput? = nil) -> RecognitionSessionCallbacks {
         RecognitionSessionCallbacks(
-            audioInput: recordingAudioInput,
+            audioInput: audioInput ?? recordingAudioInput,
             isCurrent: { [weak self] in
-                self?.recordingGeneration == generation
+                finalization.map { $0.isOutputValid && $0.isRecognitionPending } ?? (self?.recordingGeneration == generation)
             },
             isRecordingCurrent: { [weak self] in
                 guard let self else { return false }
@@ -27,11 +27,6 @@ extension RecordingSessionController {
                       self.isRecordingOrStarting else { return }
                 self.showCapsuleError(message, dismissAfter: 5)
             },
-            onShowInitial: { [weak self] in
-                guard let self, self.recordingGeneration == generation,
-                      self.isRecordingOrStarting else { return }
-                self.showInitialCapsule()
-            },
             onShowRecording: { [weak self] in
                 guard let self, self.recordingGeneration == generation,
                       self.isRecordingOrStarting else { return }
@@ -42,40 +37,16 @@ extension RecordingSessionController {
                       self.isRecordingOrStarting else { return }
                 self.showCapsuleProgress(text, hidesWaveform: hidesWaveform)
             },
-            onDisplayText: { [weak self] text in
-                guard let self, self.recordingGeneration == generation,
-                      self.isRecordingOrStarting else { return }
-                self.updateCapsuleText(text)
-            },
             onShimmerChanged: { [weak self] active in
                 guard let self, self.recordingGeneration == generation,
                       self.isRecordingOrStarting else { return }
                 active ? self.applyCapsuleShimmer() : self.stopCapsuleShimmer()
             },
             onEffectiveEngineChanged: { [weak self] code in
+                finalization?.engineCode = code
                 guard let self, self.recordingGeneration == generation,
                       self.state.isRecordingOrStarting || self.state.phase == .stopping else { return }
                 self.dispatch(.fallbackStarted(engine: code))
-            },
-            onStartFailure: { [weak self] failure in
-                guard let self, self.recordingGeneration == generation,
-                      self.state.isRecordingOrStarting else { return }
-                #if DEBUG_BUILD
-                self.preserveDebugAudioEvidence(reason: .sessionStartFailed)
-                #endif
-                self.dispatch(
-                    .sessionStartFailed(
-                        message: failure.message,
-                        dismissAfter: failure.dismissAfter,
-                        stopAudioEngine: failure.stopAudioEngine,
-                        recovery: failure.recovery.map {
-                            switch $0 {
-                            case .requestSherpaModelDownload(let redownload, let delay):
-                                return .requestSherpaModelDownload(redownload: redownload, delay: delay)
-                            }
-                        }
-                    )
-                )
             },
             onWaitingForFinalResultChanged: { [weak self] waiting in
                 guard let self, self.recordingGeneration == generation else { return }
@@ -84,6 +55,10 @@ extension RecordingSessionController {
             onResetLiveInsertion: { [weak self] in
                 guard let self, self.recordingGeneration == generation else { return }
                 self.dispatch(.liveInsertionReset)
+            },
+            onPreparationStage: { [weak self] stage in
+                guard let self, self.recordingGeneration == generation, self.isRecordingOrStarting else { return }
+                self.recognitionPreparationStageChanged(stage)
             }
         )
     }

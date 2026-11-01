@@ -2,10 +2,26 @@ import Foundation
 
 // 文本后处理上下文：处理器据此判断是否启用、如何处理
 // (Text post-processing context: processors use this to decide if/how to run)
+enum TextPunctuationPolicy {
+    case modelWithHeuristicFallback
+    case heuristic
+    case providedByRecognition
+
+    static func forEngine(_ code: String) -> Self {
+        switch code {
+        case ASREngineRegistry.sherpaCode: return .modelWithHeuristicFallback
+        case VolcengineASRSettings.engineCode: return .providedByRecognition
+        default: return .heuristic
+        }
+    }
+}
+
 struct TextProcessingContext {
     let engineCode: String
     let language: String
     let isImmediateFinish: Bool
+    var autoPunctuationEnabled: Bool = AppSettings.autoPunctuationEnabled
+    var punctuationPolicy: TextPunctuationPolicy { .forEngine(engineCode) }
 }
 
 // 文本后处理器协议。tryProcess 返回 nil 表示"不适用，交给下一个"，非 nil 表示"由我处理"
@@ -60,25 +76,23 @@ final class TextPostProcessorRegistry {
 final class SherpaPunctuationProcessor: TextPostProcessor {
     let id = "sherpaPunctuation"
 
-    private let registry: ASREngineRegistry
     private let punctuator: (String) -> String?
     private let asyncPunctuator: ((String, @escaping (String?) -> Void) -> Void)?
 
     init(registry: ASREngineRegistry, asyncPunctuator: ((String, @escaping (String?) -> Void) -> Void)? = nil, punctuator: @escaping (String) -> String?) {
         self.asyncPunctuator = asyncPunctuator
-        self.registry = registry
         self.punctuator = punctuator
     }
 
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
-        guard AppSettings.autoPunctuationEnabled else { return nil }
-        guard registry.isSherpa(context.engineCode) else { return nil }
+        guard context.autoPunctuationEnabled else { return nil }
+        guard context.punctuationPolicy == .modelWithHeuristicFallback else { return nil }
         guard Self.supportsLanguage(context.language) else { return nil }
         return punctuator(text)
     }
 
     func processAsync(_ text: String, context: TextProcessingContext, completion: @escaping (String?) -> Void) {
-        guard AppSettings.autoPunctuationEnabled, registry.isSherpa(context.engineCode),
+        guard context.autoPunctuationEnabled, context.punctuationPolicy == .modelWithHeuristicFallback,
               Self.supportsLanguage(context.language) else { completion(nil); return }
         if let asyncPunctuator { asyncPunctuator(text, completion) }
         else { completion(punctuator(text)) }
@@ -96,8 +110,8 @@ final class HeuristicPunctuationProcessor: TextPostProcessor {
     let id = "heuristicPunctuation"
 
     func tryProcess(_ text: String, context: TextProcessingContext) -> String? {
-        guard AppSettings.autoPunctuationEnabled else { return nil }
-        if context.engineCode == VolcengineASRSettings.engineCode { return nil }
+        guard context.autoPunctuationEnabled else { return nil }
+        if context.punctuationPolicy == .providedByRecognition { return nil }
         return PunctuationProcessor.process(text, language: context.language)
     }
 }

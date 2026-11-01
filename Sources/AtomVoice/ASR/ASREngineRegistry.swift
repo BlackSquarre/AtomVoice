@@ -5,9 +5,6 @@ struct ASREngineDescriptor {
     let displayNameKey: String
     let iconName: String
     let isOffline: Bool
-    let supportsStreaming: Bool
-    let supportsPartialResults: Bool
-    let supportsOnDevice: Bool
     let requiresCredential: Bool
 }
 
@@ -17,9 +14,6 @@ extension ASREngineDescriptor {
         displayNameKey: "menu.recognitionEngine.apple",
         iconName: "apple.logo",
         isOffline: false,
-        supportsStreaming: true,
-        supportsPartialResults: true,
-        supportsOnDevice: true,
         requiresCredential: false
     )
 
@@ -28,9 +22,6 @@ extension ASREngineDescriptor {
         displayNameKey: "menu.recognitionEngine.sherpaOnnx",
         iconName: "mountain.2.fill",
         isOffline: true,
-        supportsStreaming: true,
-        supportsPartialResults: true,
-        supportsOnDevice: true,
         requiresCredential: false
     )
 
@@ -39,9 +30,6 @@ extension ASREngineDescriptor {
         displayNameKey: "menu.recognitionEngine.doubao",
         iconName: "cloud",
         isOffline: false,
-        supportsStreaming: true,
-        supportsPartialResults: true,
-        supportsOnDevice: false,
         requiresCredential: true
     )
 }

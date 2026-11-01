@@ -124,6 +124,12 @@ final class FakeRecordingSessionPresenter: RecordingSessionPresenting {
 }
 
 final class FakeRecognitionRefiner: RecognitionTextRefining {
+    var configurations: [LLMRefinementConfiguration] = []
+    func refine(text: String, configuration: LLMRefinementConfiguration,
+                onProgress: ((String) -> Void)?, completion: @escaping (String?, String?) -> Void) {
+        configurations.append(configuration)
+        refine(text: text, onProgress: onProgress, completion: completion)
+    }
     var nextProgress: String?
     var nextResult: String?
     var nextError: String?
@@ -156,8 +162,11 @@ final class FakeTextOutputSink: TextOutputSink {
     var completesDeliveriesImmediately: Bool
     private(set) var deliveredTexts: [String] = []
     private(set) var beginStreamCount = 0
-    private(set) var pendingDeliveryCompletions: [(() -> Void)?] = []
+    private(set) var pendingDeliveryCompletions: [((TextDeliveryResult) -> Void)?] = []
     var onDeliver: (() -> Void)?
+    var submission = TextDeliverySubmission.eventPosted
+    var reportsSubmissionsImmediately = true
+    private var pendingSubmissions: [((TextDeliverySubmission) -> Void)?] = []
 
     init(
         code: String = "fake",
@@ -177,20 +186,27 @@ final class FakeTextOutputSink: TextOutputSink {
         self.completesDeliveriesImmediately = completesDeliveriesImmediately
     }
 
-    func deliver(text: String, completion: (() -> Void)?) {
+    func deliver(text: String, onSubmission: ((TextDeliverySubmission) -> Void)?, completion: ((TextDeliveryResult) -> Void)?) {
         deliveredTexts.append(text)
+        if reportsSubmissionsImmediately { onSubmission?(submission) }
+        else { pendingSubmissions.append(onSubmission) }
         onDeliver?()
         if completesDeliveriesImmediately {
-            completion?()
+            completion?(.init(submission: .eventPosted, cleanup: .completed))
         } else {
             pendingDeliveryCompletions.append(completion)
         }
     }
 
-    func completeNextDelivery() {
+    func submitNextDelivery(_ result: TextDeliverySubmission? = nil) {
+        guard !pendingSubmissions.isEmpty else { return }
+        pendingSubmissions.removeFirst()?(result ?? submission)
+    }
+
+    func completeNextDelivery(result: TextDeliveryResult = .init(submission: .eventPosted, cleanup: .completed)) {
         guard !pendingDeliveryCompletions.isEmpty else { return }
         let completion = pendingDeliveryCompletions.removeFirst()
-        completion?()
+        completion?(result)
     }
 
     func beginStream() -> TextStreamSession? {
@@ -232,10 +248,10 @@ final class FakeRecognitionSession: RecognitionSession {
     var currentText: String
     var supportsMutableCapsulePreview: Bool
     var supportsLiveInsertion: Bool
-    var supportsServerFallback: Bool
-    var supportsSilenceMonitoring: Bool
     var requiresModelReloadOnRouteChange: Bool
     var preferredAudioFormat: AudioRouter.ConsumerFormat?
+    var recognitionResourcesOverride: Set<String>?
+    var recognitionResources: Set<String> { recognitionResourcesOverride ?? [code] }
     var preflightResult: RecognitionSessionPreflightResult = .ready
     var startResult: RecognitionSessionStartResult = .started
     var completesStartImmediately = true
@@ -243,12 +259,15 @@ final class FakeRecognitionSession: RecognitionSession {
     private var pendingPreparation: ((RecognitionSessionPreflightResult) -> Void)?
     var stopResult: RecognitionSessionStopResult?
     var completesStopImmediately = true
+    var connectsAudioInput = false
+    var onConsumeAudio: ((AVAudioPCMBuffer) -> Void)?
+    private(set) var receivedAudioBuffers: [AVAudioPCMBuffer] = []
 
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
     private(set) var cancelCount = 0
-    private(set) var startAudioFormats: [AudioRouter.ConsumerFormat?] = []
     private(set) var lastStartCallbacks: RecognitionSessionCallbacks?
+    private(set) var lastStopCompletion: ((RecognitionSessionStopResult) -> Void)?
     private(set) var lastStopCallbacks: RecognitionSessionCallbacks?
     private(set) var lastStopImmediate = false
     private(set) var lastStopPunctuation: String?
@@ -261,8 +280,6 @@ final class FakeRecognitionSession: RecognitionSession {
         currentText: String = "",
         supportsMutableCapsulePreview: Bool = true,
         supportsLiveInsertion: Bool = true,
-        supportsServerFallback: Bool = false,
-        supportsSilenceMonitoring: Bool = true,
         requiresModelReloadOnRouteChange: Bool = false,
         preferredAudioFormat: AudioRouter.ConsumerFormat? = nil
     ) {
@@ -270,8 +287,6 @@ final class FakeRecognitionSession: RecognitionSession {
         self.currentText = currentText
         self.supportsMutableCapsulePreview = supportsMutableCapsulePreview
         self.supportsLiveInsertion = supportsLiveInsertion
-        self.supportsServerFallback = supportsServerFallback
-        self.supportsSilenceMonitoring = supportsSilenceMonitoring
         self.requiresModelReloadOnRouteChange = requiresModelReloadOnRouteChange
         self.preferredAudioFormat = preferredAudioFormat
     }
@@ -292,13 +307,17 @@ final class FakeRecognitionSession: RecognitionSession {
     }
 
     func start(
-        audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStartResult) -> Void
     ) {
         startCallCount += 1
-        startAudioFormats.append(audioFormat)
         lastStartCallbacks = callbacks
+        if connectsAudioInput {
+            callbacks.audioInput.connect { [weak self] buffer in
+                self?.onConsumeAudio?(buffer)
+                self?.receivedAudioBuffers.append(buffer)
+            }
+        }
         if completesStartImmediately {
             completion(startResult)
         } else {
@@ -316,6 +335,7 @@ final class FakeRecognitionSession: RecognitionSession {
         lastStopImmediate = immediate
         lastStopPunctuation = punctuation
         lastStopCallbacks = callbacks
+        lastStopCompletion = completion
         let result = resolvedStopResult(immediate: immediate, punctuation: punctuation)
         if completesStopImmediately {
             completion(result)

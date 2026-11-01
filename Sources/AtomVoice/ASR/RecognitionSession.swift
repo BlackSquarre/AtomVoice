@@ -46,16 +46,16 @@ struct RecognitionSessionCallbacks {
     let copyAudioBuffer: (AVAudioPCMBuffer) -> AVAudioPCMBuffer?
     let onPartialResult: (_ text: String, _ isFinal: Bool) -> Void
     let onError: (_ message: String) -> Void
-    let onShowInitial: () -> Void
     let onShowRecording: () -> Void
     let onProgress: (_ text: String, _ hidesWaveform: Bool) -> Void
-    let onDisplayText: (_ text: String) -> Void
     let onShimmerChanged: (_ active: Bool) -> Void
     let onEffectiveEngineChanged: (_ code: String) -> Void
-    let onStartFailure: (_ failure: RecognitionSessionFailure) -> Void
     let onWaitingForFinalResultChanged: (_ waiting: Bool) -> Void
     let onResetLiveInsertion: () -> Void
+    var onPreparationStage: (RecognitionPreparationStage) -> Void = { _ in }
 }
+
+enum RecognitionPreparationStage { case loadingModel }
 
 protocol RecognitionSession: AnyObject {
     var code: String { get }
@@ -64,18 +64,14 @@ protocol RecognitionSession: AnyObject {
     /// (Whether the current engine/model supports revising earlier capsule text with later partials)
     var supportsMutableCapsulePreview: Bool { get }
     var supportsLiveInsertion: Bool { get }
-    var supportsServerFallback: Bool { get }
-    var supportsSilenceMonitoring: Bool { get }
     var requiresModelReloadOnRouteChange: Bool { get }
-    /// 停止录音时胶囊是否立即收起。本地引擎停止即出结果→true；云端要等异步 final→false（稍作延迟避免"闪一下"）。
-    /// (Whether the capsule dismisses immediately on stop. Local engines: true; cloud — awaits async final: false.)
-    var dismissCapsuleImmediatelyOnStop: Bool { get }
+    /// 会话复用的识别资源；豆包自动回退与 Apple 共享同一个 Apple owner。
+    var recognitionResources: Set<String> { get }
     var preferredAudioFormat: AudioRouter.ConsumerFormat? { get }
 
     func preflight() -> RecognitionSessionPreflightResult
     func prepare(completion: @escaping (RecognitionSessionPreflightResult) -> Void)
     func start(
-        audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStartResult) -> Void
     )
@@ -89,9 +85,8 @@ protocol RecognitionSession: AnyObject {
 }
 
 extension RecognitionSession {
-    var supportsSilenceMonitoring: Bool { true }
+    var recognitionResources: Set<String> { [code] }
     var requiresModelReloadOnRouteChange: Bool { false }
-    var dismissCapsuleImmediatelyOnStop: Bool { true }
     func preflight() -> RecognitionSessionPreflightResult { .ready }
     func prepare(completion: @escaping (RecognitionSessionPreflightResult) -> Void) { completion(preflight()) }
 }
@@ -100,11 +95,9 @@ final class AppleRecognitionSession: RecognitionSession {
     let code = ASREngineRegistry.appleCode
     let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = true
-    let supportsServerFallback = false
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = nil
 
     private let engine: AppleSpeechASREngine
-    private var startAttempt = 0
 
     init(engine: AppleSpeechASREngine) {
         self.engine = engine
@@ -113,11 +106,9 @@ final class AppleRecognitionSession: RecognitionSession {
     var currentText: String { engine.currentText }
 
     func start(
-        audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStartResult) -> Void
     ) {
-        startAttempt += 1
         callbacks.onShowRecording()
         if let error = engine.start(
             onResult: { text, isFinal in
@@ -154,7 +145,6 @@ final class AppleRecognitionSession: RecognitionSession {
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStopResult) -> Void
     ) {
-        startAttempt += 1
         let text = engine.stopSynchronously()
         completion(
             RecognitionSessionStopResult(
@@ -166,7 +156,6 @@ final class AppleRecognitionSession: RecognitionSession {
     }
 
     func cancel() {
-        startAttempt += 1
         engine.cancel()
     }
 
@@ -177,7 +166,6 @@ final class SherpaRecognitionSession: RecognitionSession {
     let code = ASREngineRegistry.sherpaCode
     let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
-    let supportsServerFallback = false
     let requiresModelReloadOnRouteChange = true
     let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
 
@@ -191,7 +179,7 @@ final class SherpaRecognitionSession: RecognitionSession {
     var currentText: String { engine.currentText }
 
     func preflight() -> RecognitionSessionPreflightResult {
-        guard SherpaModelDownloader.isReady() else {
+        guard SherpaModelDownloader.ensureRecognitionReady() else {
             return SherpaModelDownloader.shared.isDownloading
                 ? .waitForExternalDownload
                 : .requestExternalDownload(redownload: false)
@@ -207,14 +195,16 @@ final class SherpaRecognitionSession: RecognitionSession {
     }
 
     func start(
-        audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStartResult) -> Void
     ) {
         startAttempt += 1
         let attempt = startAttempt
         let loading = !engine.isModelLoaded
-        if loading { callbacks.onProgress(loc("sherpa.loadingModel"), true) }
+        if loading {
+            callbacks.onPreparationStage(.loadingModel)
+            callbacks.onProgress(loc("sherpa.loadingModel"), true)
+        }
         else { callbacks.onShowRecording() }
         engine.startAsync(onResult: { text, _ in
             guard callbacks.isRecordingCurrent() else { return }
@@ -271,11 +261,8 @@ final class DoubaoRecognitionSession: RecognitionSession {
     let code = VolcengineASRSettings.engineCode
     let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
-    let supportsServerFallback = true
-    // 云端停止后要等异步最终结果，胶囊延迟极短时间再收起，避免"闪一下"。
-    // (Cloud awaits an async final result on stop; dismiss the capsule after a tiny delay to avoid a flicker.)
-    let dismissCapsuleImmediatelyOnStop = false
-    let preferredAudioFormat: AudioRouter.ConsumerFormat? = .voice16k
+    var preferredAudioFormat: AudioRouter.ConsumerFormat? { cloudEngine.preferredAudioFormat }
+    var recognitionResources: Set<String> { [code, ASREngineRegistry.appleCode] }
 
     private let cloudEngine: VolcengineASREngine
     private let appleSession: AppleRecognitionSession
@@ -285,6 +272,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
     private lazy var appleLiveFallback = AppleLiveFallbackStrategy(
         audioEngine: audioEngine,
         fallback: fallback,
+        audioFormat: cloudEngine.preferredAudioFormat,
         speechRecognizerProvider: speechRecognizerProvider
     )
     private var usingAppleStartFallback = false
@@ -328,7 +316,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
     }
 
     func start(
-        audioFormat: AudioRouter.ConsumerFormat?,
         callbacks: RecognitionSessionCallbacks,
         completion: @escaping (RecognitionSessionStartResult) -> Void
     ) {
@@ -374,7 +361,7 @@ final class DoubaoRecognitionSession: RecognitionSession {
                 callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
                 DebugLog.error("[Doubao] Start failed, falling back to Apple Speech: \(error)")
                 callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
-                self.appleSession.start(audioFormat: nil, callbacks: callbacks, completion: completion)
+                self.appleSession.start(callbacks: callbacks, completion: completion)
                 return
             }
 
@@ -469,9 +456,10 @@ final class DoubaoRecognitionSession: RecognitionSession {
         appleSession.cancel()
     }
 
-    private func handleRecognitionError(_ message: String, callbacks: RecognitionSessionCallbacks) {
+    private func handleRecognitionError(_ failure: CloudASRFailure, callbacks: RecognitionSessionCallbacks) {
+        let message = failure.message
         let isBenignSilenceError = appleLiveFallback.isBenignSilenceError(
-            message,
+            failure,
             cloudCurrentText: cloudEngine.currentText
         )
         let visibleError = isBenignSilenceError ? "" : message

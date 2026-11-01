@@ -17,18 +17,6 @@ extension ASREngine {
     func validate() -> String? { nil }
 }
 
-final class ASREngineRuntime {
-    private let enginesByCode: [String: ASREngine]
-
-    init(engines: [ASREngine]) {
-        enginesByCode = Dictionary(uniqueKeysWithValues: engines.map { ($0.descriptor.code, $0) })
-    }
-
-    func engine(for code: String) -> ASREngine? {
-        enginesByCode[code]
-    }
-}
-
 final class AppleSpeechASREngine: ASREngine {
     let descriptor = ASREngineDescriptor.apple
     let recognizer: SpeechRecognizerController
@@ -221,16 +209,18 @@ final class SherpaOnnxASREngine: ASREngine {
     }
 }
 
-final class VolcengineASREngine: ASREngine {
-    let descriptor = ASREngineDescriptor.volcengine
+final class CloudASREngine: ASREngine {
+    let descriptor: ASREngineDescriptor
     private let preparationQueue = DispatchQueue(label: "com.atomvoice.cloud.prepare", qos: .userInitiated)
     private let generationLock = NSLock()
     private var generation = 0
-    let provider: VolcengineASRProvider
+    let provider: any CloudASRProvider
     let recognizer: CloudASRRecognizerController
 
-    init(provider: VolcengineASRProvider = VolcengineASRProvider(),
-         recognizer: CloudASRRecognizerController? = nil) {
+    init(provider: any CloudASRProvider = VolcengineASRProvider(),
+         recognizer: CloudASRRecognizerController? = nil,
+         descriptor: ASREngineDescriptor = .volcengine) {
+        self.descriptor = descriptor
         self.provider = provider
         self.recognizer = recognizer ?? CloudASRRecognizerController(provider: provider)
     }
@@ -245,11 +235,13 @@ final class VolcengineASREngine: ASREngine {
 
     func start(onResult: @escaping (String, Bool) -> Void,
                onError: @escaping (String) -> Void) -> String? {
-        recognizer.start(onResult: onResult, onError: onError)
+        recognizer.start(onResult: onResult, onError: { onError($0.message) })
     }
 
+    var preferredAudioFormat: AudioRouter.ConsumerFormat { recognizer.preferredAudioFormat }
+
     func startAsync(onResult: @escaping (String, Bool) -> Void,
-                    onError: @escaping (String) -> Void,
+                    onError: @escaping (CloudASRFailure) -> Void,
                     completion: @escaping (String?) -> Void) {
         let token = currentGeneration
         preparationQueue.async { [self] in
@@ -295,3 +287,6 @@ final class VolcengineASREngine: ASREngine {
         preparationQueue.async { [self] in recognizer.cancel() }
     }
 }
+
+// 保留现有组合根入口名称；通用 wrapper 不再依赖具体厂商 provider。
+typealias VolcengineASREngine = CloudASREngine

@@ -92,8 +92,7 @@ enum RecordingLatencyTests {
         await runner.run("New recording invalidates old final during input startup") {
             var state = RecordingSessionState()
             step(&state, .triggerPressed(deferCapsulePresentation: false))
-            step(&state, .startValidated(engine: ASREngineRegistry.sherpaCode, pendingDoubaoText: nil,
-                                         pendingRefinementText: nil, lowerVolume: false))
+            step(&state, .startValidated(engine: ASREngineRegistry.sherpaCode, lowerVolume: false))
             let first = state.recordingGeneration
             step(&state, .triggerReleased)
             step(&state, .triggerPressed(deferCapsulePresentation: false))
