@@ -215,7 +215,15 @@ enum SherpaRuntimeCompatibilityTests {
                     let document = try require(scroll.documentView)
                     let header = try require(document.subviews.first { $0.identifier?.rawValue == "sherpa.settings.header" } as? NSStackView)
                     let controls = try require(document.subviews.first { $0.identifier?.rawValue == "sherpa.settings.controls" })
-                    for height: CGFloat in [900, 340, 1100] {
+                    scroll.frame = NSRect(x: 0, y: 0, width: 600, height: 900)
+                    tab.refreshStatus()
+                    scroll.layoutSubtreeIfNeeded()
+                    document.layoutSubtreeIfNeeded()
+                    let naturalHeight = document.frame.height
+                    try expect(naturalHeight > 0 && naturalHeight < 900, "Invalid natural content height: \(naturalHeight), OS: \(version)")
+                    // 模型列表和文案因环境而异，短视口必须小于这次真实内容，而非固定为340pt。
+                    let compactHeight = naturalHeight / 2
+                    for height in [CGFloat(900), compactHeight, CGFloat(1100)] {
                         scroll.frame = NSRect(x: 0, y: 0, width: 600, height: height)
                         tab.refreshStatus()
                         scroll.layoutSubtreeIfNeeded()
@@ -225,10 +233,11 @@ enum SherpaRuntimeCompatibilityTests {
                         let labelBottom = document.convert(lastLabel.bounds, from: lastLabel).maxY
                         // 顶部说明不能吸收视口余量，控件始终紧跟最后一行说明。
                         let gap = controls.frame.minY - labelBottom
-                        try expect(abs(gap - 12) < 2, "Unexpected header gap: \(gap), viewport: \(height)")
-                        try expect(document.frame.height < 900, "Document stretches to viewport: \(document.frame.height)")
-                        if height == 340 {
-                            try expect(document.frame.height > scroll.contentSize.height, "Long content must remain scrollable")
+                        let context = "OS: \(version), viewport: \(height), document: \(document.frame.height), visible: \(scroll.contentSize.height)"
+                        try expect(abs(gap - 12) < 2, "Unexpected header gap: \(gap), \(context)")
+                        try expect(document.frame.height < 900, "Document stretches to viewport; \(context)")
+                        if height == compactHeight {
+                            try expect(document.frame.height > scroll.contentSize.height, "Long content must remain scrollable; \(context)")
                         }
                     }
                 }
