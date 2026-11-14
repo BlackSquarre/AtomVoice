@@ -65,13 +65,14 @@ final class SherpaSettingsTab: ASRSettingsTab {
         sherpaStatusLabel?.textColor = color
     }
     func makeView() -> NSView {
-        let view = NSView()
+        let view = SherpaSettingsDocumentView()
         let descLabel = makeLabel(loc("asrSettings.sherpa.desc"), size: 12, color: .secondaryLabelColor, wrapped: true)
         let compatibility = makeLabel(SherpaRuntimeRelease.compatibilityNotice(on: operatingSystemVersion) ?? "",
                                       size: 12, color: .secondaryLabelColor, wrapped: true)
         compatibility.identifier = NSUserInterfaceItemIdentifier("sherpa.runtime.compatibility")
         compatibility.isHidden = !SherpaRuntimeRelease.requiresVersionRestriction(on: operatingSystemVersion)
         let header = makeStack([descLabel, compatibility], orientation: .vertical, spacing: 8, alignment: .leading)
+        header.identifier = NSUserInterfaceItemIdentifier("sherpa.settings.header")
         descLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
         compatibility.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
         // 识别语言下拉（与 UI 语言独立）（Recognition language popup, decoupled from UI language）
@@ -111,12 +112,14 @@ final class SherpaSettingsTab: ASRSettingsTab {
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let topRow = makeStack([langTitle, sherpaLanguagePopup, spacer, providerTitle, providerPopup], orientation: .horizontal, spacing: 8, alignment: .centerY)
+        topRow.identifier = NSUserInterfaceItemIdentifier("sherpa.settings.controls")
         // 模型列表（按"已下载/可下载"分组渲染）（Model list, grouped by downloaded/available）
         sherpaRadioStack = NSStackView()
         sherpaRadioStack.orientation = .vertical
         sherpaRadioStack.spacing = 6
         sherpaRadioStack.alignment = .leading
         sherpaRadioStack.translatesAutoresizingMaskIntoConstraints = false
+        sherpaRadioStack.identifier = NSUserInterfaceItemIdentifier("sherpa.settings.models")
         rebuildSherpaModelList()
         // 下载状态（Download status）
         sherpaStatusLabel = makeLabel("", size: 12, color: .secondaryLabelColor, wrapped: true)
@@ -193,7 +196,20 @@ final class SherpaSettingsTab: ASRSettingsTab {
         ])
         updateSherpaAutoUnloadControls()
         updateSherpaStatus()
-        return view
+        // 文档按内容决定高度，短页面的余量留在底部，避免拉伸说明区。
+        // 旧系统说明、多语言和较长模型列表可滚动查看，不挤压下方操作按钮。
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.documentView = view
+        view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            view.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
+            view.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            view.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+        ])
+        return scroll
     }
     func refresh() {
         rebuildSherpaModelList()
@@ -482,4 +498,8 @@ final class SherpaSettingsTab: ASRSettingsTab {
             self.setSherpaStatus(loc("sherpa.import.success", record.id), color: .systemGreen)
         }
     }
+}
+
+private final class SherpaSettingsDocumentView: NSView {
+    override var isFlipped: Bool { true }
 }

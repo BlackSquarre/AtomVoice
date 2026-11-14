@@ -191,6 +191,7 @@ enum SherpaRuntimeCompatibilityTests {
                     @MainActor func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
                     let label = try require(descendants(page).first { $0.identifier?.rawValue == "sherpa.runtime.compatibility" } as? NSTextField)
                     try expect(label.isHidden == hidden)
+                    try expect(page is NSScrollView)
                 }
             }
         }
@@ -203,6 +204,34 @@ enum SherpaRuntimeCompatibilityTests {
                 let versions = SherpaRuntimeRelease.knownCompatible.map { "• " + $0.version }.joined(separator: "\n")
                 let message = String(format: template, versions)
                 for release in SherpaRuntimeRelease.knownCompatible { try expect(message.contains(release.version)) }
+            }
+        }
+        await runner.run("Sherpa settings keep content packed at the top after refresh and viewport resizing") {
+            try await MainActor.run {
+                for version in [os(14), os(27)] {
+                    let tab = SherpaSettingsTab(parentWindow: { nil }, onStatusChanged: { _, _ in },
+                        sherpaDownloadReporter: nil, operatingSystemVersion: version)
+                    let scroll = try require(tab.makeView() as? NSScrollView)
+                    let document = try require(scroll.documentView)
+                    let header = try require(document.subviews.first { $0.identifier?.rawValue == "sherpa.settings.header" } as? NSStackView)
+                    let controls = try require(document.subviews.first { $0.identifier?.rawValue == "sherpa.settings.controls" })
+                    for height: CGFloat in [900, 340, 1100] {
+                        scroll.frame = NSRect(x: 0, y: 0, width: 600, height: height)
+                        tab.refreshStatus()
+                        scroll.layoutSubtreeIfNeeded()
+                        document.layoutSubtreeIfNeeded()
+                        let visibleLabels = header.arrangedSubviews.filter { !$0.isHidden }
+                        let lastLabel = try require(visibleLabels.last)
+                        let labelBottom = document.convert(lastLabel.bounds, from: lastLabel).maxY
+                        // 顶部说明不能吸收视口余量，控件始终紧跟最后一行说明。
+                        let gap = controls.frame.minY - labelBottom
+                        try expect(abs(gap - 12) < 2, "Unexpected header gap: \(gap), viewport: \(height)")
+                        try expect(document.frame.height < 900, "Document stretches to viewport: \(document.frame.height)")
+                        if height == 340 {
+                            try expect(document.frame.height > scroll.contentSize.height, "Long content must remain scrollable")
+                        }
+                    }
+                }
             }
         }
         // 可选公开包 fixture 只验证本地安装，不联网、不 dlopen、不加载模型。
