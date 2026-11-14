@@ -1,3 +1,13 @@
+import Foundation
+
+if CommandLine.arguments.contains("--openai-models-probe") {
+    await OpenAILiveProbe.runModels()
+}
+
+if CommandLine.arguments.contains("--openai-live-probe") {
+    await OpenAILiveProbe.run(CommandLine.arguments)
+}
+
 var runner = TestRunner()
 
 await PermissionTests.run(&runner)
