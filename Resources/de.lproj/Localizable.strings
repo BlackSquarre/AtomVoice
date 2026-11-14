@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "OpenAI-Clouderkennung";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "OpenAI-Clouderkennung verwenden?";
+"openai.privacy.message" = "Mikrofon-Audio wird zur Transkription an OpenAI gesendet und kann Kosten auf deinem OpenAI-Konto verursachen. Bei einem Fehler nutzt AtomVoice, falls verfügbar, Apple Speech. Ohne erzwungenen Offline-Modus kann auch Apple Audio online verarbeiten. Fahre nur fort, wenn du diesen Verarbeitungswegen zustimmst.";
+"openai.privacy.continue" = "Fortfahren";
+"openai.settings.desc" = "OpenAI transkribiert live in der Cloud, mit nutzungsabhängigen Kosten. Bei Fehlern übernimmt Apple Speech.";
+"openai.settings.apiKey" = "API-Schlüssel";
+"openai.settings.keyPlaceholder" = "Leer lassen, um den Schlüssel zu behalten";
+"openai.settings.removeKey" = "Schlüssel entfernen";
+"openai.settings.keyRemovalPending" = "Der Schlüssel wird beim Sichern entfernt.";
+"openai.settings.keyConfigured" = "Ein API-Schlüssel ist im Schlüsselbund gespeichert.";
+"openai.settings.model" = "Modell: %@";
+"openai.settings.languages" = "Sprachhinweise";
+"openai.settings.languagesPlaceholder" = "Leer: Erkennungssprache; z. B. de, en";
+"openai.settings.prompt" = "Kontext";
+"openai.settings.keywords" = "Schlüsselwörter";
+"openai.settings.hints" = "Ohne Sprachangabe gilt die globale Einstellung. Kontext und Schlüsselwörter dienen als Hinweise und werden mit der Anfrage an OpenAI gesendet; ein Schlüsselwort pro Zeile.";
 "openai.error.privacyNotAccepted" = "Wähle OpenAI im Menü und bestätige zuerst die Audioverarbeitung in der Cloud.";
 "openai.error.invalidConfiguration" = "Die OpenAI-Einstellungen sind ungültig. Prüfe Sprachhinweise und Schlüsselwörter.";
 "openai.error.missingApiKey" = "Richte zuerst einen OpenAI-ASR-API-Schlüssel ein.";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI hat die Erkennungskonfiguration abgelehnt.";
 "openai.error.invalidSession" = "OpenAI hat keine gültige Transkriptionssitzung bestätigt.";
 "openai.fallback.withError" = "%@. Zu Apple Speech gewechselt.";
+"openai.settings.apiKeyLink" = "Schlüssel erhalten";
+"openai.settings.modelChoice" = "Modell";
+"openai.settings.delay" = "Transkript-Verzögerung";
+"openai.settings.singleLanguagePlaceholder" = "Eine Sprache, z. B. zh oder en";
+"openai.settings.whisperHints" = "Nur eine Sprache; Kontext und Schlüsselwörter werden nicht unterstützt. Deine Eingaben bleiben für den Rückwechsel erhalten.";
+"openai.models.refresh" = "Aktualisieren";
+"openai.models.loading" = "Kontomodelle werden abgerufen…";
+"openai.models.initial" = "Beim Öffnen dieser Seite werden Echtzeitmodelle abgerufen, die für dein Konto sichtbar sind und von diesem Client unterstützt werden.";
+"openai.models.keyChanged" = "Klicke auf Aktualisieren, um die für diesen API-Schlüssel sichtbaren Modelle abzurufen.";
+"openai.models.loaded" = "Das Konto hat %d unterstützte Modelle zur Echtzeit-Spracherkennung zurückgegeben.";
+"openai.models.empty" = "Das Konto hat keine von diesem Client unterstützten Echtzeitmodelle zurückgegeben. Die aktuelle Auswahl bleibt erhalten.";
+"openai.models.unlisted" = "Das aktuelle Modell fehlt in der Liste. Deine Auswahl bleibt erhalten.";
+"openai.models.failed" = "Abruf fehlgeschlagen. Die aktuellen Optionen bleiben erhalten.";
+"openai.delay.default" = "Dienststandard";
+"openai.delay.minimal" = "Am kürzesten";
+"openai.delay.low" = "Kurz";
+"openai.delay.medium" = "Ausgewogen";
+"openai.delay.high" = "Lang";
+"openai.delay.xhigh" = "Am längsten";
+"openai.delay.hint" = "Niedrigere Stufen zeigen Text früher an; höhere Stufen nutzen mehr Audiokontext.";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";

@@ -647,8 +647,31 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             return
         }
 
+        if code == OpenAIASRSettings.engineCode {
+            if !AppSettings.openaiASR.privacyAccepted {
+                guard Self.confirmOpenAIASRPrivacy() else { return }
+                AppSettings.openaiASR.privacyAccepted = true
+            }
+            AppSettings.recognitionEngine = code
+            rebuildMenu()
+            if case .value(let key) = AppSettings.openaiASR.apiKeyReadResult(),
+               !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+            windowRouter.openASRSettings(selecting: OpenAIASRSettings.engineCode)
+            return
+        }
+
         AppSettings.recognitionEngine = code
         rebuildMenu()
+    }
+
+    static func confirmOpenAIASRPrivacy() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = loc("openai.privacy.title")
+        alert.informativeText = loc("openai.privacy.message")
+        alert.icon = NSImage(systemSymbolName: "cloud", accessibilityDescription: nil)
+        alert.addButton(withTitle: loc("openai.privacy.continue"))
+        alert.addButton(withTitle: loc("common.cancel"))
+        return AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn
     }
 
     @objc private func openSherpaFolder(_ sender: NSMenuItem) {
@@ -666,6 +689,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 公开方法：从 AppDelegate / OOBE 完成时调用（Public: called from AppDelegate / OOBE finish）
     func openDoubaoSettingsFromOutside() {
         openDoubaoSettingsWindow()
+    }
+
+    func openASRSettingsFromOutside(selecting engineCode: String) {
+        windowRouter.openASRSettings(selecting: engineCode)
     }
 
     /// 公开方法：让外部触发菜单重建（Public: allow external menu rebuild）

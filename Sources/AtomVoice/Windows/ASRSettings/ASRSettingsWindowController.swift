@@ -23,16 +23,20 @@ final class ASRSettingsWindowController: NSObject {
     )
     private let appleTab = AppleSettingsTab()
     private lazy var doubaoTab = DoubaoSettingsTab(textFieldDelegate: self)
+    private lazy var openaiTab = OpenAISettingsTab(textFieldDelegate: self)
 
     // 状态（Status）
     private var statusLabel: NSTextField!
 
-    func showWindow() {
+    func showWindow(selecting engineCode: String? = nil) {
         if let window {
+            if let engineCode { selectTab(identifier: tabIdentifier(for: engineCode)) }
             WindowPresenter.shared.bringToFront(window)
+            activateVisibleOpenAITab()
             return
         }
         buildWindow()
+        if let engineCode { selectTab(identifier: tabIdentifier(for: engineCode)) }
     }
 
     #if DEBUG_BUILD
@@ -84,6 +88,11 @@ final class ASRSettingsWindowController: NSObject {
         doubaoTab.view = self.doubaoTab.makeView()
         tabView.addTabViewItem(doubaoTab)
 
+        let openaiTab = NSTabViewItem(identifier: OpenAIASRSettings.engineCode)
+        openaiTab.label = loc("asrSettings.tab.openai")
+        openaiTab.view = self.openaiTab.makeView()
+        tabView.addTabViewItem(openaiTab)
+
         // 底部按钮（Bottom buttons）
         statusLabel = SettingsUI.makeSecondaryLabel()
 
@@ -115,12 +124,7 @@ final class ASRSettingsWindowController: NSObject {
         // 默认显示当前选中的识别引擎对应的标签页
         // (Default to the tab matching the currently selected ASR engine)
         let currentEngine = AppSettings.normalizedRecognitionEngine
-        let tabIdentifier: String
-        switch currentEngine {
-        case VolcengineASRSettings.engineCode: tabIdentifier = "doubao"
-        case ASREngineRegistry.sherpaCode: tabIdentifier = "sherpa"
-        default: tabIdentifier = "apple"
-        }
+        let tabIdentifier = tabIdentifier(for: currentEngine)
         let tabIndex = tabView.indexOfTabViewItem(withIdentifier: tabIdentifier)
         if tabIndex != NSNotFound {
             tabView.selectTabViewItem(at: tabIndex)
@@ -132,6 +136,7 @@ final class ASRSettingsWindowController: NSObject {
             w.center()
         }
         WindowPresenter.shared.bringToFront(w)
+        activateVisibleOpenAITab()
     }
 
     private func selectTab(identifier: String) {
@@ -139,6 +144,21 @@ final class ASRSettingsWindowController: NSObject {
         if tabIndex != NSNotFound {
             tabView.selectTabViewItem(at: tabIndex)
         }
+    }
+
+    private func tabIdentifier(for engineCode: String) -> String {
+        switch engineCode {
+        case VolcengineASRSettings.engineCode: return "doubao"
+        case ASREngineRegistry.sherpaCode: return "sherpa"
+        case OpenAIASRSettings.engineCode: return OpenAIASRSettings.engineCode
+        default: return "apple"
+        }
+    }
+
+    private func activateVisibleOpenAITab() {
+        guard window?.isVisible == true,
+              tabView.selectedTabViewItem?.identifier as? String == OpenAIASRSettings.engineCode else { return }
+        openaiTab.activateModelList()
     }
 
     // MARK: - 辅助方法（Helper methods）
@@ -152,6 +172,7 @@ final class ASRSettingsWindowController: NSObject {
 
         // Apple 设置（Apple settings）
         appleTab.refresh()
+        openaiTab.refresh()
 
         // 状态（Status）
         statusLabel?.stringValue = ""
@@ -159,7 +180,7 @@ final class ASRSettingsWindowController: NSObject {
 
     @objc private func saveSettings(_ sender: NSButton) {
         // 保留全窗保存范围；只提交有修改的页，失败或异步安装未完成时不关闭窗口。
-        switch ASRSettingsCommitter.save([doubaoTab, sherpaTab, appleTab]) {
+        switch ASRSettingsCommitter.save([doubaoTab, sherpaTab, appleTab, openaiTab]) {
         case .saved: break
         case .deferred: return
         case let .failed(message, color):
@@ -186,7 +207,11 @@ extension ASRSettingsWindowController: NSTabViewDelegate {
         switch tabViewItem?.identifier as? String {
         case "sherpa": sherpaTab.refreshStatus()
         case "apple": appleTab.refreshStatus()
-        default: doubaoTab.refreshStatus()
+        case "doubao": doubaoTab.refreshStatus()
+        case OpenAIASRSettings.engineCode:
+            openaiTab.refreshStatus()
+            activateVisibleOpenAITab()
+        default: break
         }
     }
 }
@@ -195,6 +220,7 @@ extension ASRSettingsWindowController: NSTabViewDelegate {
 
 extension ASRSettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
+        openaiTab.cancelModelListFetch()
         if let w = notification.object as? NSWindow {
             WindowPresenter.shared.resetActivationIfNeeded(closing: w)
         }
@@ -205,6 +231,12 @@ extension ASRSettingsWindowController: NSWindowDelegate {
 // MARK: - NSTextFieldDelegate
 
 extension ASRSettingsWindowController: NSTextFieldDelegate {
+    func controlTextDidChange(_ notification: Notification) {
+        if (notification.object as? NSTextField)?.identifier?.rawValue == "openai.apiKey" {
+            openaiTab.apiKeyDidChange()
+        }
+    }
+
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         if selector == #selector(NSResponder.insertNewline(_:)) {
             control.window?.selectNextKeyView(nil)

@@ -50,6 +50,7 @@ final class ASREngineRegistry {
         .sherpaOnnx,
         .apple,
         .volcengine,
+        .openAI,
     ])
 
     let descriptors: [ASREngineDescriptor]

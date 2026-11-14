@@ -43,13 +43,13 @@ final class MenuWindowRouter {
         doubaoSettingsWindow?.showWindow()
     }
 
-    func openASRSettings() {
+    func openASRSettings(selecting engineCode: String? = nil) {
         if asrSettingsWindow == nil {
             let c = ASRSettingsWindowController(sherpaDownloadReporter: sherpaDownloadReporter)
             c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
             asrSettingsWindow = c
         }
-        asrSettingsWindow?.showWindow()
+        asrSettingsWindow?.showWindow(selecting: engineCode)
     }
 
     #if DEBUG_BUILD

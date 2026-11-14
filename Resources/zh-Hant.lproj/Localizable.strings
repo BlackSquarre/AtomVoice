@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "OpenAI 雲端辨識";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "使用 OpenAI 雲端辨識？";
+"openai.privacy.message" = "麥克風音訊會傳送至 OpenAI 轉寫，並可能在你的 OpenAI 帳號產生費用。雲端失敗時，AtomVoice 會在可用時切換至 Apple 語音；未啟用強制離線時，Apple 也可能在線上處理音訊。只有同意這些音訊處理方式時才繼續。";
+"openai.privacy.continue" = "繼續使用";
+"openai.settings.desc" = "使用 OpenAI 雲端即時轉寫，按量計費；失敗時自動切換至 Apple 語音。";
+"openai.settings.apiKey" = "API Key";
+"openai.settings.keyPlaceholder" = "留空以保留已儲存的金鑰";
+"openai.settings.removeKey" = "移除金鑰";
+"openai.settings.keyRemovalPending" = "儲存時將移除金鑰。";
+"openai.settings.keyConfigured" = "API Key 已儲存在鑰匙圈。";
+"openai.settings.model" = "模型：%@";
+"openai.settings.languages" = "語言提示";
+"openai.settings.languagesPlaceholder" = "留空跟隨辨識語言，例如 zh-tw, en";
+"openai.settings.prompt" = "上下文";
+"openai.settings.keywords" = "關鍵詞";
+"openai.settings.hints" = "語言留空時跟隨全域設定。上下文和關鍵詞僅作提示，會隨要求傳送至 OpenAI；關鍵詞每行一個。";
 "openai.error.privacyNotAccepted" = "請先在選單選擇 OpenAI，並確認音訊雲端處理。";
 "openai.error.invalidConfiguration" = "OpenAI 辨識設定無效，請檢查語言提示和關鍵詞。";
 "openai.error.missingApiKey" = "請先設定 OpenAI ASR API Key。";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI 拒絕了辨識設定。";
 "openai.error.invalidSession" = "OpenAI 未確認有效的轉寫工作階段。";
 "openai.fallback.withError" = "%@，已切換至 Apple 語音辨識。";
+"openai.settings.apiKeyLink" = "取得 Key";
+"openai.settings.modelChoice" = "模型";
+"openai.settings.delay" = "出字等待";
+"openai.settings.singleLanguagePlaceholder" = "單一語言，例如 zh 或 en";
+"openai.settings.whisperHints" = "僅支援單一語言，不支援上下文與關鍵詞。已填內容會保留，切回後可繼續使用。";
+"openai.models.refresh" = "重新整理";
+"openai.models.loading" = "正在取得帳號模型…";
+"openai.models.initial" = "開啟此頁時取得帳號可見且本用戶端支援的即時模型。";
+"openai.models.keyChanged" = "按一下重新整理，取得此 API Key 可見的模型。";
+"openai.models.loaded" = "帳號傳回 %d 個受支援的即時辨識模型。";
+"openai.models.empty" = "帳號未傳回本用戶端支援的即時模型，已保留目前選擇。";
+"openai.models.unlisted" = "清單未包含目前模型，已保留選擇。";
+"openai.models.failed" = "取得失敗，目前選項已保留。";
+"openai.delay.default" = "服務預設";
+"openai.delay.minimal" = "最短";
+"openai.delay.low" = "較短";
+"openai.delay.medium" = "均衡";
+"openai.delay.high" = "較長";
+"openai.delay.xhigh" = "最長";
+"openai.delay.hint" = "較低檔位更早出字，較高檔位使用更多語音上下文。";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";

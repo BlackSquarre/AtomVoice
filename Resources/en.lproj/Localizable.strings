@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "OpenAI cloud recognition";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "Use OpenAI cloud recognition?";
+"openai.privacy.message" = "Microphone audio is sent to OpenAI for transcription and may incur charges on your OpenAI account. If cloud recognition fails, AtomVoice uses Apple Speech when available; Apple may process audio online unless Force Offline is enabled. Continue only if you agree to these audio processing paths.";
+"openai.privacy.continue" = "Continue";
+"openai.settings.desc" = "Live cloud transcription from OpenAI, billed by usage. Falls back to Apple Speech on failure.";
+"openai.settings.apiKey" = "API key";
+"openai.settings.keyPlaceholder" = "Leave empty to keep the saved key";
+"openai.settings.removeKey" = "Remove key";
+"openai.settings.keyRemovalPending" = "Key will be removed when you save.";
+"openai.settings.keyConfigured" = "An API key is saved in Keychain.";
+"openai.settings.model" = "Model: %@";
+"openai.settings.languages" = "Language hints";
+"openai.settings.languagesPlaceholder" = "Empty: follow recognition language; e.g. zh-cn, en";
+"openai.settings.prompt" = "Context";
+"openai.settings.keywords" = "Keywords";
+"openai.settings.hints" = "Leave languages blank to follow the global setting. Context and keywords are hints sent to OpenAI with each request; one keyword per line.";
 "openai.error.privacyNotAccepted" = "Select OpenAI in the menu and accept cloud audio processing first.";
 "openai.error.invalidConfiguration" = "OpenAI recognition settings are invalid. Check language hints and keywords.";
 "openai.error.missingApiKey" = "Configure an OpenAI ASR API key first.";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI recognition configuration was rejected.";
 "openai.error.invalidSession" = "OpenAI did not confirm a valid transcription session.";
 "openai.fallback.withError" = "%@. Switched to Apple Speech.";
+"openai.settings.apiKeyLink" = "Get API key";
+"openai.settings.modelChoice" = "Model";
+"openai.settings.delay" = "Transcript delay";
+"openai.settings.singleLanguagePlaceholder" = "One language, e.g. zh or en";
+"openai.settings.whisperHints" = "One language only; context and keywords are unsupported. Your entries are kept for use when you switch back.";
+"openai.models.refresh" = "Refresh";
+"openai.models.loading" = "Fetching account models…";
+"openai.models.initial" = "Fetch realtime models visible to your account and supported by this client when this page opens.";
+"openai.models.keyChanged" = "Click Refresh to fetch models visible to this API key.";
+"openai.models.loaded" = "Account returned %d supported realtime recognition models.";
+"openai.models.empty" = "The account returned no realtime models supported by this client. Your current selection is kept.";
+"openai.models.unlisted" = "The current model is absent from the list. Your selection is kept.";
+"openai.models.failed" = "Fetching failed. Your current options are kept.";
+"openai.delay.default" = "Service default";
+"openai.delay.minimal" = "Shortest";
+"openai.delay.low" = "Short";
+"openai.delay.medium" = "Balanced";
+"openai.delay.high" = "Long";
+"openai.delay.xhigh" = "Longest";
+"openai.delay.hint" = "Lower settings favor earlier text; higher settings use more audio context.";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";

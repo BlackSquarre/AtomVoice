@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "OpenAI クラウド認識";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "OpenAI クラウド認識を使用しますか？";
+"openai.privacy.message" = "マイク音声を文字起こしのため OpenAI に送信し、OpenAI アカウントに料金が発生する場合があります。クラウド認識に失敗すると、利用可能な Apple 音声認識に切り替えます。強制オフラインが無効の場合、Apple もオンラインで音声を処理することがあります。これらの処理に同意する場合のみ続行してください。";
+"openai.privacy.continue" = "続行";
+"openai.settings.desc" = "OpenAI のクラウドでリアルタイム文字起こし。従量課金制で、失敗時は Apple 音声認識に切り替わります。";
+"openai.settings.apiKey" = "API キー";
+"openai.settings.keyPlaceholder" = "空欄なら保存済みキーを維持";
+"openai.settings.removeKey" = "キーを削除";
+"openai.settings.keyRemovalPending" = "保存するとキーを削除します。";
+"openai.settings.keyConfigured" = "API キーはキーチェーンに保存されています。";
+"openai.settings.model" = "モデル：%@";
+"openai.settings.languages" = "言語ヒント";
+"openai.settings.languagesPlaceholder" = "空欄：認識言語を使用。例：ja, en";
+"openai.settings.prompt" = "文脈";
+"openai.settings.keywords" = "キーワード";
+"openai.settings.hints" = "言語が空欄なら全体設定に従います。文脈とキーワードは認識のヒントとしてリクエストとともに OpenAI に送信されます。キーワードは1行に1つ。";
 "openai.error.privacyNotAccepted" = "メニューで OpenAI を選択し、音声のクラウド処理に同意してください。";
 "openai.error.invalidConfiguration" = "OpenAI 認識設定が無効です。言語ヒントとキーワードを確認してください。";
 "openai.error.missingApiKey" = "OpenAI ASR API キーを設定してください。";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI が認識設定を拒否しました。";
 "openai.error.invalidSession" = "OpenAI が有効な文字起こしセッションを確認しませんでした。";
 "openai.fallback.withError" = "%@。Apple 音声認識に切り替えました。";
+"openai.settings.apiKeyLink" = "キーを取得";
+"openai.settings.modelChoice" = "モデル";
+"openai.settings.delay" = "文字表示の待ち時間";
+"openai.settings.singleLanguagePlaceholder" = "言語は1つ。例：zh または en";
+"openai.settings.whisperHints" = "言語は1つのみ。文脈とキーワードは使えませんが、入力内容は保持され、元のモデルに戻すと使えます。";
+"openai.models.refresh" = "更新";
+"openai.models.loading" = "アカウントのモデルを取得中…";
+"openai.models.initial" = "このページを開くと、アカウントに表示され、このクライアントが対応するリアルタイムモデルを取得します。";
+"openai.models.keyChanged" = "「更新」をクリックして、この API キーで表示できるモデルを取得します。";
+"openai.models.loaded" = "アカウントから対応するリアルタイム認識モデルを %d 件取得しました。";
+"openai.models.empty" = "このクライアントが対応するリアルタイムモデルは返されませんでした。現在の選択を保持しています。";
+"openai.models.unlisted" = "一覧に現在のモデルがありません。選択を保持しています。";
+"openai.models.failed" = "取得に失敗しました。現在の選択肢を保持しています。";
+"openai.delay.default" = "サービスの既定値";
+"openai.delay.minimal" = "最短";
+"openai.delay.low" = "短め";
+"openai.delay.medium" = "バランス";
+"openai.delay.high" = "長め";
+"openai.delay.xhigh" = "最長";
+"openai.delay.hint" = "低い設定では文字を早めに表示し、高い設定ではより多くの音声の文脈を使います。";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";

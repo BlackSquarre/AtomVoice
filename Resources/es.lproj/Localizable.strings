@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "Reconocimiento en la nube de OpenAI";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "¿Usar el reconocimiento de OpenAI?";
+"openai.privacy.message" = "El audio del micrófono se envía a OpenAI para transcribirlo y puede generar cargos en tu cuenta. Si falla, AtomVoice usa Apple Speech cuando esté disponible. Apple también puede procesar audio en línea si no activas Forzar sin conexión. Continúa solo si aceptas estas vías de procesamiento.";
+"openai.privacy.continue" = "Continuar";
+"openai.settings.desc" = "Transcripción en directo en la nube de OpenAI, con pago por uso. Si falla, se usa Apple Speech.";
+"openai.settings.apiKey" = "Clave API";
+"openai.settings.keyPlaceholder" = "Déjalo vacío para conservar la clave";
+"openai.settings.removeKey" = "Eliminar clave";
+"openai.settings.keyRemovalPending" = "La clave se eliminará al guardar.";
+"openai.settings.keyConfigured" = "Hay una clave API guardada en el Llavero.";
+"openai.settings.model" = "Modelo: %@";
+"openai.settings.languages" = "Idiomas";
+"openai.settings.languagesPlaceholder" = "Vacío: idioma de reconocimiento; p. ej., es, en";
+"openai.settings.prompt" = "Contexto";
+"openai.settings.keywords" = "Palabras clave";
+"openai.settings.hints" = "Deja el idioma vacío para usar el ajuste global. El contexto y las palabras clave son pistas que se envían a OpenAI con la solicitud; una palabra clave por línea.";
 "openai.error.privacyNotAccepted" = "Selecciona OpenAI en el menú y acepta primero el procesamiento de audio en la nube.";
 "openai.error.invalidConfiguration" = "Los ajustes de OpenAI no son válidos. Revisa los idiomas y las palabras clave.";
 "openai.error.missingApiKey" = "Configura primero una clave API de OpenAI ASR.";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI rechazó la configuración de reconocimiento.";
 "openai.error.invalidSession" = "OpenAI no confirmó una sesión de transcripción válida.";
 "openai.fallback.withError" = "%@. Se cambió a Apple Speech.";
+"openai.settings.apiKeyLink" = "Obtener clave";
+"openai.settings.modelChoice" = "Modelo";
+"openai.settings.delay" = "Espera de transcripción";
+"openai.settings.singleLanguagePlaceholder" = "Un solo idioma, p. ej., zh o en";
+"openai.settings.whisperHints" = "Solo un idioma; sin contexto ni palabras clave. Las entradas se conservan para cuando vuelvas al otro modelo.";
+"openai.models.refresh" = "Actualizar";
+"openai.models.loading" = "Obteniendo modelos de la cuenta…";
+"openai.models.initial" = "Al abrir esta página, se obtienen los modelos en tiempo real visibles para tu cuenta y admitidos por este cliente.";
+"openai.models.keyChanged" = "Haz clic en Actualizar para obtener los modelos visibles para esta clave API.";
+"openai.models.loaded" = "La cuenta devolvió %d modelos de reconocimiento en tiempo real admitidos.";
+"openai.models.empty" = "La cuenta no devolvió modelos en tiempo real admitidos por este cliente. Se conserva la selección actual.";
+"openai.models.unlisted" = "El modelo actual no aparece en la lista. Se conserva tu selección.";
+"openai.models.failed" = "No se pudieron obtener los modelos. Se conservan las opciones actuales.";
+"openai.delay.default" = "Predeterminado del servicio";
+"openai.delay.minimal" = "Mínima";
+"openai.delay.low" = "Corta";
+"openai.delay.medium" = "Equilibrada";
+"openai.delay.high" = "Larga";
+"openai.delay.xhigh" = "Máxima";
+"openai.delay.hint" = "Los niveles bajos muestran el texto antes; los altos utilizan más contexto de audio.";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";

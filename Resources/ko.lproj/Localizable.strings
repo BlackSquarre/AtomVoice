@@ -536,6 +536,22 @@
 
 // OpenAI 实时转写
 "menu.recognitionEngine.openai" = "OpenAI 클라우드 인식";
+"asrSettings.tab.openai" = "OpenAI";
+"openai.privacy.title" = "OpenAI 클라우드 인식을 사용할까요?";
+"openai.privacy.message" = "마이크 오디오를 전사하려고 OpenAI에 전송하며 OpenAI 계정에 요금이 발생할 수 있습니다. 클라우드 인식에 실패하면 사용 가능한 Apple 음성 인식으로 전환합니다. 강제 오프라인이 꺼져 있으면 Apple도 온라인으로 오디오를 처리할 수 있습니다. 이 처리 방식에 동의할 때만 계속하세요.";
+"openai.privacy.continue" = "계속";
+"openai.settings.desc" = "OpenAI 클라우드 실시간 전사를 사용하며 사용량에 따라 요금이 부과됩니다. 실패 시 Apple 음성 인식으로 전환합니다.";
+"openai.settings.apiKey" = "API 키";
+"openai.settings.keyPlaceholder" = "비워 두면 저장된 키 유지";
+"openai.settings.removeKey" = "키 제거";
+"openai.settings.keyRemovalPending" = "저장할 때 키가 제거됩니다.";
+"openai.settings.keyConfigured" = "API 키가 키체인에 저장되어 있습니다.";
+"openai.settings.model" = "모델: %@";
+"openai.settings.languages" = "언어 힌트";
+"openai.settings.languagesPlaceholder" = "빈칸: 인식 언어 사용, 예: ko, en";
+"openai.settings.prompt" = "문맥";
+"openai.settings.keywords" = "키워드";
+"openai.settings.hints" = "언어를 비우면 전역 설정을 따릅니다. 문맥과 키워드는 인식 힌트로 요청과 함께 OpenAI에 전송됩니다. 키워드는 한 줄에 하나씩 입력하세요.";
 "openai.error.privacyNotAccepted" = "메뉴에서 OpenAI를 선택하고 오디오 클라우드 처리에 동의하세요.";
 "openai.error.invalidConfiguration" = "OpenAI 인식 설정이 잘못되었습니다. 언어 힌트와 키워드를 확인하세요.";
 "openai.error.missingApiKey" = "OpenAI ASR API 키를 먼저 설정하세요.";
@@ -550,3 +566,27 @@
 "openai.error.configuration" = "OpenAI가 인식 설정을 거부했습니다.";
 "openai.error.invalidSession" = "OpenAI가 유효한 전사 세션을 확인하지 않았습니다.";
 "openai.fallback.withError" = "%@. Apple 음성 인식으로 전환했습니다.";
+"openai.settings.apiKeyLink" = "키 받기";
+"openai.settings.modelChoice" = "모델";
+"openai.settings.delay" = "텍스트 표시 대기";
+"openai.settings.singleLanguagePlaceholder" = "언어 하나만 입력, 예: zh 또는 en";
+"openai.settings.whisperHints" = "언어는 하나만 지원하며 문맥·키워드는 지원하지 않습니다. 입력 내용은 유지되어 이전 모델로 돌아가면 다시 사용할 수 있습니다.";
+"openai.models.refresh" = "새로 고침";
+"openai.models.loading" = "계정 모델을 가져오는 중…";
+"openai.models.initial" = "이 페이지를 열면 계정에 표시되며 이 클라이언트에서 지원하는 실시간 모델을 가져옵니다.";
+"openai.models.keyChanged" = "새로 고침을 클릭하여 이 API 키에 표시되는 모델을 가져오세요.";
+"openai.models.loaded" = "계정에서 지원되는 실시간 인식 모델 %d개를 반환했습니다.";
+"openai.models.empty" = "계정에서 이 클라이언트가 지원하는 실시간 모델을 반환하지 않았습니다. 현재 선택은 유지됩니다.";
+"openai.models.unlisted" = "목록에 현재 모델이 없습니다. 선택은 유지됩니다.";
+"openai.models.failed" = "가져오지 못했습니다. 현재 옵션은 유지됩니다.";
+"openai.delay.default" = "서비스 기본값";
+"openai.delay.minimal" = "가장 짧게";
+"openai.delay.low" = "짧게";
+"openai.delay.medium" = "균형";
+"openai.delay.high" = "길게";
+"openai.delay.xhigh" = "가장 길게";
+"openai.delay.hint" = "낮은 단계에서는 텍스트가 더 일찍 표시되고, 높은 단계에서는 더 많은 음성 문맥을 사용합니다.";
+
+// OpenAI语言代码提示
+"openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
+"openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
