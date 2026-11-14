@@ -38,6 +38,27 @@ enum SingleInstanceControllerTests {
             try expect(environment.writtenPID == 42)
         }
 
+        await runner.run("claimSingleInstance terminates same-bundle copies across app paths without terminating self or duplicating requests") {
+            let executableURL = URL(fileURLWithPath: "/Applications/AtomVoice.app/Contents/MacOS/AtomVoice")
+            let current = FakeSingleInstanceApplication(pid: 42, executableURL: executableURL)
+            let previous = FakeSingleInstanceApplication(pid: 41, executableURL: executableURL)
+            let preview = FakeSingleInstanceApplication(pid: 40, executableURL: URL(fileURLWithPath: "/tmp/Settings-preview.app/Contents/MacOS/AtomVoice"))
+            let environment = FakeSingleInstanceEnvironment()
+            environment.bundleApplications = [current, previous, preview]
+            environment.sameExecutableApplications = [current, previous]
+            let controller = SingleInstanceController(environment: environment)
+
+            controller.claimSingleInstance(
+                currentPID: 42,
+                bundleIdentifier: "com.blacksquarre.AtomVoice",
+                currentExecutableURL: executableURL
+            )
+
+            try expect(previous.terminateCount == 1 && preview.terminateCount == 1)
+            try expect(current.terminateCount == 0 && current.forceTerminateCount == 0)
+            try expect(environment.writtenPID == 42)
+        }
+
         await runner.run("claimSingleInstance is no-op when bundleIdentifier nil") {
             let environment = FakeSingleInstanceEnvironment()
             let controller = SingleInstanceController(environment: environment)

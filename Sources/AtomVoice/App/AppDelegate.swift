@@ -30,7 +30,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationWillTerminate(_ notification: Notification) { singleInstance.releaseSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier) }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // 普通启动和调试预览都必须先执行单实例处理。
         singleInstance.claimSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier, bundleIdentifier: Bundle.main.bundleIdentifier, currentExecutableURL: Bundle.main.executableURL?.standardizedFileURL)
+        #if DEBUG_BUILD
+        // 快照验收沿用现有窗口入口，不启动输入监听、权限请求、更新或模型探测。
+        if DebugOOBESnapshotArguments.current != nil || DebugASRSettingsSnapshotArguments.current != nil {
+            MainMenuInstaller.install()
+            AppSettings.registerDefaults()
+            buildDependencyGraph()
+            configureMenu()
+            presentInitialWindowsIfNeeded()
+            return
+        }
+        #endif
         configureLaunchDefaults()
         buildDependencyGraph()
         configureMenu()
