@@ -135,10 +135,12 @@ final class RecordingSessionController {
             textPostProcessorRegistry: textPostProcessorRegistry,
             outputSinkProvider: { textOutputSinkRegistry.current() },
             settingsProvider: {
-                let connection = AppSettings.llmConnection
+                let llmEnabled = AppSettings.llmEnabled
+                let connection = llmEnabled ? AppSettings.llmConnection : LLMConnectionSettings(
+                    baseURL: AppSettings.llmAPIBaseURL, apiKey: "", model: AppSettings.llmModel)
                 return RecognitionResultFinalizer.Settings(
                     language: AppSettings.selectedLanguage,
-                    llmEnabled: AppSettings.llmEnabled,
+                    llmEnabled: llmEnabled,
                     llmAPIKey: connection.apiKey,
                     llmResultDelay: AppSettings.llmResultDelay,
                     autoPunctuationEnabled: AppSettings.autoPunctuationEnabled,
