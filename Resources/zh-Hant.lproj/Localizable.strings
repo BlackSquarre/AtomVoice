@@ -292,7 +292,7 @@
 "menu.doubaoSettings" = "豆包 ASR 設定...";
 "doubao.connecting" = "正在連接豆包 ASR...";
 "doubao.privacy.title" = "使用豆包雲端辨識？";
-"doubao.privacy.message" = "豆包雲端辨識會將麥克風音訊傳送到火山引擎/豆包服務進行轉寫，並可能在你的火山引擎帳號中產生用量費用。只有接受雲端處理時才繼續。";
+"doubao.privacy.message" = "雲端辨識會將麥克風音訊傳送至你選擇的火山引擎、BytePlus 或自訂服務進行轉寫，並可能在對應帳號中產生用量費用。只有接受雲端處理時才繼續。";
 "doubao.privacy.continue" = "繼續使用";
 "doubao.error.privacyNotAccepted" = "請先在選單中啟用豆包雲端辨識，並確認音訊雲端處理提示。";
 "doubao.error.missingApiKey" = "請先設定豆包 ASR API Key。";
@@ -305,11 +305,11 @@
 "doubao.error.connectionFailed" = "豆包 ASR 連線失敗：%@";
 "doubao.error.server" = "豆包 ASR 錯誤：%@";
 "doubao.settings.title" = "豆包 ASR 設定";
-"doubao.settings.desc" = "設定火山引擎豆包串流語音辨識。只有選擇該辨識引擎時，音訊才會傳送到豆包服務。";
+"doubao.settings.desc" = "選擇火山引擎、BytePlus 或相容的自訂服務進行串流語音辨識。";
 "doubao.settings.apiKey" = "API Key:";
 "doubao.settings.apiKeyLink" = "申請 API Key ↗";
 "doubao.settings.resourceID" = "模型：";
-"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.endpoint" = "自訂位址：";
 "doubao.settings.options" = "選項:";
 "doubao.settings.enablePunctuation" = "啟用標點";
 "doubao.settings.enableITN" = "文字規範化";
@@ -317,8 +317,8 @@
 "doubao.settings.enableNonstream" = "二遍辨識";
 "doubao.settings.finalTimeout" = "逾時時間:";
 "doubao.settings.keychainFailed" = "無法將 API Key 儲存到鑰匙圈。";
-"tooltip.doubao.apiKey" = "火山引擎控制台裡的 APP Key，用於連接豆包語音服務。";
-"tooltip.doubao.resourceID" = "你在火山引擎主控台開通的豆包串流語音辨識模型。";
+"tooltip.doubao.apiKey" = "所選語音服務簽發的 API Key。各服務的密鑰分別儲存在鑰匙圈中。";
+"tooltip.doubao.resourceID" = "你在所選服務帳號中開通的串流語音辨識模型。";
 "tooltip.doubao.endpoint" = "豆包串流語音辨識介面位址，預設使用官方推薦的雙向串流優化版。";
 "tooltip.doubao.enablePunctuation" = "文件參數 enable_punc：啟用標點，預設開啟。";
 "tooltip.doubao.enableITN" = "把口語中的數字、日期轉成阿拉伯數字，例如「一九七零年」→「1970 年」。";
@@ -404,7 +404,7 @@
 
 "oobe.engine.doubao.title" = "豆包語音";
 "oobe.engine.doubao.tagline" = "中文辨識表現優秀，串流低延遲。";
-"oobe.engine.doubao.desc" = "音訊上傳至火山引擎伺服器，普通話/方言辨識表現優良。需配置 API Key，按量付費。\n\n適合高頻及長文輸入，反應迅速且綜合體驗較好。\n\n使用需全程連網，無網路時將回退到 Apple 語音。";
+"oobe.engine.doubao.desc" = "音訊上傳至所選的火山引擎、BytePlus 或自訂服務，普通話/方言辨識表現優良。需配置 API Key，按量付費。\n\n適合高頻及長文輸入，反應迅速且綜合體驗較好。\n\n使用需全程連網，無網路時將回退到 Apple 語音。";
 
 "oobe.done.title" = "一切就緒";
 "oobe.done.body" = "按住 %@ 即可說話，鬆開自動上屏。\n可透過選單列中 (ICON) 修改更多設定。";
@@ -515,3 +515,11 @@
 "alert.headphoneControl.title" = "啟用耳機語音控制？";
 "alert.headphoneControl.message" = "AtomVoice 會接管耳機的播放/暫停鍵來控制語音輸入。長按模式下，按住說話、鬆開結束；單擊模式下，單擊開始或停止；雙擊一律送出 Return。僅在連接耳機或藍牙裝置時才會生效。部分藍牙裝置可能不支援長按模式。AirPods 由於介面原因暫不支援。";
 "alert.headphoneControl.enable" = "啟用";
+
+"doubao.settings.service" = "服務：";
+"doubao.service.china" = "中國版（火山引擎）";
+"doubao.service.international" = "國際版（BytePlus）";
+"doubao.service.custom" = "自訂";
+"doubao.service.china.info" = "音訊傳送至火山引擎。請使用中國版帳號的 API Key。";
+"doubao.service.international.info" = "音訊傳送至 BytePlus 新加坡端點。請使用國際版帳號的 API Key。";
+"doubao.service.custom.info" = "僅支援相容豆包串流辨識協定的 wss:// 位址。音訊和 API Key 將傳送至該位址。";

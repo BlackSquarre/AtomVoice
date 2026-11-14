@@ -1,6 +1,50 @@
 import AVFoundation
 import Foundation
 
+/// 服务预设只决定连接地址和凭据归属，不改变模型或识别参数。
+enum DoubaoService: String, CaseIterable {
+    case china
+    case international
+    case custom
+
+    var title: String {
+        switch self {
+        case .china: return loc("doubao.service.china")
+        case .international: return loc("doubao.service.international")
+        case .custom: return loc("doubao.service.custom")
+        }
+    }
+
+    var info: String {
+        switch self {
+        case .china: return loc("doubao.service.china.info")
+        case .international: return loc("doubao.service.international.info")
+        case .custom: return loc("doubao.service.custom.info")
+        }
+    }
+
+    var endpoint: String? {
+        switch self {
+        case .china: return "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
+        case .international: return "wss://voice.ap-southeast-1.bytepluses.com/api/v3/sauc/bigmodel_async"
+        case .custom: return nil
+        }
+    }
+
+    var apiKeyURL: URL? {
+        switch self {
+        case .china: return URL(string: "https://console.volcengine.com/speech/new/setting/apikeys")
+        case .international: return URL(string: "https://console.byteplus.com/")
+        case .custom: return nil
+        }
+    }
+
+    static func inferred(from endpoint: String) -> Self {
+        let trimmed = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        return allCases.first { $0.endpoint == trimmed } ?? .custom
+    }
+}
+
 // MARK: - 豆包流式 ASR 模型版本（X-Api-Resource-Id 取值，个人版按时长计费）
 // (Doubao streaming ASR model versions — X-Api-Resource-Id values, duration-based pricing for personal use.)
 
@@ -40,8 +84,12 @@ struct VolcengineASRSettings {
     var enableDDC: Bool
     var enableNonstream: Bool
     var selectedLanguage: String
+    var service: DoubaoService? = nil
+    var customEndpoint: String? = nil
 
-    static var defaultEndpoint: String { "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async" }
+    var selectedService: DoubaoService { service ?? .inferred(from: endpoint) }
+
+    static var defaultEndpoint: String { DoubaoService.china.endpoint! }
     static var defaultResourceID: String { DoubaoModelKind.v2.resourceID }
 
     static var savedAPIKey: String {
@@ -49,7 +97,7 @@ struct VolcengineASRSettings {
     }
 
     static var savedAPIKeyReadResult: KeychainStringReadResult {
-        KeychainStore.readString(service: keychainService, account: keychainAccount)
+        readAPIKey(for: selectedService(backend: AppSettings.backend))
     }
 
     static var hasAPIKey: Bool {
@@ -57,30 +105,74 @@ struct VolcengineASRSettings {
     }
 
     static func saveAPIKey(_ value: String, previousRead: KeychainStringReadResult? = nil) -> Bool {
+        saveAPIKey(value, for: selectedService(backend: AppSettings.backend), previousRead: previousRead)
+    }
+
+    static func selectedService(backend: SettingsBackend) -> DoubaoService {
+        if let raw = backend.string(forKey: AppSettings.Keys.doubaoASRService),
+           let service = DoubaoService(rawValue: raw) { return service }
+        return .inferred(from: backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint))
+    }
+
+    /// 旧密钥继续留在原槽位，并永久绑定首次切换前的服务；不复制密钥或在读配置时写入。
+    static func credentialAccount(for service: DoubaoService, backend: SettingsBackend) -> String {
+        let owner = legacyCredentialService(backend: backend)
+        return service == owner ? keychainAccount : "\(keychainAccount).\(service.rawValue)"
+    }
+
+    private static func legacyCredentialService(backend: SettingsBackend) -> DoubaoService {
+        if let raw = backend.string(forKey: AppSettings.Keys.doubaoASRLegacyCredentialService),
+           let service = DoubaoService(rawValue: raw) { return service }
+        return .inferred(from: backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint))
+    }
+
+    static func readAPIKey(for service: DoubaoService) -> KeychainStringReadResult {
+        KeychainStore.readString(service: keychainService, account: credentialAccount(for: service, backend: AppSettings.backend))
+    }
+
+    static func saveAPIKey(_ value: String, for service: DoubaoService, previousRead: KeychainStringReadResult? = nil) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let account = credentialAccount(for: service, backend: AppSettings.backend)
         return KeychainStore.saveString(
             trimmed,
-            previousRead: { previousRead ?? savedAPIKeyReadResult },
-            write: { KeychainStore.setString($0, service: keychainService, account: keychainAccount) },
-            delete: { KeychainStore.delete(service: keychainService, account: keychainAccount) }
+            previousRead: { previousRead ?? readAPIKey(for: service) },
+            write: { KeychainStore.setString($0, service: keychainService, account: account) },
+            delete: { KeychainStore.delete(service: keychainService, account: account) }
         )
     }
 
     static func load(apiKey: String? = nil) -> VolcengineASRSettings {
         let backend = AppSettings.backend
+        let service = selectedService(backend: backend)
         return VolcengineASRSettings(
-            endpoint: backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint),
+            endpoint: service.endpoint ?? backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: defaultEndpoint),
             apiKey: apiKey ?? savedAPIKey,
             resourceID: backend.string(forKey: AppSettings.Keys.doubaoASRResourceID, default: defaultResourceID),
             enableITN: backend.bool(forKey: AppSettings.Keys.doubaoASREnableITN, default: true),
             enableDDC: backend.bool(forKey: AppSettings.Keys.doubaoASREnableDDC, default: false),
             enableNonstream: backend.bool(forKey: AppSettings.Keys.doubaoASREnableNonstream, default: false),
-            selectedLanguage: AppSettings.selectedLanguage
+            selectedLanguage: AppSettings.selectedLanguage,
+            service: service,
+            customEndpoint: backend.string(forKey: AppSettings.Keys.doubaoASRCustomEndpoint)
         )
     }
 
-    func persistNonSecretFields() {
-        let backend = AppSettings.backend
+    func persistNonSecretFields(backend: SettingsBackend = AppSettings.backend) {
+        let owner = Self.legacyCredentialService(backend: backend)
+        let previousService = Self.selectedService(backend: backend)
+        backend.set(owner.rawValue, forKey: AppSettings.Keys.doubaoASRLegacyCredentialService)
+        backend.set(selectedService.rawValue, forKey: AppSettings.Keys.doubaoASRService)
+        // 切到预设前也保留已有自定义地址，取消或再次切换时不丢失。
+        let previousEndpoint = backend.string(forKey: AppSettings.Keys.doubaoASREndpoint, default: Self.defaultEndpoint)
+        if previousService == .custom {
+            backend.set(previousEndpoint, forKey: AppSettings.Keys.doubaoASRCustomEndpoint)
+        }
+        if let customEndpoint {
+            backend.set(customEndpoint.trimmingCharacters(in: .whitespacesAndNewlines), forKey: AppSettings.Keys.doubaoASRCustomEndpoint)
+        }
+        if selectedService == .custom {
+            backend.set(trimmedEndpoint, forKey: AppSettings.Keys.doubaoASRCustomEndpoint)
+        }
         backend.set(trimmedEndpoint, forKey: AppSettings.Keys.doubaoASREndpoint)
         backend.set(trimmedResourceID, forKey: AppSettings.Keys.doubaoASRResourceID)
         backend.set(enableITN, forKey: AppSettings.Keys.doubaoASREnableITN)
@@ -89,7 +181,7 @@ struct VolcengineASRSettings {
     }
 
     var trimmedEndpoint: String {
-        endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        (service?.endpoint ?? endpoint).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var trimmedAPIKey: String {

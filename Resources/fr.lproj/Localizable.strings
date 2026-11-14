@@ -292,7 +292,7 @@
 "menu.doubaoSettings" = "Réglages Doubao ASR...";
 "doubao.connecting" = "Connexion à Doubao ASR...";
 "doubao.privacy.title" = "Utiliser Doubao ASR cloud ?";
-"doubao.privacy.message" = "Doubao ASR cloud envoie l’audio du microphone à Volcengine/Doubao pour transcription. Cela peut entraîner des frais d’utilisation sur votre compte Volcengine. Continuez uniquement si vous acceptez ce traitement dans le cloud.";
+"doubao.privacy.message" = "La reconnaissance cloud envoie l’audio du microphone au service choisi : Volcengine, BytePlus ou une adresse personnalisée. Des frais d’utilisation peuvent être facturés au compte correspondant. Continuez uniquement si vous acceptez ce traitement dans le cloud.";
 "doubao.privacy.continue" = "Continuer";
 "doubao.error.privacyNotAccepted" = "Activez d’abord Doubao ASR cloud depuis le menu et confirmez l’avertissement sur l’audio dans le cloud.";
 "doubao.error.missingApiKey" = "Configurez d’abord l’API Key Doubao ASR.";
@@ -305,11 +305,11 @@
 "doubao.error.connectionFailed" = "Échec de connexion à Doubao ASR : %@";
 "doubao.error.server" = "Erreur Doubao ASR : %@";
 "doubao.settings.title" = "Réglages Doubao ASR";
-"doubao.settings.desc" = "Configurez la reconnaissance vocale en streaming Volcengine Doubao. L’audio est envoyé à Doubao uniquement lorsque ce moteur est sélectionné.";
+"doubao.settings.desc" = "Choisissez Volcengine, BytePlus ou un service personnalisé compatible pour la reconnaissance vocale en streaming.";
 "doubao.settings.apiKey" = "API Key :";
 "doubao.settings.apiKeyLink" = "Obtenir une API Key ↗";
 "doubao.settings.resourceID" = "Modèle :";
-"doubao.settings.endpoint" = "Endpoint :";
+"doubao.settings.endpoint" = "URL personnalisée :";
 "doubao.settings.options" = "Options :";
 "doubao.settings.enablePunctuation" = "Activer la ponctuation";
 "doubao.settings.enableITN" = "Normalisation du texte";
@@ -317,8 +317,8 @@
 "doubao.settings.enableNonstream" = "Reconnaissance en second passage";
 "doubao.settings.finalTimeout" = "Délai d’attente :";
 "doubao.settings.keychainFailed" = "Impossible d’enregistrer l’API Key dans le trousseau.";
-"tooltip.doubao.apiKey" = "APP Key de la console Volcengine, utilisée pour se connecter au service vocal Doubao.";
-"tooltip.doubao.resourceID" = "Le modèle de reconnaissance vocale Doubao activé sur votre compte Volcengine.";
+"tooltip.doubao.apiKey" = "Clé API fournie par le service vocal choisi. Chaque service conserve sa propre clé dans le trousseau.";
+"tooltip.doubao.resourceID" = "Le modèle de reconnaissance vocale en streaming activé sur le compte du service choisi.";
 "tooltip.doubao.endpoint" = "Endpoint Doubao ASR en streaming. Par défaut, l’endpoint bidirectionnel optimisé recommandé officiellement est utilisé.";
 "tooltip.doubao.enablePunctuation" = "Paramètre enable_punc : active la ponctuation. Activé par défaut.";
 "tooltip.doubao.enableITN" = "Convertit les nombres et dates parlés en chiffres, par exemple « dix-neuf cent soixante-dix » → « 1970 ».";
@@ -404,7 +404,7 @@
 
 "oobe.engine.doubao.title" = "Doubao Voix";
 "oobe.engine.doubao.tagline" = "Bonne précision en chinois, streaming faible latence.";
-"oobe.engine.doubao.desc" = "Diffuse l'audio vers les serveurs Volcengine. Bonne reconnaissance du mandarin et des dialectes. Clé API requise, facturation à l'usage.\n\nAdapté aux saisies fréquentes et longues, offrant des réponses rapides et une bonne expérience globale.\n\nNécessite une connexion Internet constante ; bascule sur la reconnaissance Apple hors ligne.";
+"oobe.engine.doubao.desc" = "Diffuse l’audio vers le service choisi : Volcengine, BytePlus ou un service personnalisé. Bonne reconnaissance du mandarin et des dialectes. Clé API requise, facturation à l'usage.\n\nAdapté aux saisies fréquentes et longues, offrant des réponses rapides et une bonne expérience globale.\n\nNécessite une connexion Internet constante ; bascule sur la reconnaissance Apple hors ligne.";
 
 "oobe.done.title" = "Tout est prêt";
 "oobe.done.body" = "Maintenez %@ pour parler, relâchez pour insérer.\nVous pouvez modifier d'autres paramètres via le menu (ICON).";
@@ -515,3 +515,11 @@
 "alert.headphoneControl.title" = "Activer le contrôle vocal au casque ?";
 "alert.headphoneControl.message" = "AtomVoice prend le contrôle de la touche lecture/pause du casque pour la saisie vocale. En mode maintien, maintenez pour parler puis relâchez pour terminer. En mode clic, un clic démarre ou arrête. Le double clic envoie toujours Return. Actif uniquement quand des écouteurs ou un appareil Bluetooth est connecté. Certains appareils Bluetooth peuvent ne pas prendre en charge le mode maintien. AirPods n'est pas pris en charge actuellement en raison de limitations de l'API.";
 "alert.headphoneControl.enable" = "Activer";
+
+"doubao.settings.service" = "Service :";
+"doubao.service.china" = "Chine (Volcengine)";
+"doubao.service.international" = "International (BytePlus)";
+"doubao.service.custom" = "Personnalisé";
+"doubao.service.china.info" = "L’audio est envoyé à Volcengine. Utilisez une clé API de votre compte chinois.";
+"doubao.service.international.info" = "L’audio est envoyé au point de terminaison BytePlus à Singapour. Utilisez une clé API de votre compte international.";
+"doubao.service.custom.info" = "Utilisez une adresse wss:// compatible avec le protocole ASR de Doubao. L’audio et la clé API sont envoyés à cette adresse.";

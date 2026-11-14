@@ -293,7 +293,7 @@
 "menu.doubaoSettings" = "豆包 ASR 设置...";
 "doubao.connecting" = "正在连接豆包 ASR...";
 "doubao.privacy.title" = "使用豆包云端识别？";
-"doubao.privacy.message" = "豆包云端识别会将麦克风音频发送到火山引擎/豆包服务进行转写，并可能在你的火山引擎账号中产生用量费用。只有接受云端处理时才继续。";
+"doubao.privacy.message" = "云端识别会将麦克风音频发送至你选择的火山引擎、BytePlus 或自定义服务进行转写，并可能在对应账号中产生用量费用。只有接受云端处理时才继续。";
 "doubao.privacy.continue" = "继续使用";
 "doubao.error.privacyNotAccepted" = "请先在菜单中启用豆包云端识别，并确认音频云端处理提示。";
 "doubao.error.missingApiKey" = "请先配置豆包 ASR API Key。";
@@ -306,11 +306,11 @@
 "doubao.error.connectionFailed" = "豆包 ASR 连接失败：%@";
 "doubao.error.server" = "豆包 ASR 错误：%@";
 "doubao.settings.title" = "豆包 ASR 设置";
-"doubao.settings.desc" = "配置火山引擎豆包流式语音识别。只有选择该识别引擎时，音频才会发送到豆包服务。";
+"doubao.settings.desc" = "选择火山引擎、BytePlus 或兼容的自定义服务进行流式语音识别。";
 "doubao.settings.apiKey" = "API Key:";
 "doubao.settings.apiKeyLink" = "申请 API Key ↗";
 "doubao.settings.resourceID" = "模型：";
-"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.endpoint" = "自定义地址：";
 "doubao.settings.options" = "选项:";
 "doubao.settings.enablePunctuation" = "启用标点";
 "doubao.settings.enableITN" = "文本规范化";
@@ -318,8 +318,8 @@
 "doubao.settings.enableNonstream" = "二遍识别";
 "doubao.settings.finalTimeout" = "超时时间:";
 "doubao.settings.keychainFailed" = "无法将 API Key 保存到钥匙串。";
-"tooltip.doubao.apiKey" = "火山引擎控制台里的 APP Key，用于连接豆包语音服务。";
-"tooltip.doubao.resourceID" = "你在火山引擎控制台开通的豆包流式语音识别模型。";
+"tooltip.doubao.apiKey" = "所选语音服务签发的 API Key。各服务的密钥分别保存在钥匙串中。";
+"tooltip.doubao.resourceID" = "你在所选服务账号中开通的流式语音识别模型。";
 "tooltip.doubao.endpoint" = "豆包流式语音识别接口地址，默认使用官方推荐的双向流式优化版。";
 "tooltip.doubao.enablePunctuation" = "文档参数 enable_punc：启用标点，默认开启。";
 "tooltip.doubao.enableITN" = "把口语中的数字、日期转成阿拉伯数字，例如「一九七零年」→「1970 年」。";
@@ -405,7 +405,7 @@
 
 "oobe.engine.doubao.title" = "豆包语音";
 "oobe.engine.doubao.tagline" = "中文识别表现优秀，流式低延迟。";
-"oobe.engine.doubao.desc" = "音频上传到火山引擎服务器，普通话/方言识别表现优良。需配置 API Key，按量付费。\n\n适合高频及长文输入，响应迅速且综合体验较好。\n\n使用需全程联网，无网时将回退到 Apple 语音。";
+"oobe.engine.doubao.desc" = "音频上传到所选的火山引擎、BytePlus 或自定义服务，普通话/方言识别表现优良。需配置 API Key，按量付费。\n\n适合高频及长文输入，响应迅速且综合体验较好。\n\n使用需全程联网，无网时将回退到 Apple 语音。";
 
 "oobe.done.title" = "一切就绪";
 "oobe.done.body" = "按住 %@ 即可说话，松开自动上屏。\n可通过菜单栏中 (ICON) 修改更多设置。";
@@ -516,3 +516,11 @@
 "alert.headphoneControl.title" = "启用耳机语音控制？";
 "alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击始终发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。AirPods 由于接口原因暂不支持。";
 "alert.headphoneControl.enable" = "启用";
+
+"doubao.settings.service" = "服务：";
+"doubao.service.china" = "中国版（火山引擎）";
+"doubao.service.international" = "国际版（BytePlus）";
+"doubao.service.custom" = "自定义";
+"doubao.service.china.info" = "音频发送至火山引擎。请使用中国版账号的 API Key。";
+"doubao.service.international.info" = "音频发送至 BytePlus 新加坡端点。请使用国际版账号的 API Key。";
+"doubao.service.custom.info" = "仅支持兼容豆包流式识别协议的 wss:// 地址。音频和 API Key 将发送至该地址。";

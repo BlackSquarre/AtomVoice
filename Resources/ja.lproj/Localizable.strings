@@ -292,7 +292,7 @@
 "menu.doubaoSettings" = "Doubao ASR 設定...";
 "doubao.connecting" = "Doubao ASR に接続中...";
 "doubao.privacy.title" = "Doubao クラウド ASR を使用しますか？";
-"doubao.privacy.message" = "Doubao クラウド ASR は、文字起こしのためにマイク音声を Volcengine/Doubao に送信します。Volcengine アカウントで利用料金が発生する場合があります。クラウド処理に同意する場合のみ続行してください。";
+"doubao.privacy.message" = "クラウド認識はマイク音声を、選択した Volcengine、BytePlus、またはカスタムサービスに送信して文字起こしします。対応するアカウントに利用料金が発生する場合があります。このクラウド処理に同意する場合のみ続行してください。";
 "doubao.privacy.continue" = "続行";
 "doubao.error.privacyNotAccepted" = "まずメニューで Doubao クラウド ASR を有効にし、クラウド音声処理の通知を確認してください。";
 "doubao.error.missingApiKey" = "先に Doubao ASR API Key を設定してください。";
@@ -305,11 +305,11 @@
 "doubao.error.connectionFailed" = "Doubao ASR の接続に失敗しました: %@";
 "doubao.error.server" = "Doubao ASR エラー: %@";
 "doubao.settings.title" = "Doubao ASR 設定";
-"doubao.settings.desc" = "Volcengine Doubao のストリーミング音声認識を設定します。この認識エンジンを選択した場合のみ、音声が Doubao に送信されます。";
+"doubao.settings.desc" = "ストリーミング音声認識に使用する Volcengine、BytePlus、または互換性のあるカスタムサービスを選択します。";
 "doubao.settings.apiKey" = "API Key:";
 "doubao.settings.apiKeyLink" = "API Key を取得 ↗";
 "doubao.settings.resourceID" = "モデル：";
-"doubao.settings.endpoint" = "Endpoint:";
+"doubao.settings.endpoint" = "カスタム URL：";
 "doubao.settings.options" = "オプション:";
 "doubao.settings.enablePunctuation" = "句読点を有効化";
 "doubao.settings.enableITN" = "テキスト正規化";
@@ -317,8 +317,8 @@
 "doubao.settings.enableNonstream" = "二段階認識";
 "doubao.settings.finalTimeout" = "タイムアウト:";
 "doubao.settings.keychainFailed" = "API Key をキーチェーンに保存できませんでした。";
-"tooltip.doubao.apiKey" = "Volcengine コンソールの APP Key。Doubao 音声サービスへの接続に使います。";
-"tooltip.doubao.resourceID" = "Volcengine コンソールで契約している Doubao ストリーミング音声認識モデルです。";
+"tooltip.doubao.apiKey" = "選択した音声サービスが発行した API Key。サービスごとのキーをキーチェーンに保存します。";
+"tooltip.doubao.resourceID" = "選択したサービスのアカウントで有効なストリーミング音声認識モデルです。";
 "tooltip.doubao.endpoint" = "Doubao ストリーミング音声認識のエンドポイント。既定では公式推奨の双方向ストリーミング最適化版を使います。";
 "tooltip.doubao.enablePunctuation" = "文档参数 enable_punc：句読点を有効化します。既定では有効です。";
 "tooltip.doubao.enableITN" = "話し言葉の数字や日付をアラビア数字に変換します。例：「一九七〇年」→「1970年」。";
@@ -404,7 +404,7 @@
 
 "oobe.engine.doubao.title" = "Doubao 音声";
 "oobe.engine.doubao.tagline" = "中国語認識が優秀、低遅延ストリーミング。";
-"oobe.engine.doubao.desc" = "音声を Volcengine サーバーへストリーミング送信。中国語や方言の認識が良好です。API キーが必要で従量課金です。\n\n長文や頻繁な入力に適しており、迅速な応答で良好な総合体験を提供します。\n\n常時インターネット接続が必要であり、オフライン時は Apple 音声認識にフォールバックします。";
+"oobe.engine.doubao.desc" = "音声を選択した Volcengine、BytePlus、またはカスタムサービスに送信。中国語や方言の認識が良好です。API キーが必要で従量課金です。\n\n長文や頻繁な入力に適しており、迅速な応答で良好な総合体験を提供します。\n\n常時インターネット接続が必要であり、オフライン時は Apple 音声認識にフォールバックします。";
 
 "oobe.done.title" = "セットアップ完了";
 "oobe.done.body" = "%@ を押している間に話し、離すと自動入力されます。\nメニューバーの (ICON) からさらに設定を変更できます。";
@@ -515,3 +515,11 @@
 "alert.headphoneControl.title" = "ヘッドフォン音声コントロールを有効にしますか？";
 "alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで音声入力を操作します。長押しモードでは押している間話し、離すと終了します。タップモードではシングル押しで開始または停止します。ダブル押しは常に Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しモードが使えないことがあります。AirPods は API の制限により現在サポートされていません。";
 "alert.headphoneControl.enable" = "有効にする";
+
+"doubao.settings.service" = "サービス：";
+"doubao.service.china" = "中国版（Volcengine）";
+"doubao.service.international" = "国際版（BytePlus）";
+"doubao.service.custom" = "カスタム";
+"doubao.service.china.info" = "音声は Volcengine に送信されます。中国版アカウントの API Key を使用してください。";
+"doubao.service.international.info" = "音声は BytePlus のシンガポールエンドポイントに送信されます。国際版アカウントの API Key を使用してください。";
+"doubao.service.custom.info" = "Doubao ストリーミング認識プロトコルに対応する wss:// アドレスを指定します。音声と API Key はこのアドレスに送信されます。";

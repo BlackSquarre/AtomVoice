@@ -1,17 +1,10 @@
 import Cocoa
 
+/// 独立入口复用 ASR 设置中的豆包页面，服务切换和凭据草稿保持一致。
 final class DoubaoSettingsWindowController: NSObject {
     var onClose: (() -> Void)?
     private var window: NSWindow?
-    private var apiKeyField: NSSecureTextField!
-    private let editor = DoubaoSettingsEditor()
-    private var modelPopup: NSPopUpButton!
-    private var endpointField: NSTextField!
-    private let modelOptions: [DoubaoModelKind] = [.v2, .v1]
-    private var itnCheckbox: NSButton!
-    private var ddcCheckbox: NSButton!
-    private var nonstreamCheckbox: NSButton!
-    private var globalInfoLabel: NSTextField!
+    private lazy var settingsTab = DoubaoSettingsTab(textFieldDelegate: self)
     private var statusLabel: NSTextField!
 
     func showWindow() {
@@ -24,162 +17,57 @@ final class DoubaoSettingsWindowController: NSObject {
 
     private func buildWindow() {
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 410),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 560),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         w.title = loc("doubao.settings.title")
+        w.minSize = NSSize(width: 640, height: 560)
         w.isReleasedWhenClosed = false
         w.delegate = self
+        guard let contentView = w.contentView else { return }
 
-        guard let cv = w.contentView else { return }
-        let pad: CGFloat = 24
-        let gap: CGFloat = 8
-
-        let descLabel = NSTextField(labelWithString: loc("doubao.settings.desc"))
-        descLabel.font = .systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
-        SettingsUI.allowHorizontalWrapping(descLabel, preferredMaxLayoutWidth: 512)
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        apiKeyField = SettingsUI.makeSecureField(placeholder: "volc-...", delegate: self)
-        apiKeyField.toolTip = loc("tooltip.doubao.apiKey")
-        modelPopup = NSPopUpButton()
-        modelPopup.toolTip = loc("tooltip.doubao.resourceID")
-        for option in modelOptions {
-            switch option {
-            case .v2: modelPopup.addItem(withTitle: loc("doubao.model.v2"))
-            case .v1: modelPopup.addItem(withTitle: loc("doubao.model.v1"))
-            }
-        }
-        endpointField = SettingsUI.makeField(placeholder: VolcengineASRSettings.defaultEndpoint, delegate: self)
-        endpointField.toolTip = loc("tooltip.doubao.endpoint")
-
-        itnCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableITN"), tooltip: loc("tooltip.doubao.enableITN"))
-        ddcCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableDDC"), tooltip: loc("tooltip.doubao.enableDDC"))
-        nonstreamCheckbox = SettingsUI.makeCheckbox(title: loc("doubao.settings.enableNonstream"), tooltip: loc("tooltip.doubao.enableNonstream"))
-
-        let effectsStack = NSStackView(views: [itnCheckbox, ddcCheckbox, nonstreamCheckbox])
-        effectsStack.orientation = .vertical
-        effectsStack.spacing = 4
-        effectsStack.alignment = .leading
-
-        globalInfoLabel = NSTextField(labelWithString: "")
-        globalInfoLabel.font = .systemFont(ofSize: 12)
-        globalInfoLabel.textColor = .secondaryLabelColor
-        SettingsUI.allowHorizontalWrapping(globalInfoLabel, preferredMaxLayoutWidth: 384)
-        globalInfoLabel.toolTip = loc("tooltip.doubao.globalInfo")
-
-        let form = NSStackView()
-        form.orientation = .vertical
-        form.spacing = 10
-        form.alignment = .leading
-        form.translatesAutoresizingMaskIntoConstraints = false
-
-        let rows: [(String, NSView)] = [
-            (loc("doubao.settings.apiKey"), apiKeyField),
-            (loc("doubao.settings.resourceID"), modelPopup),
-            (loc("doubao.settings.endpoint"), endpointField),
-            (loc("doubao.settings.effects"), effectsStack),
-            (loc("doubao.settings.globalFollow"), globalInfoLabel),
-        ]
-        for row in rows {
-            form.addArrangedSubview(SettingsUI.makeFormRow(labelText: row.0, control: row.1, spacing: gap))
-        }
-
-        let sep = NSBox()
-        sep.boxType = .separator
-        sep.translatesAutoresizingMaskIntoConstraints = false
-
+        let page = settingsTab.makeView()
+        page.translatesAutoresizingMaskIntoConstraints = false
         statusLabel = SettingsUI.makeSecondaryLabel()
-
-        let cancelBtn = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
-        let saveBtn = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
-        saveBtn.keyEquivalent = "\r"
-        cancelBtn.keyEquivalent = "\u{1b}"
-
-        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [cancelBtn, saveBtn], spacing: gap)
-
-        let root = NSView()
-        root.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(root)
-
-        [descLabel, form, sep, bottomRow].forEach {
-            root.addSubview($0)
-        }
-
+        let cancel = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
+        let save = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
+        save.keyEquivalent = "\r"
+        cancel.keyEquivalent = "\u{1b}"
+        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [cancel, save])
+        contentView.addSubview(page)
+        contentView.addSubview(bottomRow)
         NSLayoutConstraint.activate([
-            root.topAnchor.constraint(equalTo: cv.topAnchor, constant: pad),
-            root.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: pad),
-            root.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -pad),
-            root.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -pad),
-
-            descLabel.topAnchor.constraint(equalTo: root.topAnchor),
-            descLabel.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            descLabel.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            form.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 16),
-            form.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            form.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            sep.topAnchor.constraint(equalTo: form.bottomAnchor, constant: 18),
-            sep.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            sep.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            bottomRow.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 16),
-            bottomRow.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            bottomRow.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            bottomRow.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            page.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            page.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            page.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+            page.bottomAnchor.constraint(equalTo: bottomRow.topAnchor, constant: -16),
+            bottomRow.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+            bottomRow.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
+            bottomRow.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24),
         ])
-
-        SettingsUI.pinArrangedSubviewsTrailing(in: form)
-
         window = w
-        refreshFields()
-        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.DoubaoSettingsWindow")
-        if !restoredFrame {
-            w.center()
+        settingsTab.refresh()
+        let restored = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.DoubaoSettingsWindow")
+        // 旧窗口保存的尺寸可能不足以显示新增的服务说明。
+        if w.contentLayoutRect.width < 640 || w.contentLayoutRect.height < 560 {
+            w.setContentSize(NSSize(width: 640, height: 560))
         }
+        if !restored { w.center() }
         WindowPresenter.shared.bringToFront(w)
     }
 
-    private func refreshFields() {
-        let settings = editor.reload()
-        apiKeyField?.stringValue = settings.apiKey
-        let currentKind = DoubaoModelKind.from(resourceID: settings.resourceID)
-        if let idx = modelOptions.firstIndex(of: currentKind) {
-            modelPopup?.selectItem(at: idx)
-        }
-        endpointField?.stringValue = settings.endpoint
-        itnCheckbox?.state = settings.enableITN ? .on : .off
-        ddcCheckbox?.state = settings.enableDDC ? .on : .off
-        nonstreamCheckbox?.state = settings.enableNonstream ? .on : .off
-        globalInfoLabel?.stringValue = settings.globalSummary
-        statusLabel?.stringValue = ""
-    }
-
-    private var draft: DoubaoSettingsDraft {
-        var value = editor.baseline!
-        value.apiKey = apiKeyField.stringValue
-        value.model = modelOptions[modelPopup.indexOfSelectedItem]
-        value.endpoint = endpointField.stringValue
-        value.enableITN = itnCheckbox.state == .on
-        value.enableDDC = ddcCheckbox.state == .on
-        value.enableNonstream = nonstreamCheckbox.state == .on
-        return value
-    }
-
     @objc private func saveSettings(_ sender: NSButton) {
-        guard editor.save(draft) else {
-            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
-            statusLabel.textColor = .systemRed
-            return
+        switch settingsTab.save() {
+        case .saved:
+            window?.close()
+        case .failed(let message, let color):
+            statusLabel.stringValue = message
+            statusLabel.textColor = color
+        case .deferred:
+            break
         }
-
-        statusLabel.stringValue = loc("settings.saved")
-        statusLabel.textColor = .systemGreen
-        window?.close()
     }
 
     @objc private func cancelSettings(_ sender: NSButton) {
@@ -189,8 +77,8 @@ final class DoubaoSettingsWindowController: NSObject {
 
 extension DoubaoSettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
-        if let w = notification.object as? NSWindow {
-            WindowPresenter.shared.resetActivationIfNeeded(closing: w)
+        if let window = notification.object as? NSWindow {
+            WindowPresenter.shared.resetActivationIfNeeded(closing: window)
         }
         onClose?()
     }
