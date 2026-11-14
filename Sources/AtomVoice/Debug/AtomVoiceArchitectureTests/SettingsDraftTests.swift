@@ -188,7 +188,7 @@ enum SettingsDraftTests {
                 let tab = DoubaoSettingsTab(textFieldDelegate: nil, editor: editor)
                 let page = tab.makeView()
                 tab.refresh()
-                func descendants(_ view: NSView) -> [NSView] {
+                @MainActor func descendants(_ view: NSView) -> [NSView] {
                     [view] + view.subviews.flatMap(descendants)
                 }
                 let controls = descendants(page)

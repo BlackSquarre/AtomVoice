@@ -165,7 +165,7 @@ enum OpenAISettingsTests {
                 let tab = OpenAISettingsTab(textFieldDelegate: nil, editor: .init(settings: settings))
                 let view = tab.makeView()
                 tab.refresh()
-                func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+                @MainActor func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
                 let controls = descendants(view)
                 let key = try require(controls.first { $0.identifier?.rawValue == "openai.apiKey" } as? NSSecureTextField)
                 let language = try require(controls.first { $0.identifier?.rawValue == "openai.languages" } as? NSTextField)
