@@ -23,15 +23,26 @@ enum OpenAICloudRuntimeTests {
             for strict in [false, true] {
                 let provider = RuntimeCloudProvider(strict: strict)
                 let recognizer = CloudASRRecognizerController(provider: provider)
-                _ = recognizer.start(onResult: { _, _ in }, onError: { _ in })
-                try await waitForAsyncCallbacks()
+                let partialReceived = DispatchSemaphore(value: 0)
+                _ = recognizer.start(onResult: { text, _ in
+                    if text == "fixture partial" { partialReceived.signal() }
+                }, onError: { _ in })
+                let resumed = await waitForSignal(provider.connection.resumed, timeout: 2)
+                try expect(resumed, "Fake cloud connection did not resume; strict=\(strict)")
                 provider.connection.open()
                 recognizer.accept(buffer: try require(makePCMBuffer(sampleRate: 24_000, frameLength: 2_400, fillValue: 0.2)))
                 provider.connection.emit("fixture partial")
-                try await waitForAsyncCallbacks()
+                let received = await waitForSignal(partialReceived, timeout: 2)
+                try expect(received, "Partial result did not arrive; strict=\(strict)")
                 var results: [(String, String?)] = []
-                recognizer.stop { results.append(($0, $1)) }
-                try await waitForAsyncCallbacks()
+                let stopFinished = DispatchSemaphore(value: 0)
+                recognizer.stop {
+                    results.append(($0, $1))
+                    stopFinished.signal()
+                }
+                // 等待真实的超时完成回调，覆盖队列和主线程调度，不依赖固定80ms睡眠。
+                let finished = await waitForSignal(stopFinished, timeout: 2)
+                try expect(finished, "Cloud stop did not finish; strict=\(strict)")
                 try expect(results.count == 1)
                 try expect(results[0].0 == "fixture partial")
                 try expect((results[0].1 != nil) == strict)
@@ -268,9 +279,13 @@ private final class LegacyRuntimeCloudProvider: CloudASRProvider {
 
 private final class RuntimeCloudConnection: CloudASRConnection {
     weak var delegate: CloudASRConnectionDelegate?
+    let resumed = DispatchSemaphore(value: 0)
     var finalWasSent = false
     var failsOnResume = false
-    func resume() { if failsOnResume { fail() } }
+    func resume() {
+        if failsOnResume { fail() }
+        resumed.signal()
+    }
     func sendAudioChunk(_ data: Data, isFinal: Bool) { finalWasSent = finalWasSent || isFinal }
     func cancel() {}
     func open() { delegate?.connectionDidOpen(self) }
