@@ -10,7 +10,7 @@ enum TextPunctuationPolicy {
     static func forEngine(_ code: String) -> Self {
         switch code {
         case ASREngineRegistry.sherpaCode: return .modelWithHeuristicFallback
-        case VolcengineASRSettings.engineCode: return .providedByRecognition
+        case VolcengineASRSettings.engineCode, ASREngineRegistry.openAICode: return .providedByRecognition
         default: return .heuristic
         }
     }

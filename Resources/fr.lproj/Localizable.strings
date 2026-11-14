@@ -533,3 +533,20 @@
 
 "sherpa.runtime.error.releaseMetadata" = "Impossible d’obtenir les informations complètes du dernier runtime. Réessayez.";
 "sherpa.runtime.error.incompatibleSystem" = "Ce runtime ne prend pas en charge votre version de macOS ou l’architecture du processeur.";
+
+// OpenAI 实时转写
+"menu.recognitionEngine.openai" = "Reconnaissance cloud OpenAI";
+"openai.error.privacyNotAccepted" = "Sélectionnez OpenAI dans le menu et acceptez d’abord le traitement audio dans le cloud.";
+"openai.error.invalidConfiguration" = "Les réglages OpenAI sont invalides. Vérifiez les langues et les mots-clés.";
+"openai.error.missingApiKey" = "Configurez d’abord une clé API OpenAI ASR.";
+"openai.error.keychainFailed" = "Impossible de lire ou d’enregistrer la clé API OpenAI dans le Trousseau.";
+"openai.error.transport" = "La connexion à OpenAI a été interrompue.";
+"openai.error.protocol" = "OpenAI a renvoyé un message de reconnaissance invalide.";
+"openai.error.server" = "La reconnaissance OpenAI est temporairement indisponible.";
+"openai.error.unauthorized" = "La clé API OpenAI a été refusée.";
+"openai.error.accessDenied" = "Ce compte ou cette région n’a pas accès à la reconnaissance OpenAI.";
+"openai.error.rateLimit" = "La limite de requêtes OpenAI est atteinte. Réessayez plus tard.";
+"openai.error.quota" = "Le compte OpenAI ne dispose pas de quota ou de solde suffisant.";
+"openai.error.configuration" = "OpenAI a refusé la configuration de reconnaissance.";
+"openai.error.invalidSession" = "OpenAI n’a pas confirmé de session de transcription valide.";
+"openai.fallback.withError" = "%@. Passage à Apple Speech.";

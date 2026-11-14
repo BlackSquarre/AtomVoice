@@ -534,3 +534,20 @@
 
 "sherpa.runtime.error.releaseMetadata" = "无法获取最新运行库的完整发布信息，请重试。";
 "sherpa.runtime.error.incompatibleSystem" = "此运行库不支持当前 macOS 版本或处理器架构。";
+
+// OpenAI 实时转写
+"menu.recognitionEngine.openai" = "OpenAI 云端识别";
+"openai.error.privacyNotAccepted" = "请先在菜单中选择 OpenAI，并确认音频云端处理。";
+"openai.error.invalidConfiguration" = "OpenAI 识别配置无效，请检查语言提示和热词。";
+"openai.error.missingApiKey" = "请先配置 OpenAI ASR API Key。";
+"openai.error.keychainFailed" = "无法从钥匙串读取或保存 OpenAI API Key。";
+"openai.error.transport" = "与 OpenAI 的连接中断。";
+"openai.error.protocol" = "OpenAI 返回了无效的识别消息。";
+"openai.error.server" = "OpenAI 识别服务暂时不可用。";
+"openai.error.unauthorized" = "OpenAI API Key 未通过认证。";
+"openai.error.accessDenied" = "此账号或地区无法使用 OpenAI 识别服务。";
+"openai.error.rateLimit" = "OpenAI 请求达到速率限制，请稍后重试。";
+"openai.error.quota" = "OpenAI 账号额度或计费余额不足。";
+"openai.error.configuration" = "OpenAI 拒绝了识别配置。";
+"openai.error.invalidSession" = "OpenAI 未确认有效的转写会话。";
+"openai.fallback.withError" = "%@，已切换到 Apple 语音识别。";

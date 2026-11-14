@@ -32,11 +32,20 @@ extension ASREngineDescriptor {
         isOffline: false,
         requiresCredential: true
     )
+
+    static let openAI = ASREngineDescriptor(
+        code: ASREngineRegistry.openAICode,
+        displayNameKey: "menu.recognitionEngine.openai",
+        iconName: "waveform",
+        isOffline: false,
+        requiresCredential: true
+    )
 }
 
 final class ASREngineRegistry {
     static let appleCode = "apple"
     static let sherpaCode = "sherpaOnnx"
+    static let openAICode = "openai"
     static let shared = ASREngineRegistry(descriptors: [
         .sherpaOnnx,
         .apple,

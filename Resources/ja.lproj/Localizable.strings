@@ -533,3 +533,20 @@
 
 "sherpa.runtime.error.releaseMetadata" = "最新ランタイムの完全なリリース情報を取得できません。再試行してください。";
 "sherpa.runtime.error.incompatibleSystem" = "このランタイムは現在の macOS またはプロセッサ構成に対応していません。";
+
+// OpenAI 实时转写
+"menu.recognitionEngine.openai" = "OpenAI クラウド認識";
+"openai.error.privacyNotAccepted" = "メニューで OpenAI を選択し、音声のクラウド処理に同意してください。";
+"openai.error.invalidConfiguration" = "OpenAI 認識設定が無効です。言語ヒントとキーワードを確認してください。";
+"openai.error.missingApiKey" = "OpenAI ASR API キーを設定してください。";
+"openai.error.keychainFailed" = "OpenAI API キーをキーチェーンから読み取り、または保存できませんでした。";
+"openai.error.transport" = "OpenAI への接続が中断されました。";
+"openai.error.protocol" = "OpenAI から無効な認識メッセージが返されました。";
+"openai.error.server" = "OpenAI 音声認識は一時的に利用できません。";
+"openai.error.unauthorized" = "OpenAI API キーが拒否されました。";
+"openai.error.accessDenied" = "このアカウントまたは地域では OpenAI 音声認識を利用できません。";
+"openai.error.rateLimit" = "OpenAI のリクエスト上限に達しました。後でお試しください。";
+"openai.error.quota" = "OpenAI アカウントの利用枠または請求残高が不足しています。";
+"openai.error.configuration" = "OpenAI が認識設定を拒否しました。";
+"openai.error.invalidSession" = "OpenAI が有効な文字起こしセッションを確認しませんでした。";
+"openai.fallback.withError" = "%@。Apple 音声認識に切り替えました。";

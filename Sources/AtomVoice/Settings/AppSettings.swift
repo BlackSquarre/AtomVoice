@@ -16,6 +16,7 @@ struct LLMConnectionSettings {
 enum AppSettings {
     static let backend: SettingsBackend = UserDefaultsBackend(defaults: .standard)
     static let recognition = RecognitionSettings(backend: backend)
+    static let openaiASR = OpenAIASRSettings(backend: backend)
     static let llm = LLMSettings(backend: backend)
     static let audio = AudioSettings(backend: backend)
     static let oobe = OOBESettings(backend: backend)
@@ -25,6 +26,8 @@ enum AppSettings {
     enum Keys {
         static let selectedLanguage = "selectedLanguage"
         static let recognitionEngine = "recognitionEngine"
+        static let openaiASRConfiguration = "openaiASRConfiguration"
+        static let openaiASRPrivacyAccepted = "openaiASRPrivacyAccepted"
         static let appleLiveInsertionEnabled = "appleLiveInsertionEnabled"
         static let llmEnabled = "llmEnabled"
         static let llmAPIBaseURL = "llmAPIBaseURL"
@@ -121,6 +124,7 @@ enum AppSettings {
         backend.register(defaults: [
             Keys.selectedLanguage: systemDefaultLanguage,
             Keys.recognitionEngine: ASREngineRegistry.appleCode,
+            Keys.openaiASRPrivacyAccepted: false,
             Keys.appleLiveInsertionEnabled: false,
             Keys.llmEnabled: false,
             Keys.llmAPIBaseURL: defaultLLMBaseURL,

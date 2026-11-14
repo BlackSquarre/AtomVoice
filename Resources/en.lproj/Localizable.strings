@@ -533,3 +533,20 @@
 
 "sherpa.runtime.error.releaseMetadata" = "Could not retrieve complete information for the latest runtime. Please retry.";
 "sherpa.runtime.error.incompatibleSystem" = "This runtime does not support your macOS version or processor architecture.";
+
+// OpenAI 实时转写
+"menu.recognitionEngine.openai" = "OpenAI cloud recognition";
+"openai.error.privacyNotAccepted" = "Select OpenAI in the menu and accept cloud audio processing first.";
+"openai.error.invalidConfiguration" = "OpenAI recognition settings are invalid. Check language hints and keywords.";
+"openai.error.missingApiKey" = "Configure an OpenAI ASR API key first.";
+"openai.error.keychainFailed" = "The OpenAI API key could not be read or saved in Keychain.";
+"openai.error.transport" = "The connection to OpenAI was interrupted.";
+"openai.error.protocol" = "OpenAI returned an invalid recognition message.";
+"openai.error.server" = "OpenAI recognition is temporarily unavailable.";
+"openai.error.unauthorized" = "The OpenAI API key was rejected.";
+"openai.error.accessDenied" = "This account or region cannot access the OpenAI recognition service.";
+"openai.error.rateLimit" = "OpenAI request rate limit reached. Try again later.";
+"openai.error.quota" = "The OpenAI account has insufficient quota or billing allowance.";
+"openai.error.configuration" = "OpenAI recognition configuration was rejected.";
+"openai.error.invalidSession" = "OpenAI did not confirm a valid transcription session.";
+"openai.fallback.withError" = "%@. Switched to Apple Speech.";

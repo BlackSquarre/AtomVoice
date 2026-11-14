@@ -10,7 +10,7 @@ struct PermissionRequirements {
         switch code {
         case ASREngineRegistry.appleCode:
             return .init(primary: captureAndOutput + [.speechRecognition], recovery: [])
-        case VolcengineASRSettings.engineCode:
+        case VolcengineASRSettings.engineCode, OpenAIASRSettings.engineCode:
             return .init(primary: captureAndOutput, recovery: [.speechRecognition])
         default:
             return .init(primary: captureAndOutput, recovery: [])
