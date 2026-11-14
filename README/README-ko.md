@@ -40,7 +40,8 @@ AtomVoice는 시스템 입력기를 대신 차지하지 않고 기존 타이핑 
 ### 인식 엔진
 - **Apple 음성 인식** — 시스템 엔진, 스트리밍과 선택적 기기 내 인식, SFSpeechRecognizer의 1분 한계를 넘는 **롤링 분할** 지원
 - **Sherpa-ONNX** — 완전 오프라인 로컬 엔진, 언어별 모델 프리셋, CPU/CoreML 백엔드, 런타임/ASR/문장 부호 모델 온디맨드 다운로드, 자동 언로드, 서드파티 모델 가져오기 지원
-- **Doubao Cloud ASR** — 선택적 Volcengine 스트리밍 인식, API Key는 키체인에 저장, ITN, 스마트 문장 부호, 텍스트 정리, 선택적 최종 패스 인식, 클라우드 실패 시 Apple Speech fallback 지원
+- **Doubao Cloud ASR** — Volcengine, BytePlus 또는 호환되는 사용자 지정 서비스를 통한 선택적 스트리밍 인식, API Key는 키체인에 저장, ITN, 스마트 문장 부호, 텍스트 정리, 선택적 최종 패스 인식, 클라우드 실패 시 Apple Speech fallback 지원
+- **OpenAI 클라우드 인식** — `gpt-live-transcribe`를 사용하는 선택적 실시간 전사로, 별도 API Key를 키체인에 저장하고 사용량에 따라 과금되며 클라우드 실패 시 Apple Speech로 자동 전환
 - **8개 UI 및 인식 언어** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa는 내장 프리셋이 없는 언어도 가져온 서드파티 모델을 사용할 수 있습니다
 
 ### 텍스트 출력
@@ -127,7 +128,11 @@ Apple 공증을 받지 않았습니다. 처음 열 때:
 
 - **Apple Speech**는 바로 사용할 수 있습니다. 선택한 언어가 지원하면 기기 내 인식을 켤 수 있습니다.
 - **Sherpa-ONNX**는 **인식 엔진 설정 → Sherpa 로컬**에서 설정합니다. 언어, 모델 프리셋, CPU/CoreML 백엔드, 자동 언로드 지연 시간을 선택하거나 서드파티 모델 패키지를 가져올 수 있습니다.
-- **Doubao Cloud ASR**는 **인식 엔진 설정 → Doubao Cloud ASR**에서 설정합니다. Volcengine API Key를 입력하고 모델 버전을 선택하며 WebSocket endpoint를 유지하거나 수정할 수 있습니다. 처음 Doubao로 전환할 때 클라우드 오디오 처리 확인이 표시됩니다.
+
+Sherpa 런타임 업데이트는 최신 정식 릴리스를 조회하고 설치 전에 크기, SHA-256, 프로세서 아키텍처와 최소 macOS 요구사항을 확인합니다. 실패하면 기존 런타임을 유지합니다. macOS 15.5 이전 시스템에서는 설정 페이지에 호환성이 확인된 버전을 표시합니다.
+
+- **Doubao Cloud ASR**은 **인식 엔진 설정 → Doubao Cloud ASR**에서 설정합니다. **중국 버전(Volcengine)**, **국제 버전(BytePlus)** 또는 **사용자 지정**을 선택하고 해당 API Key와 모델을 설정하세요. 사용자 지정에서만 WebSocket 주소를 편집할 수 있습니다. 키는 서비스별로 저장되며, 전환 중인 초안은 저장 또는 취소할 때까지 유지됩니다. 최초 전환 시 클라우드 오디오 처리를 확인합니다.
+- **OpenAI 클라우드 인식**은 **인식 엔진 설정 → OpenAI**에서 설정합니다. 음성 인식용 OpenAI API Key를 별도로 입력하세요. 키는 LLM 자격 증명과 독립적으로 키체인에 저장됩니다. OpenAI를 처음 선택할 때 클라우드 오디오 처리에 별도로 동의해야 합니다. 언어 힌트, 문맥, 키워드는 선택 사항입니다.
 
 ## LLM 최적화 (Beta) 설정
 

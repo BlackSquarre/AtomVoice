@@ -1,6 +1,6 @@
 # Politique de Confidentialité d'AtomVoice
 
-Dernière mise à jour : 13 mai 2026
+Dernière mise à jour : 2026-11-13
 
 AtomVoice est un outil de saisie vocale dans la barre de menus de macOS. Nous prenons votre vie privée très au sérieux. Cette Politique de Confidentialité explique comment AtomVoice traite les données, utilise les autorisations et interagit avec les services tiers.
 
@@ -30,10 +30,13 @@ AtomVoice peut traiter les données suivantes lors de son fonctionnement :
    AtomVoice stocke les paramètres de l'application localement, tels que la langue, le moteur de reconnaissance, la touche de déclenchement, l'UID du périphérique d'entrée, le style d'animation, les paramètres d'arrêt automatique par silence, l'URL du fournisseur LLM, le nom du modèle, les invites personnalisées, les enregistrements de modèles Sherpa importés, etc. Ces paramètres sont stockés dans les préférences locales de macOS.
 
 6. **Clé API LLM**
-   Si vous activez le raffinement de texte LLM et saisissez une clé API, AtomVoice stocke la clé API dans les préférences locales et l'utilise uniquement pour effectuer des requêtes vers le fournisseur LLM choisi. AtomVoice ne télécharge pas votre clé API sur un serveur AtomVoice.
+   Si vous activez le raffinement de texte LLM et saisissez une clé API, AtomVoice stocke la clé API dans le Trousseau macOS et l'utilise uniquement pour effectuer des requêtes vers le fournisseur LLM choisi. AtomVoice ne télécharge pas votre clé API sur un serveur AtomVoice.
 
 7. **Clé API Doubao ASR**
-   Si vous configurez la reconnaissance cloud en streaming Volcengine (Doubao), AtomVoice stocke la clé API Doubao ASR dans le trousseau macOS et l'utilise uniquement pour authentifier les requêtes vers Volcengine/Doubao.
+   Lorsque vous configurez Doubao ASR, AtomVoice conserve des clés API distinctes pour Chine (Volcengine), International (BytePlus) et le service personnalisé dans le trousseau macOS. Chaque clé sert uniquement à authentifier les requêtes vers le service correspondant.
+
+8. **Clé API OpenAI ASR**
+   La clé API OpenAI ASR est enregistrée séparément dans le Trousseau macOS. Elle n’est pas copiée depuis les réglages LLM ou Doubao.
 
 ## 3. Comment Fonctionne la Reconnaissance Vocale
 
@@ -48,8 +51,11 @@ AtomVoice prend en charge différents modes de reconnaissance :
 3. **Reconnaissance locale Sherpa ONNX**
    Si vous configurez un modèle de reconnaissance local Sherpa ONNX, la reconnaissance audio est entièrement effectuée sur votre appareil sans nécessiter de téléchargement vers un service de reconnaissance cloud.
 
-4. **Reconnaissance cloud en streaming Volcengine (Doubao)**
-   Si vous activez le moteur de reconnaissance cloud en streaming Volcengine (Doubao) et configurez une clé API et un Resource ID, AtomVoice envoie votre audio vocal au service de reconnaissance vocale Volcengine de Bytedance pour une reconnaissance en streaming en temps réel. Vos données audio sont traitées par les serveurs de Volcengine. Le traitement des données associées est régi par les politiques de confidentialité de Bytedance et Volcengine. Cette fonctionnalité nécessite une configuration dans les paramètres Doubao et est désactivée par défaut.
+4. **Reconnaissance cloud en streaming Doubao / Seed ASR**
+   Lorsque Doubao ASR est activé et configuré, l’audio du microphone est envoyé au service choisi : Chine (Volcengine), International (point de terminaison BytePlus à Singapour) ou une adresse personnalisée compatible. Le fournisseur choisi traite l’audio selon sa politique de confidentialité et ses conditions de traitement des données, et peut facturer l’utilisation au compte correspondant. L’adresse personnalisée reçoit l’audio et la clé API configurée. Cette fonction est facultative et conserve le basculement vers Apple Speech en cas de défaillance du cloud.
+
+5. **Transcription OpenAI en direct**
+   Lorsque vous sélectionnez OpenAI et acceptez le traitement cloud, le son du microphone ainsi que le contexte, les mots-clés et les langues configurés sont envoyés à OpenAI. Votre compte OpenAI peut être facturé. En cas d’échec, Apple Speech prend le relais si disponible, avec ses réglages en ligne ou hors ligne et ses autorisations existantes. Le raffinement LLM est une demande facultative distincte ; le désactiver n’arrête pas l’envoi audio du moteur OpenAI ASR sélectionné. OpenAI traite les données selon ses propres politiques.
 
 ## 4. Raffinement de Texte LLM
 
@@ -66,7 +72,7 @@ Les données envoyées au fournisseur LLM incluent typiquement :
 
 La façon dont ces données sont traitées dépend du fournisseur LLM que vous choisissez. Veuillez consulter la politique de confidentialité et les conditions d'utilisation des données du fournisseur concerné avant utilisation.
 
-Si vous n'activez pas le raffinement de texte LLM, AtomVoice n'enverra pas de texte reconnu à un fournisseur LLM.
+Si le raffinement LLM est désactivé, AtomVoice ne demande pas de raffinement de texte à un fournisseur LLM. Cela ne désactive pas le traitement audio du moteur de reconnaissance sélectionné.
 
 ## 5. Vérification Automatique des Mises à Jour et Téléchargements de Modèles
 
@@ -114,10 +120,12 @@ AtomVoice ne vend, ne loue ni n'échange vos données personnelles.
 Les données peuvent être envoyées à des tiers uniquement dans les situations suivantes :
 
 1. Lors de l'utilisation de la reconnaissance vocale Apple, l'audio ou les requêtes de reconnaissance peuvent être traités par Apple
-2. Lors de l'utilisation du moteur de reconnaissance cloud en streaming Volcengine (Doubao), l'audio vocal est traité par les serveurs de Volcengine
+2. Lors de l’utilisation de Doubao ASR, l’audio est traité par le service Volcengine, BytePlus ou personnalisé choisi
 3. Lorsque le raffinement de texte LLM est activé, le texte reconnu est envoyé au fournisseur LLM choisi
 4. Lors de la vérification des mises à jour, l'application accède à GitHub Releases
 5. Lors de l'utilisation d'un point de terminaison API personnalisé, les données sont envoyées au serveur que vous avez configuré
+
+6. Si OpenAI est sélectionné et le traitement cloud accepté, OpenAI traite le son et les indications de reconnaissance configurées
 
 ## 9. Mesures de Sécurité
 

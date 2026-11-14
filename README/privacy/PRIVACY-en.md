@@ -1,6 +1,6 @@
 # AtomVoice Privacy Policy
 
-Last updated: May 13, 2026
+Last updated: 2026-11-13
 
 AtomVoice is a macOS menu bar voice input tool. We take your privacy seriously. This Privacy Policy explains how AtomVoice handles data, uses permissions, and interacts with third-party services.
 
@@ -30,10 +30,13 @@ AtomVoice may process the following data during operation:
    AtomVoice stores app settings locally, such as language, recognition engine, trigger key, input device UID, animation style, silence auto-stop settings, LLM provider URL, model name, custom prompts, imported Sherpa model records, and more. These settings are stored in macOS local preferences.
 
 6. **LLM API Key**
-   If you enable LLM text refinement and enter an API key, AtomVoice stores the API key in local preferences and uses it solely to make requests to your chosen LLM provider. AtomVoice does not upload your API key to any AtomVoice server.
+   If you enable LLM text refinement and enter an API key, AtomVoice stores the API key in the macOS Keychain and uses it solely to make requests to your chosen LLM provider. AtomVoice does not upload your API key to any AtomVoice server.
 
 7. **Doubao ASR API Key**
-   If you configure Volcengine (Doubao) streaming cloud recognition, AtomVoice stores the Doubao ASR API key in the macOS Keychain and uses it only to authenticate requests to Volcengine/Doubao.
+   If you configure Doubao streaming cloud recognition, AtomVoice stores separate API keys for China (Volcengine), International (BytePlus), and Custom in the macOS Keychain. A key is used only to authenticate requests to its selected service endpoint.
+
+8. **OpenAI ASR API Key**
+   The OpenAI ASR API key is stored separately in the macOS Keychain. It is not copied from the LLM or Doubao settings.
 
 ## 3. How Speech Recognition Works
 
@@ -48,8 +51,11 @@ AtomVoice supports different recognition modes:
 3. **Sherpa ONNX Local Recognition**
    If you configure a local Sherpa ONNX recognition model, audio recognition is performed entirely on your device without uploading to any cloud recognition service.
 
-4. **Volcengine (Doubao) Streaming Cloud Recognition**
-   If you enable the Volcengine (Doubao) streaming cloud recognition engine and configure an API key and Resource ID, AtomVoice sends your voice audio to Bytedance's Volcengine speech recognition service for real-time streaming recognition. Your audio data is processed by Volcengine's servers. Related data handling is governed by Bytedance's and Volcengine's privacy policies. This feature requires configuration in Doubao settings and is disabled by default.
+4. **Doubao / Seed ASR Streaming Cloud Recognition**
+   When Doubao cloud recognition is enabled and configured, AtomVoice sends microphone audio to the service selected in Doubao settings: China (Volcengine), International (BytePlus, Singapore endpoint), or a compatible custom endpoint. The selected provider processes the audio under its own privacy policy and data terms, and may charge your account for usage. Custom endpoints receive both audio and the configured API key. This feature is opt-in; the existing Apple Speech fallback remains available on cloud failures.
+
+5. **OpenAI live transcription**
+   If you select OpenAI recognition and accept cloud audio processing, microphone audio and any configured context, keywords and language hints are sent to OpenAI. Your OpenAI account may be billed for usage. If cloud recognition fails, Apple Speech is used when available, with its existing online/offline settings and permission requirements. LLM text refinement is a separate optional request; turning it off does not disable audio upload for the selected OpenAI ASR engine. OpenAI processes the data under its own data policies.
 
 ## 4. LLM Text Refinement
 
@@ -66,7 +72,7 @@ Data sent to the LLM provider typically includes:
 
 How this data is handled depends on the LLM provider you choose. Please review the privacy policy and data usage terms of the respective provider before use.
 
-If you do not enable LLM text refinement, AtomVoice will not send recognized text to any LLM provider.
+If you do not enable LLM text refinement, AtomVoice does not make text refinement requests to an LLM provider. This does not disable the audio processing of the recognition engine you selected.
 
 ## 5. Automatic Update Check and Model Downloads
 
@@ -114,10 +120,12 @@ AtomVoice does not sell, rent, or trade your personal data.
 Data may be sent to third parties only in the following situations:
 
 1. When using Apple speech recognition, audio or recognition requests may be processed by Apple
-2. When using the Volcengine (Doubao) streaming cloud recognition engine, voice audio is processed by Volcengine's servers
+2. When using Doubao cloud recognition, voice audio is processed by the selected Volcengine, BytePlus, or custom service
 3. When LLM text refinement is enabled, recognized text is sent to your chosen LLM provider
 4. When checking for updates, the app accesses GitHub Releases
 5. When using a custom API endpoint, data is sent to the server you configured
+
+6. When OpenAI recognition is selected and cloud processing is accepted, audio and configured recognition hints are processed by OpenAI
 
 ## 9. Security Measures
 

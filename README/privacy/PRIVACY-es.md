@@ -1,6 +1,6 @@
 # Política de Privacidad de AtomVoice
 
-Última actualización: 13 de mayo de 2026
+Última actualización: 2026-11-13
 
 AtomVoice es una herramienta de entrada de voz en la barra de menú de macOS. Nos tomamos muy en serio su privacidad. Esta Política de Privacidad explica cómo AtomVoice maneja los datos, utiliza los permisos e interactúa con servicios de terceros.
 
@@ -30,10 +30,13 @@ AtomVoice puede procesar los siguientes datos durante su funcionamiento:
    AtomVoice almacena la configuración de la aplicación localmente, como idioma, motor de reconocimiento, tecla de activación, UID del dispositivo de entrada, estilo de animación, configuración de parada automática por silencio, URL del proveedor LLM, nombre del modelo, indicaciones personalizadas, registros de modelos Sherpa importados, etc. Estos ajustes se almacenan en las preferencias locales de macOS.
 
 6. **Clave API de LLM**
-   Si habilita el refinamiento de texto LLM e ingresa una clave API, AtomVoice almacena la clave API en las preferencias locales y la utiliza únicamente para realizar solicitudes al proveedor LLM elegido. AtomVoice no carga su clave API en ningún servidor de AtomVoice.
+   Si habilita el refinamiento de texto LLM e ingresa una clave API, AtomVoice almacena la clave API en el Llavero de macOS y la utiliza únicamente para realizar solicitudes al proveedor LLM elegido. AtomVoice no carga su clave API en ningún servidor de AtomVoice.
 
 7. **Clave API de Doubao ASR**
-   Si configura el reconocimiento en la nube en streaming de Volcengine (Doubao), AtomVoice almacena la clave API de Doubao ASR en el llavero de macOS y la utiliza únicamente para autenticar solicitudes a Volcengine/Doubao.
+   Al configurar Doubao ASR, AtomVoice guarda claves API separadas para China (Volcengine), Internacional (BytePlus) y el servicio personalizado en el llavero de macOS. Cada clave se usa únicamente para autenticar solicitudes al servicio correspondiente.
+
+8. **Clave API de OpenAI ASR**
+   La clave API de OpenAI ASR se guarda por separado en el Llavero de macOS. No se copia de los ajustes de LLM o Doubao.
 
 ## 3. Cómo Funciona el Reconocimiento de Voz
 
@@ -48,8 +51,11 @@ AtomVoice admite diferentes modos de reconocimiento:
 3. **Reconocimiento local Sherpa ONNX**
    Si configura un modelo de reconocimiento local Sherpa ONNX, el reconocimiento de audio se realiza completamente en su dispositivo sin necesidad de cargarlo en ningún servicio de reconocimiento en la nube.
 
-4. **Reconocimiento en la nube en streaming de Volcengine (Doubao)**
-   Si habilita el motor de reconocimiento en la nube en streaming de Volcengine (Doubao) y configura una clave API y un Resource ID, AtomVoice envía su audio de voz al servicio de reconocimiento de voz Volcengine de Bytedance para el reconocimiento en streaming en tiempo real. Sus datos de audio son procesados por los servidores de Volcengine. El manejo de datos relacionados está sujeto a las políticas de privacidad de Bytedance y Volcengine. Esta función requiere configuración en los ajustes de Doubao y está deshabilitada de forma predeterminada.
+4. **Reconocimiento en la nube en streaming de Doubao / Seed ASR**
+   Al activar y configurar Doubao ASR, el audio del micrófono se envía al servicio elegido: China (Volcengine), Internacional (endpoint de BytePlus en Singapur) o un endpoint personalizado compatible. El proveedor elegido procesa el audio según su política de privacidad y sus condiciones de datos, y puede cobrar el uso en la cuenta correspondiente. El endpoint personalizado recibe el audio y la clave API configurada. La función es opcional y mantiene el cambio a Apple Speech ante fallos de la nube.
+
+5. **Transcripción en directo de OpenAI**
+   Al seleccionar OpenAI y aceptar el procesamiento en la nube, el audio del micrófono y el contexto, las palabras clave y los idiomas configurados se envían a OpenAI. Tu cuenta de OpenAI puede generar cargos. Si falla, se usa Apple Speech cuando esté disponible, con sus ajustes y permisos actuales en línea o sin conexión. El refinamiento LLM es una solicitud opcional independiente; desactivarlo no detiene el audio del motor OpenAI ASR seleccionado. OpenAI procesa los datos según sus propias políticas.
 
 ## 4. Refinamiento de Texto LLM
 
@@ -66,7 +72,7 @@ Los datos enviados al proveedor LLM típicamente incluyen:
 
 Cómo se manejan estos datos depende del proveedor LLM que elija. Revise la política de privacidad y los términos de uso de datos del proveedor correspondiente antes de usar.
 
-Si no habilita el refinamiento de texto LLM, AtomVoice no enviará texto reconocido a ningún proveedor LLM.
+Si no habilitas el refinamiento LLM, AtomVoice no envía solicitudes de refinamiento de texto a proveedores LLM. Esto no desactiva el procesamiento de audio del motor de reconocimiento seleccionado.
 
 ## 5. Verificación Automática de Actualizaciones y Descargas de Modelos
 
@@ -114,10 +120,12 @@ AtomVoice no vende, alquila ni comercializa sus datos personales.
 Los datos pueden enviarse a terceros solo en las siguientes situaciones:
 
 1. Al usar el reconocimiento de voz de Apple, el audio o las solicitudes de reconocimiento pueden ser procesados por Apple
-2. Al usar el motor de reconocimiento en la nube en streaming de Volcengine (Doubao), el audio de voz es procesado por los servidores de Volcengine
+2. Al usar Doubao ASR, el audio se procesa en el servicio Volcengine, BytePlus o personalizado elegido
 3. Cuando el refinamiento de texto LLM está habilitado, el texto reconocido se envía al proveedor LLM elegido
 4. Al verificar actualizaciones, la aplicación accede a GitHub Releases
 5. Al usar un punto final API personalizado, los datos se envían al servidor que configuró
+
+6. Al seleccionar OpenAI y aceptar el procesamiento en la nube, OpenAI procesa el audio y las indicaciones de reconocimiento configuradas
 
 ## 9. Medidas de Seguridad
 

@@ -40,7 +40,8 @@ AtomVoice übernimmt deine System-Eingabemethode nicht und ändert nicht, wie du
 ### Erkennungs-Engines
 - **Apple Spracherkennung** — System-Engine mit Streaming, optionalem On-Device-Modus und **rollender Segmentierung**, die das 1-Minuten-Limit von SFSpeechRecognizer umgeht
 - **Sherpa-ONNX** — vollständig offline-fähige lokale Engine mit sprachspezifischen Modell-Presets, CPU/CoreML-Backends, On-Demand-Downloads für Runtime/ASR/Satzzeichen, Auto-Unload und Import von Drittanbieter-Modellen
-- **Doubao Cloud ASR** — optionale Volcengine-Streaming-Erkennung mit API-Key im Schlüsselbund, ITN, smarten Satzzeichen, Textglättung, optionalem Final-Pass und Apple-Speech-Fallback bei Cloud-Fehlern
+- **Doubao Cloud ASR** — optionale Streaming-Erkennung über Volcengine, BytePlus oder einen kompatiblen eigenen Dienst mit API-Key im Schlüsselbund, ITN, smarten Satzzeichen, Textglättung, optionalem Final-Pass und Apple-Speech-Fallback bei Cloud-Fehlern
+- **OpenAI-Clouderkennung** — optionale Echtzeit-Transkription mit `gpt-live-transcribe`, separatem API-Schlüssel im Schlüsselbund, nutzungsabhängigen Kosten und automatischem Apple-Speech-Fallback bei Cloud-Fehlern
 - **8 UI- und Erkennungssprachen** — English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch; Sherpa unterstützt außerdem importierte Drittanbieter-Modelle für Sprachen ohne integriertes Preset
 
 ### Textausgabe
@@ -127,7 +128,11 @@ Nicht notarisiert. Beim ersten Öffnen:
 
 - **Apple Speech** funktioniert sofort. Aktiviere On-Device-Erkennung, wenn die gewählte Sprache sie unterstützt.
 - **Sherpa-ONNX** wird unter **Erkennungs-Engine-Einstellungen → Sherpa lokal** konfiguriert. Wähle Sprache, Modell-Preset, CPU/CoreML-Backend, Auto-Unload-Verzögerung oder importiere ein Drittanbieter-Modellpaket.
-- **Doubao Cloud ASR** wird unter **Erkennungs-Engine-Einstellungen → Doubao Cloud ASR** konfiguriert. Trage deinen Volcengine-API-Key ein, wähle die Modellversion und behalte oder ändere den WebSocket-Endpunkt. Beim ersten Wechsel zu Doubao wird Cloud-Audioverarbeitung bestätigt.
+
+Sherpa-Runtime-Updates fragen die neueste offizielle Version ab und prüfen vor der Installation Größe, SHA-256, Prozessorarchitektur und macOS-Mindestversion. Bei Fehlern bleibt die installierte Runtime erhalten. Vor macOS 15.5 zeigt die Einstellungsseite die bestätigten kompatiblen Versionen an.
+
+- **Doubao Cloud ASR** wird unter **Erkennungs-Engine-Einstellungen → Doubao Cloud ASR** eingerichtet. Wähle **China (Volcengine)**, **International (BytePlus)** oder **Benutzerdefiniert** und gib den passenden API-Schlüssel und das Modell an. Nur bei Benutzerdefiniert lässt sich die WebSocket-Adresse ändern. Schlüssel werden pro Dienst gespeichert; Entwürfe bleiben bis zum Speichern oder Abbrechen erhalten. Beim ersten Wechsel zu Doubao wird die Cloud-Audioverarbeitung bestätigt.
+- **OpenAI-Clouderkennung** wird unter **Erkennungs-Engine-Einstellungen → OpenAI** eingerichtet. Gib einen separaten OpenAI-API-Schlüssel für die Spracherkennung ein; er wird unabhängig von den LLM-Zugangsdaten im Schlüsselbund gespeichert. Beim ersten Wechsel zu OpenAI bestätigst du die Cloud-Audioverarbeitung separat. Sprachhinweise, Kontext und Schlüsselwörter sind optional.
 
 ## LLM-Verfeinerung (Beta) einrichten
 
