@@ -130,11 +130,7 @@ enum ASRLatencyProbe {
     }
 
     private static func textSummary(_ text: String) -> String {
-        let escaped = text
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        let suffix = escaped.count > 18 ? String(escaped.suffix(18)) : escaped
-        return "chars=\(text.count) suffix=\"\(suffix)\""
+        return "chars=\(text.count)"
     }
     #endif
 }
