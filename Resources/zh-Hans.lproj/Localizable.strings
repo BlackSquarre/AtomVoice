@@ -201,7 +201,7 @@
 "menu.appleOnDeviceSpeech" = "Apple 强制离线识别";
 "menu.appleOnDeviceSpeech.unavailable" = "Apple 强制离线识别（当前语言不可用）";
 "menu.engine.howto" = "如何选择引擎";
-"engine.howto.message" = "• Apple 语音识别\n适合：免费开箱即用、多语言覆盖、低配置成本的日常输入。\n更新后：它仍是通用默认选择，不需要 API Key，流式结果快；当前语言支持且系统已下载本地语音资源时，可以开启“Apple 强制离线识别”。\n限制：很多语言默认仍会走 Apple 在线服务；弱网或 Apple 服务异常会影响稳定性；强制离线可能不可用或准确率下降。\n\n• Sherpa 本地识别\n适合：隐私优先、断网使用、不希望音频进云端。\n更新后：可以在“识别引擎设置”里按当前语言选择模型预设，并自动下载运行库、ASR 模型和标点模型。音频始终留在本机。\n限制：首次需要下载较大的模型文件；大模型会占用更多磁盘、内存和加载时间；长句、多语言混说、标点和专有名词可能仍不如云端服务。\n\n• 豆包云端识别\n适合：中文普通话准确率优先、低延迟流式识别，以及 ITN、语义顺滑、标点、二遍识别等云端能力。\n更新后：在豆包/ASR 设置里配置 API Key、Resource ID 和 Endpoint；识别语言、自动标点、停录延迟跟随主菜单；凭据保存到钥匙串。\n限制：麦克风音频会发送到火山引擎/豆包，需要稳定网络，并可能产生火山引擎账号费用。\n\n• LLM 文字润色\n说明：它不是识别引擎，而是 ASR 后处理。可修正听错词、同音词、标点、专有名词和格式；开启后会把识别文本发送给所选 LLM 服务商，音频不会发送。\n\n建议：中文准确率优先选豆包；隐私和完全离线优先选 Sherpa；免费通用和多语言优先选 Apple；只想让 Apple Speech 尽量本地处理时，再开启 Apple 强制离线识别。";
+"engine.howto.message" = "• Apple 语音识别\n适合：免费开箱即用、多语言覆盖、低配置成本的日常输入。\n更新后：它仍是通用默认选择，不需要 API Key，流式结果快；当前语言支持且系统已下载本地语音资源时，可以开启“Apple 强制离线识别”。\n限制：很多语言默认仍会走 Apple 在线服务；弱网或 Apple 服务异常会影响稳定性；强制离线可能不可用或准确率下降。\n\n• Sherpa 本地识别\n适合：隐私优先、断网使用、不希望音频进云端。\n更新后：可以在“识别引擎设置”里按当前语言选择模型预设，并自动下载运行库、ASR 模型和标点模型。音频始终留在本机。\n限制：首次需要下载较大的模型文件；大模型会占用更多磁盘、内存和加载时间；长句、多语言混说、标点和专有名词可能仍不如云端服务。\n\n• 豆包云端识别\n适合：中文普通话准确率优先、低延迟流式识别，以及 ITN、语义顺滑、标点、二遍识别等云端能力。\n更新后：在豆包/ASR 设置里配置 API Key、Resource ID 和 Endpoint；识别语言、自动标点、停录延迟跟随主菜单；凭据保存到钥匙串。\n限制：麦克风音频会发送到火山引擎/豆包，需要稳定网络，并可能产生火山引擎账号费用。\n\n• OpenAI\n音频上传到 OpenAI。需自行配置 API Key，并使用服务支持的账号；费用由 OpenAI 按量收取。\n\n云端失败时在可用情况下回退到 Apple 语音，其在线或离线行为跟随你的 Apple 设置。\n\n• LLM 文字润色\n说明：它不是识别引擎，而是 ASR 后处理。可修正听错词、同音词、标点、专有名词和格式；开启后会把识别文本发送给所选 LLM 服务商，音频不会发送。\n\n建议：中文准确率优先选豆包；隐私和完全离线优先选 Sherpa；免费通用和多语言优先选 Apple；只想让 Apple Speech 尽量本地处理时，再开启 Apple 强制离线识别。";
 
 /* Input Mode */
 "menu.inputMode" = "输入方式";
@@ -379,7 +379,7 @@
 "oobe.trigger.subtitle.tap" = "单击此键开始语音输入。之后可以在菜单栏随时修改。";
 
 "oobe.engine.heading" = "选择识别引擎";
-"oobe.engine.subtitle" = "卡片从左到右按隐私保护从高到低排列。之后可以随时在菜单栏切换。";
+"oobe.engine.subtitle" = "按隐私保护从左到右排列。之后可随时切换。";
 "oobe.engine.recommended" = "推荐";
 "oobe.engine.attr.privacy" = "隐私";
 "oobe.engine.attr.quality" = "效果";
@@ -553,6 +553,10 @@
 "openai.settings.prompt" = "上下文";
 "openai.settings.keywords" = "热词";
 "openai.settings.hints" = "语言留空跟随全局设置。上下文和热词是识别提示，会随请求发送至 OpenAI；热词每行一个。";
+"oobe.engine.openai.title" = "OpenAI 语音";
+"oobe.engine.openai.tagline" = "云端实时转写。";
+"oobe.engine.openai.desc" = "音频上传至 OpenAI。需自备 API Key 和受支持的账号，费用由 OpenAI 按量收取。\n\n失败时在可用情况下回退 Apple 语音，在线或离线处理跟随 Apple 设置。";
+"oobe.done.followup.openai" = "接下来请在识别设置中配置 OpenAI API Key。";
 "openai.error.privacyNotAccepted" = "请先在菜单中选择 OpenAI，并确认音频云端处理。";
 "openai.error.invalidConfiguration" = "OpenAI 识别配置无效，请检查语言提示和热词。";
 "openai.error.missingApiKey" = "请先配置 OpenAI ASR API Key。";

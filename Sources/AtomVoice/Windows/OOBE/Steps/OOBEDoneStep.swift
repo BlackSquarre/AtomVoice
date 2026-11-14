@@ -75,6 +75,8 @@ final class OOBEDoneStep: OOBEStep {
 
         let nextStepText: String
         switch state.engine {
+        case OpenAIASRSettings.engineCode:
+            nextStepText = loc("oobe.done.followup.openai")
         case VolcengineASRSettings.engineCode:
             nextStepText = loc("oobe.done.followup.doubao")
         case ASREngineRegistry.sherpaCode:

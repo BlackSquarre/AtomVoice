@@ -18,7 +18,7 @@ struct EngineCardModel {
     let badge: String?
     let privacyLevel: PrivacyLevel
     let privacyText: String
-    let qualityStars: Int   // 1...5
+    let qualityStars: Int?   // 未验收的引擎不虚构星级。
     let qualityText: String
     let costStyle: CostStyle
     let costText: String
@@ -42,6 +42,13 @@ final class EngineCardView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    override var acceptsFirstResponder: Bool { true }
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(roundedRect: bounds, xRadius: 14, yRadius: 14).fill()
+    }
+
     override var wantsUpdateLayer: Bool { true }
     override func updateLayer() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
@@ -61,135 +68,116 @@ final class EngineCardView: NSView {
         layer?.cornerRadius = 14
         layer?.cornerCurve = .continuous
         layer?.borderWidth = 2
+        focusRingType = .exterior
+        identifier = NSUserInterfaceItemIdentifier("oobe.engine.card.\(code)")
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel([model.title, model.privacyText, model.costText, model.costFootnote, model.qualityText]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "))
 
-        // 顶部图标（Top icon）
         let iconView = NSImageView()
         iconView.image = NSImage(systemSymbolName: model.iconName, accessibilityDescription: nil)
-        iconView.symbolConfiguration = .init(pointSize: 30, weight: .regular)
+        iconView.symbolConfiguration = .init(pointSize: 28, weight: .regular)
         iconView.contentTintColor = model.iconColor
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 28).isActive = true
 
-        // 标题行（Title row with optional badge）
-        let titleLabel = NSTextField(labelWithString: model.title)
-        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
-        titleLabel.textColor = .labelColor
-
-        let titleRow = NSStackView()
+        let titleLabel = makeWrappingLabel(model.title, font: .systemFont(ofSize: 15, weight: .semibold), color: .labelColor, width: 143)
+        titleLabel.identifier = NSUserInterfaceItemIdentifier("oobe.engine.card.title")
+        let titleRow = NSStackView(views: [titleLabel])
         titleRow.orientation = .horizontal
-        titleRow.spacing = 6
         titleRow.alignment = .centerY
-        titleRow.addArrangedSubview(titleLabel)
+        titleRow.spacing = 6
+        titleRow.heightAnchor.constraint(equalToConstant: 40).isActive = true
         if let badgeText = model.badge {
             titleRow.addArrangedSubview(makeBadge(text: badgeText))
+        } else {
+            titleLabel.widthAnchor.constraint(equalTo: titleRow.widthAnchor).isActive = true
         }
 
-        // 副标题（Tagline — one-liner positioning）
-        let tagline = NSTextField(labelWithString: model.tagline)
-        tagline.font = .systemFont(ofSize: 12)
-        tagline.textColor = .secondaryLabelColor
-        tagline.lineBreakMode = .byWordWrapping
-        tagline.maximumNumberOfLines = 2
-
-        // 属性区：隐私 + 费用各一行；星级单独一行（更大、视觉重点）
-        // (Attributes: privacy + cost as inline rows; stars get a dedicated larger row)
         let privacyRow = makeInlineAttrRow(
             icon: makePrivacyDot(level: model.privacyLevel),
             text: model.privacyText,
             textColor: .labelColor
         )
-        let costIconName: String
+        privacyRow.identifier = NSUserInterfaceItemIdentifier("oobe.engine.card.privacy")
+        privacyRow.heightAnchor.constraint(equalToConstant: 34).isActive = true
+
+        let costIcon = NSImageView()
         let costColor: NSColor
         switch model.costStyle {
         case .free:
-            costIconName = "checkmark.seal.fill"
-            costColor = NSColor.systemGreen
+            costIcon.image = NSImage(systemSymbolName: "checkmark.seal.fill", accessibilityDescription: nil)
+            costColor = .systemGreen
         case .paid:
-            costIconName = "creditcard.fill"
-            costColor = NSColor.systemOrange
+            costIcon.image = NSImage(systemSymbolName: "creditcard.fill", accessibilityDescription: nil)
+            costColor = .systemOrange
         }
-        let costIcon = NSImageView()
-        costIcon.image = NSImage(systemSymbolName: costIconName, accessibilityDescription: nil)
         costIcon.symbolConfiguration = .init(pointSize: 13, weight: .medium)
         costIcon.contentTintColor = costColor
-        let costRow = makeInlineAttrRow(
-            icon: costIcon,
-            text: model.costText,
-            textColor: costColor,
-            footnote: model.costFootnote
-        )
+        let costRow = makeInlineAttrRow(icon: costIcon, text: model.costText, textColor: costColor,
+                                       footnote: model.costFootnote)
+        costRow.identifier = NSUserInterfaceItemIdentifier("oobe.engine.card.cost")
+        costRow.heightAnchor.constraint(equalToConstant: 48).isActive = true
 
-        // 星级单独一行（Stars on a dedicated row, larger）
-        let starsView = makeStars(filled: model.qualityStars, pointSize: 16)
-        let qualityLabel = NSTextField(labelWithString: model.qualityText)
-        qualityLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        qualityLabel.textColor = .secondaryLabelColor
-        let qualityRow = NSStackView(views: [starsView, qualityLabel])
-        qualityRow.orientation = .horizontal
-        qualityRow.spacing = 8
-        qualityRow.alignment = .centerY
+        let content = NSStackView()
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.distribution = .fill
+        content.spacing = 0
+        content.translatesAutoresizingMaskIntoConstraints = false
+        content.addArrangedSubview(iconView)
+        content.setCustomSpacing(8, after: iconView)
+        content.addArrangedSubview(titleRow)
+        content.setCustomSpacing(10, after: titleRow)
+        content.addArrangedSubview(privacyRow)
+        content.setCustomSpacing(6, after: privacyRow)
+        content.addArrangedSubview(costRow)
 
-        let attrStack = NSStackView()
-        attrStack.orientation = .vertical
-        attrStack.alignment = .leading
-        attrStack.spacing = 10
-        attrStack.addArrangedSubview(privacyRow)
-        attrStack.addArrangedSubview(costRow)
-        attrStack.setCustomSpacing(14, after: costRow)
-        attrStack.addArrangedSubview(qualityRow)
+        if let stars = model.qualityStars {
+            let starsView = makeStars(filled: stars, pointSize: 14)
+            let qualityLabel = makeWrappingLabel(model.qualityText, font: .systemFont(ofSize: 12, weight: .medium), color: .secondaryLabelColor, width: 143)
+            let quality = NSStackView(views: [starsView, qualityLabel])
+            quality.orientation = .vertical
+            quality.alignment = .leading
+            quality.spacing = 2
+            quality.identifier = NSUserInterfaceItemIdentifier("oobe.engine.card.quality")
+            quality.setAccessibilityValue(stars)
+            content.setCustomSpacing(10, after: costRow)
+            content.addArrangedSubview(quality)
+            quality.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+            qualityLabel.widthAnchor.constraint(equalTo: quality.widthAnchor).isActive = true
+        }
 
-        // 描述（Description）
-        let descLabel = NSTextField(labelWithString: model.desc)
-        descLabel.font = .systemFont(ofSize: 11.5)
-        descLabel.textColor = .tertiaryLabelColor
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 0
-        descLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        let v = NSStackView()
-        v.orientation = .vertical
-        v.alignment = .leading
-        v.spacing = 0
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.addArrangedSubview(iconView)
-        v.setCustomSpacing(12, after: iconView)
-        v.addArrangedSubview(titleRow)
-        v.setCustomSpacing(4, after: titleRow)
-        v.addArrangedSubview(tagline)
-        v.setCustomSpacing(18, after: tagline)
-        v.addArrangedSubview(attrStack)
-        v.setCustomSpacing(18, after: attrStack)
-        // 分隔线 + 描述（Separator + description）
-        let sep = NSBox()
-        sep.boxType = .separator
-        sep.translatesAutoresizingMaskIntoConstraints = false
-        v.addArrangedSubview(sep)
-        v.setCustomSpacing(12, after: sep)
-        v.addArrangedSubview(descLabel)
-
-        addSubview(v)
+        addSubview(content)
         NSLayoutConstraint.activate([
-            v.topAnchor.constraint(equalTo: topAnchor, constant: 18),
-            v.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            v.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            v.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
+            content.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            content.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -12),
+            titleRow.widthAnchor.constraint(equalTo: content.widthAnchor),
+            privacyRow.widthAnchor.constraint(equalTo: content.widthAnchor),
+            costRow.widthAnchor.constraint(equalTo: content.widthAnchor),
         ])
-        tagline.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
-        descLabel.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
-        sep.widthAnchor.constraint(equalTo: v.widthAnchor).isActive = true
 
         let click = NSClickGestureRecognizer(target: self, action: #selector(cardClicked))
         addGestureRecognizer(click)
     }
 
-    /// 内联属性行：图标 + 主文本 + 可选灰色副本
-    /// (Inline attribute row: icon + main text + optional grey footnote)
-    private func makeInlineAttrRow(icon: NSView, text: String, textColor: NSColor, footnote: String? = nil) -> NSView {
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 8
-        row.alignment = .centerY
+    private func makeWrappingLabel(_ text: String, font: NSFont, color: NSColor, width: CGFloat) -> NSTextField {
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = font
+        label.textColor = color
+        label.maximumNumberOfLines = 0
+        label.preferredMaxLayoutWidth = width
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        return label
+    }
 
-        // 统一图标容器尺寸，确保每行图标高度一致，使 .centerY 对齐稳定
+    /// 长属性完整换行；下载副注另占一行，不在167pt卡片内与主文争宽。
+    private func makeInlineAttrRow(icon: NSView, text: String, textColor: NSColor, footnote: String? = nil) -> NSView {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.widthAnchor.constraint(equalToConstant: 16).isActive = true
@@ -201,19 +189,24 @@ final class EngineCardView: NSView {
             icon.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
         ])
 
-        let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 12.5, weight: .medium)
-        label.textColor = textColor
-        label.lineBreakMode = .byTruncatingTail
+        let label = makeWrappingLabel(text, font: .systemFont(ofSize: 12, weight: .medium), color: textColor, width: 121)
+        let main = NSStackView(views: [iconContainer, label])
+        main.orientation = .horizontal
+        main.spacing = 6
+        main.alignment = .top
+        main.distribution = .fill
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        row.addArrangedSubview(iconContainer)
-        row.addArrangedSubview(label)
-
-        if let footnote = footnote, !footnote.isEmpty {
-            let note = NSTextField(labelWithString: footnote)
-            note.font = .systemFont(ofSize: 11)
-            note.textColor = .tertiaryLabelColor
+        let row = NSStackView(views: [main])
+        row.orientation = .vertical
+        row.alignment = .leading
+        row.distribution = .fill
+        row.spacing = 3
+        main.widthAnchor.constraint(equalTo: row.widthAnchor).isActive = true
+        if let footnote, !footnote.isEmpty {
+            let note = makeWrappingLabel(footnote, font: .systemFont(ofSize: 11), color: .secondaryLabelColor, width: 143)
             row.addArrangedSubview(note)
+            note.widthAnchor.constraint(equalTo: row.widthAnchor).isActive = true
         }
         return row
     }
@@ -278,12 +271,32 @@ final class EngineCardView: NSView {
     }
 
     @objc private func cardClicked() {
+        window?.makeFirstResponder(self)
         onSelect?(code)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option])
+        if modifiers.isEmpty, event.charactersIgnoringModifiers == " " {
+            onSelect?(code)
+        } else if modifiers.isEmpty, event.keyCode == 48 {
+            // Tab沿用窗口既有焦点顺序，Return仍由原继续按钮处理。
+            if event.modifierFlags.contains(.shift) { window?.selectPreviousKeyView(self) }
+            else { window?.selectNextKeyView(self) }
+        } else {
+            super.keyDown(with: event)
+        }
     }
 
     func setSelected(_ value: Bool) {
         selected = value
+        setAccessibilityValue(value)
         needsDisplay = true
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onSelect?(code)
+        return true
     }
 
     override func resetCursorRects() {

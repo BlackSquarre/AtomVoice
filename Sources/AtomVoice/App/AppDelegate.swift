@@ -232,6 +232,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.requestPermissions()
                 self.menuBarController.rebuildMenuPublic()
                 switch engine {
+                case OpenAIASRSettings.engineCode:
+                    self.menuBarController.openASRSettingsFromOutside(selecting: OpenAIASRSettings.engineCode)
                 case ASREngineRegistry.sherpaCode:
                     if !SherpaModelDownloader.ensureReady() {
                         self.promptSherpaDownloadPublic()

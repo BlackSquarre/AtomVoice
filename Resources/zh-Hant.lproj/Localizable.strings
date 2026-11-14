@@ -200,7 +200,7 @@
 "menu.appleOnDeviceSpeech" = "Apple 強制離線辨識";
 "menu.appleOnDeviceSpeech.unavailable" = "Apple 強制離線辨識（目前語言不可用）";
 "menu.engine.howto" = "如何選擇引擎";
-"engine.howto.message" = "• Apple 語音辨識\n適合：免費開箱即用、多語言覆蓋、低設定成本的日常輸入。\n更新後：它仍是通用預設選擇，不需要 API Key，流式結果快；目前語言支援且系統已下載本機語音資源時，可以開啟「Apple 強制離線辨識」。\n限制：很多語言預設仍會走 Apple 線上服務；弱網或 Apple 服務異常會影響穩定性；強制離線可能不可用或準確率下降。\n\n• Sherpa 本機辨識\n適合：隱私優先、斷網使用、不希望音訊進雲端。\n更新後：可以在「辨識引擎設定」裡依目前語言選擇模型預設，並自動下載執行庫、ASR 模型和標點模型。音訊始終留在本機。\n限制：首次需要下載較大的模型檔案；大模型會占用更多磁碟、記憶體和載入時間；長句、多語言混說、標點和專有名詞可能仍不如雲端服務。\n\n• 豆包雲端辨識\n適合：中文普通話準確率優先、低延遲流式辨識，以及 ITN、語義順滑、標點、二遍辨識等雲端能力。\n更新後：在豆包/ASR 設定裡配置 API Key、Resource ID 和 Endpoint；辨識語言、自動標點、停錄延遲跟隨主選單；憑證保存到鑰匙串。\n限制：麥克風音訊會發送到火山引擎/豆包，需要穩定網路，並可能產生火山引擎帳號費用。\n\n• LLM 文字潤飾\n說明：它不是辨識引擎，而是 ASR 後處理。可修正聽錯詞、同音詞、標點、專有名詞和格式；開啟後會把辨識文字發送給所選 LLM 服務商，音訊不會發送。\n\n建議：中文準確率優先選豆包；隱私和完全離線優先選 Sherpa；免費通用和多語言優先選 Apple；只想讓 Apple Speech 盡量本機處理時，再開啟 Apple 強制離線辨識。";
+"engine.howto.message" = "• Apple 語音辨識\n適合：免費開箱即用、多語言覆蓋、低設定成本的日常輸入。\n更新後：它仍是通用預設選擇，不需要 API Key，流式結果快；目前語言支援且系統已下載本機語音資源時，可以開啟「Apple 強制離線辨識」。\n限制：很多語言預設仍會走 Apple 線上服務；弱網或 Apple 服務異常會影響穩定性；強制離線可能不可用或準確率下降。\n\n• Sherpa 本機辨識\n適合：隱私優先、斷網使用、不希望音訊進雲端。\n更新後：可以在「辨識引擎設定」裡依目前語言選擇模型預設，並自動下載執行庫、ASR 模型和標點模型。音訊始終留在本機。\n限制：首次需要下載較大的模型檔案；大模型會占用更多磁碟、記憶體和載入時間；長句、多語言混說、標點和專有名詞可能仍不如雲端服務。\n\n• 豆包雲端辨識\n適合：中文普通話準確率優先、低延遲流式辨識，以及 ITN、語義順滑、標點、二遍辨識等雲端能力。\n更新後：在豆包/ASR 設定裡配置 API Key、Resource ID 和 Endpoint；辨識語言、自動標點、停錄延遲跟隨主選單；憑證保存到鑰匙串。\n限制：麥克風音訊會發送到火山引擎/豆包，需要穩定網路，並可能產生火山引擎帳號費用。\n\n• OpenAI\n音訊上傳至 OpenAI。須自行設定 API Key，並使用服務支援的帳號；費用由 OpenAI 按量收取。\n\n雲端失敗時在可用情況下切換至 Apple 語音，其線上或離線行為依循你的 Apple 設定。\n\n• LLM 文字潤飾\n說明：它不是辨識引擎，而是 ASR 後處理。可修正聽錯詞、同音詞、標點、專有名詞和格式；開啟後會把辨識文字發送給所選 LLM 服務商，音訊不會發送。\n\n建議：中文準確率優先選豆包；隱私和完全離線優先選 Sherpa；免費通用和多語言優先選 Apple；只想讓 Apple Speech 盡量本機處理時，再開啟 Apple 強制離線辨識。";
 
 /* Input Mode */
 "menu.inputMode" = "輸入方式";
@@ -378,7 +378,7 @@
 "oobe.trigger.subtitle.tap" = "按一下此鍵開始語音輸入。之後可隨時於選單列修改。";
 
 "oobe.engine.heading" = "選擇辨識引擎";
-"oobe.engine.subtitle" = "卡片從左到右依隱私保護由高到低排列。之後可隨時於選單列切換。";
+"oobe.engine.subtitle" = "依隱私保護由左至右排列。之後可隨時切換。";
 "oobe.engine.recommended" = "推薦";
 "oobe.engine.attr.privacy" = "隱私";
 "oobe.engine.attr.quality" = "效果";
@@ -552,6 +552,10 @@
 "openai.settings.prompt" = "上下文";
 "openai.settings.keywords" = "關鍵詞";
 "openai.settings.hints" = "語言留空時跟隨全域設定。上下文和關鍵詞僅作提示，會隨要求傳送至 OpenAI；關鍵詞每行一個。";
+"oobe.engine.openai.title" = "OpenAI 語音";
+"oobe.engine.openai.tagline" = "雲端即時轉寫。";
+"oobe.engine.openai.desc" = "音訊上傳至 OpenAI。需自備 API Key 和受支援的帳號，費用由 OpenAI 按量收取。\n\n失敗時在可用情況下切換至 Apple 語音，線上或離線處理跟隨 Apple 設定。";
+"oobe.done.followup.openai" = "接下來請在辨識設定中設定 OpenAI API Key。";
 "openai.error.privacyNotAccepted" = "請先在選單選擇 OpenAI，並確認音訊雲端處理。";
 "openai.error.invalidConfiguration" = "OpenAI 辨識設定無效，請檢查語言提示和關鍵詞。";
 "openai.error.missingApiKey" = "請先設定 OpenAI ASR API Key。";

@@ -227,6 +227,10 @@ final class OOBEWindowController: NSObject {
     }
 
     private func finish() {
+        if state.engine == OpenAIASRSettings.engineCode, !AppSettings.openaiASR.privacyAccepted {
+            guard MenuBarController.confirmOpenAIASRPrivacy() else { return }
+            AppSettings.openaiASR.privacyAccepted = true
+        }
         AppSettings.hasCompletedOOBE = true
         AppSettings.recognitionEngine = state.engine
         AppSettings.triggerKeyCode = state.triggerKeyCode

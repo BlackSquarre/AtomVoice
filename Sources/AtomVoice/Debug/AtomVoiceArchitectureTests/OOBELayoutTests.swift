@@ -80,6 +80,133 @@ enum OOBELayoutTests {
                 "OOBE trigger key row requires \(rowWidth)px, budget is \(contentWidth)px"
             )
         }
+
+        await runner.run("OOBE four engine cards and complete selected copy fit in all eight languages") {
+            let root = try repositoryRoot()
+            for language in languages {
+                let strings = try localizedStrings(language: language, root: root)
+                try await MainActor.run {
+                    let state = OOBESelectionState()
+                    state.engine = OpenAIASRSettings.engineCode
+                    let step = OOBEEngineStep(state: state, localize: { strings[$0] ?? $0 })
+                    defer { withExtendedLifetime(step) {} }
+                    let host = NSView(frame: NSRect(x: 0, y: 0, width: 704, height: 426))
+                    let page = step.makeView()
+                    page.translatesAutoresizingMaskIntoConstraints = false
+                    host.addSubview(page)
+                    NSLayoutConstraint.activate([
+                        page.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+                        page.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                        page.topAnchor.constraint(equalTo: host.topAnchor),
+                        page.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+                    ])
+                    host.layoutSubtreeIfNeeded()
+
+                    let codes = [ASREngineRegistry.sherpaCode, ASREngineRegistry.appleCode,
+                                 VolcengineASRSettings.engineCode, OpenAIASRSettings.engineCode]
+                    let cards = descendants(page).compactMap { $0 as? EngineCardView }
+                    try expect(cards.map(\.code) == codes, "\(language): all four engines must stay in their original order")
+                    let frames = cards.map { alignmentFrame($0, in: host) }
+                    for (index, frame) in frames.enumerated() {
+                        try expect(approximatelyEqual(frame.width, 167, tolerance: 1), "\(language): card \(index) frame \(frame)")
+                        try expect(approximatelyEqual(frame.height, 244, tolerance: 1), "\(language): card \(index) frame \(frame)")
+                        try expect(host.bounds.insetBy(dx: -1, dy: -1).contains(frame), "\(language): card \(index) must remain visible: \(frame)")
+                        if index > 0 {
+                            try expect(approximatelyEqual(frame.minX - frames[index - 1].maxX, 12, tolerance: 1), "\(language): cards cannot overlap or hide the fourth choice")
+                        }
+                        for label in descendants(cards[index]).compactMap({ $0 as? NSTextField }) {
+                            try expectCompleteLabel(label, in: host, language: language)
+                            let localFrame = alignmentFrame(label, in: cards[index])
+                            try expect(cards[index].bounds.insetBy(dx: -1, dy: -1).contains(localFrame), "\(language): text escaped its card: \(localFrame)")
+                        }
+                    }
+
+                    let description = try require(descendants(page).first { $0.identifier?.rawValue == "oobe.engine.detail.description" } as? NSTextField)
+                    let tagline = try require(descendants(page).first { $0.identifier?.rawValue == "oobe.engine.detail.tagline" } as? NSTextField)
+                    let copyKeys = ["sherpa", "apple", "doubao", "openai"]
+                    var largestDescriptionHeight: CGFloat = 0
+                    for (index, card) in cards.enumerated() {
+                        try expect(card.accessibilityPerformPress())
+                        host.layoutSubtreeIfNeeded()
+                        try expect(state.engine == card.code)
+                        try expect((card.accessibilityValue() as? Bool) == true)
+                        let original = try requiredString("oobe.engine.\(copyKeys[index]).desc", in: strings, language: language)
+                        let words = { (text: String) in text.split(whereSeparator: { $0.isWhitespace }).map(String.init) }
+                        try expect(words(description.stringValue) == words(original), "\(language): selected description must keep all original words")
+                        try expect(tagline.stringValue == strings["oobe.engine.\(copyKeys[index]).tagline"])
+                        try expectCompleteLabel(tagline, in: host, language: language)
+                        try expectCompleteLabel(description, in: host, language: language)
+                        let detailFrame = alignmentFrame(description, in: host)
+                        try expect(approximatelyEqual(detailFrame.width, 704, tolerance: 1))
+                        try expect(detailFrame.maxY <= frames[0].minY + 1, "\(language): full copy must remain below all four cards")
+                        largestDescriptionHeight = max(largestDescriptionHeight, detailFrame.height)
+                    }
+                    print("OOBE engine frames [\(language)]: \(frames); maximum description height=\(largestDescriptionHeight)")
+                }
+            }
+        }
+
+        await runner.run("OOBE engine summary retains legacy ratings and leaves OpenAI unrated") {
+            try await MainActor.run {
+                let state = OOBESelectionState()
+                let step = OOBEEngineStep(state: state)
+                let view = step.makeView()
+                let cards = descendants(view).compactMap { $0 as? EngineCardView }
+                try expect(cards.count == 4)
+                for (index, card) in cards.enumerated() {
+                    let quality = descendants(card).first { $0.identifier?.rawValue == "oobe.engine.card.quality" }
+                    if index < 3 {
+                        try expect((quality?.accessibilityValue() as? Int) == index + 3)
+                    } else {
+                        try expect(quality == nil, "OpenAI must not acquire a fabricated rating during layout changes")
+                    }
+                }
+            }
+        }
+
+        await runner.run("OOBE engine cards keep keyboard focus and Space selection") {
+            try await MainActor.run {
+                let state = OOBESelectionState()
+                state.engine = ASREngineRegistry.appleCode
+                let step = OOBEEngineStep(state: state)
+                defer { withExtendedLifetime(step) {} }
+                let page = step.makeView()
+                let cards = descendants(page).compactMap { $0 as? EngineCardView }
+                let openAI = try require(cards.first { $0.code == OpenAIASRSettings.engineCode })
+                let apple = try require(cards.first { $0.code == ASREngineRegistry.appleCode })
+                try expect(cards.allSatisfy(\.acceptsFirstResponder))
+                openAI.setFrameSize(NSSize(width: 167, height: 244))
+                try expect(openAI.focusRingType == .exterior && openAI.focusRingMaskBounds == openAI.bounds)
+                try expect(!openAI.focusRingMaskBounds.isEmpty)
+                let space = try require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                    timestamp: 0, windowNumber: 0, context: nil, characters: " ", charactersIgnoringModifiers: " ",
+                    isARepeat: false, keyCode: 49))
+                openAI.keyDown(with: space)
+                try expect(state.engine == OpenAIASRSettings.engineCode)
+                try expect((openAI.accessibilityValue() as? Bool) == true)
+                try expect((apple.accessibilityValue() as? Bool) == false)
+                try expect(apple.accessibilityPerformPress())
+                try expect(state.engine == ASREngineRegistry.appleCode)
+            }
+        }
+    }
+
+    private static func descendants(_ view: NSView) -> [NSView] {
+        [view] + view.subviews.flatMap(descendants)
+    }
+
+    private static func expectCompleteLabel(_ label: NSTextField, in host: NSView, language: String) throws {
+        let frame = alignmentFrame(label, in: host)
+        let required = label.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: label.bounds.width, height: 1_000)).height ?? 0
+        try expect(required <= label.bounds.height + 1, "\(language): text clipped at \(frame), requires \(required): \(label.stringValue)")
+        try expect(host.bounds.insetBy(dx: -1, dy: -1).contains(frame), "\(language): label escaped fixed content area: \(frame)")
+        try expect(label.maximumNumberOfLines == 0 && label.lineBreakMode == .byWordWrapping)
+    }
+
+    private static func alignmentFrame(_ view: NSView, in target: NSView) -> NSRect {
+        guard let parent = view.superview else { return view.convert(view.bounds, to: target) }
+        // 原生文字框的frame含绘制留白，布局边界应比较其可见对齐矩形。
+        return parent.convert(view.alignmentRect(forFrame: view.frame), to: target)
     }
 
     private static func repositoryRoot() throws -> URL {
