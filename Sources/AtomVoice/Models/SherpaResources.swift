@@ -5,7 +5,7 @@ struct SherpaResourcePaths {
     static let current = SherpaResourcePaths(support: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("AtomVoice/SherpaOnnx", isDirectory: true))
     static let punctuationName = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8"
-    static let runtimeLibraries = ["libsherpa-onnx-c-api.dylib", "libonnxruntime.1.24.4.dylib"]
+    static let runtimeLibraries = [SherpaRuntimeLayout.sherpaLibrary, SherpaRuntimeLayout.preferredOnnxLibrary]
     let support: URL
     var runtime: URL { support.appendingPathComponent("runtime/lib", isDirectory: true) }
     var models: URL { support.appendingPathComponent("models", isDirectory: true) }
@@ -28,10 +28,20 @@ struct SherpaResourceStatus: Equatable {
 
 struct SherpaResources {
     let paths: SherpaResourcePaths
-    init(paths: SherpaResourcePaths = .current) { self.paths = paths }
+    let operatingSystemVersion: OperatingSystemVersion
+    init(paths: SherpaResourcePaths = .current,
+         operatingSystemVersion: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) {
+        self.paths = paths
+        self.operatingSystemVersion = operatingSystemVersion
+    }
+
+    var runtimeReady: Bool {
+        guard let layout = SherpaRuntimeLayout.resolve(in: paths.runtime) else { return false }
+        return layout.isCompatible(on: operatingSystemVersion)
+    }
 
     func status(for preset: SherpaModelPreset) -> SherpaResourceStatus {
-        .init(runtimeReady: SherpaResourcePaths.runtimeLibraries.allSatisfy { Self.isUsableFile(paths.runtime.appendingPathComponent($0)) },
+        .init(runtimeReady: runtimeReady,
               modelReady: ModelManifest.inspect(in: paths.model(preset)) != nil,
               punctuationReady: Self.isUsableFile(paths.punctuation.appendingPathComponent("model.int8.onnx")))
     }
@@ -55,18 +65,36 @@ struct SherpaResources {
 
     /// 既有自动修复的显式入口；只补缺，不把查询变成安装。
     func repairRuntimeIfNeeded() throws {
+        guard !runtimeReady else { return }
         guard let contents = try? FileManager.default.contentsOfDirectory(at: paths.support, includingPropertiesForKeys: nil),
               !contents.isEmpty else { return }
         let version = (try? String(contentsOf: paths.version, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
         let preferredName = version.map { SherpaModelDownloader.runtimeArchiveRootName(for: $0) }
-        guard let source = contents.first(where: { $0.lastPathComponent == preferredName })
-            ?? contents.first(where: { $0.lastPathComponent.contains("-osx-universal2-shared-no-tts-lib") }) else { return }
+        // 有版本记录时只从同版缓存补缺，不能从另一版本拼凑可加载库。
+        let source: URL?
+        if let preferredName {
+            source = contents.first { $0.lastPathComponent == preferredName }
+        } else {
+            guard !Self.isUsableFile(paths.runtime.appendingPathComponent(SherpaRuntimeLayout.sherpaLibrary)) else { return }
+            source = SherpaRuntimeRelease.knownCompatible.compactMap { release in
+                contents.first { $0.lastPathComponent == SherpaModelDownloader.runtimeArchiveRootName(for: release.version) }
+            }.first
+        }
+        guard let source else { return }
+        let lib = source.appendingPathComponent("lib", isDirectory: true)
+        guard let layout = SherpaRuntimeLayout.resolve(in: lib),
+              !SherpaRuntimeRelease.requiresVersionRestriction(on: operatingSystemVersion)
+                || layout.isCompatible(on: operatingSystemVersion) else { return }
         try FileManager.default.createDirectory(at: paths.runtime, withIntermediateDirectories: true)
-        for name in SherpaResourcePaths.runtimeLibraries {
-            let target = paths.runtime.appendingPathComponent(name)
-            let source = source.appendingPathComponent("lib/" + name)
-            guard !Self.isUsableFile(target), Self.isUsableFile(source) else { continue }
-            try SherpaResourceInstaller.replaceFile(from: source, to: target)
+        for file in try FileManager.default.contentsOfDirectory(at: lib, includingPropertiesForKeys: nil) {
+            let target = paths.runtime.appendingPathComponent(file.lastPathComponent)
+            guard !Self.isUsableFile(target), Self.isUsableFile(file) else { continue }
+            try SherpaResourceInstaller.replaceFile(from: file, to: target)
+        }
+        if version == nil, let release = SherpaRuntimeRelease.knownCompatible.first(where: {
+            source.lastPathComponent == SherpaModelDownloader.runtimeArchiveRootName(for: $0.version)
+        }) {
+            try release.version.write(to: paths.version, atomically: true, encoding: .utf8)
         }
     }
 }

@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "Comprobando versión...";
 "asrSettings.sherpa.updatingRuntime" = "Actualizando entorno de ejecución...";
 "sherpa.update.title" = "Actualizar entorno de ejecución de Sherpa";
-"sherpa.update.message.same" = "La versión instalada (%@) ya es la más reciente. ¿Reinstalar de todos modos?";
-"sherpa.update.message.new" = "Hay una nueva versión disponible: %@ (Actual: %@). ¿Actualizar ahora?";
+"sherpa.update.message.same" = "El último runtime (%@) ya está instalado. ¿Reinstalar?";
+"sherpa.update.message.new" = "¿Actualizar al último runtime %@ (actual: %@)?";
 
 "doubao.model.v2" = "Doubao Streaming 2.0 (Predeterminado)";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "El audio se envía a Volcengine. Usa una API Key de tu cuenta de China.";
 "doubao.service.international.info" = "El audio se envía al endpoint de BytePlus en Singapur. Usa una API Key de tu cuenta internacional.";
 "doubao.service.custom.info" = "Usa una dirección wss:// compatible con el protocolo ASR de Doubao. El audio y la API Key se envían a esta dirección.";
+
+"sherpa.runtime.compatibilityNotice" = "Esta versión antigua de macOS necesita un runtime de Sherpa compatible. Versiones con compatibilidad confirmada:\n%@";
+"sherpa.runtime.error.integrity" = "La descarga del runtime está incompleta o no supera la verificación. Vuelve a intentarlo.";
+"sherpa.runtime.error.missingLibraries" = "Faltan bibliotecas necesarias en el paquete del runtime.";
+"sherpa.runtime.error.extraction" = "No se pudo extraer el paquete descargado.";
+"sherpa.runtime.error.unsafeArchive" = "El paquete descargado contiene rutas no válidas.";
+"sherpa.download.error.installFailed" = "No se pudo instalar %@. Consulta el registro de diagnóstico.";
+
+"sherpa.runtime.error.releaseMetadata" = "No se pudo obtener la información completa del último runtime. Vuelve a intentarlo.";
+"sherpa.runtime.error.incompatibleSystem" = "Este runtime no admite tu versión de macOS o la arquitectura del procesador.";

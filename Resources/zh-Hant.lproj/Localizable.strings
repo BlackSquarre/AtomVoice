@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "正在檢查版本...";
 "asrSettings.sherpa.updatingRuntime" = "正在更新執行階段...";
 "sherpa.update.title" = "更新 Sherpa 執行階段";
-"sherpa.update.message.same" = "目前版本 (%@) 已經是最新，是否重新安裝？";
-"sherpa.update.message.new" = "發現新版本: %@ (目前: %@)，是否更新？";
+"sherpa.update.message.same" = "目前已是最新執行庫（%@），是否重新安裝？";
+"sherpa.update.message.new" = "是否更新至最新執行庫 %@（目前：%@）？";
 
 "doubao.model.v2" = "豆包串流 2.0（預設）";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "音訊傳送至火山引擎。請使用中國版帳號的 API Key。";
 "doubao.service.international.info" = "音訊傳送至 BytePlus 新加坡端點。請使用國際版帳號的 API Key。";
 "doubao.service.custom.info" = "僅支援相容豆包串流辨識協定的 wss:// 位址。音訊和 API Key 將傳送至該位址。";
+
+"sherpa.runtime.compatibilityNotice" = "此 macOS 版本較舊，僅支援符合系統需求的 Sherpa 執行庫。已確認相容的版本：\n%@";
+"sherpa.runtime.error.integrity" = "執行庫下載不完整或驗證失敗，請重試。";
+"sherpa.runtime.error.missingLibraries" = "執行庫套件缺少必要的程式庫檔案。";
+"sherpa.runtime.error.extraction" = "無法解壓縮下載的套件。";
+"sherpa.runtime.error.unsafeArchive" = "下載的套件包含無效路徑。";
+"sherpa.download.error.installFailed" = "安裝 %@ 失敗，詳情請查看診斷記錄。";
+
+"sherpa.runtime.error.releaseMetadata" = "無法取得最新執行庫的完整發布資訊，請重試。";
+"sherpa.runtime.error.incompatibleSystem" = "此執行庫不支援目前的 macOS 版本或處理器架構。";

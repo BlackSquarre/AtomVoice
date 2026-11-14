@@ -9,7 +9,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private struct Observer { let progress: ProgressHandler?; let complete: CompleteHandler? }
     private var observers: [UUID: Observer] = [:]
     private let installation: SherpaDownloadInstallation
-    private let fetchVersion: (@escaping (String) -> Void) -> Void
+    private let fetchRelease: (@escaping (Result<SherpaRuntimeRelease, Error>) -> Void) -> Void
     private let configuration: () -> URLSessionConfiguration
     private var attempt: SherpaInstallAttempt?
     private var session: URLSession?
@@ -25,10 +25,10 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private(set) var isDownloading = false
 
     init(paths: SherpaResourcePaths = .current,
-         fetchVersion: @escaping (@escaping (String) -> Void) -> Void = SherpaModelDownloader.fetchLatestRuntimeVersion,
+         fetchRelease: @escaping (@escaping (Result<SherpaRuntimeRelease, Error>) -> Void) -> Void = SherpaModelDownloader.fetchLatestRuntimeRelease,
          configuration: @escaping () -> URLSessionConfiguration = { .default }) {
         installation = .init(paths: paths)
-        self.fetchVersion = fetchVersion
+        self.fetchRelease = fetchRelease
         self.configuration = configuration
         super.init()
     }
@@ -41,23 +41,18 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         return URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/\(version)/\(runtimeArchiveRootName(for: version)).tar.bz2")!
     }
 
-    /// 获取最新版本号，失败回退到已知稳定版（Fetch latest version tag, fallback to known stable version on failure）
-    static func fetchLatestRuntimeVersion(completion: @escaping (String) -> Void) {
-        let fallbackVersion = "v1.13.1"
-        let apiURL = URL(string: "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/latest")!
-        var request = URLRequest(url: apiURL)
+    /// 查询最新正式发布；版本、大小和摘要绑定到同一份响应，不回退到固定旧版。
+    static func fetchLatestRuntimeRelease(completion: @escaping (Result<SherpaRuntimeRelease, Error>) -> Void) {
+        var request = URLRequest(url: URL(string: "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/latest")!)
         request.timeoutInterval = 10
-        // Set User-Agent to avoid API rejection
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("AtomVoice-SherpaDownloader", forHTTPHeaderField: "User-Agent")
-        
         URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tagName = json["tag_name"] as? String else {
-                completion(fallbackVersion)
-                return
+            if let error { completion(.failure(error)); return }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200, let data else {
+                completion(.failure(SherpaRuntimeInstallError.releaseMetadata)); return
             }
-            completion(tagName)
+            completion(Result { try SherpaRuntimeRelease.fromLatestResponse(data) })
         }.resume()
     }
 
@@ -99,7 +94,11 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         return runtimeRequiredFiles().allSatisfy { FileManager.default.fileExists(atPath: $0.url.path) } ? "v1.13.0" : "n/a"
     }
     static func runtimeRequiredFiles() -> [(name: String, url: URL)] {
-        SherpaResourcePaths.runtimeLibraries.map { ($0, SherpaResourcePaths.current.runtime.appendingPathComponent($0)) }
+        let directory = SherpaResourcePaths.current.runtime
+        if let layout = SherpaRuntimeLayout.resolve(in: directory) {
+            return [layout.sherpa, layout.onnx].map { ($0.lastPathComponent, $0) }
+        }
+        return SherpaResourcePaths.runtimeLibraries.map { ($0, directory.appendingPathComponent($0)) }
     }
     static func punctuationRequiredFile() -> URL { SherpaResourcePaths.current.punctuation.appendingPathComponent("model.int8.onnx") }
     static func allModelsReady(for preset: SherpaModelPreset = .current) -> Bool {
@@ -131,19 +130,29 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     }
     @discardableResult
     func startDownload(preset: SherpaModelPreset, forceUpdateRuntime: Bool = false,
-                       runtimeOnly: Bool = false, replaceModel: Bool = false) -> StartResult {
+                       runtimeOnly: Bool = false, replaceModel: Bool = false,
+                       runtimeRelease: SherpaRuntimeRelease? = nil) -> StartResult {
         guard !isDownloading else { return .alreadyDownloading }
         let attempt = SherpaInstallAttempt()
         self.attempt = attempt
         isDownloading = true
         targetPreset = preset
         self.runtimeOnly = runtimeOnly
-        fetchVersion { [weak self, attempt] version in
+        let begin: (Result<SherpaRuntimeRelease?, Error>) -> Void = { [weak self, attempt] result in
             DispatchQueue.main.async {
                 guard let self, self.attempt === attempt, attempt.isActive else { return }
+                guard case .success(let release) = result else {
+                    if case .failure(let error) = result {
+                        DebugLog.error("[SherpaDownload] Could not query latest runtime release: \(error)")
+                    }
+                    self.finish(false, loc("sherpa.runtime.error.releaseMetadata"), attempt: attempt)
+                    return
+                }
+                let version = release?.version ?? (try? String(contentsOf: self.installation.paths.version, encoding: .utf8))?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? "n/a"
                 self.targetVersion = version
                 self.items = self.installation.plan(preset: preset, version: version, forceRuntime: forceUpdateRuntime,
-                    runtimeOnly: runtimeOnly, replaceModel: replaceModel)
+                    runtimeOnly: runtimeOnly, replaceModel: replaceModel, runtimeRelease: release)
                 self.itemIndex = 0
                 self.candidateIndex = 0
                 self.candidateRetry = 0
@@ -154,6 +163,12 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                 self.downloadCurrent(attempt: attempt)
             }
         }
+        // 设置页已确认的最新发布沿用同一元数据快照，避免确认后又查询到另一版本。
+        if let runtimeRelease { begin(.success(runtimeRelease)) }
+        else if !forceUpdateRuntime && SherpaResources(paths: installation.paths).runtimeReady {
+            // 只补模型/标点时沿用可用运行库，避免无关的 latest API 故障阻断模型下载。
+            begin(.success(nil))
+        } else { fetchRelease { begin($0.map { Optional($0) }) } }
         return .started
     }
     func cancel() {
@@ -209,6 +224,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         let item = items[itemIndex]
         let version = targetVersion
         if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            DebugLog.error("[SherpaDownload] item=\(item.name) HTTP status=\(http.statusCode) candidate=\(candidateIndex) retry=\(candidateRetry)")
             failCurrentCandidate(attempt: attempt)
             return
         }
@@ -238,8 +254,11 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     self.candidateRetry = 0
                     self.downloadCurrent(attempt: attempt)
                 case .success(false): break
-                case .failure:
-                    self.finish(false, loc("sherpa.download.error.extractFailed", item.name), attempt: attempt)
+                case .failure(let error):
+                    DebugLog.error("[SherpaDownload] item=\(item.name) version=\(version) installation failed: \(error)")
+                    let message = (error as? SherpaRuntimeInstallError)?.errorDescription
+                        ?? loc("sherpa.download.error.installFailed", item.name)
+                    self.finish(false, message, attempt: attempt)
                 }
             }
         }

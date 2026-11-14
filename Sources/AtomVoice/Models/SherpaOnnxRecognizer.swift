@@ -337,8 +337,7 @@ final class SherpaOnnxRecognizerController {
     private func ensurePunctuationContext() -> Bool {
         if punctuationContext != nil { return true }
 
-        guard FileManager.default.fileExists(atPath: Self.runtimeLibDirectory.appendingPathComponent("libsherpa-onnx-c-api.dylib").path),
-              FileManager.default.fileExists(atPath: Self.runtimeLibDirectory.appendingPathComponent("libonnxruntime.1.24.4.dylib").path),
+        guard SherpaResources().runtimeReady,
               FileManager.default.fileExists(atPath: Self.punctuationModelDirectory.appendingPathComponent("model.int8.onnx").path)
         else {
             DebugLog.info("[SherpaOnnx] Punctuation model or runtime is missing, skipping local punctuation")

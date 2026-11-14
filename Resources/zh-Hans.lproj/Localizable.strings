@@ -491,8 +491,8 @@
 "asrSettings.sherpa.checkingVersion" = "正在检查版本...";
 "asrSettings.sherpa.updatingRuntime" = "正在更新运行时...";
 "sherpa.update.title" = "更新 Sherpa 运行时";
-"sherpa.update.message.same" = "当前版本 (%@) 已经是最新，是否重新安装？";
-"sherpa.update.message.new" = "发现新版本: %@ (当前: %@)，是否更新？";
+"sherpa.update.message.same" = "当前已是最新运行库（%@），是否重新安装？";
+"sherpa.update.message.new" = "是否更新到最新运行库 %@（当前：%@）？";
 
 "doubao.model.v2" = "豆包流式 2.0（默认）";
 
@@ -524,3 +524,13 @@
 "doubao.service.china.info" = "音频发送至火山引擎。请使用中国版账号的 API Key。";
 "doubao.service.international.info" = "音频发送至 BytePlus 新加坡端点。请使用国际版账号的 API Key。";
 "doubao.service.custom.info" = "仅支持兼容豆包流式识别协议的 wss:// 地址。音频和 API Key 将发送至该地址。";
+
+"sherpa.runtime.compatibilityNotice" = "此 macOS 版本较旧，仅支持满足系统要求的 Sherpa 运行库。已确认兼容的版本：\n%@";
+"sherpa.runtime.error.integrity" = "运行库下载不完整或校验失败，请重试。";
+"sherpa.runtime.error.missingLibraries" = "运行库包缺少必需的库文件。";
+"sherpa.runtime.error.extraction" = "无法解压下载的文件包。";
+"sherpa.runtime.error.unsafeArchive" = "下载的文件包包含无效路径。";
+"sherpa.download.error.installFailed" = "安装 %@ 失败，详情请查看诊断日志。";
+
+"sherpa.runtime.error.releaseMetadata" = "无法获取最新运行库的完整发布信息，请重试。";
+"sherpa.runtime.error.incompatibleSystem" = "此运行库不支持当前 macOS 版本或处理器架构。";

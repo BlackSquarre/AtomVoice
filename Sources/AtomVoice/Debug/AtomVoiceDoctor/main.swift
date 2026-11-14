@@ -214,10 +214,12 @@ private final class AtomVoiceDoctor {
         let hasManifest = preset.resolveManifest() != nil
         let punctuationURL = SherpaModelDownloader.punctuationRequiredFile()
         let hasPunctuation = SherpaModelPreset.isUsableFile(punctuationURL)
-        let ready = missingRuntime.isEmpty && hasManifest && hasPunctuation
+        let runtimeCompatible = SherpaResources().runtimeReady
+        let ready = missingRuntime.isEmpty && runtimeCompatible && hasManifest && hasPunctuation
         let selectedSherpa = ASREngineRegistry.shared.isSherpa(AppSettings.normalizedRecognitionEngine)
 
         var missing: [String] = missingRuntime.map { "runtime:\($0)" }
+        if missingRuntime.isEmpty && !runtimeCompatible { missing.append("runtime:incompatible-system-or-architecture") }
         if !hasManifest { missing.append("model-manifest") }
         if !hasPunctuation { missing.append("punctuation:model.int8.onnx") }
 

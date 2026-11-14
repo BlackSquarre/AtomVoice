@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "버전 확인 중...";
 "asrSettings.sherpa.updatingRuntime" = "런타임 업데이트 중...";
 "sherpa.update.title" = "Sherpa 런타임 업데이트";
-"sherpa.update.message.same" = "설치된 버전 (%@)이 이미 최신입니다. 다시 설치하시겠습니까?";
-"sherpa.update.message.new" = "새 버전을 사용할 수 있습니다: %@ (현재: %@). 업데이트하시겠습니까?";
+"sherpa.update.message.same" = "최신 런타임(%@)이 이미 설치되어 있습니다. 다시 설치할까요?";
+"sherpa.update.message.new" = "최신 런타임 %@으로 업데이트할까요(현재: %@)?";
 
 "doubao.model.v2" = "Doubao 스트리밍 2.0 (기본)";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "오디오가 Volcengine으로 전송됩니다. 중국 버전 계정의 API Key를 사용하세요.";
 "doubao.service.international.info" = "오디오가 BytePlus 싱가포르 엔드포인트로 전송됩니다. 국제 버전 계정의 API Key를 사용하세요.";
 "doubao.service.custom.info" = "Doubao 스트리밍 인식 프로토콜과 호환되는 wss:// 주소를 입력하세요. 오디오와 API Key가 이 주소로 전송됩니다.";
+
+"sherpa.runtime.compatibilityNotice" = "이전 macOS에서는 호환되는 Sherpa 런타임이 필요합니다. 호환성을 확인한 버전:\n%@";
+"sherpa.runtime.error.integrity" = "런타임 다운로드가 불완전하거나 검증에 실패했습니다. 다시 시도하세요.";
+"sherpa.runtime.error.missingLibraries" = "런타임 패키지에 필수 라이브러리가 없습니다.";
+"sherpa.runtime.error.extraction" = "다운로드한 패키지의 압축을 풀 수 없습니다.";
+"sherpa.runtime.error.unsafeArchive" = "다운로드한 패키지에 잘못된 경로가 포함되어 있습니다.";
+"sherpa.download.error.installFailed" = "%@ 설치에 실패했습니다. 진단 로그를 확인하세요.";
+
+"sherpa.runtime.error.releaseMetadata" = "최신 런타임의 전체 릴리스 정보를 가져올 수 없습니다. 다시 시도하세요.";
+"sherpa.runtime.error.incompatibleSystem" = "이 런타임은 현재 macOS 버전이나 프로세서 아키텍처를 지원하지 않습니다.";

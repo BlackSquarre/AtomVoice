@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "バージョンを確認中...";
 "asrSettings.sherpa.updatingRuntime" = "ランタイムを更新中...";
 "sherpa.update.title" = "Sherpa ランタイムの更新";
-"sherpa.update.message.same" = "インストール済みのバージョン (%@) はすでに最新です。再インストールしますか？";
-"sherpa.update.message.new" = "新しいバージョンが利用可能です: %@ (現在: %@)。更新しますか？";
+"sherpa.update.message.same" = "最新ランタイム（%@）はインストール済みです。再インストールしますか？";
+"sherpa.update.message.new" = "最新ランタイム %@ に更新しますか（現在：%@）？";
 
 "doubao.model.v2" = "Doubao ストリーミング 2.0（デフォルト）";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "音声は Volcengine に送信されます。中国版アカウントの API Key を使用してください。";
 "doubao.service.international.info" = "音声は BytePlus のシンガポールエンドポイントに送信されます。国際版アカウントの API Key を使用してください。";
 "doubao.service.custom.info" = "Doubao ストリーミング認識プロトコルに対応する wss:// アドレスを指定します。音声と API Key はこのアドレスに送信されます。";
+
+"sherpa.runtime.compatibilityNotice" = "この古い macOS では対応する Sherpa ランタイムが必要です。互換性を確認したバージョン：\n%@";
+"sherpa.runtime.error.integrity" = "ランタイムのダウンロードが不完全か、検証に失敗しました。再試行してください。";
+"sherpa.runtime.error.missingLibraries" = "ランタイムパッケージに必要なライブラリがありません。";
+"sherpa.runtime.error.extraction" = "ダウンロードしたパッケージを展開できません。";
+"sherpa.runtime.error.unsafeArchive" = "ダウンロードしたパッケージに無効なパスが含まれています。";
+"sherpa.download.error.installFailed" = "%@ をインストールできません。診断ログを確認してください。";
+
+"sherpa.runtime.error.releaseMetadata" = "最新ランタイムの完全なリリース情報を取得できません。再試行してください。";
+"sherpa.runtime.error.incompatibleSystem" = "このランタイムは現在の macOS またはプロセッサ構成に対応していません。";

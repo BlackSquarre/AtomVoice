@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "Version wird geprüft...";
 "asrSettings.sherpa.updatingRuntime" = "Laufzeitumgebung wird aktualisiert...";
 "sherpa.update.title" = "Sherpa-Laufzeitumgebung aktualisieren";
-"sherpa.update.message.same" = "Die installierte Version (%@) ist bereits die neueste. Trotzdem neu installieren?";
-"sherpa.update.message.new" = "Eine neue Version ist verfügbar: %@ (Aktuell: %@). Jetzt aktualisieren?";
+"sherpa.update.message.same" = "Die neueste Runtime (%@) ist bereits installiert. Erneut installieren?";
+"sherpa.update.message.new" = "Auf die neueste Runtime %@ aktualisieren (aktuell: %@)?";
 
 "doubao.model.v2" = "Doubao Streaming 2.0 (Standard)";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "Audio wird an Volcengine gesendet. Verwenden Sie einen API-Schlüssel Ihres China-Kontos.";
 "doubao.service.international.info" = "Audio wird an den BytePlus-Endpunkt in Singapur gesendet. Verwenden Sie einen API-Schlüssel Ihres internationalen Kontos.";
 "doubao.service.custom.info" = "Verwenden Sie eine wss://-Adresse, die das Doubao-ASR-Protokoll unterstützt. Audio und API-Schlüssel werden an diese Adresse gesendet.";
+
+"sherpa.runtime.compatibilityNotice" = "Diese ältere macOS-Version benötigt eine kompatible Sherpa-Runtime. Bestätigte kompatible Versionen:\n%@";
+"sherpa.runtime.error.integrity" = "Der Runtime-Download ist unvollständig oder die Prüfung ist fehlgeschlagen. Bitte erneut versuchen.";
+"sherpa.runtime.error.missingLibraries" = "Im Runtime-Paket fehlen erforderliche Bibliotheken.";
+"sherpa.runtime.error.extraction" = "Das heruntergeladene Paket konnte nicht entpackt werden.";
+"sherpa.runtime.error.unsafeArchive" = "Das heruntergeladene Paket enthält ungültige Pfade.";
+"sherpa.download.error.installFailed" = "%@ konnte nicht installiert werden. Details stehen im Diagnoseprotokoll.";
+
+"sherpa.runtime.error.releaseMetadata" = "Die vollständigen Informationen zur neuesten Runtime konnten nicht abgerufen werden. Bitte erneut versuchen.";
+"sherpa.runtime.error.incompatibleSystem" = "Diese Runtime unterstützt Ihre macOS-Version oder Prozessorarchitektur nicht.";

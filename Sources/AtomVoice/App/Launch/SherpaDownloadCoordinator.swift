@@ -8,7 +8,10 @@ struct SherpaDownloadCoordinator {
     @discardableResult
     func start(preset: SherpaModelPreset = .current, runtimeOnly: Bool = false,
                replaceModel: Bool = false, activateOnSuccess: Bool = false,
+               runtimeRelease: SherpaRuntimeRelease? = nil,
                progress: ((String) -> Void)? = nil, completion: ((Bool, String?) -> Void)? = nil) -> SherpaModelDownloader.StartResult {
+        // 运行库更新不能把正在进行的普通模型下载当成自己的更新成功。
+        if runtimeOnly && downloader.isDownloading { return .alreadyDownloading }
         let status = SherpaResources().status(for: preset)
         let runtimePresentation = runtimeOnly || (!status.runtimeReady && status.modelReady && status.punctuationReady && !replaceModel)
         let initialKey = runtimePresentation ? "sherpa.runtime.downloading.start" : "sherpa.downloading.start"
@@ -25,6 +28,7 @@ struct SherpaDownloadCoordinator {
                 failureMessageKey: runtimePresentation ? "sherpa.runtime.download.failed" : "sherpa.download.failed")
             completion?(complete, error)
         })
-        return downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly, replaceModel: replaceModel)
+        return downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly,
+                                        replaceModel: replaceModel, runtimeRelease: runtimeRelease)
     }
 }

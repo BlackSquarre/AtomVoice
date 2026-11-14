@@ -10,6 +10,9 @@ extern "C" {
 typedef struct AtomVoiceSherpaContext AtomVoiceSherpaContext;
 typedef struct AtomVoiceSherpaPunctuationContext AtomVoiceSherpaPunctuationContext;
 
+/// 仅检查运行库文件，供 Swift 资源查询和两种 C 加载入口共同使用。
+int32_t AtomVoiceSherpaResolveOnnxRuntime(const char *lib_dir, char *path, int32_t path_size);
+
 /// 由 Swift 层传入具体文件名；不同 Sherpa 模型 zip 包的 encoder/decoder/joiner 命名差异很大
 /// (Swift passes the exact filenames; encoder/decoder/joiner naming varies across Sherpa model archives)
 AtomVoiceSherpaContext *AtomVoiceSherpaCreate(const char *lib_dir,

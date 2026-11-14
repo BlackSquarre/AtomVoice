@@ -138,7 +138,7 @@ enum SherpaResourceTests {
                 let archive = paths.support.appendingPathComponent("runtime.tar.bz2")
                 try tar(source: source, archive: archive)
                 let item = SherpaDownloadItem(kind: .runtime, urlCandidates: [], archiveName: "runtime.tar.bz2")
-                let installed = try SherpaDownloadInstallation(paths: paths).install(archive: archive, item: item, preset: preset, version: version, attempt: SherpaInstallAttempt())
+                let installed = try SherpaDownloadInstallation(paths: paths, verifyRuntimeArchive: { _, _ in }, validateRuntime: { _ in }).install(archive: archive, item: item, preset: preset, version: version, attempt: SherpaInstallAttempt())
                 try expect(installed)
                 for name in SherpaResourcePaths.runtimeLibraries {
                     try expect((try? String(contentsOf: paths.runtime.appendingPathComponent(name))) == "new-library")
@@ -205,15 +205,15 @@ enum SherpaResourceTests {
             try expect((try? String(contentsOf: paths.model(preset).appendingPathComponent("marker"))) == "old")
         }
         await runner.run("Sherpa cancel before version response isolates next attempt observers and stale delegates") {
-            var callbacks: [(String) -> Void] = []
-            let downloader = SherpaModelDownloader(fetchVersion: { callbacks.append($0) })
+            var callbacks: [(Result<SherpaRuntimeRelease, Error>) -> Void] = []
+            let downloader = SherpaModelDownloader(fetchRelease: { callbacks.append($0) })
             var completions: [String] = []
             downloader.addObserver(complete: { _, _ in completions.append("old") })
-            try expect(downloader.startDownload() == .started)
+            try expect(downloader.startDownload(forceUpdateRuntime: true) == .started)
             downloader.cancel()
             downloader.addObserver(complete: { _, _ in completions.append("new") })
-            try expect(downloader.startDownload() == .started)
-            callbacks[0]("stale")
+            try expect(downloader.startDownload(forceUpdateRuntime: true) == .started)
+            callbacks[0](.success(SherpaRuntimeRelease.knownCompatible[0]))
             let session = URLSession(configuration: .ephemeral)
             let task = session.downloadTask(with: URL(string: "https://fixture.invalid")!)
             downloader.urlSession(session, downloadTask: task, didWriteData: 1, totalBytesWritten: 1, totalBytesExpectedToWrite: 1)
@@ -250,7 +250,12 @@ enum SherpaResourceTests {
         for name in ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"] { try write("fixture", at: directory.appendingPathComponent(name)) }
     }
     private static func readyRuntime(_ paths: SherpaResourcePaths) throws {
-        for name in SherpaResourcePaths.runtimeLibraries { try write("old-library", at: paths.runtime.appendingPathComponent(name)) }
+        // 仅包含当前架构及最低系统的 Mach-O 头，不是可加载的模型或动态库。
+        let words: [UInt32] = [0xfeedfacf, SherpaRuntimeBinary.currentCPU, 0, 6, 1, 24, 0, 0, 0x32, 24, 1, 11 << 16, 11 << 16, 0]
+        var data = Data()
+        for word in words { var little = word.littleEndian; withUnsafeBytes(of: &little) { data.append(contentsOf: $0) } }
+        try FileManager.default.createDirectory(at: paths.runtime, withIntermediateDirectories: true)
+        for name in SherpaResourcePaths.runtimeLibraries { try data.write(to: paths.runtime.appendingPathComponent(name)) }
     }
     private static func write(_ text: String, at url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

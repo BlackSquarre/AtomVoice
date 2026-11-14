@@ -490,8 +490,8 @@
 "asrSettings.sherpa.checkingVersion" = "Vérification de la version...";
 "asrSettings.sherpa.updatingRuntime" = "Mise à jour du runtime...";
 "sherpa.update.title" = "Mettre à jour le runtime Sherpa";
-"sherpa.update.message.same" = "La version installée (%@) est déjà la plus récente. Réinstaller quand même ?";
-"sherpa.update.message.new" = "Une nouvelle version est disponible : %@ (Actuelle : %@). Mettre à jour maintenant ?";
+"sherpa.update.message.same" = "Le dernier runtime (%@) est déjà installé. Le réinstaller ?";
+"sherpa.update.message.new" = "Mettre à jour vers le dernier runtime %@ (actuel : %@) ?";
 
 "doubao.model.v2" = "Doubao Streaming 2.0 (par défaut)";
 
@@ -523,3 +523,13 @@
 "doubao.service.china.info" = "L’audio est envoyé à Volcengine. Utilisez une clé API de votre compte chinois.";
 "doubao.service.international.info" = "L’audio est envoyé au point de terminaison BytePlus à Singapour. Utilisez une clé API de votre compte international.";
 "doubao.service.custom.info" = "Utilisez une adresse wss:// compatible avec le protocole ASR de Doubao. L’audio et la clé API sont envoyés à cette adresse.";
+
+"sherpa.runtime.compatibilityNotice" = "Cette ancienne version de macOS nécessite un runtime Sherpa compatible. Versions dont la compatibilité est confirmée :\n%@";
+"sherpa.runtime.error.integrity" = "Le téléchargement du runtime est incomplet ou sa vérification a échoué. Réessayez.";
+"sherpa.runtime.error.missingLibraries" = "Des bibliothèques nécessaires manquent dans le paquet du runtime.";
+"sherpa.runtime.error.extraction" = "Impossible d’extraire le paquet téléchargé.";
+"sherpa.runtime.error.unsafeArchive" = "Le paquet téléchargé contient des chemins non valides.";
+"sherpa.download.error.installFailed" = "Impossible d’installer %@. Consultez le journal de diagnostic.";
+
+"sherpa.runtime.error.releaseMetadata" = "Impossible d’obtenir les informations complètes du dernier runtime. Réessayez.";
+"sherpa.runtime.error.incompatibleSystem" = "Ce runtime ne prend pas en charge votre version de macOS ou l’architecture du processeur.";

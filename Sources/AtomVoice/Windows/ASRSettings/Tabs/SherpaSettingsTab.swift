@@ -6,6 +6,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
     private let parentWindow: () -> NSWindow?
     private let onStatusChanged: (String, NSColor) -> Void
     private weak var sherpaDownloadReporter: SherpaDownloadReporting?
+    private let operatingSystemVersion: OperatingSystemVersion
     private struct SavedFields: Equatable {
         let modelID: String?
         let unload: Bool
@@ -34,11 +35,13 @@ final class SherpaSettingsTab: ASRSettingsTab {
     init(
         parentWindow: @escaping () -> NSWindow?,
         onStatusChanged: @escaping (String, NSColor) -> Void,
-        sherpaDownloadReporter: SherpaDownloadReporting?
+        sherpaDownloadReporter: SherpaDownloadReporting?,
+        operatingSystemVersion: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
     ) {
         self.parentWindow = parentWindow
         self.onStatusChanged = onStatusChanged
         self.sherpaDownloadReporter = sherpaDownloadReporter
+        self.operatingSystemVersion = operatingSystemVersion
     }
 
     private func makeLabel(_ text: String, size: CGFloat, color: NSColor? = nil, wrapped: Bool = false) -> NSTextField {
@@ -64,6 +67,13 @@ final class SherpaSettingsTab: ASRSettingsTab {
     func makeView() -> NSView {
         let view = NSView()
         let descLabel = makeLabel(loc("asrSettings.sherpa.desc"), size: 12, color: .secondaryLabelColor, wrapped: true)
+        let compatibility = makeLabel(SherpaRuntimeRelease.compatibilityNotice(on: operatingSystemVersion) ?? "",
+                                      size: 12, color: .secondaryLabelColor, wrapped: true)
+        compatibility.identifier = NSUserInterfaceItemIdentifier("sherpa.runtime.compatibility")
+        compatibility.isHidden = !SherpaRuntimeRelease.requiresVersionRestriction(on: operatingSystemVersion)
+        let header = makeStack([descLabel, compatibility], orientation: .vertical, spacing: 8, alignment: .leading)
+        descLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
+        compatibility.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
         // 识别语言下拉（与 UI 语言独立）（Recognition language popup, decoupled from UI language）
         let langTitle = makeLabel(loc("asrSettings.sherpa.recognitionLanguage"), size: 13)
         sherpaLanguagePopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -158,12 +168,12 @@ final class SherpaSettingsTab: ASRSettingsTab {
         }
         let autoUnloadLabel = makeLabel(loc("asrSettings.sherpa.autoUnload.after"), size: 13)
         let autoUnloadRow = makeStack([sherpaAutoUnloadCheckbox, autoUnloadLabel, sherpaAutoUnloadPopup], orientation: .horizontal, spacing: 8, alignment: .centerY)
-        [descLabel, topRow, sherpaRadioStack, sherpaStatusLabel, autoUnloadRow, buttonRow, importRow].forEach(view.addSubview)
+        [header, topRow, sherpaRadioStack, sherpaStatusLabel, autoUnloadRow, buttonRow, importRow].forEach(view.addSubview)
         NSLayoutConstraint.activate([
-            descLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            descLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            descLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            topRow.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
+            header.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+            header.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            header.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            topRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 12),
             topRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             topRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             sherpaRadioStack.topAnchor.constraint(equalTo: topRow.bottomAnchor, constant: 12),
@@ -311,6 +321,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         preset: SherpaModelPreset,
         activateOnSuccess: Bool,
         runtimeOnly: Bool = false,
+        runtimeRelease: SherpaRuntimeRelease? = nil,
         completion: ((Bool) -> Void)? = nil
     ) {
         sherpaDownloadButton?.isEnabled = false
@@ -321,6 +332,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         let selectionWhenRequested = selectedModelID
         let coordinator = SherpaDownloadCoordinator(downloader: .shared, reporter: sherpaDownloadReporter)
         let result = coordinator.start(preset: preset, runtimeOnly: runtimeOnly, activateOnSuccess: activateOnSuccess,
+            runtimeRelease: runtimeRelease,
             progress: { [weak self] _ in
                 self?.sherpaStatusLabel?.stringValue = runtimeOnly ? loc("asrSettings.sherpa.updatingRuntime") : loc("asrSettings.sherpa.downloading")
             }, completion: { [weak self] success, error in
@@ -340,6 +352,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
         if result == .alreadyDownloading {
             sherpaStatusLabel?.stringValue = loc("asrSettings.sherpa.downloading")
             sherpaDownloadReporter?.updateProgress(progress: 0, message: sherpaStatusLabel.stringValue, force: false)
+            if runtimeOnly { completion?(false) }
         }
     }
     @objc private func sherpaModelSelected(_ sender: NSButton) {
@@ -397,10 +410,22 @@ final class SherpaSettingsTab: ASRSettingsTab {
         sherpaDeleteButton?.isEnabled = false
         // 1. 检查版本 (Check version)
         setSherpaStatus(loc("asrSettings.sherpa.checkingVersion"), color: .systemBlue)
-        SherpaModelDownloader.fetchLatestRuntimeVersion { [weak self] latestVersion in
+        SherpaModelDownloader.fetchLatestRuntimeRelease { [weak self] result in
             guard let self = self else { return }
             let currentVersion = SherpaModelDownloader.getLocalRuntimeVersion()
             DispatchQueue.main.async {
+                guard case .success(let release) = result else {
+                    sender.isEnabled = true
+                    self.updateSherpaStatus()
+                    self.setSherpaStatus(loc("sherpa.runtime.error.releaseMetadata"), color: .systemRed)
+                    return
+                }
+                let latestVersion = release.version
+                guard !SherpaModelDownloader.shared.isDownloading else {
+                    sender.isEnabled = true
+                    self.setSherpaStatus(loc("asrSettings.sherpa.downloading"), color: .systemBlue)
+                    return
+                }
                 let alert = NSAlert()
                 alert.messageText = loc("sherpa.update.title")
                 if latestVersion == currentVersion {
@@ -413,7 +438,7 @@ final class SherpaSettingsTab: ASRSettingsTab {
                 alert.addButton(withTitle: loc("common.cancel"))
 
                 if AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn {
-                    self.performRuntimeUpdate(sender: sender)
+                    self.performRuntimeUpdate(sender: sender, release: release)
                 } else {
                     sender.isEnabled = true
                     self.updateSherpaStatus()
@@ -422,9 +447,9 @@ final class SherpaSettingsTab: ASRSettingsTab {
             }
         }
     }
-    private func performRuntimeUpdate(sender: NSButton) {
+    private func performRuntimeUpdate(sender: NSButton, release: SherpaRuntimeRelease) {
         let preset = selectedOrCurrentPreset ?? SherpaModelPreset.current
-        startSherpaSettingsDownload(preset: preset, activateOnSuccess: false, runtimeOnly: true) { [weak sender] _ in
+        startSherpaSettingsDownload(preset: preset, activateOnSuccess: false, runtimeOnly: true, runtimeRelease: release) { [weak sender] _ in
             sender?.isEnabled = true
         }
     }

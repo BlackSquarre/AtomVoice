@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 typedef struct SherpaOnnxOnlineTransducerModelConfig {
@@ -165,6 +166,20 @@ static int path_exists(const char *path) {
   return access(path, R_OK) == 0;
 }
 
+int32_t AtomVoiceSherpaResolveOnnxRuntime(const char *lib_dir, char *path, int32_t path_size) {
+  if (!lib_dir || !path || path_size <= 0) { return 0; }
+  // 新包使用通用名；旧安装可能仅保留版本化文件，不改名、不混装库。
+  const char *names[] = {"libonnxruntime.dylib", "libonnxruntime.1.24.4.dylib", "libonnxruntime.1.27.0.dylib"};
+  for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+    int length = snprintf(path, (size_t)path_size, "%s/%s", lib_dir, names[i]);
+    struct stat info;
+    if (length >= 0 && length < path_size && path_exists(path) && stat(path, &info) == 0 &&
+        S_ISREG(info.st_mode) && info.st_size > 0) { return 1; }
+  }
+  path[0] = '\0';
+  return 0;
+}
+
 static int load_symbol(void *handle, const char *name, void **out, char *error_message, int32_t error_message_size) {
   *out = dlsym(handle, name);
   if (!*out) {
@@ -207,7 +222,7 @@ static AtomVoiceSherpaContext *create_online_context(const char *lib_dir,
 
   char onnxruntime_path[4096];
   char sherpa_path[4096];
-  make_path(onnxruntime_path, sizeof(onnxruntime_path), lib_dir, "libonnxruntime.1.24.4.dylib");
+  AtomVoiceSherpaResolveOnnxRuntime(lib_dir, onnxruntime_path, sizeof(onnxruntime_path));
   make_path(sherpa_path, sizeof(sherpa_path), lib_dir, "libsherpa-onnx-c-api.dylib");
 
   if (!path_exists(onnxruntime_path) || !path_exists(sherpa_path)) {
@@ -421,7 +436,7 @@ AtomVoiceSherpaPunctuationContext *AtomVoiceSherpaPunctuationCreate(const char *
   char onnxruntime_path[4096];
   char sherpa_path[4096];
   char model_path[4096];
-  make_path(onnxruntime_path, sizeof(onnxruntime_path), lib_dir, "libonnxruntime.1.24.4.dylib");
+  AtomVoiceSherpaResolveOnnxRuntime(lib_dir, onnxruntime_path, sizeof(onnxruntime_path));
   make_path(sherpa_path, sizeof(sherpa_path), lib_dir, "libsherpa-onnx-c-api.dylib");
   make_path(model_path, sizeof(model_path), model_dir, "model.int8.onnx");
 
