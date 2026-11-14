@@ -34,12 +34,19 @@ final class RecordingAudioInput {
         }
     }
 
-    func connect(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
+    /// 历史快照也在输入队列内取得；回放期间进入的新帧排在同一个交接块之后。
+    func connect(replaying history: (() -> [AVAudioPCMBuffer])? = nil,
+                 _ handler: @escaping (AVAudioPCMBuffer) -> Void) {
         queue.async { [self] in
             guard !isCancelled else { return }
+            let replay = history?() ?? []
             self.handler = handler
             let pending = buffers
             buffers.removeAll()
+            for buffer in replay {
+                guard !isCancelled else { break }
+                handler(buffer)
+            }
             for buffer in pending {
                 guard !isCancelled else { break }
                 handler(buffer)

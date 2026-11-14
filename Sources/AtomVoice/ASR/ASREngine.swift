@@ -19,13 +19,13 @@ extension ASREngine {
 
 final class AppleSpeechASREngine: ASREngine {
     let descriptor = ASREngineDescriptor.apple
-    let recognizer: SpeechRecognizerController
+    let recognizer: any AppleSpeechRecognizing
 
     private let requestLock = NSLock()
     private var generation = 0
     private var request: SFSpeechAudioBufferRecognitionRequest?
 
-    init(recognizer: SpeechRecognizerController = SpeechRecognizerController()) {
+    init(recognizer: any AppleSpeechRecognizing = SpeechRecognizerController()) {
         self.recognizer = recognizer
     }
 

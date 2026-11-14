@@ -7,10 +7,12 @@ final class DoubaoFallbackCoordinator {
         let cloudPrefixText: String
         let liveFallbackText: String
         let originalError: String
+        let fallbackTextIfAppleEmpty: String
     }
 
     private let audioQueue = DispatchQueue(label: "com.atomvoice.doubaoFallbackAudio")
     private let lock = NSLock()
+    private let retainsAudioUntilFinal: Bool
 
     private var audioBuffers: [AVAudioPCMBuffer] = []
     /// 全程维护的"最近 N 秒"滚动回看缓冲：豆包断流回退到 Apple 时，用它补回
@@ -29,6 +31,10 @@ final class DoubaoFallbackCoordinator {
     private var errorMessage: String?
     private var appleLiveActive = false
     private var prefixText = ""
+
+    init(retainsAudioUntilFinal: Bool = false) {
+        self.retainsAudioUntilFinal = retainsAudioUntilFinal
+    }
 
     var currentError: String? {
         withLock {
@@ -69,7 +75,7 @@ final class DoubaoFallbackCoordinator {
         }
         // 仅清等待期间的全量缓冲；滚动回看缓冲继续保留，供后续断流回退补缺口。
         // (Only the waiting-phase full buffer is cleared; the rolling look-back stays alive.)
-        if isFirstResult { clearAudioBuffers() }
+        if isFirstResult && !retainsAudioUntilFinal { clearAudioBuffers() }
         return isFirstResult
     }
 
@@ -80,7 +86,8 @@ final class DoubaoFallbackCoordinator {
     ///  fallback. Both share one copy.)
     func captureAudioBuffer(_ buffer: AVAudioPCMBuffer,
                             copyBuffer: (AVAudioPCMBuffer) -> AVAudioPCMBuffer?) {
-        let keepFullAudio = withLock { waitingForFirstResult }
+        // Apple 已开始准备但尚未切换输入消费者时，仍须接住这段交接音频。
+        let keepFullAudio = withLock { waitingForFirstResult || retainsAudioUntilFinal }
         guard let copiedBuffer = copyBuffer(buffer) else { return }
         audioQueue.async { [weak self] in
             guard let self else { return }
@@ -115,8 +122,11 @@ final class DoubaoFallbackCoordinator {
     }
 
     func liveDisplayText(liveText: String = "") -> String {
-        let prefix = withLock { prefixText }
-        return Self.combinedText(prefix: prefix, cachedText: "", liveText: liveText)
+        let state = withLock { (prefixText, retainsAudioUntilFinal && appleLiveActive) }
+        if state.1, !liveText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return liveText
+        }
+        return Self.combinedText(prefix: state.0, cachedText: "", liveText: liveText)
     }
 
     func finishSuccessfulCloudRecognition() {
@@ -164,11 +174,14 @@ final class DoubaoFallbackCoordinator {
         clearAllAudioBuffers()
 
         let liveFallbackText = state.1 ? stopLiveFallback() : ""
+        // 严格完成模式重识别整段音频；不能把临时云文本再拼在整段 Apple 文本前。
+        let replacesWholeRecording = retainsAudioUntilFinal && (!buffers.isEmpty || state.1)
         return Snapshot(
             buffers: buffers,
-            cloudPrefixText: state.0,
+            cloudPrefixText: replacesWholeRecording ? "" : state.0,
             liveFallbackText: liveFallbackText,
-            originalError: originalError
+            originalError: originalError,
+            fallbackTextIfAppleEmpty: replacesWholeRecording ? state.0 : ""
         )
     }
 
@@ -222,6 +235,16 @@ final class DoubaoFallbackCoordinator {
     /// (Snapshot of the rolling look-back buffer; replayed into Apple on fallback to bridge the gap.)
     func rollingBufferSnapshot() -> [AVAudioPCMBuffer] {
         audioQueue.sync { rollingBuffers }
+    }
+
+    /// 未获得云端最终确认时，Apple 接管整段缓存；其他引擎仍沿用最近五秒回看。
+    func liveReplayBuffers() -> [AVAudioPCMBuffer] {
+        guard retainsAudioUntilFinal else { return rollingBufferSnapshot() }
+        let buffers = snapshotAudioBuffers()
+        if !buffers.isEmpty {
+            clearAudioBuffers()
+        }
+        return buffers
     }
 
     private func snapshotAudioBuffers() -> [AVAudioPCMBuffer] {

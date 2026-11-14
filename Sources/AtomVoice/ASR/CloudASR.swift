@@ -3,8 +3,8 @@ import AVFoundation
 import Foundation
 
 /// 云端层保留分类与显示文案；恢复决策不再在多个调用方重复解析文案。
-struct CloudASRFailure {
-    enum Kind { case transport, server, protocolMessage, timeout }
+struct CloudASRFailure: Error {
+    enum Kind { case configuration, transport, server, protocolMessage, timeout }
     let kind: Kind
     let message: String
     let isBenignSocketClosure: Bool
@@ -66,14 +66,31 @@ protocol CloudASRProvider {
     /// 创建新连接；返回 nil 表示无法创建（Create a new connection; nil means creation failed）
     func createConnection() -> CloudASRConnection?
 
+    /// 同一轮配置与密钥在后台一次读取，避免校验和创建之间切换设置。
+    func prepareConnection() -> Result<any CloudASRConnection, CloudASRFailure>
+
     var audioConfiguration: CloudASRAudioConfiguration { get }
 
     /// 最终结果等待超时（秒）（Final-result wait timeout in seconds）
     var finalResultTimeout: Double { get }
+
+    /// 需要服务端明确完成时，超时或错误即使已有 partial 仍须走恢复。
+    var requiresFinalConfirmation: Bool { get }
 }
 
 extension CloudASRProvider {
     var audioConfiguration: CloudASRAudioConfiguration { .init() }
+    var requiresFinalConfirmation: Bool { false }
+
+    func prepareConnection() -> Result<any CloudASRConnection, CloudASRFailure> {
+        if let message = validateCredentials() {
+            return .failure(.init(kind: .configuration, message: message))
+        }
+        guard let connection = createConnection() else {
+            return .failure(.init(kind: .configuration, message: loc("cloudASR.error.noConnection")))
+        }
+        return .success(connection)
+    }
 }
 
 // MARK: - 通用音频转换器（PCM16 mono，采样率由配置声明）
@@ -216,6 +233,7 @@ final class CloudASRRecognizerController: NSObject {
     private var onError: ((CloudASRFailure) -> Void)?
     private var sentAudioBytes = 0
     private var sessionID = 0
+    private var pendingFailure: CloudASRFailure?
 
     init(provider: CloudASRProvider) {
         self.provider = provider
@@ -232,13 +250,13 @@ final class CloudASRRecognizerController: NSObject {
 
     func start(onResult: @escaping (String, Bool) -> Void,
                onError: @escaping (CloudASRFailure) -> Void) -> String? {
-        if let error = provider.validateCredentials() {
-            DebugLog.error("[CloudASR] Credential validation failed: \(error)")
-            return error
-        }
-        guard let connection = provider.createConnection() else {
-            DebugLog.error("[CloudASR] Failed to create connection")
-            return loc("cloudASR.error.noConnection")
+        let connection: any CloudASRConnection
+        switch provider.prepareConnection() {
+        case .success(let prepared):
+            connection = prepared
+        case .failure(let failure):
+            DebugLog.error("[CloudASR] Connection preparation failed")
+            return failure.message
         }
 
         queue.async { [weak self] in
@@ -299,7 +317,8 @@ final class CloudASRRecognizerController: NSObject {
             }
             guard self.state == .streaming else {
                 let text = self.lastText
-                DispatchQueue.main.async { completion(text, nil) }
+                let error = self.pendingFailure?.message
+                DispatchQueue.main.async { completion(text, error) }
                 return
             }
 
@@ -366,35 +385,43 @@ final class CloudASRRecognizerController: NSObject {
             else { return }
             let text = self.lastText
             // 如果没有发送过音频且没有收到结果，不显示超时错误（If no audio was sent and no result received, don't show timeout error）
-            let error: String? = (self.sentAudioBytes == 0 && text.isEmpty) ? nil : (text.isEmpty ? loc("cloudASR.error.timeout") : nil)
+            let needsRecovery = text.isEmpty || self.provider.requiresFinalConfirmation
+            let error: String? = (self.sentAudioBytes == 0 && text.isEmpty) ? nil : (needsRecovery ? loc("cloudASR.error.timeout") : nil)
             self.completeStopLocked(text: text, error: error)
         }
     }
 
     private func failLocked(_ failure: CloudASRFailure) {
         let message = failure.message
-        DebugLog.error("[CloudASR] Recognition failed: \(message), state=\(self.state), sentBytes=\(self.sentAudioBytes)")
-        DebugLog.error("[CloudASR] error: \(message)")
+        DebugLog.error("[CloudASR] Recognition failed: kind=\(failure.kind), state=\(self.state), sentBytes=\(self.sentAudioBytes)")
         if state == .finishing || finishCompletion != nil {
             let audioBytes = sentAudioBytes + chunkBuffer.count
-            let noUsefulRecognition = lastText.isEmpty && (
+            let noUsefulRecognition = !provider.requiresFinalConfirmation && lastText.isEmpty && (
                 audioBytes < minimumUsefulAudioBytes || failure.isBenignSocketClosure
             )
-            completeStopLocked(text: lastText, error: noUsefulRecognition ? nil : (lastText.isEmpty ? message : nil))
+            let needsRecovery = lastText.isEmpty || provider.requiresFinalConfirmation
+            completeStopLocked(text: lastText, error: noUsefulRecognition ? nil : (needsRecovery ? message : nil))
             return
         }
         let callback = onError
+        let failedText = lastText
         cancelLocked()
+        // 错误回调与松键可同时排到主线程；严格模式保留失败给 stop 接管恢复。
+        if provider.requiresFinalConfirmation {
+            lastText = failedText
+            pendingFailure = failure
+        }
         DispatchQueue.main.async {
             callback?(failure)
         }
     }
 
     private func completeStopLocked(text: String, error: String?) {
-        DebugLog.info("[CloudASR] Completed stop: text=\(text.prefix(50)), error=\(error ?? "nil"), sentBytes=\(self.sentAudioBytes)")
+        DebugLog.info("[CloudASR] Completed stop: characters=\(text.count), hasError=\(error != nil), sentBytes=\(self.sentAudioBytes)")
         let completion = finishCompletion
         DebugLog.info("[CloudASR] stop: bytes=\(self.sentAudioBytes)")
         finishCompletion = nil
+        pendingFailure = nil
         connection?.cancel()
         connection = nil
         state = .idle
@@ -410,6 +437,7 @@ final class CloudASRRecognizerController: NSObject {
 
     private func cancelLocked() {
         sessionID += 1
+        pendingFailure = nil
         finishCompletion = nil
         connection?.cancel()
         connection = nil
@@ -471,7 +499,7 @@ extension CloudASRRecognizerController: CloudASRConnectionDelegate {
     }
 
     func connection(_ connection: CloudASRConnection, didFailWithError error: CloudASRFailure) {
-        DebugLog.error("[CloudASR] Connection error callback: \(error.message)")
+        DebugLog.error("[CloudASR] Connection error callback: kind=\(error.kind)")
         queue.async { [weak self] in
             guard let self,
                   self.connection === connection

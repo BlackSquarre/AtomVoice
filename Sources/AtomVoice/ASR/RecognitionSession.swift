@@ -257,22 +257,24 @@ final class SherpaRecognitionSession: RecognitionSession {
 
 }
 
-final class DoubaoRecognitionSession: RecognitionSession {
-    let code = VolcengineASRSettings.engineCode
+final class CloudRecognitionSession: RecognitionSession {
+    var code: String { cloudEngine.descriptor.code }
     let supportsMutableCapsulePreview = true
     let supportsLiveInsertion = false
     var preferredAudioFormat: AudioRouter.ConsumerFormat? { cloudEngine.preferredAudioFormat }
     var recognitionResources: Set<String> { [code, ASREngineRegistry.appleCode] }
 
-    private let cloudEngine: VolcengineASREngine
+    private let cloudEngine: CloudASREngine
     private let appleSession: AppleRecognitionSession
-    private let speechRecognizerProvider: () -> SpeechRecognizerController
-    private let audioEngine: AudioEngineController
-    private let fallback = DoubaoFallbackCoordinator()
+    private let speechRecognizerProvider: () -> any AppleSpeechRecognizing
+    private let fallback: DoubaoFallbackCoordinator
+    private let privacyAccepted: () -> Bool
+    private let privacyErrorKey: String
+    private let fallbackErrorKey: String
+    private let validatesCredentialsDuringPreflight: Bool
     private lazy var appleLiveFallback = AppleLiveFallbackStrategy(
-        audioEngine: audioEngine,
         fallback: fallback,
-        audioFormat: cloudEngine.preferredAudioFormat,
+        fallbackErrorKey: fallbackErrorKey,
         speechRecognizerProvider: speechRecognizerProvider
     )
     private var usingAppleStartFallback = false
@@ -283,15 +285,23 @@ final class DoubaoRecognitionSession: RecognitionSession {
     #endif
 
     init(
-        cloudEngine: VolcengineASREngine,
+        cloudEngine: CloudASREngine,
         appleEngine: AppleSpeechASREngine,
-        speechRecognizerProvider: @escaping () -> SpeechRecognizerController,
-        audioEngine: AudioEngineController
+        speechRecognizerProvider: @escaping () -> any AppleSpeechRecognizing,
+        audioEngine _: AudioEngineController,
+        privacyAccepted: @escaping () -> Bool = { AppSettings.doubaoASRPrivacyAccepted },
+        privacyErrorKey: String = "doubao.error.privacyNotAccepted",
+        fallbackErrorKey: String = "doubao.fallback.withError",
+        validatesCredentialsDuringPreflight: Bool = true
     ) {
         self.cloudEngine = cloudEngine
         self.appleSession = AppleRecognitionSession(engine: appleEngine)
         self.speechRecognizerProvider = speechRecognizerProvider
-        self.audioEngine = audioEngine
+        self.privacyAccepted = privacyAccepted
+        self.privacyErrorKey = privacyErrorKey
+        self.fallbackErrorKey = fallbackErrorKey
+        self.validatesCredentialsDuringPreflight = validatesCredentialsDuringPreflight
+        self.fallback = DoubaoFallbackCoordinator(retainsAudioUntilFinal: cloudEngine.provider.requiresFinalConfirmation)
     }
 
     var currentText: String {
@@ -299,10 +309,10 @@ final class DoubaoRecognitionSession: RecognitionSession {
     }
 
     func preflight() -> RecognitionSessionPreflightResult {
-        guard AppSettings.doubaoASRPrivacyAccepted else {
-            return .failure(loc("doubao.error.privacyNotAccepted"))
+        guard privacyAccepted() else {
+            return .failure(loc(privacyErrorKey))
         }
-        if let error = cloudEngine.validate() {
+        if validatesCredentialsDuringPreflight, let error = cloudEngine.validate() {
             return .failure(error)
         }
         return .ready
@@ -321,9 +331,15 @@ final class DoubaoRecognitionSession: RecognitionSession {
     ) {
         startAttempt += 1
         let attempt = startAttempt
-        DebugLog.info("[Session] Starting Doubao recording")
+        DebugLog.info("[Session] Starting cloud recording: engine=\(code)")
         fallback.beginWaitingForFirstResult()
         callbacks.onShowRecording()
+        var didCompleteStart = false
+        let completeStart: (RecognitionSessionStartResult) -> Void = { result in
+            guard !didCompleteStart else { return }
+            didCompleteStart = true
+            completion(result)
+        }
 
         cloudEngine.startAsync(
             onResult: { [weak self] text, isFinal in
@@ -348,20 +364,20 @@ final class DoubaoRecognitionSession: RecognitionSession {
             },
             onError: { [weak self] message in
                 DispatchQueue.main.async {
-                    guard let self, callbacks.isRecordingCurrent() else { return }
+                    guard let self, self.startAttempt == attempt,
+                          callbacks.isRecordingCurrent() || (self.cloudEngine.provider.requiresFinalConfirmation && callbacks.isCurrent())
+                    else { return }
+                    if !didCompleteStart {
+                        self.startAppleFallback(callbacks: callbacks, completion: completeStart)
+                        return
+                    }
                     self.handleRecognitionError(message, callbacks: callbacks)
                 }
             }
         ) { [weak self] error in
             guard let self, self.startAttempt == attempt, callbacks.isCurrent() else { return }
-            if let error {
-                self.fallback.reset()
-                self.usingAppleStartFallback = true
-                callbacks.onShimmerChanged(false)
-                callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
-                DebugLog.error("[Doubao] Start failed, falling back to Apple Speech: \(error)")
-                callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
-                self.appleSession.start(callbacks: callbacks, completion: completion)
+            if error != nil {
+                self.startAppleFallback(callbacks: callbacks, completion: completeStart)
                 return
             }
 
@@ -376,8 +392,20 @@ final class DoubaoRecognitionSession: RecognitionSession {
                 self.fallback.captureAudioBuffer(buffer, copyBuffer: callbacks.copyAudioBuffer)
                 consume(buffer)
             }
-            completion(.started)
+            completeStart(.started)
         }
+    }
+
+    private func startAppleFallback(callbacks: RecognitionSessionCallbacks,
+                                    completion: @escaping (RecognitionSessionStartResult) -> Void) {
+        fallback.reset()
+        cloudEngine.cancel()
+        usingAppleStartFallback = true
+        callbacks.onShimmerChanged(false)
+        callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
+        DebugLog.error("[Cloud] Start failed; falling back to Apple Speech: engine=\(code)")
+        callbacks.onProgress(loc("menu.recognitionEngine.apple"), false)
+        appleSession.start(callbacks: callbacks, completion: completion)
     }
 
     func stop(
@@ -458,35 +486,34 @@ final class DoubaoRecognitionSession: RecognitionSession {
 
     private func handleRecognitionError(_ failure: CloudASRFailure, callbacks: RecognitionSessionCallbacks) {
         let message = failure.message
-        let isBenignSilenceError = appleLiveFallback.isBenignSilenceError(
+        let isBenignSilenceError = !cloudEngine.provider.requiresFinalConfirmation && appleLiveFallback.isBenignSilenceError(
             failure,
             cloudCurrentText: cloudEngine.currentText
         )
         let visibleError = isBenignSilenceError ? "" : message
         guard fallback.recordError(visibleError, currentText: cloudEngine.currentText) else { return }
 
-        DebugLog.error("[Session] Doubao recognition error: \(message)")
+        DebugLog.error("[Session] Cloud recognition error: engine=\(code), kind=\(failure.kind)")
         cloudEngine.cancel()
         callbacks.onResetLiveInsertion()
 
         guard callbacks.isRecordingCurrent() else {
             if !isBenignSilenceError {
-                callbacks.onError(loc("doubao.fallback.withError", message))
+                callbacks.onError(loc(fallbackErrorKey, message))
             }
             return
         }
 
-        let initialText = appleLiveFallback.engage(onPartial: { merged in
+        let initialText = appleLiveFallback.engage(audioInput: callbacks.audioInput, onPartial: { merged in
             guard callbacks.isRecordingCurrent() else { return }
             callbacks.onPartialResult(merged, false)
         })
         guard let initialText else { return }
 
-        DebugLog.info("[Session] Starting Apple live fallback after Doubao error")
+        DebugLog.info("[Session] Starting Apple live fallback: engine=\(code)")
         callbacks.onEffectiveEngineChanged(ASREngineRegistry.appleCode)
         callbacks.onShimmerChanged(false)
         callbacks.onProgress(initialText, false)
-        DebugLog.error("[Doubao] Recognition failed, will fall back to Apple Speech when recording stops: \(message)")
     }
 
     private func consumeFallbackIfNeeded(
@@ -521,14 +548,18 @@ final class DoubaoRecognitionSession: RecognitionSession {
             stopLiveFallback: { [weak self] in self?.speechRecognizerProvider().stop() ?? "" }
         )
         let trimmedOriginal = fallbackSnapshot.originalError.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fallbackError = trimmedOriginal.isEmpty ? nil : loc("doubao.fallback.withError", trimmedOriginal)
-
-        guard !fallbackSnapshot.buffers.isEmpty else {
+        let fallbackError = trimmedOriginal.isEmpty ? nil : loc(fallbackErrorKey, trimmedOriginal)
+        let mergedText: (String) -> String = { appleText in
             let text = DoubaoFallbackCoordinator.combinedText(
                 prefix: fallbackSnapshot.cloudPrefixText,
-                cachedText: "",
+                cachedText: appleText,
                 liveText: fallbackSnapshot.liveFallbackText
             )
+            return text.isEmpty ? fallbackSnapshot.fallbackTextIfAppleEmpty : text
+        }
+
+        guard !fallbackSnapshot.buffers.isEmpty else {
+            let text = mergedText("")
             completion(
                 RecognitionSessionStopResult(
                     text: text,
@@ -544,21 +575,13 @@ final class DoubaoRecognitionSession: RecognitionSession {
         speechRecognizerProvider().recognize(buffers: fallbackSnapshot.buffers, onResult: { text, _ in
             DispatchQueue.main.async {
                 guard callbacks?.isCurrent() ?? true else { return }
-                let merged = DoubaoFallbackCoordinator.combinedText(
-                    prefix: fallbackSnapshot.cloudPrefixText,
-                    cachedText: text,
-                    liveText: fallbackSnapshot.liveFallbackText
-                )
+                let merged = mergedText(text)
                 callbacks?.onPartialResult(merged, false)
             }
         }) { appleText in
             DispatchQueue.main.async {
                 guard callbacks?.isCurrent() ?? true else { return }
-                let recognizedText = DoubaoFallbackCoordinator.combinedText(
-                    prefix: fallbackSnapshot.cloudPrefixText,
-                    cachedText: appleText,
-                    liveText: fallbackSnapshot.liveFallbackText
-                )
+                let recognizedText = mergedText(appleText)
                 completion(
                     RecognitionSessionStopResult(
                         text: recognizedText,
@@ -572,3 +595,6 @@ final class DoubaoRecognitionSession: RecognitionSession {
 
 
 }
+
+// 豆包保留旧入口与默认策略；其他云端引擎复用同一三阶段 Apple 恢复会话。
+typealias DoubaoRecognitionSession = CloudRecognitionSession

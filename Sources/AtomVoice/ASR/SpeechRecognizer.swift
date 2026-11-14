@@ -1,7 +1,19 @@
 import Speech
 import AVFoundation
 
-final class SpeechRecognizerController {
+/// 生产与离线恢复测试共用同一 Apple 识别边界；fake 不创建真实 Speech task。
+protocol AppleSpeechRecognizing: AnyObject {
+    var currentText: String { get }
+    func updateLanguage()
+    func start(onResult: @escaping (String, Bool) -> Void,
+               onError: @escaping (String) -> Void,
+               onRequestSwitch: @escaping (SFSpeechAudioBufferRecognitionRequest) -> Void) -> SFSpeechAudioBufferRecognitionRequest?
+    func stop() -> String
+    func recognize(buffers: [AVAudioPCMBuffer], onResult: @escaping (String, Bool) -> Void,
+                   completion: @escaping (String) -> Void)
+}
+
+final class SpeechRecognizerController: AppleSpeechRecognizing {
     private var recognizer: SFSpeechRecognizer?
     private(set) var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -149,7 +161,7 @@ final class SpeechRecognizerController {
                     let nsError = error as NSError
                     // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
                     if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
-                        DebugLog.error("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                        DebugLog.error("[SpeechRecognizer] Error: domain=\(nsError.domain), code=\(nsError.code)")
                     }
                     if result == nil {
                         finishRecognition()
@@ -260,7 +272,7 @@ final class SpeechRecognizerController {
                         let nsError = error as NSError
                         // 216 = 用户取消，属正常流程，不打印（216 = user cancellation, normal flow, do not print）
                         if !Self.isBenignCancellation(nsError) {
-                            DebugLog.error("[SpeechRecognizer] Error: \(error.localizedDescription)")
+                            DebugLog.error("[SpeechRecognizer] Error: domain=\(nsError.domain), code=\(nsError.code)")
                             self.onError?(error.localizedDescription)
                         }
                     }

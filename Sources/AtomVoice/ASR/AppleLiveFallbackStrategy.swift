@@ -2,26 +2,22 @@ import AVFoundation
 import Foundation
 import Speech
 
-/// 豆包识别失败后启动 Apple 实时识别回退的策略对象。
-/// (Strategy that activates Apple live recognition as a fallback after Doubao recognition fails.)
+/// 云端识别失败后复用同一 Apple owner 接收缓存及后续实时音频。
 ///
 /// 职责：
 /// - 判断豆包错误是否属于"长按不说话"静音误报（应被静默吞掉）。
-/// - 启动 SFSpeechRecognizer，绑定到当前 AudioEngine 上接收实时音频。
-/// - 不持有胶囊 / 录音 generation / streamSession 等编排状态——这些归 AppDelegate（未来 RecordingSessionController）。
+/// - 启动 SFSpeechRecognizer，在本轮输入队列中有序回灌并接收后续音频。
+/// - 不持有胶囊 / 录音 generation / streamSession，编排由 RecordingSessionController 承担。
 final class AppleLiveFallbackStrategy {
-    private let audioEngine: AudioEngineController
-    private let audioFormat: AudioRouter.ConsumerFormat
     private let fallback: DoubaoFallbackCoordinator
-    private let speechRecognizerProvider: () -> SpeechRecognizerController
+    private let speechRecognizerProvider: () -> any AppleSpeechRecognizing
+    private let fallbackErrorKey: String
 
-    init(audioEngine: AudioEngineController,
-         fallback: DoubaoFallbackCoordinator,
-         audioFormat: AudioRouter.ConsumerFormat = .voice16k,
-         speechRecognizerProvider: @escaping () -> SpeechRecognizerController) {
-        self.audioEngine = audioEngine
+    init(fallback: DoubaoFallbackCoordinator,
+         fallbackErrorKey: String = "doubao.fallback.withError",
+         speechRecognizerProvider: @escaping () -> any AppleSpeechRecognizing) {
         self.fallback = fallback
-        self.audioFormat = audioFormat
+        self.fallbackErrorKey = fallbackErrorKey
         self.speechRecognizerProvider = speechRecognizerProvider
     }
 
@@ -40,14 +36,15 @@ final class AppleLiveFallbackStrategy {
     /// `onPartial` 在主线程触发，传入合并后的展示文本（云端前缀 + Apple 实时识别）。
     /// (Returns nil if already active. Otherwise returns the initial text to show on the capsule;
     ///  onPartial fires on main with merged "cloud-prefix + Apple-live" text.)
-    func engage(onPartial: @escaping (_ mergedText: String) -> Void) -> String? {
+    func engage(audioInput: RecordingAudioInput,
+                onPartial: @escaping (_ mergedText: String) -> Void) -> String? {
         guard !fallback.isAppleLiveActive else { return nil }
 
         let errorHint = fallback.beginAppleLiveFallback() ?? ""
         let liveDisplayText = fallback.liveDisplayText()
         let fallbackText = errorHint.isEmpty
             ? loc("menu.recognitionEngine.apple")
-            : loc("doubao.fallback.withError", errorHint)
+            : loc(fallbackErrorKey, errorHint)
         let initialText = liveDisplayText.isEmpty ? fallbackText : liveDisplayText
 
         let request = speechRecognizerProvider().start(
@@ -57,22 +54,27 @@ final class AppleLiveFallbackStrategy {
                     onPartial(self.fallback.liveDisplayText(liveText: text))
                 }
             },
-            onError: { error in
-                DebugLog.error("[AppleLiveFallback] \(error)")
+            onError: { _ in
+                DebugLog.error("[AppleLiveFallback] Recognition failed")
             },
             onRequestSwitch: { [weak self] newRequest in
-                // 续录沿用云端采集配置（豆包仍为 16kHz），与初次接入和回灌一致。
-                self?.audioEngine.switchRequest(newRequest, format: self?.audioFormat)
+                // 沿用本轮输入格式和队列，不另注册第二条 Router 消费者。
+                audioInput.connect { [weak self] buffer in
+                    guard self?.fallback.isAppleLiveActive == true else { return }
+                    newRequest.append(buffer)
+                }
             }
         )
 
         if let request {
-            // 先把豆包断流前最近几秒的回看音频回灌给 Apple，补回"豆包已收音但识别结果未回传"的
-            // 交接缺口；再按同一配置接实时流，重叠去重交给 combinedText。
-            for buffer in fallback.rollingBufferSnapshot() {
+            // 快照与目的地切换在原输入队列中排序：此前帧先缓存，此后帧紧接回放。
+            audioInput.connect(replaying: { [weak self] in
+                guard let self, self.fallback.isAppleLiveActive else { return [] }
+                return self.fallback.liveReplayBuffers()
+            }) { [weak self] buffer in
+                guard self?.fallback.isAppleLiveActive == true else { return }
                 request.append(buffer)
             }
-            audioEngine.switchRequest(request, format: audioFormat)
         }
         return initialText
     }
