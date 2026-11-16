@@ -44,64 +44,89 @@ enum InteractionFeedbackTests {
         }
 
         await runner.run("Manual update check gives immediate feedback and repeated clicks share its request") {
-            let source = FeedbackReleaseSource()
-            let presenter = FeedbackUpdatePresenter()
-            let checker = makeChecker(source, presenter)
-            checker.checkForUpdates()
-            try expect(checker.state == .checking && presenter.events == ["show"])
-            checker.checkForUpdates()
-            try expect(source.fetches == 1 && presenter.events == ["show", "front"])
-            source.finish(.failure(URLError(.notConnectedToInternet)))
-            try await waitUntil { checker.state == .idle }
-            try expect(presenter.events == ["show", "front", "close", "alert"])
+            try await checkManualFeedback()
         }
 
         await runner.run("Silent update check becomes visible once when user requests its result") {
-            let source = FeedbackReleaseSource()
-            let presenter = FeedbackUpdatePresenter()
-            let checker = makeChecker(source, presenter)
-            checker.checkForUpdates(silent: true)
-            try expect(presenter.events.isEmpty)
-            checker.checkForUpdates()
-            checker.checkForUpdates()
-            try expect(source.fetches == 1 && presenter.events == ["show", "front", "front"])
-            source.finish(.success(release(version: "1.0.0")))
-            try await waitUntil { checker.state == .idle }
-            try expect(presenter.events == ["show", "front", "front", "close", "alert"])
+            try await checkSilentPromotion()
         }
 
         await runner.run("Silent completed update check does not create or close user progress") {
-            let source = FeedbackReleaseSource()
-            let presenter = FeedbackUpdatePresenter()
-            let checker = makeChecker(source, presenter)
-            checker.checkForUpdates(silent: true)
-            source.finish(.success(release(version: "1.0.0")))
-            try await waitUntil { checker.state == .idle }
-            try expect(presenter.events.isEmpty)
+            try await checkSilentCompletion()
         }
 
         await runner.run("Update check feedback closes before a declined release prompt") {
-            let source = FeedbackReleaseSource()
-            let presenter = FeedbackUpdatePresenter()
-            let checker = makeChecker(source, presenter)
-            checker.checkForUpdates()
-            source.finish(.success(release(version: "2.0.0")))
-            try await waitUntil { checker.state == .idle }
-            try expect(presenter.events == ["show", "close", "confirm"])
-            try expect(source.downloads == 0)
+            try await checkDeclinedRelease()
         }
 
         await runner.run("Update download failure closes download progress after checking progress") {
-            let source = FeedbackReleaseSource()
-            let presenter = FeedbackUpdatePresenter()
-            presenter.acceptDownload = true
-            let checker = makeChecker(source, presenter)
-            checker.checkForUpdates()
-            source.finish(.success(release(version: "2.0.0")))
-            try await waitUntil { checker.state == .idle }
-            try expect(presenter.events == ["show", "close", "confirm", "show", "close", "alert"])
-            try expect(source.downloads == 1)
+            try await checkDownloadFailure()
         }
+    }
+
+    @MainActor
+    private static func checkManualFeedback() async throws {
+        let source = FeedbackReleaseSource()
+        let presenter = FeedbackUpdatePresenter()
+        let checker = makeChecker(source, presenter)
+        checker.checkForUpdates()
+        try expect(checker.state == .checking && presenter.events == ["show"])
+        checker.checkForUpdates()
+        try expect(source.fetches == 1 && presenter.events == ["show", "front"])
+        source.finish(.failure(URLError(.notConnectedToInternet)))
+        try await waitUntil { checker.state == .idle }
+        try expect(presenter.events == ["show", "front", "close", "alert"])
+    }
+
+    @MainActor
+    private static func checkSilentPromotion() async throws {
+        let source = FeedbackReleaseSource()
+        let presenter = FeedbackUpdatePresenter()
+        let checker = makeChecker(source, presenter)
+        checker.checkForUpdates(silent: true)
+        try expect(presenter.events.isEmpty)
+        checker.checkForUpdates()
+        checker.checkForUpdates()
+        try expect(source.fetches == 1 && presenter.events == ["show", "front", "front"])
+        source.finish(.success(release(version: "1.0.0")))
+        try await waitUntil { checker.state == .idle }
+        try expect(presenter.events == ["show", "front", "front", "close", "alert"])
+    }
+
+    @MainActor
+    private static func checkSilentCompletion() async throws {
+        let source = FeedbackReleaseSource()
+        let presenter = FeedbackUpdatePresenter()
+        let checker = makeChecker(source, presenter)
+        checker.checkForUpdates(silent: true)
+        source.finish(.success(release(version: "1.0.0")))
+        try await waitUntil { checker.state == .idle }
+        try expect(presenter.events.isEmpty)
+    }
+
+    @MainActor
+    private static func checkDeclinedRelease() async throws {
+        let source = FeedbackReleaseSource()
+        let presenter = FeedbackUpdatePresenter()
+        let checker = makeChecker(source, presenter)
+        checker.checkForUpdates()
+        source.finish(.success(release(version: "2.0.0")))
+        try await waitUntil { checker.state == .idle }
+        try expect(presenter.events == ["show", "close", "confirm"])
+        try expect(source.downloads == 0)
+    }
+
+    @MainActor
+    private static func checkDownloadFailure() async throws {
+        let source = FeedbackReleaseSource()
+        let presenter = FeedbackUpdatePresenter()
+        presenter.acceptDownload = true
+        let checker = makeChecker(source, presenter)
+        checker.checkForUpdates()
+        source.finish(.success(release(version: "2.0.0")))
+        try await waitUntil { checker.state == .idle }
+        try expect(presenter.events == ["show", "close", "confirm", "show", "close", "alert"])
+        try expect(source.downloads == 1)
     }
 
     private static func descendants(_ view: NSView) -> [NSView] {
@@ -119,7 +144,9 @@ enum InteractionFeedbackTests {
                     isPreRelease: false, isDebugBuild: false)
     }
 
-    private static func waitUntil(_ predicate: () -> Bool) async throws {
+    // 更新回调与状态、事件断言串行在主线程执行，避免读到 idle 后、alert 前的中间状态。
+    @MainActor
+    private static func waitUntil(_ predicate: @MainActor () -> Bool) async throws {
         for _ in 0..<1000 {
             if predicate() { return }
             try await Task.sleep(nanoseconds: 1_000_000)
