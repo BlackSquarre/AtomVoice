@@ -20,6 +20,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sherpaLifecycle: SherpaLifecycleCoordinator!
     private var session: RecordingSessionController!
 
+    #if DEBUG_BUILD
+    private var preferencesPreview: DebugPreferencesPreviewHost?
+    #endif
+
     public override init() { super.init() }
 
     deinit {
@@ -30,8 +34,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationWillTerminate(_ notification: Notification) { singleInstance.releaseSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier) }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        // 普通启动和调试预览都必须先执行单实例处理。
+        // 普通启动和调试预览统一执行单实例处理。
         singleInstance.claimSingleInstance(currentPID: ProcessInfo.processInfo.processIdentifier, bundleIdentifier: Bundle.main.bundleIdentifier, currentExecutableURL: Bundle.main.executableURL?.standardizedFileURL)
+        #if DEBUG_BUILD
+        // 设置预览使用内存配置，不建立输入监听、权限、更新和模型的生产依赖图。
+        if let preview = DebugPreferencesSnapshotArguments.current {
+            let host = DebugPreferencesPreviewHost()
+            preferencesPreview = host
+            host.show(page: preview.page)
+            return
+        }
+        #endif
         #if DEBUG_BUILD
         // 快照验收沿用现有窗口入口，不启动输入监听、权限请求、更新或模型探测。
         if DebugOOBESnapshotArguments.current != nil || DebugASRSettingsSnapshotArguments.current != nil {
@@ -61,6 +74,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configureLaunchDefaults() {
         MainMenuInstaller.install()
         AppSettings.registerDefaults()
+        AppearancePreference.applyToApplication()
         LLMAPIKeyMigration.runIfNeeded(backend: AppSettings.backend)
         if !AppSettings.doubaoASRLowLatencyDefaultApplied {
             AppSettings.backend.set(false, forKey: AppSettings.Keys.doubaoASREnableNonstream)

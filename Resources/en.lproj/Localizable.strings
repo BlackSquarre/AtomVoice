@@ -422,7 +422,7 @@
 "oobe.trigger.headphone.desc" = "Use the play/pause button on headphones or Bluetooth audio devices to control voice input. Only active while one is connected.";
 "oobe.trigger.headphone.enable" = "Enable headphone button input";
 "oobe.trigger.headphone.mode.hold" = "In hold mode, hold the headphone button to talk and release to finish. Some Bluetooth devices may not support hold mode.";
-"oobe.trigger.headphone.mode.tap" = "In tap mode, press once to start or stop; double press sends Return. Some Bluetooth devices may not support hold mode.";
+"oobe.trigger.headphone.mode.tap" = "Press once to start or stop input. Double press ends active input, or sends Return when idle.";
 
 /* ASR Settings Window */
 "menu.asrSettings" = "Recognition Engine Settings...";
@@ -511,9 +511,9 @@
 
 /* Headphone voice control */
 "menu.headphoneControl" = "Headphone Voice Control (Beta)";
-"tooltip.menu.headphoneControl" = "Use the headphone play/pause button to control voice input: in hold mode, press and hold to talk, then release to finish; in tap mode, single press starts or stops; double press sends Return. Recommended for vibe coding.";
+"tooltip.menu.headphoneControl" = "Use the headphone play/pause button to control voice input: in hold mode, press and hold to talk, then release to finish; in tap mode, single press starts or stops; double press ends active input or sends Return when idle. Recommended for vibe coding.";
 "alert.headphoneControl.title" = "Enable Headphone Voice Control?";
-"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button for voice input. In hold mode, press and hold to talk, then release to finish. In tap mode, single press starts or stops. Double press always sends Return. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support hold mode. AirPods are not currently supported due to API limitations.";
+"alert.headphoneControl.message" = "AtomVoice takes over the headphone play/pause button for voice input. In hold mode, press and hold to talk, then release to finish. In tap mode, single press starts or stops. Double press ends active input; when idle, it sends Return. Only active while headphones or a Bluetooth device is connected. Some Bluetooth devices may not support hold mode. AirPods are not currently supported due to API limitations.";
 "alert.headphoneControl.enable" = "Enable";
 
 "doubao.settings.service" = "Service:";
@@ -594,3 +594,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified settings */
+"preferences.accessibility.detail" = "Keyboard shortcuts and text insertion.";
+"preferences.appearance.capsule" = "Input capsule";
+"preferences.appearance.dark" = "Dark";
+"preferences.appearance.light" = "Light";
+"preferences.appearance.mode" = "Appearance";
+"preferences.appearance.preview" = "Input capsule preview";
+"preferences.appearance.preview.text" = "Voice input…";
+"preferences.appearance.speed" = "Animation speed";
+"preferences.appearance.style" = "Animation";
+"preferences.appearance.system" = "Follow system";
+"preferences.appleLive" = "Live Insert (Beta)";
+"preferences.appleLive.detail" = "Text already inserted is not refined again.";
+"preferences.appleOffline" = "Apple on-device model";
+"preferences.betaUpdates" = "Include Beta Versions";
+"preferences.configure" = "Configure…";
+"preferences.connections.recognition" = "Speech recognition";
+"preferences.connections.refinement" = "Text refinement";
+"preferences.connections.title" = "Manage connections";
+"preferences.currentVersion" = "Current version";
+"preferences.developer" = "Developer updates";
+"preferences.devices" = "Sound and devices";
+"preferences.discard" = "Discard changes";
+"preferences.edit" = "Edit…";
+"preferences.engineMenu" = "Recognition Engine: %@";
+"preferences.headphones" = "Headphone input (Beta)";
+"preferences.headphones.hold" = "Hold the headphone play/pause button to talk. Release to finish.";
+"preferences.headphones.tap" = "Press the headphone play/pause button once to start or stop input.";
+"preferences.hints.title" = "Recognition hints";
+"preferences.inUse" = "In use";
+"preferences.inputDevice" = "Input device";
+"preferences.launchAtLogin" = "Open at login";
+"preferences.lowerVolume" = "Lower system volume during input";
+"preferences.manageModels" = "Manage local models…";
+"preferences.microphone.detail" = "Capture speech.";
+"preferences.models.title" = "Local models";
+"preferences.output" = "Output";
+"preferences.page.about" = "About";
+"preferences.page.appearance" = "Appearance";
+"preferences.page.general" = "General";
+"preferences.page.input" = "Input Mode";
+"preferences.page.mode" = "Recognition Engine";
+"preferences.page.permissions" = "Permissions and privacy";
+"preferences.pages" = "Settings pages";
+"preferences.permissions" = "System permissions";
+"preferences.project" = "Project website";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "Add punctuation automatically";
+"preferences.recognition" = "Recognition";
+"preferences.refinement" = "Text refinement";
+"preferences.refinementRules" = "System Prompt:";
+"preferences.resetPermissions" = "Reset permissions…";
+"preferences.seconds" = "%g s";
+"preferences.section.appearance" = "Appearance";
+"preferences.section.general" = "General";
+"preferences.section.system" = "System";
+"preferences.section.voice" = "Voice input";
+"preferences.service" = "Service";
+"preferences.settingsCommand" = "Settings…";
+"preferences.silenceStop" = "Stop Delay";
+"preferences.soundSettings" = "Sound settings";
+"preferences.speech.detail" = "Apple recognition, including fallback when cloud recognition fails.";
+"preferences.support" = "Support and licenses";
+"preferences.systemDefault" = "System default";
+"preferences.systemSettings" = "System Settings…";
+"preferences.tagline" = "Voice input from the macOS menu bar";
+"preferences.title" = "Settings";
+"preferences.triggerMenu" = "Trigger Key: %@";
+"preferences.triggerMode" = "Trigger behavior";
+"preferences.unavailableDevice" = "Device unavailable";
+"preferences.useEngine" = "Use this engine";
+"preferences.view" = "View…";
+
+"preferences.debug.tools" = "Developer Tools";
+"preferences.debug.delay" = "Paste Delay";
+
+"preferences.windowMenu" = "Window";
+"preferences.closeWindow" = "Close Window";
+
+"preferences.connections.command" = "Manage connections…";
+
+"preferences.hints.scene" = "Scene";

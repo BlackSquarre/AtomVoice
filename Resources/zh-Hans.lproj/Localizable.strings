@@ -423,7 +423,7 @@
 "oobe.trigger.headphone.desc" = "用耳机或蓝牙音频设备的播放/暂停键控制语音输入。仅在已连接设备时生效。";
 "oobe.trigger.headphone.enable" = "启用耳机按钮输入";
 "oobe.trigger.headphone.mode.hold" = "长按模式下，按住耳机按钮说话，松开结束。部分蓝牙设备可能不支持长按。";
-"oobe.trigger.headphone.mode.tap" = "单击模式下，按一次开始或停止；双击发送回车。部分蓝牙设备可能不支持长按。";
+"oobe.trigger.headphone.mode.tap" = "单击开始或结束输入；双击时，输入中结束，空闲时发送回车。";
 
 /* 识别引擎设置窗口 */
 "menu.asrSettings" = "识别引擎设置...";
@@ -499,7 +499,7 @@
 "doubao.model.v1" = "豆包流式 1.0";
 
 /* Edit menu */
-"menu.app.quit" = "退出 %@";
+"menu.app.quit" = "退出%@";
 "menu.edit" = "编辑";
 "menu.edit.undo" = "撤销";
 "menu.edit.redo" = "重做";
@@ -512,9 +512,9 @@
 
 /* 耳机语音控制 */
 "menu.headphoneControl" = "耳机语音控制 (Beta)";
-"tooltip.menu.headphoneControl" = "用耳机播放/暂停键控制语音输入：长按模式下按住说话、松开结束；单击模式下单击开始/停止；双击发送回车。适合 Vibe Coding 时使用。";
+"tooltip.menu.headphoneControl" = "用耳机播放/暂停键控制语音输入：长按模式下按住说话、松开结束；单击模式下单击开始/停止；双击结束当前输入，空闲时发送回车。适合 Vibe Coding 时使用。";
 "alert.headphoneControl.title" = "启用耳机语音控制？";
-"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击始终发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。AirPods 由于接口原因暂不支持。";
+"alert.headphoneControl.message" = "AtomVoice 会接管耳机的播放/暂停键来控制语音输入。长按模式下，按住说话、松开结束；单击模式下，单击开始或停止；双击可结束当前输入；空闲时双击发送回车。只有在连接耳机或蓝牙设备时才会生效。部分蓝牙设备可能不支持长按模式。AirPods 由于接口原因暂不支持。";
 "alert.headphoneControl.enable" = "启用";
 
 "doubao.settings.service" = "服务：";
@@ -595,3 +595,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified settings */
+"preferences.accessibility.detail" = "快捷键与文字插入。";
+"preferences.appearance.capsule" = "输入胶囊";
+"preferences.appearance.dark" = "深色";
+"preferences.appearance.light" = "浅色";
+"preferences.appearance.mode" = "外观";
+"preferences.appearance.preview" = "输入胶囊预览";
+"preferences.appearance.preview.text" = "正在语音输入…";
+"preferences.appearance.speed" = "动画速度";
+"preferences.appearance.style" = "动画效果";
+"preferences.appearance.system" = "跟随系统";
+"preferences.appleLive" = "实时上屏（Beta）";
+"preferences.appleLive.detail" = "已上屏的文字不再润色。";
+"preferences.appleOffline" = "Apple 离线模型";
+"preferences.betaUpdates" = "包含测试版";
+"preferences.configure" = "配置…";
+"preferences.connections.recognition" = "语音识别";
+"preferences.connections.refinement" = "文字润色";
+"preferences.connections.title" = "管理连接";
+"preferences.currentVersion" = "当前版本";
+"preferences.developer" = "开发者动态";
+"preferences.devices" = "声音与设备";
+"preferences.discard" = "放弃更改";
+"preferences.edit" = "编辑…";
+"preferences.engineMenu" = "识别引擎：%@";
+"preferences.headphones" = "耳机语音控制（Beta）";
+"preferences.headphones.hold" = "按住耳机播放/暂停键开始输入，松开停止输入。";
+"preferences.headphones.tap" = "按一下耳机播放/暂停键开始输入，再按一下停止输入。";
+"preferences.hints.title" = "识别提示";
+"preferences.inUse" = "使用中";
+"preferences.inputDevice" = "输入设备";
+"preferences.launchAtLogin" = "开机启动";
+"preferences.lowerVolume" = "输入时降低系统音量";
+"preferences.manageModels" = "管理本地模型…";
+"preferences.microphone.detail" = "采集语音。";
+"preferences.models.title" = "本地模型";
+"preferences.output" = "输出";
+"preferences.page.about" = "关于";
+"preferences.page.appearance" = "外观";
+"preferences.page.general" = "通用";
+"preferences.page.input" = "输入方式";
+"preferences.page.mode" = "识别引擎";
+"preferences.page.permissions" = "权限与隐私";
+"preferences.pages" = "设置页面";
+"preferences.permissions" = "系统权限";
+"preferences.project" = "项目主页";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "自动补全标点";
+"preferences.recognition" = "识别";
+"preferences.refinement" = "润色";
+"preferences.refinementRules" = "系统提示词:";
+"preferences.resetPermissions" = "重置权限…";
+"preferences.seconds" = "%g 秒";
+"preferences.section.appearance" = "外观";
+"preferences.section.general" = "通用";
+"preferences.section.system" = "系统";
+"preferences.section.voice" = "语音输入";
+"preferences.service" = "服务";
+"preferences.settingsCommand" = "设置…";
+"preferences.silenceStop" = "停录延迟";
+"preferences.soundSettings" = "系统声音设置";
+"preferences.speech.detail" = "Apple 识别及云端识别失败时的备用识别。";
+"preferences.support" = "支持与许可";
+"preferences.systemDefault" = "系统默认";
+"preferences.systemSettings" = "系统设置…";
+"preferences.tagline" = "macOS 菜单栏语音输入";
+"preferences.title" = "设置";
+"preferences.triggerMenu" = "触发按键：%@";
+"preferences.triggerMode" = "触发方式";
+"preferences.unavailableDevice" = "设备不可用";
+"preferences.useEngine" = "设为当前引擎";
+"preferences.view" = "查看…";
+
+"preferences.debug.tools" = "调试工具";
+"preferences.debug.delay" = "粘贴延迟";
+
+"preferences.windowMenu" = "窗口";
+"preferences.closeWindow" = "关闭窗口";
+
+"preferences.connections.command" = "管理连接…";
+
+"preferences.hints.scene" = "场景说明";

@@ -39,6 +39,8 @@ enum AppSettings {
         static let llmResultDelay = "llmResultDelay"
         static let autoPunctuationEnabled = "autoPunctuationEnabled"
         static let appleOnDeviceRecognitionEnabled = "appleOnDeviceRecognitionEnabled"
+        static let preferencesLastPage = "preferences.lastPage"
+        static let appearanceMode = "appearanceMode"
         static let animationStyle = "animationStyle"
         static let animationSpeed = "animationSpeed"
         static let silenceAutoStopEnabled = "silenceAutoStopEnabled"
@@ -133,6 +135,7 @@ enum AppSettings {
             Keys.autoPunctuationEnabled: true,
             Keys.appleOnDeviceRecognitionEnabled: false,
             Keys.llmResultDelay: 0.3,
+            Keys.appearanceMode: AppearancePreference.system.rawValue,
             Keys.animationStyle: defaultAnimationStyle,
             Keys.animationSpeed: defaultAnimationSpeed,
             Keys.silenceAutoStopEnabled: false,
@@ -237,6 +240,11 @@ enum AppSettings {
     static var appleOnDeviceRecognitionEnabled: Bool {
         get { recognition.appleOnDeviceRecognitionEnabled }
         set { recognition.appleOnDeviceRecognitionEnabled = newValue }
+    }
+
+    static var appearanceMode: AppearancePreference {
+        get { interface.appearanceMode }
+        set { interface.appearanceMode = newValue }
     }
 
     static var animationStyle: String {

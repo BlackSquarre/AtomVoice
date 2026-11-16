@@ -218,11 +218,6 @@ final class CapsuleWindowController {
     private let downloadFillColor = NSColor(calibratedRed: 0.18, green: 0.59, blue: 1.00, alpha: 0.86)
     private let downloadFillHighlightColor = NSColor(calibratedRed: 0.80, green: 0.92, blue: 1.00, alpha: 0.96)
     private let defaultBottomOffset: CGFloat = 54
-    private var usesSystemLiquidGlassTransparency: Bool {
-        ProcessInfo.processInfo.isOperatingSystemAtLeast(
-            OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0)
-        )
-    }
 
     var isVisible: Bool { panel != nil }
     var isShowingDownloadPresentation: Bool { panel != nil && displayMode == .download }
@@ -640,23 +635,7 @@ final class CapsuleWindowController {
 
     @available(macOS 26.0, *)
     private func configureGlassEffectView(_ glass: NSGlassEffectView) {
-        glass.cornerRadius = cornerRadius
-        if usesSystemLiquidGlassTransparency {
-            // macOS 27 的 Liquid Glass 透明度由系统控制；不要固定 tint/alpha。
-            glass.style = .regular
-            glass.tintColor = nil
-            applyGlassInteractivityIfAvailable(to: glass)
-        } else {
-            glass.style = .clear
-            glass.tintColor = NSColor.windowBackgroundColor.withAlphaComponent(0.065)
-        }
-    }
-
-    @available(macOS 26.0, *)
-    private func applyGlassInteractivityIfAvailable(to glass: NSGlassEffectView) {
-        let selector = NSSelectorFromString("setEffectIsInteractive:")
-        guard glass.responds(to: selector) else { return }
-        glass.setValue(true, forKey: "effectIsInteractive")
+        CapsuleGlassAppearance.configure(glass, cornerRadius: cornerRadius)
     }
 
     private func initialTextWidth(_ text: String) -> CGFloat {

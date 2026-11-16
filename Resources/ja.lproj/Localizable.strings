@@ -422,8 +422,7 @@
 "oobe.trigger.headphone.desc" = "ヘッドフォンや Bluetooth オーディオ機器の再生/一時停止ボタンで音声入力を操作します。接続中のみ有効です。";
 "oobe.trigger.headphone.enable" = "ヘッドフォンボタン入力を有効化";
 "oobe.trigger.headphone.mode.hold" = "押している間モードでは、ヘッドフォンボタンを押して話し、離すと終了します。一部の Bluetooth 機器では長押しに対応しない場合があります。";
-"oobe.trigger.headphone.mode.tap" = "タップモードでは、1 回押しで開始/停止、2 回押しで Return を送信します。一部の Bluetooth 機器では長押しに対応しない場合があります。";
-
+"oobe.trigger.headphone.mode.tap" = "1回押して開始・終了。2回押すと入力中は終了し、待機中は Return を送信します。";
 /* 認識エンジン設定ウィンドウ */
 "menu.asrSettings" = "認識エンジン設定...";
 "asrSettings.title" = "認識エンジン設定";
@@ -511,9 +510,9 @@
 
 /* ヘッドフォン リモート操作 */
 "menu.headphoneControl" = "ヘッドフォン音声コントロール (Beta)";
-"tooltip.menu.headphoneControl" = "ヘッドフォンの再生/一時停止ボタンで音声入力を操作: 長押しモードでは押している間話し、離すと終了。タップモードではシングル押しで開始/停止。ダブル押しで Return を送信します。Vibe Coding におすすめです。";
+"tooltip.menu.headphoneControl" = "ヘッドフォンの再生/一時停止ボタンで音声入力を操作します。長押しモードでは押して話し、離すと終了。タップモードでは1回押して開始・終了。2回押すと入力中は終了し、待機中は Return を送信します。Vibe Coding におすすめです。";
 "alert.headphoneControl.title" = "ヘッドフォン音声コントロールを有効にしますか？";
-"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンを引き継いで音声入力を操作します。長押しモードでは押している間話し、離すと終了します。タップモードではシングル押しで開始または停止します。ダブル押しは常に Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスでは長押しモードが使えないことがあります。AirPods は API の制限により現在サポートされていません。";
+"alert.headphoneControl.message" = "AtomVoice がヘッドフォンの再生/一時停止ボタンで音声入力を操作します。長押しモードでは押して話し、離すと終了します。タップモードでは1回押して開始・終了します。2回押すと入力中は終了し、待機中は Return を送信します。ヘッドフォンまたは Bluetooth デバイスを接続している場合のみ有効です。一部の Bluetooth デバイスは長押しに対応していません。AirPods は API の制限により現在サポートされていません。";
 "alert.headphoneControl.enable" = "有効にする";
 
 "doubao.settings.service" = "サービス：";
@@ -594,3 +593,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified preferences */
+"preferences.accessibility.detail" = "ショートカットとテキスト入力に使います。";
+"preferences.appearance.capsule" = "入力カプセル";
+"preferences.appearance.dark" = "ダーク";
+"preferences.appearance.light" = "ライト";
+"preferences.appearance.mode" = "外観";
+"preferences.appearance.preview" = "入力カプセルのプレビュー";
+"preferences.appearance.preview.text" = "音声入力中…";
+"preferences.appearance.speed" = "アニメーション速度";
+"preferences.appearance.style" = "アニメーション";
+"preferences.appearance.system" = "システム設定に従う";
+"preferences.appleLive" = "ライブ入力（Beta）";
+"preferences.appleLive.detail" = "入力済みのテキストは文章調整の対象外です。";
+"preferences.appleOffline" = "Apple オフラインモデル";
+"preferences.betaUpdates" = "ベータ版を含む";
+"preferences.configure" = "設定…";
+"preferences.connections.recognition" = "音声認識";
+"preferences.connections.refinement" = "文章の調整";
+"preferences.connections.title" = "接続を管理";
+"preferences.currentVersion" = "現在のバージョン";
+"preferences.developer" = "開発者";
+"preferences.devices" = "音声とデバイス";
+"preferences.discard" = "変更を破棄";
+"preferences.edit" = "編集…";
+"preferences.engineMenu" = "認識エンジン：%@";
+"preferences.headphones" = "ヘッドフォンで音声入力（Beta）";
+"preferences.headphones.hold" = "再生/一時停止ボタンを押して話し、離すと終了します。";
+"preferences.headphones.tap" = "再生/一時停止ボタンを1回押すと、入力を開始・終了します。";
+"preferences.hints.title" = "認識のヒント";
+"preferences.inUse" = "使用中";
+"preferences.inputDevice" = "入力デバイス";
+"preferences.launchAtLogin" = "ログイン時に起動";
+"preferences.lowerVolume" = "入力中にシステム音量を下げる";
+"preferences.manageModels" = "ローカルモデルを管理…";
+"preferences.microphone.detail" = "音声の取り込みに使います。";
+"preferences.models.title" = "ローカルモデル";
+"preferences.output" = "テキスト出力";
+"preferences.page.about" = "このアプリについて";
+"preferences.page.appearance" = "外観";
+"preferences.page.general" = "一般";
+"preferences.page.input" = "入力モード";
+"preferences.page.mode" = "認識エンジン";
+"preferences.page.permissions" = "アクセス権とプライバシー";
+"preferences.pages" = "設定ページ";
+"preferences.permissions" = "システムのアクセス権";
+"preferences.project" = "プロジェクト";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "句読点を自動補完";
+"preferences.recognition" = "音声認識";
+"preferences.refinement" = "文章の調整";
+"preferences.refinementRules" = "システムプロンプト:";
+"preferences.resetPermissions" = "アクセス権をリセット…";
+"preferences.seconds" = "%g 秒";
+"preferences.section.appearance" = "外観";
+"preferences.section.general" = "一般";
+"preferences.section.system" = "システム";
+"preferences.section.voice" = "音声入力";
+"preferences.service" = "サービス";
+"preferences.settingsCommand" = "設定…";
+"preferences.silenceStop" = "停止ディレイ";
+"preferences.soundSettings" = "サウンド設定";
+"preferences.speech.detail" = "Apple の認識と、クラウド認識に失敗した場合の代替認識。";
+"preferences.support" = "サポートとライセンス";
+"preferences.systemDefault" = "システムデフォルト";
+"preferences.systemSettings" = "システム設定…";
+"preferences.tagline" = "メニューバーから音声入力";
+"preferences.title" = "AtomVoice の設定";
+"preferences.triggerMenu" = "トリガーキー：%@";
+"preferences.triggerMode" = "入力の開始方法";
+"preferences.unavailableDevice" = "利用できないデバイス";
+"preferences.useEngine" = "このエンジンを使う";
+"preferences.view" = "表示…";
+
+"preferences.debug.tools" = "開発者ツール";
+"preferences.debug.delay" = "ペーストの待機時間";
+
+"preferences.windowMenu" = "ウインドウ";
+"preferences.closeWindow" = "ウインドウを閉じる";
+
+"preferences.connections.command" = "接続を管理…";
+
+"preferences.hints.scene" = "場面の説明";

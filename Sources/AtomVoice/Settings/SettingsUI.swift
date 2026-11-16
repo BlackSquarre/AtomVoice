@@ -37,8 +37,7 @@ enum SettingsUI {
 
     static func makeButton(_ title: String, target: AnyObject?, action: Selector) -> NSButton {
         let button = NSButton(title: title, target: target, action: action)
-        if #available(macOS 26.0, *) { button.bezelStyle = .glass }
-        else { button.bezelStyle = .rounded }
+        button.bezelStyle = .rounded
         return button
     }
 
@@ -81,9 +80,12 @@ enum SettingsUI {
         row.orientation = .horizontal
         row.spacing = spacing
         row.alignment = .centerY
+        row.distribution = .fill
         row.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        statusLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor).isActive = true
+        if let last = buttons.last { last.trailingAnchor.constraint(equalTo: row.trailingAnchor).isActive = true }
         return row
     }
 

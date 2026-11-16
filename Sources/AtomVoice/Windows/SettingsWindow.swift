@@ -144,6 +144,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
     func numberOfRows(in tableView: NSTableView) -> Int { providers.count }
 
     func tableView(_ tableView: NSTableView, objectValueFor col: NSTableColumn?, row: Int) -> Any? {
+        guard providers.indices.contains(row) else { return nil }
         let p = providers[row]
         switch col?.identifier.rawValue {
         case "name":  return p.name
@@ -154,7 +155,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     func tableView(_ tableView: NSTableView, setObjectValue obj: Any?, for col: NSTableColumn?, row: Int) {
-        guard let v = obj as? String else { return }
+        guard providers.indices.contains(row), let v = obj as? String else { return }
         switch col?.identifier.rawValue {
         case "name":  providers[row].name = v
         case "url":   providers[row].baseURL = v
@@ -165,7 +166,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         let row = tableView.selectedRow
-        guard row >= 0 else { return }
+        guard providers.indices.contains(row) else { return }
         nameField.stringValue  = providers[row].name
         urlField.stringValue   = providers[row].baseURL
         modelField.stringValue = providers[row].defaultModel
@@ -175,7 +176,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
 
     func controlTextDidChange(_ obj: Notification) {
         let row = tableView.selectedRow
-        guard row >= 0 else { return }
+        guard providers.indices.contains(row) else { return }
         providers[row].name         = nameField.stringValue
         providers[row].baseURL      = urlField.stringValue
         providers[row].defaultModel = modelField.stringValue
@@ -198,7 +199,7 @@ final class ProviderEditorController: NSObject, NSTableViewDataSource, NSTableVi
 
     @objc private func deleteRow() {
         let row = tableView.selectedRow
-        guard row >= 0 else { return }
+        guard providers.indices.contains(row) else { return }
         providers.remove(at: row)
         tableView.reloadData()
         if !providers.isEmpty {
@@ -354,6 +355,12 @@ final class PromptEditorController: NSObject, NSTextViewDelegate {
 final class SettingsWindowController: NSObject {
     var onClose: (() -> Void)?
     private var window: NSWindow?
+    private var contentView: NSStackView?
+    private var descriptionLabel: NSTextField?
+    private var promptFormRow: NSView?
+    private var providerFormRow: NSView?
+    private weak var cancelControl: NSButton?
+    private weak var saveControl: NSButton?
     private var providerPopup: NSPopUpButton!
     private var apiBaseURLField: NSTextField!
     private var apiKeyField: NSSecureTextField!
@@ -361,23 +368,113 @@ final class SettingsWindowController: NSObject {
     private var modelField: NSTextField!
     private var statusLabel: NSTextField!
     private let llmRefiner: LLMRefiner
+    private let allowsSideEffects: Bool
     private var providerEditor: ProviderEditorController?
     private var promptEditor: PromptEditorController?
     private var providers: [LLMProvider] = []
+    private var baselineConnection: LLMConnectionSettings?
+    private var parentWindowProvider: (() -> NSWindow?)?
+    private var onEmbeddedSizeChanged: (() -> Void)?
+    private var onEmbeddedSaved: (() -> Void)?
+    private var isEmbedded = false
+    private var embeddedProvider: RefinementProvider?
+    private var requiresNewProviderKey = false
+    private var connectionTestGeneration = 0
 
-    init(llmRefiner: LLMRefiner) {
+    init(llmRefiner: LLMRefiner, allowsSideEffects: Bool = true) {
         self.llmRefiner = llmRefiner
+        self.allowsSideEffects = allowsSideEffects
+    }
+
+    /// 嵌入同一份表单，不创建窗口或触发激活；重复进入保留现有草稿。
+    func makeEmbeddedView(provider: RefinementProvider? = nil,
+                          parentWindow: @escaping () -> NSWindow?,
+                          onSizeChanged: @escaping () -> Void,
+                          onSaved: @escaping () -> Void) -> NSView {
+        let hadContent = contentView != nil
+        let previousProviderURL = embeddedProvider?.baseURL
+        isEmbedded = true
+        embeddedProvider = provider
+        parentWindowProvider = parentWindow
+        onEmbeddedSizeChanged = onSizeChanged
+        onEmbeddedSaved = onSaved
+        let view = makeContentView()
+        if hadContent, previousProviderURL != provider?.baseURL { refreshFields() }
+        updatePresentation()
+        DispatchQueue.main.async { [weak self] in self?.notifySizeChanged() }
+        return view
+    }
+
+    /// 只刷新服务商元数据，不重新读取密钥或覆盖尚未保存的连接。
+    func refreshEmbeddedStatus() {
+        guard contentView != nil else { return }
+        reloadProviders(preservingDraft: true)
+        notifySizeChanged()
+    }
+
+    func discardEmbeddedChanges() {
+        guard contentView != nil else { return }
+        refreshFields()
+        notifySizeChanged()
+    }
+
+    var hasEmbeddedChanges: Bool {
+        guard let baselineConnection, let connection = formConnection else { return false }
+        return connection.baseURL != baselineConnection.baseURL ||
+            connection.apiKey != baselineConnection.apiKey ||
+            connection.model != baselineConnection.model
+    }
+
+    /// 供应商快捷选择只修改连接草稿，不提交密钥或其它设置。
+    func selectEmbeddedProvider(named name: String) {
+        guard embeddedProvider == nil else { return }
+        _ = makeContentView()
+        guard let index = providers.firstIndex(where: { $0.name == name }) else { return }
+        providerPopup.selectItem(at: index)
+        providerChanged(providerPopup)
+    }
+
+    /// 复用已加载表单判断当前供应商，侧栏查询不再次访问 Keychain。
+    var embeddedProviderName: String? {
+        guard let connection = formConnection,
+              !connection.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !connection.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !connection.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        if let embeddedProvider {
+            return embeddedProvider.matches(baseURL: connection.baseURL) ? loc(embeddedProvider.nameKey) : nil
+        }
+        let name = providers.first(where: {
+            !$0.baseURL.isEmpty && $0.baseURL == connection.baseURL
+        })?.name ?? loc("provider.preset.custom")
+        return name.isEmpty ? loc("provider.preset.custom") : name
     }
 
     func showWindow() {
-        if let w = window {
-            WindowPresenter.shared.bringToFront(w)
-            return
+        let wasFixedProvider = embeddedProvider != nil
+        isEmbedded = false
+        embeddedProvider = nil
+        onEmbeddedSizeChanged = nil
+        onEmbeddedSaved = nil
+        parentWindowProvider = { [weak self] in self?.window }
+        if wasFixedProvider, contentView != nil { refreshFields() }
+        if let window {
+            installContent(in: window)
+            WindowPresenter.shared.bringToFront(window)
+        } else {
+            buildWindow()
         }
-        buildWindow()
     }
 
-    // MARK: - 构建窗口
+    // MARK: - 表单与窗口
+
+    private var presentationWindow: NSWindow? { parentWindowProvider?() ?? window }
+
+    private var formConnection: LLMConnectionSettings? {
+        guard let apiBaseURLField, let apiKeyField, let modelField else { return nil }
+        return LLMConnectionSettings(baseURL: apiBaseURLField.stringValue,
+                                     apiKey: apiKeyField.stringValue,
+                                     model: modelField.stringValue)
+    }
 
     private func buildWindow() {
         let w = NSWindow(
@@ -388,245 +485,286 @@ final class SettingsWindowController: NSObject {
         )
         w.title = loc("settings.title")
         w.isReleasedWhenClosed = false
+        window = w
+        w.delegate = self
+        installContent(in: w)
+        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.SettingsWindow")
+        if !restoredFrame { w.center() }
+        WindowPresenter.shared.bringToFront(w)
+    }
 
-        guard let cv = w.contentView else { return }
+    private func installContent(in window: NSWindow) {
+        guard let host = window.contentView else { return }
+        let view = makeContentView()
+        updatePresentation()
+        guard view.superview !== host else { return }
+        view.removeFromSuperview()
+        host.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: host.topAnchor, constant: 24),
+            view.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 24),
+            view.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -24),
+            view.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -24),
+        ])
+    }
 
-        let pad: CGFloat = 24
+    private func makeContentView() -> NSView {
+        if let contentView { return contentView }
         let gap: CGFloat = 8
 
-        // ── 控件 ─────────────────────────────────────────────（Controls）
-        providers = ProviderStore.load()
         providerPopup = NSPopUpButton()
         providerPopup.target = self
         providerPopup.action = #selector(providerChanged(_:))
         providerPopup.toolTip = loc("tooltip.settings.provider")
-        providers.forEach { providerPopup.addItem(withTitle: $0.name) }
 
         let manageBtn = SettingsUI.makeButton(loc("settings.manage"), target: self, action: #selector(editProviders(_:)))
         manageBtn.toolTip = loc("tooltip.settings.manage")
-
+        manageBtn.isEnabled = allowsSideEffects
         apiBaseURLField = SettingsUI.makeField(placeholder: "https://api.openai.com/v1", delegate: self)
+        apiBaseURLField.identifier = NSUserInterfaceItemIdentifier("llm.apiBaseURL")
         apiBaseURLField.toolTip = loc("tooltip.settings.baseURL")
-        apiKeyField     = SettingsUI.makeSecureField(placeholder: "sk-...", delegate: self)
+        apiKeyField = SettingsUI.makeSecureField(placeholder: "sk-...", delegate: self)
+        apiKeyField.identifier = NSUserInterfaceItemIdentifier("llm.apiKey")
         apiKeyField.toolTip = loc("tooltip.settings.apiKey")
-        modelField      = SettingsUI.makeField(placeholder: AppSettings.defaultLLMModel, delegate: self)
+        modelField = SettingsUI.makeField(placeholder: AppSettings.defaultLLMModel, delegate: self)
+        modelField.identifier = NSUserInterfaceItemIdentifier("llm.model")
         modelField.toolTip = loc("tooltip.settings.model")
 
         let promptBtn = SettingsUI.makeButton(loc("settings.prompt.edit"), target: self, action: #selector(editPrompt(_:)))
         promptBtn.toolTip = loc("tooltip.settings.prompt")
-
+        promptBtn.isEnabled = allowsSideEffects
         statusLabel = SettingsUI.makeSecondaryLabel()
+        SettingsUI.allowHorizontalWrapping(statusLabel, preferredMaxLayoutWidth: 320)
 
-        let testBtn   = SettingsUI.makeButton(loc("settings.test"), target: self, action: #selector(testConnection(_:)))
+        let testBtn = SettingsUI.makeButton(loc("settings.test"), target: self, action: #selector(testConnection(_:)))
         testBtn.toolTip = loc("tooltip.settings.test")
+        testBtn.isEnabled = allowsSideEffects
         let cancelBtn = SettingsUI.makeButton(loc("settings.cancel"), target: self, action: #selector(cancelSettings(_:)))
-        let saveBtn   = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
+        let saveBtn = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveSettings(_:)))
+        cancelControl = cancelBtn
+        saveControl = saveBtn
         saveBtn.toolTip = loc("tooltip.settings.save")
-        saveBtn.keyEquivalent   = "\r"
+        saveBtn.isEnabled = allowsSideEffects
+        saveBtn.keyEquivalent = "\r"
         cancelBtn.keyEquivalent = "\u{1b}"
 
-        // ── 说明文字 ──────────────────────────────────────────────（Description text）
         let descLabel = NSTextField(labelWithString: loc("settings.llm.desc"))
         descLabel.font = .systemFont(ofSize: 12)
         descLabel.textColor = .secondaryLabelColor
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 0
         descLabel.translatesAutoresizingMaskIntoConstraints = false
+        SettingsUI.allowHorizontalWrapping(descLabel, preferredMaxLayoutWidth: 512)
+        descriptionLabel = descLabel
 
-        // ── 辅助：构造单行 HStack（左侧固定宽度标签 + 右侧控件） ─（Helper: build single-row HStack with fixed-width label + control）
-        // 服务商行：popup 自动拉伸，管理按钮紧跟其后（Provider row: popup auto-stretches, manage button follows）
         let providerCtrl = NSStackView(views: [providerPopup, manageBtn])
         providerCtrl.orientation = .horizontal
         providerCtrl.spacing = gap
         providerCtrl.alignment = .centerY
-
-        // ── 表单垂直 StackView ────────────────────────────────（Form vertical StackView）
         let form = NSStackView()
         form.orientation = .vertical
         form.spacing = 10
         form.alignment = .leading
         form.translatesAutoresizingMaskIntoConstraints = false
-
         let formRows: [(String, NSView)] = [
-            (loc("settings.provider"),     providerCtrl),
-            (loc("settings.apiUrl"),       apiBaseURLField),
-            (loc("settings.apiKey"),       apiKeyField),
-            (loc("settings.model"),        modelField),
+            (loc("settings.provider"), providerCtrl),
+            (loc("settings.apiUrl"), apiBaseURLField),
+            (loc("settings.apiKey"), apiKeyField),
+            (loc("settings.model"), modelField),
             (loc("settings.prompt.label"), promptBtn),
         ]
-        for (text, ctrl) in formRows {
-            let row = SettingsUI.makeFormRow(labelText: text, control: ctrl, spacing: gap)
+        for (index, entry) in formRows.enumerated() {
+            let row = SettingsUI.makeFormRow(labelText: entry.0, control: entry.1, spacing: gap)
             form.addArrangedSubview(row)
+            if index == 0 {
+                row.identifier = NSUserInterfaceItemIdentifier("llm.provider")
+                providerFormRow = row
+            }
+            if index == formRows.count - 1 { promptFormRow = row }
         }
-
-        // 分割线（Separator line）
-        let sep = NSBox()
-        sep.boxType = .separator
-        sep.translatesAutoresizingMaskIntoConstraints = false
-
-        // 底部：状态标签（左）+ 按钮组（右）（Bottom: status label (left) + button group (right)）
-        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [testBtn, cancelBtn, saveBtn], spacing: gap)
-
-        // ── 整体 ─────────────────────────────────────────────（Overall layout）
-        let root = NSView()
-        root.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(root)
-
-        [descLabel, form, sep, bottomRow].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            root.addSubview($0)
-        }
-
-        NSLayoutConstraint.activate([
-            // root 贴满 contentView（带 padding）（Root fills contentView with padding）
-            root.topAnchor.constraint(equalTo: cv.topAnchor, constant: pad),
-            root.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: pad),
-            root.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -pad),
-            root.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -pad),
-
-            // 说明文字（Description text）
-            descLabel.topAnchor.constraint(equalTo: root.topAnchor),
-            descLabel.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            descLabel.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            // 表单在说明文字下方（Form below description text）
-            form.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
-            form.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            form.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            // 各行控件拉满 form 宽度（label 固定 + 控件填充剩余）（Each row fills form width: label fixed + control fills remaining）
-            // → 由 makeRow 内的 NSStackView 自动处理（Handled automatically by NSStackView in makeRow）
-
-            // 分割线（Separator line）
-            sep.topAnchor.constraint(equalTo: form.bottomAnchor, constant: 16),
-            sep.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            sep.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            // 底部行（Bottom row）
-            bottomRow.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 16),
-            bottomRow.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            bottomRow.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            bottomRow.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-        ])
-
-        // 让 form 内每行右侧控件自动拉满（Let right-side controls in each form row auto-fill width）
         SettingsUI.pinArrangedSubviewsTrailing(in: form)
 
-        self.window = w
-        w.delegate = self
+        let separator = NSBox()
+        separator.boxType = .separator
+        let bottomRow = SettingsUI.makeBottomRow(statusLabel: statusLabel, buttons: [testBtn, cancelBtn, saveBtn], spacing: gap)
+        let root = NSStackView(views: [descLabel, form, separator, bottomRow])
+        root.orientation = .vertical
+        root.alignment = .leading
+        root.spacing = 16
+        root.translatesAutoresizingMaskIntoConstraints = false
+        SettingsUI.pinArrangedSubviewsTrailing(in: root)
+        contentView = root
         refreshFields()
-        let restoredFrame = WindowConfiguration.configureRestorableSettingsWindow(w, identifier: "AtomVoice.SettingsWindow")
-        if !restoredFrame {
-            w.center()
-        }
-        WindowPresenter.shared.bringToFront(w)
+        updatePresentation()
+        return root
     }
 
-    // MARK: - Helpers
+    private func updatePresentation() {
+        descriptionLabel?.isHidden = isEmbedded
+        promptFormRow?.isHidden = isEmbedded
+        providerFormRow?.isHidden = embeddedProvider != nil
+        apiBaseURLField?.isEditable = embeddedProvider == nil
+        apiBaseURLField?.isSelectable = true
+        cancelControl?.title = isEmbedded ? loc("preferences.discard") : loc("settings.cancel")
+        saveControl?.toolTip = isEmbedded ? nil : loc("tooltip.settings.save")
+    }
 
-    // MARK: - State
+    private func notifySizeChanged() {
+        contentView?.invalidateIntrinsicContentSize()
+        onEmbeddedSizeChanged?()
+    }
+
+    // MARK: - 草稿与操作
+
+    private func reloadProviders(preservingDraft: Bool) {
+        providers = allowsSideEffects ? ProviderStore.load() : ProviderStore.defaults
+        providerPopup.removeAllItems()
+        providers.forEach { providerPopup.addItem(withTitle: $0.name) }
+        let url = preservingDraft ? apiBaseURLField.stringValue : baselineConnection?.baseURL
+        if let index = providers.firstIndex(where: { $0.baseURL == url }) {
+            providerPopup.selectItem(at: index)
+        } else if let customIndex = providers.firstIndex(where: { $0.baseURL.isEmpty }) {
+            providerPopup.selectItem(at: customIndex)
+        } else {
+            providerPopup.select(nil)
+        }
+    }
 
     private func refreshFields() {
-        providers = ProviderStore.load()
-        providerPopup?.removeAllItems()
-        providers.forEach { providerPopup?.addItem(withTitle: $0.name) }
-
-        apiKeyReadResult = AppSettings.llm.apiKeyReadResult
-        let savedURL = AppSettings.llmAPIBaseURL
-        let matchIdx = providers.firstIndex { $0.baseURL == savedURL } ?? (providers.count - 1)
-        providerPopup?.selectItem(at: matchIdx)
-
-        apiBaseURLField?.stringValue = savedURL
-        apiKeyField?.stringValue = apiKeyReadResult.string ?? ""
-        modelField?.stringValue = AppSettings.llmModel
-        statusLabel?.stringValue     = ""
+        connectionTestGeneration += 1
+        requiresNewProviderKey = false
+        // 预览只使用静态默认值，既不访问用户连接，也不触发 Keychain 授权。
+        if allowsSideEffects {
+            let savedURL = AppSettings.llmAPIBaseURL
+            if let embeddedProvider, !embeddedProvider.matches(baseURL: savedURL) {
+                // 旧供应商连接完整保留；新用途只建立未提交草稿，不读取或携带其密钥。
+                requiresNewProviderKey = true
+                apiKeyReadResult = .notFound
+                baselineConnection = LLMConnectionSettings(baseURL: embeddedProvider.baseURL,
+                                                           apiKey: "", model: embeddedProvider.model)
+            } else {
+                apiKeyReadResult = AppSettings.llm.apiKeyReadResult
+                baselineConnection = LLMConnectionSettings(baseURL: savedURL,
+                                                           apiKey: apiKeyReadResult.string ?? "",
+                                                           model: AppSettings.llmModel)
+            }
+        } else {
+            apiKeyReadResult = .notFound
+            baselineConnection = LLMConnectionSettings(baseURL: embeddedProvider?.baseURL ?? AppSettings.defaultLLMBaseURL,
+                                                       apiKey: "", model: embeddedProvider?.model ?? AppSettings.defaultLLMModel)
+        }
+        guard let baselineConnection else { return }
+        apiBaseURLField.stringValue = baselineConnection.baseURL
+        apiKeyField.stringValue = baselineConnection.apiKey
+        modelField.stringValue = baselineConnection.model
+        reloadProviders(preservingDraft: false)
+        statusLabel.stringValue = ""
+        statusLabel.textColor = .secondaryLabelColor
     }
 
-    // MARK: - Actions
-
     @objc private func providerChanged(_ sender: NSPopUpButton) {
-        let p = providers[sender.indexOfSelectedItem]
-        if p.baseURL.isEmpty {
-            apiBaseURLField.stringValue = ""
-            modelField.stringValue = ""
-            window?.makeFirstResponder(apiBaseURLField)
-        } else {
-            apiBaseURLField.stringValue = p.baseURL
-            modelField.stringValue = p.defaultModel
-        }
+        guard embeddedProvider == nil else { return }
+        guard providers.indices.contains(sender.indexOfSelectedItem) else { return }
+        let provider = providers[sender.indexOfSelectedItem]
+        apiBaseURLField.stringValue = provider.baseURL
+        modelField.stringValue = provider.defaultModel
+        if provider.baseURL.isEmpty { presentationWindow?.makeFirstResponder(apiBaseURLField) }
+        connectionDraftChanged()
     }
 
     @objc private func editProviders(_ sender: NSButton) {
-        guard let w = window else { return }
+        guard embeddedProvider == nil, allowsSideEffects, let parent = presentationWindow else { return }
         let editor = ProviderEditorController()
         editor.onDone = { [weak self] _ in
             guard let self else { return }
-            // 服务商列表更新不覆盖连接表单的未保存内容。
-            self.providers = ProviderStore.load()
-            self.providerPopup.removeAllItems()
-            self.providers.forEach { self.providerPopup.addItem(withTitle: $0.name) }
-            if let index = self.providers.firstIndex(where: { $0.baseURL == self.apiBaseURLField.stringValue }) {
-                self.providerPopup.selectItem(at: index)
-            }
+            // 更新模板列表不覆盖当前连接草稿。
+            self.reloadProviders(preservingDraft: true)
+            self.notifySizeChanged()
         }
         providerEditor = editor
-        editor.show(in: w) { [weak self] in
-            // sheet 关闭后立即释放 editor 实例，回收内存
-            // (Release editor instance right after the sheet closes to reclaim memory.)
-            self?.providerEditor = nil
-        }
+        editor.show(in: parent) { [weak self] in self?.providerEditor = nil }
     }
 
     @objc private func editPrompt(_ sender: NSButton) {
-        guard let w = window else { return }
+        guard allowsSideEffects, let parent = presentationWindow else { return }
         let editor = PromptEditorController()
         promptEditor = editor
-        editor.show(in: w) { [weak self] in
-            self?.promptEditor = nil
-        }
+        editor.show(in: parent) { [weak self] in self?.promptEditor = nil }
     }
 
     @objc private func testConnection(_ sender: NSButton) {
-        if case .failure = apiKeyReadResult, apiKeyField.stringValue.isEmpty {
+        guard allowsSideEffects, let connection = formConnection else { return }
+        connectionTestGeneration += 1
+        let generation = connectionTestGeneration
+        guard validateFixedProviderDraft(connection) else { return }
+        if case .failure = apiKeyReadResult, connection.apiKey.isEmpty {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
+            notifySizeChanged()
             return
         }
-        let testConnection = LLMConnectionSettings(
-            baseURL: apiBaseURLField.stringValue,
-            apiKey: apiKeyField.stringValue,
-            model: modelField.stringValue
-        )
         statusLabel.stringValue = loc("settings.testing")
         statusLabel.textColor = .secondaryLabelColor
-
-        // 测试仅使用当前表单，不临时覆写钥匙串，也不在异步完成后恢复旧空值。
-        llmRefiner.testConnection(connection: testConnection) { [weak self] success, msg in
+        notifySizeChanged()
+        // 测试只使用当前表单，不写配置或临时覆盖钥匙串。
+        llmRefiner.testConnection(connection: connection) { [weak self] success, message in
             DispatchQueue.main.async {
-                self?.statusLabel.stringValue = success ? loc("settings.connected") : loc("settings.connectFailed", msg)
-                self?.statusLabel.textColor = success ? .systemGreen : .systemRed
+                guard let self, self.connectionTestGeneration == generation else { return }
+                self.statusLabel.stringValue = success ? loc("settings.connected") : loc("settings.connectFailed", message)
+                self.statusLabel.textColor = success ? .systemGreen : .systemRed
+                self.notifySizeChanged()
             }
         }
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        let connection = LLMConnectionSettings(
-            baseURL: apiBaseURLField.stringValue,
-            apiKey: apiKeyField.stringValue,
-            model: modelField.stringValue
-        )
+        guard allowsSideEffects, let connection = formConnection else { return }
+        guard validateFixedProviderDraft(connection) else { return }
         guard AppSettings.saveLLMConnection(connection, previousKeyRead: apiKeyReadResult) else {
             statusLabel.stringValue = loc("doubao.settings.keychainFailed")
             statusLabel.textColor = .systemRed
+            notifySizeChanged()
             return
         }
+        connectionTestGeneration += 1
+        baselineConnection = connection
+        requiresNewProviderKey = false
+        apiKeyReadResult = connection.apiKey.isEmpty ? .notFound : .value(connection.apiKey)
         statusLabel.stringValue = loc("settings.saved")
         statusLabel.textColor = .systemGreen
-        window?.close()
+        if isEmbedded {
+            notifySizeChanged()
+            onEmbeddedSaved?()
+        } else {
+            window?.close()
+        }
     }
 
     @objc private func cancelSettings(_ sender: NSButton) {
-        window?.close()
+        if isEmbedded { discardEmbeddedChanges() }
+        else { window?.close() }
+    }
+
+    private func validateFixedProviderDraft(_ connection: LLMConnectionSettings) -> Bool {
+        let errorKey: String?
+        if let embeddedProvider, !embeddedProvider.matches(baseURL: connection.baseURL) {
+            errorKey = "error.invalidUrl"
+        } else if requiresNewProviderKey, connection.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // 空草稿不能提交新 URL 却继续沿用全局单一槽中的旧供应商密钥。
+            errorKey = "error.noApiKey"
+        } else {
+            errorKey = nil
+        }
+        guard let errorKey else { return true }
+        statusLabel.stringValue = loc(errorKey)
+        statusLabel.textColor = .systemRed
+        notifySizeChanged()
+        return false
+    }
+
+    private func connectionDraftChanged() {
+        connectionTestGeneration += 1
+        statusLabel.stringValue = ""
+        statusLabel.textColor = .secondaryLabelColor
+        notifySizeChanged()
     }
 }
 
@@ -640,6 +778,10 @@ extension SettingsWindowController: NSWindowDelegate {
 }
 
 extension SettingsWindowController: NSTextFieldDelegate {
+    func controlTextDidChange(_ notification: Notification) {
+        connectionDraftChanged()
+    }
+
     // Enter 键跳到下一个输入框，而不是插入换行（Enter key jumps to next field instead of inserting newline）
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         if selector == #selector(NSResponder.insertNewline(_:)) {

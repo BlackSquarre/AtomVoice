@@ -8,23 +8,42 @@ import Cocoa
 ///  the main menu. We install a minimal main menu at launch with an App submenu (Quit) and an
 ///  Edit submenu (Undo / Cut / Copy / Paste / etc.).)
 enum MainMenuInstaller {
+    static var openSettings: (() -> Void)?
+    static var openAbout: (() -> Void)?
+    private static let commands = PreferencesMainMenuCommands()
     static func install() {
         let main = NSMenu()
         main.addItem(makeAppMenuItem())
         main.addItem(makeEditMenuItem())
+        main.addItem(makeWindowMenuItem())
         NSApp.mainMenu = main
     }
 
     private static func makeAppMenuItem() -> NSMenuItem {
         let item = NSMenuItem()
         let menu = NSMenu()
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "AtomVoice"
+        let appName = loc("app.title")
+        let about = menu.addItem(withTitle: loc("menu.about"), action: #selector(PreferencesMainMenuCommands.about(_:)), keyEquivalent: "")
+        about.target = commands
+        menu.addItem(.separator())
+        let settings = menu.addItem(withTitle: loc("preferences.settingsCommand"), action: #selector(PreferencesMainMenuCommands.settings(_:)), keyEquivalent: ",")
+        settings.target = commands
+        menu.addItem(.separator())
         menu.addItem(
             withTitle: String(format: loc("menu.app.quit"), appName),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
         item.submenu = menu
+        return item
+    }
+
+    private static func makeWindowMenuItem() -> NSMenuItem {
+        let item = NSMenuItem()
+        let menu = NSMenu(title: loc("preferences.windowMenu"))
+        menu.addItem(withTitle: loc("preferences.closeWindow"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        item.submenu = menu
+        NSApp.windowsMenu = menu
         return item
     }
 
@@ -83,4 +102,10 @@ enum MainMenuInstaller {
         item.submenu = menu
         return item
     }
+}
+
+/// 主菜单目标由安装器持有，回调只转发到统一窗口路由。
+private final class PreferencesMainMenuCommands: NSObject {
+    @objc func settings(_ sender: Any?) { MainMenuInstaller.openSettings?() }
+    @objc func about(_ sender: Any?) { MainMenuInstaller.openAbout?() }
 }

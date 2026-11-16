@@ -1,6 +1,6 @@
 import Cocoa
 
-final class OpenAISettingsTab: NSObject, ASRSettingsTab {
+final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     let identifier = OpenAIASRSettings.engineCode
     let label = loc("asrSettings.tab.openai")
     private let editor: OpenAIASRSettingsEditor
@@ -22,14 +22,26 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     private var hasActivatedModels = false
     private let delayValues = ["minimal", "low", "medium", "high", "xhigh"]
     private var clearKey = false
+    private let allowsExternalActions: Bool
+    private var cachedView: NSView?
+    private var cachedHintsView: NSView?
+    private var separatePromptView: NSTextView?
+    private var separateKeywordsView: NSTextView?
+    private var allowsModelFetch = true
+    private var includesContextInConnection = true
+    var onContentSizeChanged: (() -> Void)?
+
+    var supportsContextHints: Bool { selectedModel.supportsContext }
 
     init(textFieldDelegate: NSTextFieldDelegate?, editor: OpenAIASRSettingsEditor = .init(),
          localize: @escaping (String) -> String = loc,
+         allowsExternalActions: Bool = true,
          loadModels: @escaping (String) async throws -> [OpenAIASRModel] = { try await OpenAIASRModelCatalog().fetch(apiKey: $0) }) {
         self.textFieldDelegate = textFieldDelegate
         self.editor = editor
         self.loadModels = loadModels
         self.localize = localize
+        self.allowsExternalActions = allowsExternalActions
         super.init()
     }
 
@@ -38,6 +50,14 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     }
 
     func makeView() -> NSView {
+        makeView(includeContext: true, allowsModelFetch: true)
+    }
+
+    func makeView(includeContext: Bool, allowsModelFetch: Bool = true) -> NSView {
+        self.allowsModelFetch = allowsModelFetch && allowsExternalActions
+        modelRefreshButton?.isEnabled = self.allowsModelFetch && modelTask == nil
+        if let cachedView { return cachedView }
+        includesContextInConnection = includeContext
         let view = OpenAISettingsDocumentView()
         let description = SettingsUI.makeSecondaryLabel(text("openai.settings.desc"))
         SettingsUI.allowHorizontalWrapping(description, preferredMaxLayoutWidth: 560)
@@ -51,6 +71,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
         keyLink.isBordered = false
         keyLink.contentTintColor = .linkColor
         keyLink.font = .systemFont(ofSize: 12)
+        keyLink.isEnabled = allowsExternalActions
         keyLink.setContentHuggingPriority(.required, for: .horizontal)
         keyLink.setContentCompressionResistancePriority(.required, for: .horizontal)
         let remove = NSButton(title: text("openai.settings.removeKey"), target: self, action: #selector(removeKey(_:)))
@@ -117,17 +138,22 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
         content.alignment = .leading
         content.spacing = 10
         content.translatesAutoresizingMaskIntoConstraints = false
-        let rows: [(String, NSView)] = [
+        var rows: [(String, NSView)] = [
             (text("doubao.settings.apiKey"), keyRow),
             ("", keyStatusRow),
             (text("doubao.settings.resourceID"), modelRow),
             ("", modelStatusLabel),
             (text("openai.settings.delay"), delayPopup),
             (text("openai.settings.languages"), languageField),
-            (text("openai.settings.prompt"), prompt.0),
-            (text("openai.settings.keywords"), keywords.0),
-            ("", hintsLabel),
         ]
+        if includeContext {
+            let contextRows: [(String, NSView)] = [
+                (text("openai.settings.prompt"), prompt.0),
+                (text("openai.settings.keywords"), keywords.0),
+                ("", hintsLabel),
+            ]
+            rows.append(contentsOf: contextRows)
+        }
         for (label, control) in rows {
             let row = SettingsUI.makeFormRow(labelText: label, control: control)
             if let title = row.arrangedSubviews.first as? NSTextField {
@@ -161,7 +187,53 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
             view.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
             view.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
         ])
+        modelRefreshButton.isEnabled = self.allowsModelFetch
+        cachedView = scroll
         return scroll
+    }
+
+    /// 提示编辑器使用独立视图同步同一份草稿，不把连接表单里的控件移到另一个窗口。
+    func makeHintsView() -> NSView {
+        if let cachedHintsView { return cachedHintsView }
+        if cachedView == nil {
+            _ = makeView(includeContext: false, allowsModelFetch: false)
+        }
+        if editor.baseline == nil { refresh() }
+        let prompt = makeTextArea(identifier: "openai.hints.prompt", height: 120)
+        let keywords = makeTextArea(identifier: "openai.hints.keywords", height: 120)
+        separatePromptView = prompt.1
+        separateKeywordsView = keywords.1
+        prompt.1.setAccessibilityLabel(text("preferences.hints.scene"))
+        keywords.1.setAccessibilityLabel(text("openai.settings.keywords"))
+        let sceneLabel = NSTextField(labelWithString: text("preferences.hints.scene"))
+        let keywordsLabel = NSTextField(labelWithString: text("openai.settings.keywords"))
+        sceneLabel.font = .systemFont(ofSize: 13)
+        keywordsLabel.font = .systemFont(ofSize: 13)
+        let content = NSStackView(views: [sceneLabel, prompt.0, keywordsLabel, keywords.0])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 8
+        content.setCustomSpacing(16, after: prompt.0)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        prompt.0.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        keywords.0.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        synchronizeHintsViews()
+        cachedHintsView = content
+        updateModelControls()
+        return content
+    }
+
+    func textDidChange(_ notification: Notification) {
+        guard let changed = notification.object as? NSTextView else { return }
+        if changed === separatePromptView { promptView.string = changed.string }
+        else if changed === separateKeywordsView { keywordsView.string = changed.string }
+        else if changed === promptView { separatePromptView?.string = changed.string }
+        else if changed === keywordsView { separateKeywordsView?.string = changed.string }
+    }
+
+    private func synchronizeHintsViews() {
+        separatePromptView?.string = promptView?.string ?? ""
+        separateKeywordsView?.string = keywordsView?.string ?? ""
     }
 
     @objc private func removeKey(_ sender: NSButton) {
@@ -172,6 +244,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     }
 
     @objc private func openAPIKeyPage(_ sender: NSButton) {
+        guard allowsExternalActions else { return }
         if let url = URL(string: "https://platform.openai.com/api-keys") { NSWorkspace.shared.open(url) }
     }
 
@@ -198,14 +271,20 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
         keywordsView.isEditable = model.supportsContext
         promptView.textColor = model.supportsContext ? .labelColor : .secondaryLabelColor
         keywordsView.textColor = model.supportsContext ? .labelColor : .secondaryLabelColor
+        separatePromptView?.isEditable = model.supportsContext
+        separateKeywordsView?.isEditable = model.supportsContext
+        separatePromptView?.textColor = model.supportsContext ? .labelColor : .secondaryLabelColor
+        separateKeywordsView?.textColor = model.supportsContext ? .labelColor : .secondaryLabelColor
+        cachedHintsView?.isHidden = !model.supportsContext
         languageField.placeholderString = text(model.supportsMultipleLanguages ? "openai.settings.languagesPlaceholder" : "openai.settings.singleLanguagePlaceholder")
         languageField.toolTip = text(model.supportsMultipleLanguages ? "openai.settings.languageCodes" : "openai.settings.whisperLanguageCodes")
         hintsLabel.stringValue = text(model.supportsContext ? "openai.settings.hints" : "openai.settings.whisperHints")
+        onContentSizeChanged?()
     }
 
     /// 只在 OpenAI 页真正显示时调用；窗口初始化其他页不会触发网络。
     func activateModelList() {
-        guard !hasActivatedModels else { return }
+        guard allowsModelFetch, !hasActivatedModels else { return }
         hasActivatedModels = true
         if effectiveAPIKey != nil { refreshModels(nil) }
     }
@@ -213,7 +292,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     func cancelModelListFetch() {
         modelTask?.cancel()
         modelTask = nil
-        modelRefreshButton?.isEnabled = true
+        modelRefreshButton?.isEnabled = allowsModelFetch
     }
 
     func apiKeyDidChange() {
@@ -234,6 +313,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     }
 
     @objc private func refreshModels(_ sender: NSButton?) {
+        guard allowsModelFetch else { return }
         cancelModelListFetch()
         guard let key = effectiveAPIKey else {
             modelStatusLabel.stringValue = text("openai.error.missingApiKey")
@@ -274,6 +354,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
         text.frame = NSRect(x: 0, y: 0, width: 400, height: height)
         text.identifier = NSUserInterfaceItemIdentifier(identifier)
         text.isRichText = false
+        text.delegate = self
         text.font = .systemFont(ofSize: 12)
         text.isAutomaticQuoteSubstitutionEnabled = false
         text.isAutomaticDashSubstitutionEnabled = false
@@ -304,6 +385,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
         languageField.stringValue = value.configuration.languages.joined(separator: ", ")
         promptView.string = value.configuration.prompt
         keywordsView.string = value.configuration.keywords.joined(separator: "\n")
+        synchronizeHintsViews()
         updateModelControls()
         refreshStatus()
     }
@@ -337,10 +419,66 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab {
     }
 
     var hasChanges: Bool { editor.baseline != nil && editor.hasChanges(draft) }
+    var hasConnectionChanges: Bool { editor.baseline != nil && editor.hasChanges(connectionDraft) }
+    var hasHintChanges: Bool {
+        guard let value = hintsDraft else { return false }
+        return editor.hasChanges(value)
+    }
+
+    private var connectionDraft: OpenAIASRSettingsDraft {
+        var value = draft
+        if !includesContextInConnection, let baseline = editor.baseline {
+            value.configuration.prompt = baseline.configuration.prompt
+            value.configuration.keywords = baseline.configuration.keywords
+        }
+        return value
+    }
+
+    /// 只从已加载的非敏感基线替换两个提示字段，不读取或提交连接密钥草稿。
+    private var hintsDraft: OpenAIASRSettingsDraft? {
+        guard var value = editor.baseline else { return nil }
+        value.configuration.prompt = promptView.string
+        value.configuration.keywords = keywordsView.string.components(separatedBy: .newlines)
+        value.keyEdit = .unchanged
+        return value
+    }
+
+    func saveHints() -> ASRSettingsTabSaveOutcome {
+        guard let value = hintsDraft else { return .saved }
+        guard editor.loadError == nil else {
+            return .failed(message: text("openai.error.invalidConfiguration"), color: .systemRed)
+        }
+        do {
+            try editor.save(value)
+            refreshStatus()
+            return .saved
+        } catch let error as OpenAIASRSettingsError {
+            return .failed(message: error.message, color: .systemRed)
+        } catch {
+            return .failed(message: text("openai.error.invalidConfiguration"), color: .systemRed)
+        }
+    }
+
+    func discardHints() {
+        guard let baseline = editor.baseline else { return }
+        promptView.string = baseline.configuration.prompt
+        keywordsView.string = baseline.configuration.keywords.joined(separator: "\n")
+        synchronizeHintsViews()
+    }
+
+    func discardConnectionChanges() {
+        guard !includesContextInConnection else { refresh(); return }
+        let pendingPrompt = promptView.string
+        let pendingKeywords = keywordsView.string
+        refresh()
+        promptView.string = pendingPrompt
+        keywordsView.string = pendingKeywords
+        synchronizeHintsViews()
+    }
 
     func save() -> ASRSettingsTabSaveOutcome {
         do {
-            try editor.save(draft)
+            try editor.save(connectionDraft)
             keyField.stringValue = ""
             clearKey = false
             refreshStatus()

@@ -1,10 +1,8 @@
 import Cocoa
 
 // MARK: - Keyboard Diagram (mac 笔记本底排示意图)
-// 画一个简化的 mac 键盘最底两排，候选 4 个键以彩色高亮可点击；
+// 画一个简化的 mac 键盘最底两排，候选 6 个键以彩色高亮可点击；
 // 其余键以装饰浅灰矩形呈现，便于用户对照真实键位。
-// (Render simplified bottom two rows of a Mac keyboard. The 4 candidate
-// keys are colored & clickable; the rest are decorative grey caps.)
 
 final class KeyboardDiagramView: NSView {
     var onSelect: ((UInt16) -> Void)?
@@ -21,6 +19,10 @@ final class KeyboardDiagramView: NSView {
         layer?.cornerRadius = 14
         layer?.cornerCurve = .continuous
         buildKeyboard()
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel(loc("menu.triggerKey"))
+        setAccessibilityChildren(keyCaps)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -109,7 +111,12 @@ final class KeyboardDiagramView: NSView {
 
     private func makeCap(_ label: String, keyCode: UInt16, width: CGFloat) -> KeyCap {
         let cap = KeyCap(label: label, keyCode: keyCode, width: width)
-        cap.onTap = { [weak self] code in self?.onSelect?(code) }
+        cap.setAccessibilityParent(self)
+        cap.onTap = { [weak self] code in
+            guard let self else { return }
+            self.setSelected(code)
+            self.onSelect?(code)
+        }
         keyCaps.append(cap)
         cap.setHighlighted(keyCode == selectedCode)
         return cap
@@ -140,6 +147,7 @@ final class KeyCap: NSView {
         labelView.font = .systemFont(ofSize: 10, weight: .semibold)
         labelView.textColor = .secondaryLabelColor
         labelView.translatesAutoresizingMaskIntoConstraints = false
+        labelView.setAccessibilityElement(false)
         addSubview(labelView)
 
         translatesAutoresizingMaskIntoConstraints = false
@@ -150,20 +158,66 @@ final class KeyCap: NSView {
             labelView.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
-        if keyCode != nil {
+        if let keyCode {
+            focusRingType = .exterior
+            identifier = NSUserInterfaceItemIdentifier("triggerKey.\(keyCode)")
+            setAccessibilityElement(true)
+            setAccessibilityRole(.button)
+            setAccessibilityLabel(loc(TriggerKeyOption.option(for: keyCode).locKey))
+            setAccessibilitySelected(false)
+            setAccessibilityValue(false)
             let click = NSClickGestureRecognizer(target: self, action: #selector(tapped))
             addGestureRecognizer(click)
+        } else {
+            setAccessibilityElement(false)
         }
         refreshAppearance()
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    override var acceptsFirstResponder: Bool { keyCode != nil }
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5).fill()
+    }
+
     @objc private func tapped() {
-        if let code = keyCode { onTap?(code) }
+        _ = activate()
+    }
+
+    private func activate() -> Bool {
+        guard let code = keyCode, let onTap else { return false }
+        window?.makeFirstResponder(self)
+        onTap(code)
+        return true
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        activate()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option])
+        if modifiers.isEmpty, [36, 49, 76].contains(event.keyCode) {
+            // 空格、Return 和数字键盘 Enter 沿用鼠标与辅助功能的同一选择路径。
+            _ = activate()
+        } else if modifiers.isEmpty, event.keyCode == 48 {
+            if event.modifierFlags.contains(.shift) { window?.selectPreviousKeyView(self) }
+            else { window?.selectNextKeyView(self) }
+        } else {
+            super.keyDown(with: event)
+        }
     }
 
     func setHighlighted(_ value: Bool) {
+        let changed = highlighted != value
         highlighted = value
+        if keyCode != nil {
+            setAccessibilitySelected(value)
+            setAccessibilityValue(value)
+            if changed { NSAccessibility.post(element: self, notification: .valueChanged) }
+        }
         refreshAppearance()
     }
 

@@ -233,6 +233,8 @@ final class AboutWindowController: NSObject {
         NSWorkspace.shared.open(url)
     }
 
+    func showNotices() { showThirdPartyNotices(NSButton()) }
+
     @objc private func showThirdPartyNotices(_ sender: NSButton) {
         if let w = thirdPartyWindow {
             WindowPresenter.shared.bringToFrontInCurrentSpace(w)

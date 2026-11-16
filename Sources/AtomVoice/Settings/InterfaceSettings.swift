@@ -13,6 +13,21 @@ final class InterfaceSettings {
         self.backend = backend
     }
 
+    var lastPreferencesPage: String? {
+        get { backend.string(forKey: AppSettings.Keys.preferencesLastPage) }
+        set { backend.set(newValue, forKey: AppSettings.Keys.preferencesLastPage) }
+    }
+
+    var appearanceMode: AppearancePreference {
+        get {
+            AppearancePreference(rawValue: backend.string(
+                forKey: AppSettings.Keys.appearanceMode,
+                default: AppearancePreference.system.rawValue
+            )) ?? .system
+        }
+        set { backend.set(newValue.rawValue, forKey: AppSettings.Keys.appearanceMode) }
+    }
+
     var animationStyle: String {
         get { backend.string(forKey: AppSettings.Keys.animationStyle, default: AppSettings.defaultAnimationStyle) }
         set { backend.set(newValue, forKey: AppSettings.Keys.animationStyle) }

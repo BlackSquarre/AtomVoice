@@ -422,7 +422,7 @@
 "oobe.trigger.headphone.desc" = "Usa el botón reproducir/pausa de auriculares o dispositivos de audio Bluetooth para controlar la entrada por voz. Solo funciona mientras haya uno conectado.";
 "oobe.trigger.headphone.enable" = "Activar botón de auriculares";
 "oobe.trigger.headphone.mode.hold" = "En modo mantener, mantén pulsado el botón de los auriculares para hablar y suelta para terminar. Algunos dispositivos Bluetooth pueden no admitir mantener pulsado.";
-"oobe.trigger.headphone.mode.tap" = "En modo tocar, pulsa una vez para iniciar o detener; doble pulsación envía Return. Algunos dispositivos Bluetooth pueden no admitir mantener pulsado.";
+"oobe.trigger.headphone.mode.tap" = "Pulsa una vez para iniciar o detener. Dos pulsaciones terminan la entrada activa o envían Retorno si está inactiva.";
 
 /* Ventana de configuración del motor de reconocimiento */
 "menu.asrSettings" = "Configuración del motor de reconocimiento...";
@@ -511,9 +511,9 @@
 
 /* Control remoto de auriculares */
 "menu.headphoneControl" = "Control de voz con auriculares (Beta)";
-"tooltip.menu.headphoneControl" = "Usa el botón reproducir/pausa de los auriculares para controlar la entrada por voz: en modo mantener, mantén pulsado para hablar y suelta para terminar; en modo pulsar, un clic inicia o detiene; doble clic envía Return. Recomendado para vibe coding.";
+"tooltip.menu.headphoneControl" = "Usa el botón reproducir/pausa de los auriculares para controlar la entrada por voz: en modo mantener, mantén pulsado para hablar y suelta para terminar; en modo pulsar, un clic inicia o detiene; la doble pulsación termina la entrada activa o envía Retorno si está inactiva. Recomendado para vibe coding.";
 "alert.headphoneControl.title" = "¿Activar el control de voz con auriculares?";
-"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para la entrada por voz. En modo mantener, mantén pulsado para hablar y suelta para terminar. En modo pulsar, un clic inicia o detiene. El doble clic siempre envía Return. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir el modo mantener. AirPods no es compatible actualmente debido a limitaciones de la API.";
+"alert.headphoneControl.message" = "AtomVoice toma el control del botón reproducir/pausa de los auriculares para la entrada por voz. En modo mantener, mantén pulsado para hablar y suelta para terminar. En modo pulsar, un clic inicia o detiene. La doble pulsación termina la entrada activa; si está inactiva, envía Retorno. Solo funciona cuando hay auriculares o un dispositivo Bluetooth conectado. Algunos dispositivos Bluetooth pueden no admitir el modo mantener. AirPods no es compatible actualmente debido a limitaciones de la API.";
 "alert.headphoneControl.enable" = "Activar";
 
 "doubao.settings.service" = "Servicio:";
@@ -594,3 +594,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified settings */
+"preferences.accessibility.detail" = "Atajos de teclado e inserción de texto.";
+"preferences.appearance.capsule" = "Cápsula de entrada";
+"preferences.appearance.dark" = "Oscuro";
+"preferences.appearance.light" = "Claro";
+"preferences.appearance.mode" = "Apariencia";
+"preferences.appearance.preview" = "Vista previa de la cápsula de entrada";
+"preferences.appearance.preview.text" = "Entrada por voz…";
+"preferences.appearance.speed" = "Velocidad de animación";
+"preferences.appearance.style" = "Animación";
+"preferences.appearance.system" = "Seguir el sistema";
+"preferences.appleLive" = "Inserción en vivo (Beta)";
+"preferences.appleLive.detail" = "El texto ya insertado no se vuelve a pulir.";
+"preferences.appleOffline" = "Modelo local de Apple";
+"preferences.betaUpdates" = "Incluir versiones beta";
+"preferences.configure" = "Configurar…";
+"preferences.connections.recognition" = "Reconocimiento de voz";
+"preferences.connections.refinement" = "Mejora de texto";
+"preferences.connections.title" = "Gestionar conexiones";
+"preferences.currentVersion" = "Versión actual";
+"preferences.developer" = "Novedades del desarrollador";
+"preferences.devices" = "Sonido y dispositivos";
+"preferences.discard" = "Descartar cambios";
+"preferences.edit" = "Editar…";
+"preferences.engineMenu" = "Motor de reconocimiento: %@";
+"preferences.headphones" = "Entrada con auriculares (Beta)";
+"preferences.headphones.hold" = "Mantén pulsado reproducir/pausa en los auriculares para hablar y suelta para terminar.";
+"preferences.headphones.tap" = "Pulsa una vez reproducir/pausa en los auriculares para iniciar o detener la entrada.";
+"preferences.hints.title" = "Pistas de reconocimiento";
+"preferences.inUse" = "En uso";
+"preferences.inputDevice" = "Dispositivo de entrada";
+"preferences.launchAtLogin" = "Abrir al iniciar sesión";
+"preferences.lowerVolume" = "Bajar el volumen durante la entrada";
+"preferences.manageModels" = "Gestionar modelos locales…";
+"preferences.microphone.detail" = "Captar la voz.";
+"preferences.models.title" = "Modelos locales";
+"preferences.output" = "Salida";
+"preferences.page.about" = "Acerca de";
+"preferences.page.appearance" = "Apariencia";
+"preferences.page.general" = "General";
+"preferences.page.input" = "Modo de entrada";
+"preferences.page.mode" = "Motor de reconocimiento";
+"preferences.page.permissions" = "Permisos y privacidad";
+"preferences.pages" = "Páginas de ajustes";
+"preferences.permissions" = "Permisos del sistema";
+"preferences.project" = "Página del proyecto";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "Añadir puntuación automáticamente";
+"preferences.recognition" = "Reconocimiento";
+"preferences.refinement" = "Mejora de texto";
+"preferences.refinementRules" = "Prompt del sistema:";
+"preferences.resetPermissions" = "Restablecer permisos…";
+"preferences.seconds" = "%g s";
+"preferences.section.appearance" = "Apariencia";
+"preferences.section.general" = "General";
+"preferences.section.system" = "Sistema";
+"preferences.section.voice" = "Entrada por voz";
+"preferences.service" = "Servicio";
+"preferences.settingsCommand" = "Ajustes…";
+"preferences.silenceStop" = "Retraso de parada";
+"preferences.soundSettings" = "Ajustes de sonido";
+"preferences.speech.detail" = "Reconocimiento de Apple, también como respaldo si falla el reconocimiento en la nube.";
+"preferences.support" = "Soporte y licencias";
+"preferences.systemDefault" = "Predeterminado del sistema";
+"preferences.systemSettings" = "Ajustes del Sistema…";
+"preferences.tagline" = "Entrada por voz desde la barra de menús de macOS";
+"preferences.title" = "Ajustes";
+"preferences.triggerMenu" = "Tecla de activación: %@";
+"preferences.triggerMode" = "Activación";
+"preferences.unavailableDevice" = "Dispositivo no disponible";
+"preferences.useEngine" = "Usar este motor";
+"preferences.view" = "Ver…";
+
+"preferences.debug.tools" = "Herramientas de desarrollo";
+"preferences.debug.delay" = "Retraso al pegar";
+
+"preferences.windowMenu" = "Ventana";
+"preferences.closeWindow" = "Cerrar ventana";
+
+"preferences.connections.command" = "Gestionar conexiones…";
+
+"preferences.hints.scene" = "Contexto de uso";

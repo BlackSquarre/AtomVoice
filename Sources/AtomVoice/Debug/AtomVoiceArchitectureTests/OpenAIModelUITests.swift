@@ -13,6 +13,141 @@ enum OpenAIModelUITests {
         await runner.run("OpenAI form shares Doubao columns and fits both models in eight languages") {
             try await localizedFormLayout()
         }
+        await runner.run("OpenAI separate hints preserve one draft across model changes and reopening without fetching") {
+            try await separateHintsPreserveDraft()
+        }
+        await runner.run("OpenAI hints and connection save and discard never submit the other utility draft") {
+            try await hintsAndConnectionCommitIndependently()
+        }
+    }
+
+    @MainActor
+    private static func separateHintsPreserveDraft() async throws {
+        var keyWrites = 0
+        var modelFetches = 0
+        let settings = fixtureSettings { keyWrites += 1 }
+        let tab = OpenAISettingsTab(textFieldDelegate: nil, editor: .init(settings: settings),
+                                   allowsExternalActions: false, loadModels: { _ in
+            modelFetches += 1
+            return [.live, .whisper]
+        })
+        let connection = tab.makeView(includeContext: false, allowsModelFetch: false)
+        tab.refresh()
+        let hints = tab.makeHintsView()
+        let scene: NSTextView = try control("openai.hints.prompt", in: hints)
+        let keywords: NSTextView = try control("openai.hints.keywords", in: hints)
+        let model: NSPopUpButton = try control("openai.model", in: connection)
+        let refresh: NSButton = try control("openai.models.refresh", in: connection)
+        let key: NSSecureTextField = try control("openai.apiKey", in: connection)
+        let originalParent = scene.superview
+        try expect(!tab.hasChanges && key.stringValue.isEmpty)
+        try expect(scene.window == nil && keywords.window == nil)
+
+        // 通过正式 NSTextViewDelegate 接线修改草稿，而不访问真实设置或钥匙串。
+        scene.string = "offline scene"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: scene))
+        keywords.string = "AtomVoice\nOpenAI"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: keywords))
+        try expect(tab.hasChanges)
+        let beforeSave = try settings.configuration()
+        try expect(beforeSave.prompt.isEmpty)
+
+        model.selectItem(withTitle: OpenAIASRModel.whisper.rawValue)
+        if let action = model.action { _ = model.sendAction(action, to: model.target) }
+        try expect(!tab.supportsContextHints && hints.isHidden)
+        try expect(!scene.isEditable && !keywords.isEditable)
+        try expect(scene.string == "offline scene" && keywords.string == "AtomVoice\nOpenAI")
+
+        // 重新取得缓存视图模拟关闭后再打开，不以 refresh 覆盖未保存内容。
+        try expect(tab.makeView(includeContext: false, allowsModelFetch: false) === connection)
+        try expect(tab.makeHintsView() === hints && scene.superview === originalParent)
+        model.selectItem(withTitle: OpenAIASRModel.live.rawValue)
+        if let action = model.action { _ = model.sendAction(action, to: model.target) }
+        try expect(tab.supportsContextHints && !hints.isHidden)
+        try expect(scene.isEditable && keywords.isEditable)
+        try expect(scene.string == "offline scene" && keywords.string == "AtomVoice\nOpenAI")
+
+        tab.activateModelList()
+        if let action = refresh.action { _ = refresh.sendAction(action, to: refresh.target) }
+        await Task.yield()
+        try expect(modelFetches == 0 && keyWrites == 0 && !refresh.isEnabled)
+        if case .saved = tab.saveHints() {} else {
+            throw TestFailure(file: #filePath, line: #line, message: "Expected shared hints draft to save")
+        }
+        let saved = try settings.configuration()
+        try expect(saved.prompt == "offline scene" && saved.keywords == ["AtomVoice", "OpenAI"])
+        try expect(!tab.hasChanges && keyWrites == 0 && modelFetches == 0)
+    }
+
+    @MainActor
+    private static func hintsAndConnectionCommitIndependently() async throws {
+        var keyReads = 0
+        var keyWrites = 0
+        var storedKey = "offline-original-key"
+        let settings = OpenAIASRSettings(backend: InMemorySettingsBackend(), readKey: {
+            keyReads += 1
+            return .value(storedKey)
+        }, writeKey: { value in
+            keyWrites += 1
+            storedKey = value
+            return true
+        }, deleteKey: { keyWrites += 1; return true })
+        try settings.save(.init(model: .whisper), keyEdit: .unchanged,
+                          previousKeyRead: .value(storedKey))
+        let tab = OpenAISettingsTab(textFieldDelegate: nil, editor: .init(settings: settings),
+                                   allowsExternalActions: false, loadModels: { _ in [] })
+        let connection = tab.makeView(includeContext: false, allowsModelFetch: false)
+        tab.refresh()
+        let hints = tab.makeHintsView()
+        let scene: NSTextView = try control("openai.hints.prompt", in: hints)
+        let keywords: NSTextView = try control("openai.hints.keywords", in: hints)
+        let key: NSSecureTextField = try control("openai.apiKey", in: connection)
+        let model: NSPopUpButton = try control("openai.model", in: connection)
+        let readsAfterOpening = keyReads
+
+        model.selectItem(withTitle: OpenAIASRModel.live.rawValue)
+        if let action = model.action { _ = model.sendAction(action, to: model.target) }
+        key.stringValue = "offline-pending-key"
+        tab.apiKeyDidChange()
+        scene.string = "saved hints only"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: scene))
+        keywords.string = "AtomVoice"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: keywords))
+        try expect(tab.hasConnectionChanges && tab.hasHintChanges)
+        if case .saved = tab.saveHints() {} else {
+            throw TestFailure(file: #filePath, line: #line, message: "Expected hints-only commit")
+        }
+        let afterHints = try settings.configuration()
+        try expect(afterHints.resolvedModel == .whisper && afterHints.prompt == "saved hints only")
+        try expect(afterHints.keywords == ["AtomVoice"])
+        try expect(keyWrites == 0 && keyReads == readsAfterOpening && storedKey == "offline-original-key")
+        try expect(key.stringValue == "offline-pending-key" && model.titleOfSelectedItem == OpenAIASRModel.live.rawValue)
+        try expect(tab.hasConnectionChanges && !tab.hasHintChanges)
+
+        scene.string = "discard this hint"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: scene))
+        keywords.string = "discard-keyword"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: keywords))
+        tab.discardHints()
+        try expect(scene.string == "saved hints only" && keywords.string == "AtomVoice")
+        try expect(key.stringValue == "offline-pending-key" && model.titleOfSelectedItem == OpenAIASRModel.live.rawValue)
+        try expect(keyReads == readsAfterOpening && keyWrites == 0 && tab.hasConnectionChanges)
+
+        scene.string = "keep this pending hint"
+        tab.textDidChange(Notification(name: NSText.didChangeNotification, object: scene))
+        if case .saved = tab.save() {} else {
+            throw TestFailure(file: #filePath, line: #line, message: "Expected connection-only commit")
+        }
+        let afterConnection = try settings.configuration()
+        try expect(afterConnection.resolvedModel == .live && afterConnection.prompt == "saved hints only")
+        try expect(keyWrites == 1 && storedKey == "offline-pending-key")
+        try expect(scene.string == "keep this pending hint" && !tab.hasConnectionChanges && tab.hasHintChanges)
+
+        model.selectItem(withTitle: OpenAIASRModel.whisper.rawValue)
+        if let action = model.action { _ = model.sendAction(action, to: model.target) }
+        tab.discardConnectionChanges()
+        try expect(model.titleOfSelectedItem == OpenAIASRModel.live.rawValue)
+        try expect(scene.string == "keep this pending hint" && !tab.hasConnectionChanges && tab.hasHintChanges)
     }
 
     @MainActor

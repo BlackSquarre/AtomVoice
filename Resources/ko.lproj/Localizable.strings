@@ -422,8 +422,7 @@
 "oobe.trigger.headphone.desc" = "헤드폰이나 블루투스 오디오 기기의 재생/일시정지 버튼으로 음성 입력을 제어합니다. 기기가 연결된 동안에만 작동합니다.";
 "oobe.trigger.headphone.enable" = "헤드폰 버튼 입력 사용";
 "oobe.trigger.headphone.mode.hold" = "누르고 말하기 모드에서는 헤드폰 버튼을 누른 채 말하고 떼면 종료합니다. 일부 블루투스 기기는 길게 누르기를 지원하지 않을 수 있습니다.";
-"oobe.trigger.headphone.mode.tap" = "탭 모드에서는 한 번 눌러 시작/중지하고, 두 번 누르면 Return을 보냅니다. 일부 블루투스 기기는 길게 누르기를 지원하지 않을 수 있습니다.";
-
+"oobe.trigger.headphone.mode.tap" = "한 번 눌러 시작·종료합니다. 두 번 누르면 입력 중에는 종료하고, 대기 중에는 Return을 보냅니다.";
 /* 인식 엔진 설정 창 */
 "menu.asrSettings" = "인식 엔진 설정...";
 "asrSettings.title" = "인식 엔진 설정";
@@ -511,9 +510,9 @@
 
 /* 헤드폰 음성 제어 */
 "menu.headphoneControl" = "헤드폰 음성 제어 (Beta)";
-"tooltip.menu.headphoneControl" = "헤드폰 재생/일시정지 버튼으로 음성 입력 제어: 길게 누르기 모드에서는 누른 채 말하고 떼면 종료, 한 번 누르기 모드에서는 한 번 눌러 시작/중지, 두 번 누르면 Return 전송. Vibe Coding에 추천합니다.";
+"tooltip.menu.headphoneControl" = "헤드폰 재생/일시 정지 버튼으로 음성 입력을 제어합니다. 길게 누르기 모드에서는 누른 채 말하고 놓으면 종료합니다. 탭 모드에서는 한 번 눌러 시작·종료합니다. 두 번 누르면 입력 중에는 종료하고, 대기 중에는 Return을 보냅니다. Vibe Coding에 추천합니다.";
 "alert.headphoneControl.title" = "헤드폰 음성 제어를 사용하시겠습니까?";
-"alert.headphoneControl.message" = "AtomVoice가 헤드폰의 재생/일시정지 버튼을 가져와 음성 입력을 제어합니다. 길게 누르기 모드에서는 누른 채 말하고 떼면 종료합니다. 한 번 누르기 모드에서는 한 번 눌러 시작하거나 중지합니다. 두 번 누르면 항상 Return을 보냅니다. 헤드폰이나 블루투스 기기가 연결된 경우에만 작동합니다. 일부 블루투스 기기는 길게 누르기 모드를 지원하지 않을 수 있습니다. AirPods는 API 제한으로 인해 현재 지원되지 않습니다.";
+"alert.headphoneControl.message" = "AtomVoice가 헤드폰의 재생/일시 정지 버튼으로 음성 입력을 제어합니다. 길게 누르기 모드에서는 누른 채 말하고 놓으면 종료합니다. 탭 모드에서는 한 번 눌러 시작·종료합니다. 두 번 누르면 입력 중에는 종료하고, 대기 중에는 Return을 보냅니다. 헤드폰이나 Bluetooth 기기가 연결된 경우에만 작동합니다. 일부 Bluetooth 기기는 길게 누르기를 지원하지 않을 수 있습니다. AirPods는 API 제한으로 인해 현재 지원되지 않습니다.";
 "alert.headphoneControl.enable" = "사용";
 
 "doubao.settings.service" = "서비스:";
@@ -594,3 +593,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified preferences */
+"preferences.accessibility.detail" = "단축키와 텍스트 입력에 사용합니다.";
+"preferences.appearance.capsule" = "입력 캡슐";
+"preferences.appearance.dark" = "다크";
+"preferences.appearance.light" = "라이트";
+"preferences.appearance.mode" = "화면 모드";
+"preferences.appearance.preview" = "입력 캡슐 미리보기";
+"preferences.appearance.preview.text" = "음성 입력 중…";
+"preferences.appearance.speed" = "애니메이션 속도";
+"preferences.appearance.style" = "애니메이션";
+"preferences.appearance.system" = "시스템 설정 따르기";
+"preferences.appleLive" = "실시간 입력(Beta)";
+"preferences.appleLive.detail" = "이미 입력된 텍스트는 다듬지 않습니다.";
+"preferences.appleOffline" = "Apple 오프라인 모델";
+"preferences.betaUpdates" = "베타 버전 포함";
+"preferences.configure" = "설정…";
+"preferences.connections.recognition" = "음성 인식";
+"preferences.connections.refinement" = "문장 다듬기";
+"preferences.connections.title" = "연결 관리";
+"preferences.currentVersion" = "현재 버전";
+"preferences.developer" = "개발자";
+"preferences.devices" = "오디오 및 장치";
+"preferences.discard" = "변경 사항 취소";
+"preferences.edit" = "편집…";
+"preferences.engineMenu" = "인식 엔진: %@";
+"preferences.headphones" = "헤드폰 음성 입력(Beta)";
+"preferences.headphones.hold" = "재생/일시 정지 버튼을 누른 채 말하고, 놓으면 종료합니다.";
+"preferences.headphones.tap" = "재생/일시 정지 버튼을 한 번 눌러 입력을 시작하거나 종료합니다.";
+"preferences.hints.title" = "인식 힌트";
+"preferences.inUse" = "사용 중";
+"preferences.inputDevice" = "입력 장치";
+"preferences.launchAtLogin" = "로그인 시 실행";
+"preferences.lowerVolume" = "입력 중 시스템 음량 낮추기";
+"preferences.manageModels" = "로컬 모델 관리…";
+"preferences.microphone.detail" = "음성을 받아들이는 데 사용합니다.";
+"preferences.models.title" = "로컬 모델";
+"preferences.output" = "텍스트 출력";
+"preferences.page.about" = "정보";
+"preferences.page.appearance" = "화면 모드";
+"preferences.page.general" = "일반";
+"preferences.page.input" = "입력 방식";
+"preferences.page.mode" = "인식 엔진";
+"preferences.page.permissions" = "권한 및 개인정보 보호";
+"preferences.pages" = "설정 페이지";
+"preferences.permissions" = "시스템 권한";
+"preferences.project" = "프로젝트";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "구두점 자동 완성";
+"preferences.recognition" = "음성 인식";
+"preferences.refinement" = "문장 다듬기";
+"preferences.refinementRules" = "시스템 프롬프트:";
+"preferences.resetPermissions" = "권한 재설정…";
+"preferences.seconds" = "%g초";
+"preferences.section.appearance" = "화면 모드";
+"preferences.section.general" = "일반";
+"preferences.section.system" = "시스템";
+"preferences.section.voice" = "음성 입력";
+"preferences.service" = "서비스";
+"preferences.settingsCommand" = "설정…";
+"preferences.silenceStop" = "정지 딜레이";
+"preferences.soundSettings" = "사운드 설정";
+"preferences.speech.detail" = "Apple 인식 및 클라우드 인식 실패 시 대체 인식.";
+"preferences.support" = "지원 및 라이선스";
+"preferences.systemDefault" = "시스템 기본값";
+"preferences.systemSettings" = "시스템 설정…";
+"preferences.tagline" = "메뉴 막대에서 바로 음성 입력";
+"preferences.title" = "AtomVoice 설정";
+"preferences.triggerMenu" = "트리거 키: %@";
+"preferences.triggerMode" = "실행 방식";
+"preferences.unavailableDevice" = "사용할 수 없는 장치";
+"preferences.useEngine" = "이 엔진 사용";
+"preferences.view" = "보기…";
+
+"preferences.debug.tools" = "개발자 도구";
+"preferences.debug.delay" = "붙여넣기 지연";
+
+"preferences.windowMenu" = "윈도우";
+"preferences.closeWindow" = "윈도우 닫기";
+
+"preferences.connections.command" = "연결 관리…";
+
+"preferences.hints.scene" = "상황 설명";

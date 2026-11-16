@@ -1,23 +1,19 @@
 import Cocoa
 
-/// 菜单窗口路由：按需懒加载窗口控制器，窗口关闭后释放对应实例以回收内存。
-///
-/// 所有 open* 方法遵守同一份模板：
-///   1. 槽位为空 → 用工厂构造控制器；
-///   2. 绑定 onClose，下一轮 runloop 把槽位置 nil（避免在 windowWillClose 中销毁 delegate）；
-///   3. showWindow()。
-/// 不抽成共享辅助函数——6 个调用点就在文件里前后排列，模式扫一眼就能看清。
-///
-/// (Menu window router: lazy-create controllers on demand, release on close.
-///  All open* methods follow the same template; kept inline for at-a-glance consistency.)
+/// 菜单窗口路由：统一设置控制器跨关闭缓存草稿，OOBE 保持独立生命周期。
 final class MenuWindowRouter {
     private let llmRefiner: LLMRefiner
     private weak var sherpaDownloadReporter: SherpaDownloadReporting?
-    private var settingsWindow: SettingsWindowController?
-    private var doubaoSettingsWindow: DoubaoSettingsWindowController?
+    var onTriggerKeyChanged: ((UInt16) -> Void)?
+    var onHeadphoneChanged: ((Bool) -> Void)?
+    var onLanguageChanged: (() -> Void)?
+    var onSettingsChanged: (() -> Void)?
+    var onSelectEngine: ((String) -> Void)?
+    #if DEBUG_BUILD
+    var makeDebugToolsMenu: (() -> NSMenu)?
+    #endif
+    private var unifiedWindow: UnifiedSettingsWindowController?
     private var asrSettingsWindow: ASRSettingsWindowController?
-    private var aboutWindow: AboutWindowController?
-    private var permissionsWindow: PermissionsWindowController?
     private var oobeWindow: OOBEWindowController?
 
     init(llmRefiner: LLMRefiner, sherpaDownloadReporter: SherpaDownloadReporting) {
@@ -25,31 +21,25 @@ final class MenuWindowRouter {
         self.sherpaDownloadReporter = sherpaDownloadReporter
     }
 
-    func openSettings() {
-        if settingsWindow == nil {
-            let c = SettingsWindowController(llmRefiner: llmRefiner)
-            c.onClose = { [weak self] in DispatchQueue.main.async { self?.settingsWindow = nil } }
-            settingsWindow = c
-        }
-        settingsWindow?.showWindow()
+    private func unifiedSettings() -> UnifiedSettingsWindowController {
+        if let unifiedWindow { return unifiedWindow }
+        let controller = UnifiedSettingsWindowController(llmRefiner: llmRefiner, sherpaDownloadReporter: sherpaDownloadReporter)
+        controller.onTriggerChanged = { [weak self] in self?.onTriggerKeyChanged?($0) }
+        controller.onHeadphoneChanged = { [weak self] in self?.onHeadphoneChanged?($0) }
+        controller.onLanguageChanged = { [weak self] in self?.onLanguageChanged?() }
+        controller.onSettingsChanged = { [weak self] in self?.onSettingsChanged?() }
+        controller.onSelectEngine = { [weak self] in self?.onSelectEngine?($0) }
+        #if DEBUG_BUILD
+        controller.makeDebugToolsMenu = { [weak self] in self?.makeDebugToolsMenu?() ?? NSMenu() }
+        #endif
+        unifiedWindow = controller
+        return controller
     }
 
-    func openDoubaoSettings() {
-        if doubaoSettingsWindow == nil {
-            let c = DoubaoSettingsWindowController()
-            c.onClose = { [weak self] in DispatchQueue.main.async { self?.doubaoSettingsWindow = nil } }
-            doubaoSettingsWindow = c
-        }
-        doubaoSettingsWindow?.showWindow()
-    }
-
+    func openSettings() { unifiedSettings().showWindow() }
+    func openDoubaoSettings() { unifiedSettings().showConnections(selecting: VolcengineASRSettings.engineCode) }
     func openASRSettings(selecting engineCode: String? = nil) {
-        if asrSettingsWindow == nil {
-            let c = ASRSettingsWindowController(sherpaDownloadReporter: sherpaDownloadReporter)
-            c.onClose = { [weak self] in DispatchQueue.main.async { self?.asrSettingsWindow = nil } }
-            asrSettingsWindow = c
-        }
-        asrSettingsWindow?.showWindow(selecting: engineCode)
+        unifiedSettings().showConnections(selecting: engineCode ?? AppSettings.normalizedRecognitionEngine)
     }
 
     #if DEBUG_BUILD
@@ -63,23 +53,8 @@ final class MenuWindowRouter {
     }
     #endif
 
-    func openAbout() {
-        if aboutWindow == nil {
-            let c = AboutWindowController()
-            c.onClose = { [weak self] in DispatchQueue.main.async { self?.aboutWindow = nil } }
-            aboutWindow = c
-        }
-        aboutWindow?.showWindow()
-    }
-
-    func openPermissions() {
-        if permissionsWindow == nil {
-            let c = PermissionsWindowController()
-            c.onClose = { [weak self] in DispatchQueue.main.async { self?.permissionsWindow = nil } }
-            permissionsWindow = c
-        }
-        permissionsWindow?.showWindow()
-    }
+    func openAbout() { unifiedSettings().showWindow(page: .about) }
+    func openPermissions() { unifiedSettings().showWindow(page: .permissions) }
 
     /// OOBE 的业务回调（onFinish）只在创建时由调用方注入一次。
     /// (OOBE business callbacks injected once on creation via `configure`.)

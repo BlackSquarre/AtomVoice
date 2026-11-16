@@ -422,7 +422,7 @@
 "oobe.trigger.headphone.desc" = "Nutze die Play/Pause-Taste von Kopfhörern oder Bluetooth-Audiogeräten, um die Spracheingabe zu steuern. Nur aktiv, wenn ein Gerät verbunden ist.";
 "oobe.trigger.headphone.enable" = "Kopfhörertaste aktivieren";
 "oobe.trigger.headphone.mode.hold" = "Im Halten-Modus die Kopfhörertaste gedrückt halten zum Sprechen, loslassen zum Beenden. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
-"oobe.trigger.headphone.mode.tap" = "Im Tippen-Modus einmal drücken zum Starten oder Stoppen; Doppeldruck sendet Return. Manche Bluetooth-Geräte unterstützen langes Drücken eventuell nicht.";
+"oobe.trigger.headphone.mode.tap" = "Einmal drücken: Eingabe starten oder beenden. Zweimal: laufende Eingabe beenden, sonst Return senden.";
 
 /* Fenster für Erkennungseinstellungen */
 "menu.asrSettings" = "Erkennungseinstellungen...";
@@ -511,9 +511,9 @@
 
 /* Kopfhörer-Sprachsteuerung */
 "menu.headphoneControl" = "Kopfhörer-Sprachsteuerung (Beta)";
-"tooltip.menu.headphoneControl" = "Mit der Play/Pause-Taste der Kopfhörer die Spracheingabe steuern: im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden; im Klick-Modus startet oder stoppt ein Klick; Doppelklick sendet Return. Empfohlen für Vibe Coding.";
+"tooltip.menu.headphoneControl" = "Mit der Play/Pause-Taste der Kopfhörer die Spracheingabe steuern: im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden; im Klick-Modus startet oder stoppt ein Klick; doppeltes Drücken beendet die laufende Eingabe oder sendet im Leerlauf Return. Empfohlen für Vibe Coding.";
 "alert.headphoneControl.title" = "Kopfhörer-Sprachsteuerung aktivieren?";
-"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer für die Spracheingabe. Im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden. Im Klick-Modus startet oder stoppt ein Klick. Doppelklick sendet immer Return. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen den Halten-Modus eventuell nicht. AirPods wird derzeit aufgrund von API-Einschränkungen nicht unterstützt.";
+"alert.headphoneControl.message" = "AtomVoice übernimmt die Play/Pause-Taste der Kopfhörer für die Spracheingabe. Im Halten-Modus gedrückt halten zum Sprechen und loslassen zum Beenden. Im Klick-Modus startet oder stoppt ein Klick. Doppeltes Drücken beendet die laufende Eingabe und sendet im Leerlauf Return. Nur aktiv, wenn Kopfhörer oder ein Bluetooth-Gerät verbunden sind. Manche Bluetooth-Geräte unterstützen den Halten-Modus eventuell nicht. AirPods wird derzeit aufgrund von API-Einschränkungen nicht unterstützt.";
 "alert.headphoneControl.enable" = "Aktivieren";
 
 "doubao.settings.service" = "Dienst:";
@@ -594,3 +594,86 @@
 // OpenAI语言代码提示
 "openai.settings.languageCodes" = "en, zh-cn, zh-tw, zh-hk, ja, ko, es, fr, de, cmn, yue";
 "openai.settings.whisperLanguageCodes" = "en, zh, ja, ko, es, fr, de";
+
+/* Unified settings */
+"preferences.accessibility.detail" = "Tastenkürzel und Texteingabe.";
+"preferences.appearance.capsule" = "Eingabekapsel";
+"preferences.appearance.dark" = "Dunkel";
+"preferences.appearance.light" = "Hell";
+"preferences.appearance.mode" = "Darstellung";
+"preferences.appearance.preview" = "Vorschau der Eingabekapsel";
+"preferences.appearance.preview.text" = "Spracheingabe…";
+"preferences.appearance.speed" = "Animationsgeschwindigkeit";
+"preferences.appearance.style" = "Animation";
+"preferences.appearance.system" = "Systemeinstellung";
+"preferences.appleLive" = "Live-Einfügen (Beta)";
+"preferences.appleLive.detail" = "Bereits eingefügter Text wird nicht mehr überarbeitet.";
+"preferences.appleOffline" = "Lokales Apple-Modell";
+"preferences.betaUpdates" = "Beta-Versionen einschließen";
+"preferences.configure" = "Konfigurieren…";
+"preferences.connections.recognition" = "Spracherkennung";
+"preferences.connections.refinement" = "Textüberarbeitung";
+"preferences.connections.title" = "Verbindungen verwalten";
+"preferences.currentVersion" = "Aktuelle Version";
+"preferences.developer" = "Neuigkeiten vom Entwickler";
+"preferences.devices" = "Ton und Geräte";
+"preferences.discard" = "Änderungen verwerfen";
+"preferences.edit" = "Bearbeiten…";
+"preferences.engineMenu" = "Erkennungsengine: %@";
+"preferences.headphones" = "Kopfhörereingabe (Beta)";
+"preferences.headphones.hold" = "Zum Sprechen die Wiedergabe-/Pausetaste am Kopfhörer halten, zum Beenden loslassen.";
+"preferences.headphones.tap" = "Die Wiedergabe-/Pausetaste einmal drücken, um die Eingabe zu starten oder zu beenden.";
+"preferences.hints.title" = "Erkennungshinweise";
+"preferences.inUse" = "Aktiv";
+"preferences.inputDevice" = "Eingabegerät";
+"preferences.launchAtLogin" = "Bei der Anmeldung öffnen";
+"preferences.lowerVolume" = "Systemlautstärke bei der Eingabe senken";
+"preferences.manageModels" = "Lokale Modelle verwalten…";
+"preferences.microphone.detail" = "Sprache erfassen.";
+"preferences.models.title" = "Lokale Modelle";
+"preferences.output" = "Ausgabe";
+"preferences.page.about" = "Über";
+"preferences.page.appearance" = "Darstellung";
+"preferences.page.general" = "Allgemein";
+"preferences.page.input" = "Eingabemodus";
+"preferences.page.mode" = "Erkennungs-Engine";
+"preferences.page.permissions" = "Berechtigungen und Datenschutz";
+"preferences.pages" = "Einstellungsseiten";
+"preferences.permissions" = "Systemberechtigungen";
+"preferences.project" = "Projektseite";
+"preferences.projectLink" = "GitHub ↗";
+"preferences.punctuation" = "Satzzeichen automatisch ergänzen";
+"preferences.recognition" = "Erkennung";
+"preferences.refinement" = "Textüberarbeitung";
+"preferences.refinementRules" = "System-Prompt:";
+"preferences.resetPermissions" = "Berechtigungen zurücksetzen…";
+"preferences.seconds" = "%g s";
+"preferences.section.appearance" = "Darstellung";
+"preferences.section.general" = "Allgemein";
+"preferences.section.system" = "System";
+"preferences.section.voice" = "Spracheingabe";
+"preferences.service" = "Dienst";
+"preferences.settingsCommand" = "Einstellungen…";
+"preferences.silenceStop" = "Stopp-Verzögerung";
+"preferences.soundSettings" = "Toneinstellungen";
+"preferences.speech.detail" = "Apple-Erkennung, auch als Ersatz bei Ausfall der Cloud-Erkennung.";
+"preferences.support" = "Support und Lizenzen";
+"preferences.systemDefault" = "Systemstandard";
+"preferences.systemSettings" = "Systemeinstellungen…";
+"preferences.tagline" = "Spracheingabe über die macOS-Menüleiste";
+"preferences.title" = "Einstellungen";
+"preferences.triggerMenu" = "Auslösetaste: %@";
+"preferences.triggerMode" = "Auslöseverhalten";
+"preferences.unavailableDevice" = "Gerät nicht verfügbar";
+"preferences.useEngine" = "Verwenden";
+"preferences.view" = "Anzeigen…";
+
+"preferences.debug.tools" = "Entwicklerwerkzeuge";
+"preferences.debug.delay" = "Einfügeverzögerung";
+
+"preferences.windowMenu" = "Fenster";
+"preferences.closeWindow" = "Fenster schließen";
+
+"preferences.connections.command" = "Verbindungen verwalten…";
+
+"preferences.hints.scene" = "Kontext";

@@ -31,8 +31,47 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.windowRouter = MenuWindowRouter(llmRefiner: llmRefiner, sherpaDownloadReporter: sherpaDownloadReporter)
         self.appHost = appHost
         super.init()
+        windowRouter.onTriggerKeyChanged = { [weak self] code in self?.onTriggerKeyChanged?(code); self?.rebuildMenu() }
+        windowRouter.onHeadphoneChanged = { [weak self] enabled in self?.appHost?.setHeadphoneControlEnabled(enabled); self?.rebuildMenu() }
+        windowRouter.onLanguageChanged = { [weak self] in
+            guard let self else { return }
+            if AppSettings.appleOnDeviceRecognitionEnabled,
+               !Self.supportsOnDeviceRecognition(for: AppSettings.selectedLanguage) {
+                AppSettings.appleOnDeviceRecognitionEnabled = false
+            }
+            self.onLanguageChanged(); self.rebuildMenu()
+        }
+        windowRouter.onSettingsChanged = { [weak self] in AppearancePreference.applyToApplication(); self?.rebuildMenu() }
+        windowRouter.onSelectEngine = { [weak self] code in
+            let item = NSMenuItem(); item.representedObject = code; self?.selectRecognitionEngine(item)
+        }
+        #if DEBUG_BUILD
+        windowRouter.makeDebugToolsMenu = { [weak self] in self?.makePreferencesDebugMenu() ?? NSMenu() }
+        #endif
+        MainMenuInstaller.openSettings = { [weak self] in self?.windowRouter.openSettings() }
+        MainMenuInstaller.openAbout = { [weak self] in self?.windowRouter.openAbout() }
         setupStatusItem()
     }
+
+    #if DEBUG_BUILD
+    /// 调试工具归入设置中的关于页，状态栏保留日常快速选择。
+    private func makePreferencesDebugMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(makeMenuItem(title: loc("menu.debug.testOnDeviceAlert"), action: #selector(debugTestOnDeviceAlert(_:))))
+        let delay = makeMenuItem(title: loc("preferences.debug.delay"))
+        let choices = NSMenu()
+        for option in AppSettings.pasteDelayOptions {
+            choices.addItem(makeMenuItem(title: String(format: "%.0f ms", option * 1000),
+                                        action: #selector(debugSelectPasteDelay(_:)),
+                                        state: abs(option - AppSettings.pasteDelay) < 0.001 ? .on : .off,
+                                        representedObject: option))
+        }
+        delay.submenu = choices
+        menu.addItem(delay)
+        menu.addItem(makeMenuItem(title: Self.debugMemoryTitle(), action: #selector(debugDumpMemorySnapshot(_:))))
+        return menu
+    }
+    #endif
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -47,44 +86,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
 
         let triggerOption = TriggerKeyOption.option(for: AppSettings.triggerKeyCode)
-        let isTapMode = AppSettings.silenceAutoStopEnabled
-        let currentLang = AppSettings.selectedLanguage
         let currentEngine = AppSettings.normalizedRecognitionEngine
-
-        addHeader(to: menu, triggerOption: triggerOption, isTapMode: isTapMode)
+        addHeader(to: menu, triggerOption: triggerOption, isTapMode: AppSettings.silenceAutoStopEnabled)
         menu.addItem(.separator())
-
-        menu.addItem(makeLanguageItem(currentLang: currentLang))
-        menu.addItem(makeRecognitionEngineItem(currentEngine: currentEngine))
-        menu.addItem(makePunctuationItem())
-        if let outputItem = makeTextOutputItem() {
-            menu.addItem(outputItem)
-        }
+        let trigger = makeTriggerKeyItem(triggerOption: triggerOption)
+        menu.addItem(trigger)
+        let engine = makeRecognitionEngineItem(currentEngine: currentEngine)
+        menu.addItem(engine)
         menu.addItem(.separator())
-
-        menu.addItem(makeInputModeItem(currentEngine: currentEngine, isTapMode: isTapMode))
-        menu.addItem(makeTriggerKeyItem(triggerOption: triggerOption))
-        menu.addItem(makeAudioInputItem())
+        let settings = makeMenuItem(title: loc("preferences.settingsCommand"), action: #selector(openSettings(_:)), keyEquivalent: ",")
+        menu.addItem(settings)
         menu.addItem(.separator())
-
-        let otherItem = makeMenuItem(
-            title: loc("menu.otherSettings"),
-            imageName: "ellipsis.circle",
-            imageVisibility: .visible
-        )
-        otherItem.submenu = buildOtherSettingsMenu()
-        menu.addItem(otherItem)
-        menu.addItem(.separator())
-
-        menu.addItem(
-            makeMenuItem(
-                title: loc("menu.about"),
-                action: #selector(openAbout(_:)),
-                imageName: "info.circle",
-                toolTip: loc("tooltip.menu.about")
-            )
-        )
-        menu.addItem(makeMenuItem(title: loc("menu.quit"), action: #selector(quit(_:)), keyEquivalent: "q", imageName: "power"))
+        menu.addItem(makeMenuItem(title: loc("menu.app.quit", loc("app.title")), action: #selector(quit(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
     }
@@ -92,7 +105,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: - Menu sections
 
     /// 顶部提示：按住/单击 [触发键] 开始语音输入。
-    /// (Top tip: hold/tap [trigger key] to start voice input.)
     private func addHeader(to menu: NSMenu, triggerOption: TriggerKeyOption, isTapMode: Bool) {
         let instructionFmt = loc(isTapMode ? "menu.tapKey" : "menu.holdKey")
         menu.addItem(makeSectionLabel(String(format: instructionFmt, loc(triggerOption.symbolKey))))
@@ -118,35 +130,20 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    /// 识别引擎子菜单（含引擎设置与 LLM 子菜单）。
-    /// (Recognition engine submenu; includes engine settings and the LLM submenu.)
+    /// 识别引擎子菜单；当前选择只在子菜单内标记。
     private func makeRecognitionEngineItem(currentEngine: String) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.recognitionEngine"), imageName: "cpu", imageVisibility: .visible)
+        let item = makeMenuItem(title: loc("menu.recognitionEngine"))
         let submenu = NSMenu()
         for descriptor in asrEngineRegistry.descriptors {
             submenu.addItem(
                 makeMenuItem(
                     title: loc(descriptor.displayNameKey),
                     action: #selector(selectRecognitionEngine(_:)),
-                    imageName: descriptor.iconName,
                     state: descriptor.code == currentEngine ? .on : .off,
                     representedObject: descriptor.code
                 )
             )
         }
-        submenu.addItem(.separator())
-        submenu.addItem(makeMenuItem(title: loc("menu.asrSettings"), action: #selector(openASRSettings(_:)), imageName: "gear"))
-        submenu.addItem(
-            makeMenuItem(
-                title: loc("menu.engine.howto"),
-                action: #selector(openEngineHowto(_:)),
-                imageName: "questionmark.circle"
-            )
-        )
-        submenu.addItem(.separator())
-        // LLM 优化放在引擎菜单末尾，避免主菜单过长。
-        // (LLM refinement lives at the bottom of the engine submenu to keep the main menu short.)
-        submenu.addItem(makeLLMItem())
         item.submenu = submenu
         return item
     }
@@ -257,8 +254,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// 触发键子菜单；Fn/Globe 选项会把标题里的 "Globe" 字样换成 SF Symbol。
     /// (Trigger key submenu; for Fn/Globe, replaces literal "Globe" text in the title with the SF Symbol.)
     private func makeTriggerKeyItem(triggerOption: TriggerKeyOption) -> NSMenuItem {
-        let item = makeMenuItem(title: loc("menu.triggerKey"), imageName: "command", imageVisibility: .visible)
-        item.toolTip = loc("tooltip.menu.triggerKey")
+        let item = makeMenuItem(title: loc("menu.triggerKey"))
         let submenu = NSMenu()
         for option in TriggerKeyOption.all {
             let menuItem = makeMenuItem(
@@ -710,6 +706,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func presentOOBESnapshot(step: Int, configure: (OOBEWindowController) -> Void) {
         windowRouter.openOOBESnapshot(step: step, configure: configure)
     }
+
 
     func presentASRSettingsSnapshot(tabIdentifier: String) {
         windowRouter.openASRSettingsSnapshot(tabIdentifier: tabIdentifier)

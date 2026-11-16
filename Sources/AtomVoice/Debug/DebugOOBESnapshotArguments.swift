@@ -34,4 +34,13 @@ struct DebugASRSettingsSnapshotArguments {
         return nil
     }
 }
+struct DebugPreferencesSnapshotArguments {
+    let page: String
+    static var current: Self? {
+        if let page = Bundle.main.object(forInfoDictionaryKey: "AtomVoicePreferencesSnapshotPage") as? String { return Self(page: page) }
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "--debug-preferences-snapshot"), args.indices.contains(index + 1) else { return nil }
+        return Self(page: args[index + 1])
+    }
+}
 #endif
