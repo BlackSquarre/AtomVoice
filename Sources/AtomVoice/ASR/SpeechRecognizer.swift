@@ -15,6 +15,9 @@ protocol AppleSpeechRecognizing: AnyObject {
 
 final class SpeechRecognizerController: AppleSpeechRecognizing {
     private var recognizer: SFSpeechRecognizer?
+    private let languageProvider: () -> String
+    private let recognizerFactory: (Locale) -> SFSpeechRecognizer?
+    private var preparedLanguage: String?
     private(set) var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let taskCreationQueue = DispatchQueue(label: "com.atomvoice.appleSpeech.prepare", qos: .userInitiated)
@@ -31,8 +34,10 @@ final class SpeechRecognizerController: AppleSpeechRecognizing {
     private var onError: ((String) -> Void)?
     private var onRequestSwitch: ((SFSpeechAudioBufferRecognitionRequest) -> Void)?
 
-    init() {
-        updateLanguage()
+    init(languageProvider: @escaping () -> String = { AppSettings.selectedLanguage },
+         recognizerFactory: @escaping (Locale) -> SFSpeechRecognizer? = { SFSpeechRecognizer(locale: $0) }) {
+        self.languageProvider = languageProvider
+        self.recognizerFactory = recognizerFactory
     }
 
     var currentText: String {
@@ -40,9 +45,18 @@ final class SpeechRecognizerController: AppleSpeechRecognizing {
     }
 
     func updateLanguage() {
-        let langCode = AppSettings.selectedLanguage
-        recognizer = SFSpeechRecognizer(locale: Locale(identifier: langCode))
+        // 尚未使用 Apple 时只保留轻量 owner；首次 start/缓存回退读取最新语言。
+        guard preparedLanguage != nil else { return }
+        prepareRecognizerIfNeeded()
+    }
+
+    /// 由收音提交之后的识别入口调用；同语言复用构造结果，滚动分段继续共享它。
+    func prepareRecognizerIfNeeded() {
+        let langCode = languageProvider()
+        guard preparedLanguage != langCode else { return }
+        recognizer = recognizerFactory(Locale(identifier: langCode))
         recognizer?.defaultTaskHint = .dictation
+        preparedLanguage = langCode
     }
 
     // MARK: - 开始识别
@@ -53,6 +67,7 @@ final class SpeechRecognizerController: AppleSpeechRecognizing {
         onError: @escaping (String) -> Void,
         onRequestSwitch: @escaping (SFSpeechAudioBufferRecognitionRequest) -> Void
     ) -> SFSpeechAudioBufferRecognitionRequest? {
+        prepareRecognizerIfNeeded()
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil
@@ -113,6 +128,8 @@ final class SpeechRecognizerController: AppleSpeechRecognizing {
         activeTaskID += 1
         let taskID = activeTaskID
 
+        // 无缓存音频的回退不需要建立系统识别器。
+        if !buffers.isEmpty { prepareRecognizerIfNeeded() }
         guard !buffers.isEmpty, let recognizer else {
             DispatchQueue.main.async { completion("") }
             return

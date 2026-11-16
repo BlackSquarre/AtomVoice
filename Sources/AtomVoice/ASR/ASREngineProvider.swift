@@ -13,6 +13,7 @@ protocol ASREngineProviding: AnyObject {
 }
 
 final class ASREngineProvider: ASREngineProviding {
+    private let speechRecognizerFactory: () -> SpeechRecognizerController
     private var speechRecognizerInstance: SpeechRecognizerController?
     private var sherpaRecognizer: SherpaOnnxRecognizerController?
     private var volcengineProvider: VolcengineASRProvider?
@@ -27,6 +28,10 @@ final class ASREngineProvider: ASREngineProviding {
     private var doubaoRecognitionSession: DoubaoRecognitionSession?
     private var openAIRecognitionSession: CloudRecognitionSession?
 
+    init(speechRecognizerFactory: @escaping () -> SpeechRecognizerController = { SpeechRecognizerController() }) {
+        self.speechRecognizerFactory = speechRecognizerFactory
+    }
+
     var hasSherpaEngine: Bool {
         sherpaASREngine != nil
     }
@@ -37,7 +42,7 @@ final class ASREngineProvider: ASREngineProviding {
 
     func speechRecognizer() -> SpeechRecognizerController {
         if let speechRecognizerInstance { return speechRecognizerInstance }
-        let recognizer = SpeechRecognizerController()
+        let recognizer = speechRecognizerFactory()
         speechRecognizerInstance = recognizer
         return recognizer
     }

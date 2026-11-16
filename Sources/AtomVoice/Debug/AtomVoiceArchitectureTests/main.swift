@@ -12,6 +12,7 @@ var runner = TestRunner()
 
 await PermissionTests.run(&runner)
 await ASRProviderTests.run(&runner)
+await AppleRecognizerPreparationTests.run(&runner)
 await CloudASRTests.run(&runner)
 await OpenAITranscriptionTests.run(&runner)
 await OpenAICloudRuntimeTests.run(&runner)
