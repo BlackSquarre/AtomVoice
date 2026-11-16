@@ -20,9 +20,15 @@ final class DoubaoSettingsTab: ASRSettingsTab {
     private var doubaoNonstreamCheckbox: NSButton!
     private var doubaoGlobalInfoLabel: NSTextField!
 
-    init(textFieldDelegate: NSTextFieldDelegate?, editor: DoubaoSettingsEditor = DoubaoSettingsEditor()) {
+    private let usesAsyncCredentials: Bool
+    private(set) var isBusy = false
+    var onBusyChanged: (() -> Void)?
+    var onOperationCompleted: ((ASRSettingsTabSaveOutcome) -> Void)?
+
+    init(textFieldDelegate: NSTextFieldDelegate?, editor: DoubaoSettingsEditor = DoubaoSettingsEditor(), usesAsyncCredentials: Bool = false) {
         self.textFieldDelegate = textFieldDelegate
         self.editor = editor
+        self.usesAsyncCredentials = usesAsyncCredentials
     }
 
     func makeView() -> NSView {
@@ -54,6 +60,7 @@ final class DoubaoSettingsTab: ASRSettingsTab {
         servicePopup.target = self
         servicePopup.action = #selector(changeService(_:))
         serviceInfoLabel = SettingsUI.makeSecondaryLabel()
+        serviceInfoLabel.identifier = NSUserInterfaceItemIdentifier("doubao.keyStatus")
         SettingsUI.allowHorizontalWrapping(serviceInfoLabel, preferredMaxLayoutWidth: 430)
 
         apiKeyLink = NSButton(title: loc("doubao.settings.apiKeyLink"),
@@ -132,7 +139,18 @@ final class DoubaoSettingsTab: ASRSettingsTab {
     }
 
     func refresh() {
-        let doubaoSettings = editor.reload()
+        guard !isBusy else { return }
+        if usesAsyncCredentials {
+            setBusy(true)
+            serviceInfoLabel.stringValue = loc("settings.loading")
+            editor.reloadAsync { [weak self] value in
+                self?.applyLoadedSettings(value)
+                self?.setBusy(false)
+            }
+        } else { applyLoadedSettings(editor.reload()) }
+    }
+
+    private func applyLoadedSettings(_ doubaoSettings: VolcengineASRSettings) {
         applyServiceDraft(DoubaoSettingsDraft(settings: doubaoSettings))
         let currentKind = DoubaoModelKind.from(resourceID: doubaoSettings.resourceID)
         if let idx = doubaoModelOptions.firstIndex(of: currentKind) {
@@ -164,21 +182,63 @@ final class DoubaoSettingsTab: ASRSettingsTab {
         endpointRow.isHidden = value.service != .custom
         apiKeyLink.isHidden = value.service.apiKeyURL == nil
         apiKeyLink.toolTip = value.service.apiKeyURL?.absoluteString
-        serviceInfoLabel.stringValue = value.service.info
+        updateServiceInfo()
     }
 
     @objc private func changeService(_ sender: NSPopUpButton) {
+        guard !isBusy, editor.baseline != nil else { return }
         let next = DoubaoService.allCases[sender.indexOfSelectedItem]
-        applyServiceDraft(editor.switching(to: next, from: draft))
+        if usesAsyncCredentials {
+            let current = draft
+            setBusy(true)
+            serviceInfoLabel.stringValue = loc("settings.loading")
+            editor.switchAsync(to: next, from: current) { [weak self] value in
+                self?.applyServiceDraft(value)
+                self?.setBusy(false)
+            }
+        } else { applyServiceDraft(editor.switching(to: next, from: draft)) }
     }
 
     var hasChanges: Bool { editor.baseline != nil && editor.hasChanges(draft) }
 
     func save() -> ASRSettingsTabSaveOutcome {
+        guard !isBusy, editor.baseline != nil else { return .deferred }
+        if usesAsyncCredentials {
+            let current = draft
+            guard editor.hasChanges(current) else { return .saved }
+            setBusy(true)
+            serviceInfoLabel.stringValue = loc("settings.saving")
+            editor.saveAsync(current) { [weak self] saved in
+                guard let self else { return }
+                self.updateServiceInfo()
+                self.setBusy(false)
+                self.onOperationCompleted?(saved ? .saved : .failed(message: loc("doubao.settings.keychainFailed"), color: .systemRed))
+            }
+            return .deferred
+        }
         guard editor.save(draft) else {
             return .failed(message: loc("doubao.settings.keychainFailed"), color: .systemRed)
         }
         return .saved
+    }
+
+    private func updateServiceInfo() {
+        if case .failure = editor.keyReadResult(for: selectedService) {
+            serviceInfoLabel.stringValue = loc("doubao.settings.keychainFailed")
+            serviceInfoLabel.textColor = .systemRed
+        } else {
+            serviceInfoLabel.stringValue = selectedService.info
+            serviceInfoLabel.textColor = .secondaryLabelColor
+        }
+    }
+
+    private func setBusy(_ value: Bool) {
+        isBusy = value
+        for control in [doubaoAPIKeyField, doubaoModelPopup, doubaoEndpointField, servicePopup,
+                        doubaoITNCheckbox, doubaoDDCCheckbox, doubaoNonstreamCheckbox] as [NSControl?] {
+            control?.isEnabled = !value
+        }
+        onBusyChanged?()
     }
 
     @objc private func openDoubaoAPIKeyPage(_ sender: NSButton) {

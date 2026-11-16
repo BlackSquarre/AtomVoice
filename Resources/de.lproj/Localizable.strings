@@ -683,3 +683,4 @@
 "settings.loading" = "Wird geladen…";
 "asrSettings.sherpa.importing" = "Modell wird importiert…";
 "asrSettings.sherpa.deleting" = "Modell wird gelöscht…";
+"settings.saving" = "Wird gespeichert…";

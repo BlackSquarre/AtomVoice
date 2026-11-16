@@ -684,3 +684,4 @@
 "settings.loading" = "正在加载…";
 "asrSettings.sherpa.importing" = "正在导入模型…";
 "asrSettings.sherpa.deleting" = "正在删除模型…";
+"settings.saving" = "正在保存…";

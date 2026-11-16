@@ -10,6 +10,9 @@ enum OpenAIModelUITests {
         await runner.run("OpenAI model fetch discards old-key responses and preserves choices on failure") {
             try await keyChangeDiscardsResponse()
         }
+        await runner.run("Discarding an OpenAI connection draft cancels its model fetch and restores refresh") {
+            try await discardCancelsModelFetch()
+        }
         await runner.run("OpenAI form shares Doubao columns and fits both models in eight languages") {
             try await localizedFormLayout()
         }
@@ -273,6 +276,36 @@ enum OpenAIModelUITests {
         try expect(model.titleOfSelectedItem == OpenAIASRModel.whisper.rawValue)
         try expect(key.stringValue == "replacement-offline-key" && tab.hasChanges && writes == 0)
         tab.cancelModelListFetch()
+    }
+
+    @MainActor
+    private static func discardCancelsModelFetch() async throws {
+        let gate = ModelLoadGate()
+        var writes = 0
+        let settings = fixtureSettings { writes += 1 }
+        let tab = OpenAISettingsTab(textFieldDelegate: nil, editor: .init(settings: settings),
+                                   loadModels: { try await gate.load($0) })
+        let view = tab.makeView(includeContext: false)
+        tab.refresh()
+        let key: NSSecureTextField = try control("openai.apiKey", in: view)
+        let refresh: NSButton = try control("openai.models.refresh", in: view)
+        let status: NSTextField = try control("openai.models.status", in: view)
+        key.stringValue = "discarded-offline-key"
+        tab.apiKeyDidChange()
+        refresh.performClick(nil)
+        try await waitUntil { gate.keys.count == 1 }
+        try expect(!refresh.isEnabled)
+        tab.discardConnectionChanges()
+        try expect(refresh.isEnabled && key.stringValue.isEmpty && !tab.hasConnectionChanges)
+        gate.complete(.success([.whisper]))
+        try await waitUntil { gate.finishedCount == 1 }
+        try expect(refresh.isEnabled && status.stringValue == loc("openai.models.initial"))
+        refresh.performClick(nil)
+        try await waitUntil { gate.keys.count == 2 }
+        try expect(gate.keys.last == "offline-fixture-key")
+        gate.complete(.success([.live]))
+        try await waitUntil { refresh.isEnabled }
+        try expect(writes == 0 && !tab.hasConnectionChanges)
     }
 
     private static func fixtureSettings(onWrite: @escaping () -> Void) -> OpenAIASRSettings {

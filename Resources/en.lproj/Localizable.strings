@@ -683,3 +683,4 @@
 "settings.loading" = "Loading…";
 "asrSettings.sherpa.importing" = "Importing model…";
 "asrSettings.sherpa.deleting" = "Deleting model…";
+"settings.saving" = "Saving…";

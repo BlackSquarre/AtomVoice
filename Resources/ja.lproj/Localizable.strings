@@ -682,3 +682,4 @@
 "settings.loading" = "読み込み中…";
 "asrSettings.sherpa.importing" = "モデルを読み込み中…";
 "asrSettings.sherpa.deleting" = "モデルを削除中…";
+"settings.saving" = "保存中…";

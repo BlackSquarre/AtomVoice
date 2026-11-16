@@ -32,6 +32,7 @@ final class DoubaoSettingsEditor {
     private let saveKey: (String, DoubaoService, KeychainStringReadResult) -> Bool
     private let persist: (VolcengineASRSettings) -> Void
     private let loadCustomEndpoint: () -> String
+    private let credentialQueue = DispatchQueue(label: "AtomVoice.DoubaoSettings.credentials", qos: .userInitiated)
 
     init(readKey: @escaping (DoubaoService) -> KeychainStringReadResult = { VolcengineASRSettings.readAPIKey(for: $0) },
          load: @escaping (String) -> VolcengineASRSettings = { VolcengineASRSettings.load(apiKey: $0) },
@@ -61,6 +62,85 @@ final class DoubaoSettingsEditor {
         return settings
     }
 
+    func reloadAsync(completion: @escaping (VolcengineASRSettings) -> Void) {
+        let load = self.load, readKey = self.readKey, loadCustomEndpoint = self.loadCustomEndpoint
+        credentialQueue.async { [weak self] in
+            var settings = load("")
+            let key = readKey(settings.selectedService)
+            settings.apiKey = key.string ?? ""
+            let customEndpoint = settings.selectedService == .custom ? settings.endpoint : loadCustomEndpoint()
+            let loadedSettings = settings
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.keyReads = [loadedSettings.selectedService: key]
+                self.keyDrafts.removeAll()
+                self.customEndpoint = customEndpoint
+                self.baselineCustomEndpoint = customEndpoint
+                self.baseline = .init(settings: loadedSettings)
+                completion(loadedSettings)
+            }
+        }
+    }
+
+    func switchAsync(to service: DoubaoService, from draft: DoubaoSettingsDraft,
+                     completion: @escaping (DoubaoSettingsDraft) -> Void) {
+        keyDrafts[draft.service] = draft.apiKey
+        if draft.service == .custom { customEndpoint = draft.endpoint }
+        if keyReads[service] != nil { completion(switching(to: service, from: draft)); return }
+        let readKey = self.readKey
+        credentialQueue.async { [weak self] in
+            let key = readKey(service)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.keyReads[service] = key
+                completion(self.switching(to: service, from: draft))
+            }
+        }
+    }
+
+    /// 后台仅处理捕获的值；部分成功的密钥结果回到主线程，重试不重复写入。
+    func saveAsync(_ draft: DoubaoSettingsDraft, completion: @escaping (Bool) -> Void) {
+        guard hasChanges(draft) else { completion(true); return }
+        keyDrafts[draft.service] = draft.apiKey
+        let drafts = keyDrafts, reads = keyReads, baseline = self.baseline
+        let customEndpoint = draft.service == .custom ? draft.endpoint : self.customEndpoint
+        let readKey = self.readKey, saveKey = self.saveKey, load = self.load, persist = self.persist
+        credentialQueue.async { [self] in
+            var nextReads = reads
+            var succeeded = true
+            for service in DoubaoService.allCases {
+                guard let key = drafts[service] else { continue }
+                let previous = nextReads[service] ?? readKey(service)
+                guard key != (previous.string ?? "") else { continue }
+                guard saveKey(key, service, previous) else { succeeded = false; break }
+                let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+                nextReads[service] = trimmed.isEmpty ? .notFound : .value(trimmed)
+            }
+            if succeeded {
+                var settings = load(draft.apiKey)
+                settings.service = draft.service
+                settings.endpoint = draft.service.endpoint ?? draft.endpoint
+                settings.customEndpoint = customEndpoint
+                if draft.model != baseline?.model { settings.resourceID = draft.model.resourceID }
+                settings.enableITN = draft.enableITN
+                settings.enableDDC = draft.enableDDC
+                settings.enableNonstream = draft.enableNonstream
+                persist(settings)
+            }
+            let resultReads = nextReads, result = succeeded
+            DispatchQueue.main.async {
+                self.keyReads = resultReads
+                if result {
+                    self.keyDrafts.removeAll()
+                    self.customEndpoint = customEndpoint
+                    self.baselineCustomEndpoint = customEndpoint
+                    self.baseline = draft
+                }
+                completion(result)
+            }
+        }
+    }
+
     func switching(to service: DoubaoService, from draft: DoubaoSettingsDraft) -> DoubaoSettingsDraft {
         keyDrafts[draft.service] = draft.apiKey
         if draft.service == .custom { customEndpoint = draft.endpoint }
@@ -70,6 +150,10 @@ final class DoubaoSettingsEditor {
         next.apiKey = keyDrafts[service] ?? keyReads[service]?.string ?? ""
         next.endpoint = service.endpoint ?? customEndpoint
         return next
+    }
+
+    func keyReadResult(for service: DoubaoService) -> KeychainStringReadResult {
+        keyReads[service] ?? .notFound
     }
 
     func hasChanges(_ draft: DoubaoSettingsDraft) -> Bool {

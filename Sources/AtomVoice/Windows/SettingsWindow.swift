@@ -380,10 +380,18 @@ final class SettingsWindowController: NSObject {
     private var embeddedProvider: RefinementProvider?
     private var requiresNewProviderKey = false
     private var connectionTestGeneration = 0
+    private let credentialQueue = DispatchQueue(label: "AtomVoice.LLMSettings.credentials", qos: .userInitiated)
+    private var credentialGeneration = 0
+    private(set) var isLoadingCredentials = false
+    private(set) var isSavingCredentials = false
+    private var credentialControls: [NSControl] = []
+    private var credentialActionControls: [NSControl] = []
+    private let connectionSettings: LLMSettings
 
-    init(llmRefiner: LLMRefiner, allowsSideEffects: Bool = true) {
+    init(llmRefiner: LLMRefiner, allowsSideEffects: Bool = true, connectionSettings: LLMSettings = AppSettings.llm) {
         self.llmRefiner = llmRefiner
         self.allowsSideEffects = allowsSideEffects
+        self.connectionSettings = connectionSettings
     }
 
     /// 嵌入同一份表单，不创建窗口或触发激活；重复进入保留现有草稿。
@@ -414,6 +422,7 @@ final class SettingsWindowController: NSObject {
 
     func discardEmbeddedChanges() {
         guard contentView != nil else { return }
+        guard !isSavingCredentials else { return }
         refreshFields()
         notifySizeChanged()
     }
@@ -592,6 +601,8 @@ final class SettingsWindowController: NSObject {
         root.translatesAutoresizingMaskIntoConstraints = false
         SettingsUI.pinArrangedSubviewsTrailing(in: root)
         contentView = root
+        credentialControls = [providerPopup, manageBtn, apiBaseURLField, apiKeyField, modelField, testBtn, saveBtn, cancelBtn]
+        credentialActionControls = [manageBtn, testBtn, saveBtn]
         refreshFields()
         updatePresentation()
         return root
@@ -601,7 +612,7 @@ final class SettingsWindowController: NSObject {
         descriptionLabel?.isHidden = isEmbedded
         promptFormRow?.isHidden = isEmbedded
         providerFormRow?.isHidden = embeddedProvider != nil
-        apiBaseURLField?.isEditable = embeddedProvider == nil
+        apiBaseURLField?.isEditable = embeddedProvider == nil && !isLoadingCredentials && !isSavingCredentials
         apiBaseURLField?.isSelectable = true
         cancelControl?.title = isEmbedded ? loc("preferences.discard") : loc("settings.cancel")
         saveControl?.toolTip = isEmbedded ? nil : loc("tooltip.settings.save")
@@ -629,35 +640,57 @@ final class SettingsWindowController: NSObject {
     }
 
     private func refreshFields() {
+        guard !isSavingCredentials else { return }
         connectionTestGeneration += 1
+        credentialGeneration += 1
+        let generation = credentialGeneration
         requiresNewProviderKey = false
-        // 预览只使用静态默认值，既不访问用户连接，也不触发 Keychain 授权。
-        if allowsSideEffects {
-            let savedURL = AppSettings.llmAPIBaseURL
-            if let embeddedProvider, !embeddedProvider.matches(baseURL: savedURL) {
-                // 旧供应商连接完整保留；新用途只建立未提交草稿，不读取或携带其密钥。
-                requiresNewProviderKey = true
-                apiKeyReadResult = .notFound
-                baselineConnection = LLMConnectionSettings(baseURL: embeddedProvider.baseURL,
-                                                           apiKey: "", model: embeddedProvider.model)
-            } else {
-                apiKeyReadResult = AppSettings.llm.apiKeyReadResult
-                baselineConnection = LLMConnectionSettings(baseURL: savedURL,
-                                                           apiKey: apiKeyReadResult.string ?? "",
-                                                           model: AppSettings.llmModel)
-            }
-        } else {
-            apiKeyReadResult = .notFound
-            baselineConnection = LLMConnectionSettings(baseURL: embeddedProvider?.baseURL ?? AppSettings.defaultLLMBaseURL,
-                                                       apiKey: "", model: embeddedProvider?.model ?? AppSettings.defaultLLMModel)
+        // 静态预览与切换供应商不读取无关旧密钥。
+        let savedURL = allowsSideEffects ? connectionSettings.apiBaseURL : AppSettings.defaultLLMBaseURL
+        if !allowsSideEffects || (embeddedProvider.map { !$0.matches(baseURL: savedURL) } ?? false) {
+            isLoadingCredentials = false
+            requiresNewProviderKey = allowsSideEffects && embeddedProvider != nil
+            applyConnection(.init(baseURL: embeddedProvider?.baseURL ?? AppSettings.defaultLLMBaseURL,
+                                  apiKey: "", model: embeddedProvider?.model ?? AppSettings.defaultLLMModel), keyRead: .notFound)
+            return
         }
-        guard let baselineConnection else { return }
-        apiBaseURLField.stringValue = baselineConnection.baseURL
-        apiKeyField.stringValue = baselineConnection.apiKey
-        modelField.stringValue = baselineConnection.model
+        isLoadingCredentials = true
+        updateCredentialControls()
+        statusLabel.stringValue = loc("settings.loading")
+        let settings = connectionSettings
+        credentialQueue.async { [weak self] in
+            let result = settings.readConnection()
+            DispatchQueue.main.async {
+                guard let self, self.credentialGeneration == generation else { return }
+                self.isLoadingCredentials = false
+                self.applyConnection(result.0, keyRead: result.1)
+            }
+        }
+    }
+
+    private func applyConnection(_ connection: LLMConnectionSettings, keyRead: KeychainStringReadResult) {
+        apiKeyReadResult = keyRead
+        baselineConnection = connection
+        apiBaseURLField.stringValue = connection.baseURL
+        apiKeyField.stringValue = connection.apiKey
+        modelField.stringValue = connection.model
         reloadProviders(preservingDraft: false)
-        statusLabel.stringValue = ""
-        statusLabel.textColor = .secondaryLabelColor
+        if case .failure = keyRead {
+            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
+            statusLabel.textColor = .systemRed
+        } else {
+            statusLabel.stringValue = ""
+            statusLabel.textColor = .secondaryLabelColor
+        }
+        updateCredentialControls()
+        notifySizeChanged()
+    }
+
+    private func updateCredentialControls() {
+        let enabled = !isLoadingCredentials && !isSavingCredentials
+        credentialControls.forEach { $0.isEnabled = enabled }
+        credentialActionControls.forEach { $0.isEnabled = enabled && allowsSideEffects }
+        updatePresentation()
     }
 
     @objc private func providerChanged(_ sender: NSPopUpButton) {
@@ -691,7 +724,7 @@ final class SettingsWindowController: NSObject {
     }
 
     @objc private func testConnection(_ sender: NSButton) {
-        guard allowsSideEffects, let connection = formConnection else { return }
+        guard allowsSideEffects, !isLoadingCredentials, !isSavingCredentials, let connection = formConnection else { return }
         connectionTestGeneration += 1
         let generation = connectionTestGeneration
         guard validateFixedProviderDraft(connection) else { return }
@@ -716,25 +749,34 @@ final class SettingsWindowController: NSObject {
     }
 
     @objc private func saveSettings(_ sender: NSButton) {
-        guard allowsSideEffects, let connection = formConnection else { return }
+        guard allowsSideEffects, !isLoadingCredentials, !isSavingCredentials, let connection = formConnection else { return }
         guard validateFixedProviderDraft(connection) else { return }
-        guard AppSettings.saveLLMConnection(connection, previousKeyRead: apiKeyReadResult) else {
-            statusLabel.stringValue = loc("doubao.settings.keychainFailed")
-            statusLabel.textColor = .systemRed
-            notifySizeChanged()
-            return
-        }
+        isSavingCredentials = true
         connectionTestGeneration += 1
-        baselineConnection = connection
-        requiresNewProviderKey = false
-        apiKeyReadResult = connection.apiKey.isEmpty ? .notFound : .value(connection.apiKey)
-        statusLabel.stringValue = loc("settings.saved")
-        statusLabel.textColor = .systemGreen
-        if isEmbedded {
-            notifySizeChanged()
-            onEmbeddedSaved?()
-        } else {
-            window?.close()
+        updateCredentialControls()
+        statusLabel.stringValue = loc("settings.saving")
+        statusLabel.textColor = .secondaryLabelColor
+        notifySizeChanged()
+        let settings = connectionSettings, previousKeyRead = apiKeyReadResult
+        credentialQueue.async { [self] in
+            let saved = settings.saveConnection(connection, previousKeyRead: previousKeyRead)
+            DispatchQueue.main.async {
+                self.isSavingCredentials = false
+                self.updateCredentialControls()
+                guard saved else {
+                    self.statusLabel.stringValue = loc("doubao.settings.keychainFailed")
+                    self.statusLabel.textColor = .systemRed
+                    self.notifySizeChanged()
+                    return
+                }
+                self.baselineConnection = connection
+                self.requiresNewProviderKey = false
+                self.apiKeyReadResult = connection.apiKey.isEmpty ? .notFound : .value(connection.apiKey)
+                self.statusLabel.stringValue = loc("settings.saved")
+                self.statusLabel.textColor = .systemGreen
+                if self.isEmbedded { self.notifySizeChanged(); self.onEmbeddedSaved?() }
+                else { self.window?.close() }
+            }
         }
     }
 

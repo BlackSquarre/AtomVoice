@@ -87,7 +87,10 @@ final class OpenAIASRSettings {
     private let readKey: () -> KeychainStringReadResult
     private let writeKey: (String) -> Bool
     private let deleteKey: () -> Bool
+    // 元数据只持短锁；Keychain 等待不阻塞主线程的配置/隐私读取。
     private let lock = NSRecursiveLock()
+    private let credentialLock = NSRecursiveLock()
+    private let credentialQueue = DispatchQueue(label: "AtomVoice.OpenAISettings.credentials", qos: .userInitiated)
 
     init(backend: SettingsBackend,
          readKey: @escaping () -> KeychainStringReadResult = { KeychainStore.readString(service: OpenAIASRSettings.keychainService, account: OpenAIASRSettings.keychainAccount) },
@@ -114,10 +117,10 @@ final class OpenAIASRSettings {
         }
     }
 
-    func apiKeyReadResult() -> KeychainStringReadResult { locked { readKey() } }
+    func apiKeyReadResult() -> KeychainStringReadResult { credentialsLocked { readKey() } }
 
     func snapshot(selectedLanguage: String = AppSettings.selectedLanguage) throws -> OpenAIASRRuntimeSettings {
-        try locked {
+        try credentialsLocked {
             let value = try configuration().validated(selectedLanguage: selectedLanguage)
             switch readKey() {
             case .value(let raw):
@@ -133,7 +136,7 @@ final class OpenAIASRSettings {
     /// 密钥未编辑时不读取或覆写；同意标记不属于表单，旧草稿不能覆盖新确认。
     func save(_ configuration: OpenAIASRConfiguration, keyEdit: OpenAIASRKeyEdit,
               previousKeyRead: KeychainStringReadResult) throws {
-        try locked {
+        try credentialsLocked {
             let value = try configuration.validated()
             let data = try JSONEncoder().encode(value)
             switch keyEdit {
@@ -147,8 +150,30 @@ final class OpenAIASRSettings {
                     throw OpenAIASRSettingsError.keychainUnavailable
                 }
             }
-            backend.set(data, forKey: AppSettings.Keys.openaiASRConfiguration)
+            locked { backend.set(data, forKey: AppSettings.Keys.openaiASRConfiguration) }
         }
+    }
+
+    /// 凭据与配置在同一个事务边界读取，页面只接收不可变结果。
+    func loadEditorState(completion: @escaping (KeychainStringReadResult, Result<OpenAIASRConfiguration, Error>) -> Void) {
+        credentialQueue.async { [self] in
+            let state = credentialsLocked { (readKey(), Result { try configuration() }) }
+            DispatchQueue.main.async { completion(state.0, state.1) }
+        }
+    }
+
+    func saveAsync(_ draft: OpenAIASRSettingsDraft, previousKeyRead: KeychainStringReadResult,
+                   completion: @escaping (Result<Void, Error>) -> Void) {
+        credentialQueue.async { [self] in
+            let result = Result { try save(draft.configuration, keyEdit: draft.keyEdit, previousKeyRead: previousKeyRead) }
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
+    private func credentialsLocked<T>(_ body: () throws -> T) rethrows -> T {
+        credentialLock.lock()
+        defer { credentialLock.unlock() }
+        return try body()
     }
 
     private func locked<T>(_ body: () throws -> T) rethrows -> T {
@@ -188,6 +213,38 @@ final class OpenAIASRSettingsEditor {
         let draft = OpenAIASRSettingsDraft(configuration: configuration)
         baseline = draft
         return draft
+    }
+
+    /// 编辑器和基线仅在主线程更新，后台不接触可变草稿。
+    func reloadAsync(completion: @escaping (OpenAIASRSettingsDraft) -> Void) {
+        settings.loadEditorState { [weak self] key, result in
+            guard let self else { return }
+            self.keyReadResult = key
+            let configuration: OpenAIASRConfiguration
+            switch result {
+            case .success(let value): configuration = value; self.loadError = nil
+            case .failure: configuration = .init(); self.loadError = loc("openai.error.invalidConfiguration")
+            }
+            let draft = OpenAIASRSettingsDraft(configuration: configuration)
+            self.baseline = draft
+            completion(draft)
+        }
+    }
+
+    func saveAsync(_ draft: OpenAIASRSettingsDraft, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard hasChanges(draft) else { completion(.success(())); return }
+        settings.saveAsync(draft, previousKeyRead: keyReadResult) { [weak self] result in
+            if case .success = result, let self {
+                switch draft.keyEdit {
+                case .unchanged: break
+                case .replace(let key): self.keyReadResult = .value(key.trimmingCharacters(in: .whitespacesAndNewlines))
+                case .clear: self.keyReadResult = .notFound
+                }
+                self.baseline = .init(configuration: (try? draft.configuration.validated()) ?? draft.configuration)
+                self.loadError = nil
+            }
+            completion(result)
+        }
     }
 
     func hasChanges(_ draft: OpenAIASRSettingsDraft) -> Bool {

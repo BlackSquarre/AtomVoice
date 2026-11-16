@@ -25,6 +25,7 @@ final class UnifiedConnectionsWindowController: NSObject {
     private var openAITab: OpenAISettingsTab?
     private var connectionHeading: NSTextField?
     private var statusLabels: [String: NSTextField] = [:]
+    private var footerButtons: [String: [NSButton]] = [:]
     private var frameObservers: [String: NSObjectProtocol] = [:]
     private var resizeScheduled = false
     private var resizing = false
@@ -83,8 +84,6 @@ final class UnifiedConnectionsWindowController: NSObject {
     private func showConnections(selecting identifier: String) {
         currentScope = ["apple", "openai", "doubao", "llm"].contains(identifier) ? identifier : "apple"
         buildConnectionsWindowIfNeeded()
-        // 仅在支持润色的上下文明确打开连接管理时加载快照，之后保留草稿与读状态。
-        if refinementProvider != nil { _ = view(for: "llm") }
         installConnectionPage()
         guard let connectionsWindow else { return }
         resizeWindows(animated: false)
@@ -221,8 +220,9 @@ final class UnifiedConnectionsWindowController: NSObject {
         defer { updatingSidebar = false }
         sidebarRows = [(nil, loc("preferences.connections.recognition"))]
         for scope in ["apple", "doubao", "openai"] { sidebarRows.append((scope, title(for: scope))) }
-        // 不为未知凭据状态读取钥匙串；只呈现编辑器已经加载确认的供应商。
-        if refinementProvider != nil, let provider = llmController.embeddedProviderName {
+        // 入口由引擎能力决定；不为构建侧栏提前创建编辑器或读取密钥。
+        if let refinementProvider {
+            let provider = loc(refinementProvider.nameKey)
             sidebarRows.append((nil, loc("preferences.connections.refinement")))
             sidebarRows.append(("llm", provider))
         }
@@ -265,7 +265,7 @@ final class UnifiedConnectionsWindowController: NSObject {
         if scope == "openai" {
             let openAI: OpenAISettingsTab
             if allowsSideEffects {
-                openAI = OpenAISettingsTab(textFieldDelegate: self)
+                openAI = OpenAISettingsTab(textFieldDelegate: self, usesAsyncCredentials: true)
             } else {
                 let settings = OpenAIASRSettings(backend: InMemorySettingsBackend(), readKey: { .notFound },
                                                 writeKey: { _ in true }, deleteKey: { true })
@@ -278,12 +278,14 @@ final class UnifiedConnectionsWindowController: NSObject {
                 if self.openAITab?.supportsContextHints == false { self.hintsWindow?.orderOut(nil) }
                 self.scheduleResize()
             }
+            openAI.onBusyChanged = { [weak self] in self?.updateFooterAvailability() }
+            openAI.onOperationCompleted = { [weak self] scope, outcome in self?.finishSave(outcome, scope: scope) }
             openAITab = openAI
             page = openAI
         } else if !allowsSideEffects {
             page = ConnectionsFixturePage(identifier: scope)
         } else if scope == "models" {
-            page = SherpaSettingsTab(
+            let sherpa = SherpaSettingsTab(
                 parentWindow: { [weak self] in self?.modelsWindow },
                 onStatusChanged: { [weak self] message, color in
                     self?.setStatus(message, color: color, scope: "models")
@@ -291,8 +293,14 @@ final class UnifiedConnectionsWindowController: NSObject {
                 },
                 sherpaDownloadReporter: sherpaDownloadReporter
             )
+            sherpa.onContentSizeChanged = { [weak self] in self?.scheduleResize() }
+            sherpa.onBusyChanged = { [weak self] in self?.updateFooterAvailability() }
+            page = sherpa
         } else if scope == "doubao" {
-            page = DoubaoSettingsTab(textFieldDelegate: self)
+            let doubao = DoubaoSettingsTab(textFieldDelegate: self, usesAsyncCredentials: true)
+            doubao.onBusyChanged = { [weak self] in self?.updateFooterAvailability() }
+            doubao.onOperationCompleted = { [weak self] outcome in self?.finishSave(outcome, scope: "doubao") }
+            page = doubao
         } else {
             page = AppleSettingsTab()
         }
@@ -332,6 +340,8 @@ final class UnifiedConnectionsWindowController: NSObject {
         let save = SettingsUI.makeButton(loc("settings.save"), target: self, action: #selector(saveScope(_:)))
         save.identifier = NSUserInterfaceItemIdentifier(scope)
         save.keyEquivalent = "\r"
+        footerButtons[scope] = [discard, save]
+        updateFooterAvailability()
         return SettingsUI.makeBottomRow(statusLabel: status, buttons: [discard, save])
     }
 
@@ -342,20 +352,36 @@ final class UnifiedConnectionsWindowController: NSObject {
     @objc private func saveScope(_ sender: NSButton) {
         guard let scope = sender.identifier?.rawValue, let page = page(forScope: scope) else { return }
         let outcome = scope == "hints" ? (openAITab?.saveHints() ?? .saved) : page.save()
+        finishSave(outcome, scope: scope)
+    }
+
+    private func finishSave(_ outcome: ASRSettingsTabSaveOutcome, scope: String) {
         switch outcome {
         case .saved:
             setStatus(loc("settings.saved"), color: .systemGreen, scope: scope)
             onSaved?()
         case .deferred:
-            setStatus(loc("asrSettings.sherpa.downloading"), color: .systemBlue, scope: scope)
+            setStatus(loc(scope == "models" ? "asrSettings.sherpa.downloading" : "settings.saving"), color: .systemBlue, scope: scope)
         case let .failed(message, color):
             setStatus(message, color: color, scope: scope)
         }
         scheduleResize()
     }
 
+    private func isScopeBusy(_ scope: String) -> Bool {
+        if scope == "openai" || scope == "hints" { return openAITab?.isBusy == true }
+        if scope == "models" { return (pages[scope] as? SherpaSettingsTab)?.isBusy == true }
+        return (pages[scope] as? DoubaoSettingsTab)?.isBusy == true
+    }
+
+    private func updateFooterAvailability() {
+        for (scope, controls) in footerButtons {
+            controls.forEach { $0.isEnabled = !isScopeBusy(scope) }
+        }
+    }
+
     @objc private func discardScope(_ sender: NSButton) {
-        guard let scope = sender.identifier?.rawValue else { return }
+        guard let scope = sender.identifier?.rawValue, !isScopeBusy(scope) else { return }
         if scope == "hints" {
             openAITab?.discardHints()
             setStatus("", color: .secondaryLabelColor, scope: "hints")
@@ -488,6 +514,7 @@ extension UnifiedConnectionsWindowController: NSTableViewDataSource, NSTableView
         guard !updatingSidebar, (notification.object as? NSTableView) === sidebarTable,
               sidebarRows.indices.contains(sidebarTable.selectedRow),
               let scope = sidebarRows[sidebarTable.selectedRow].scope, scope != currentScope else { return }
+        if scope != "openai" { openAITab?.cancelModelListFetch() }
         currentScope = scope
         installConnectionPage()
         if scope == "openai", allowsSideEffects { openAITab?.activateModelList() }

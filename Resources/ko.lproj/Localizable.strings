@@ -682,3 +682,4 @@
 "settings.loading" = "불러오는 중…";
 "asrSettings.sherpa.importing" = "모델 가져오는 중…";
 "asrSettings.sherpa.deleting" = "모델 삭제 중…";
+"settings.saving" = "저장 중…";

@@ -3,6 +3,7 @@ import Foundation
 final class LLMSettings {
     private let backend: SettingsBackend
     private let apiKeyStore: LLMAPIKeyStoring
+    private let credentialLock = NSRecursiveLock()
 
     init(backend: SettingsBackend, apiKeyStore: LLMAPIKeyStoring = LLMAPIKeyStore.shared) {
         self.backend = backend
@@ -31,24 +32,24 @@ final class LLMSettings {
     }
 
     var apiKey: String {
-        get { apiKeyStore.read() ?? "" }
+        get { withCredentials { apiKeyStore.read() ?? "" } }
         set {
             _ = saveAPIKey(newValue)
         }
     }
 
-    var apiKeyReadResult: KeychainStringReadResult { apiKeyStore.readResult() }
+    var apiKeyReadResult: KeychainStringReadResult { withCredentials { apiKeyStore.readResult() } }
 
     /// 保存 API key，并把 Keychain 写入结果返回给设置界面。
     /// (Save the API key and expose the Keychain result to settings UI.)
     @discardableResult
     func saveAPIKey(_ value: String, previousRead: KeychainStringReadResult? = nil) -> Bool {
-        KeychainStore.saveString(
+        withCredentials { KeychainStore.saveString(
             value,
             previousRead: { previousRead ?? self.apiKeyStore.readResult() },
             write: apiKeyStore.write,
             delete: apiKeyStore.delete
-        )
+        ) }
     }
 
     var model: String {
@@ -67,13 +68,7 @@ final class LLMSettings {
     }
 
     var connection: LLMConnectionSettings {
-        get {
-            LLMConnectionSettings(
-                baseURL: apiBaseURL,
-                apiKey: apiKey,
-                model: model
-            )
-        }
+        get { readConnection().0 }
         set {
             _ = saveConnection(newValue)
         }
@@ -82,9 +77,25 @@ final class LLMSettings {
     /// 先提交密钥；失败时保留整组旧连接配置。
     @discardableResult
     func saveConnection(_ value: LLMConnectionSettings, previousKeyRead: KeychainStringReadResult? = nil) -> Bool {
-        guard saveAPIKey(value.apiKey, previousRead: previousKeyRead) else { return false }
-        apiBaseURL = value.baseURL
-        model = value.model
-        return true
+        withCredentials {
+            guard saveAPIKey(value.apiKey, previousRead: previousKeyRead) else { return false }
+            apiBaseURL = value.baseURL
+            model = value.model
+            return true
+        }
     }
+    /// 同一次读取保存凭据状态，界面不把读失败当作空密钥。
+    func readConnection() -> (LLMConnectionSettings, KeychainStringReadResult) {
+        withCredentials {
+            let key = apiKeyStore.readResult()
+            return (.init(baseURL: apiBaseURL, apiKey: key.string ?? "", model: model), key)
+        }
+    }
+
+    private func withCredentials<T>(_ body: () -> T) -> T {
+        credentialLock.lock()
+        defer { credentialLock.unlock() }
+        return body()
+    }
+
 }

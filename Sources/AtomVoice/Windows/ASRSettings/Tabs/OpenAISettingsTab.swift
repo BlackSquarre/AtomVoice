@@ -29,6 +29,14 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     private var separateKeywordsView: NSTextView?
     private var allowsModelFetch = true
     private var includesContextInConnection = true
+    private let usesAsyncCredentials: Bool
+    private var removeKeyButton: NSButton?
+    private var activateModelsAfterLoad = false
+    private(set) var isLoadingCredentials = false
+    private(set) var isSavingCredentials = false
+    var isBusy: Bool { isLoadingCredentials || isSavingCredentials }
+    var onBusyChanged: (() -> Void)?
+    var onOperationCompleted: ((String, ASRSettingsTabSaveOutcome) -> Void)?
     var onContentSizeChanged: (() -> Void)?
 
     var supportsContextHints: Bool { selectedModel.supportsContext }
@@ -36,12 +44,14 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     init(textFieldDelegate: NSTextFieldDelegate?, editor: OpenAIASRSettingsEditor = .init(),
          localize: @escaping (String) -> String = loc,
          allowsExternalActions: Bool = true,
+         usesAsyncCredentials: Bool = false,
          loadModels: @escaping (String) async throws -> [OpenAIASRModel] = { try await OpenAIASRModelCatalog().fetch(apiKey: $0) }) {
         self.textFieldDelegate = textFieldDelegate
         self.editor = editor
         self.loadModels = loadModels
         self.localize = localize
         self.allowsExternalActions = allowsExternalActions
+        self.usesAsyncCredentials = usesAsyncCredentials
         super.init()
     }
 
@@ -55,7 +65,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
 
     func makeView(includeContext: Bool, allowsModelFetch: Bool = true) -> NSView {
         self.allowsModelFetch = allowsModelFetch && allowsExternalActions
-        modelRefreshButton?.isEnabled = self.allowsModelFetch && modelTask == nil
+        modelRefreshButton?.isEnabled = self.allowsModelFetch && modelTask == nil && !isBusy
         if let cachedView { return cachedView }
         includesContextInConnection = includeContext
         let view = OpenAISettingsDocumentView()
@@ -75,6 +85,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
         keyLink.setContentHuggingPriority(.required, for: .horizontal)
         keyLink.setContentCompressionResistancePriority(.required, for: .horizontal)
         let remove = NSButton(title: text("openai.settings.removeKey"), target: self, action: #selector(removeKey(_:)))
+        removeKeyButton = remove
         remove.identifier = NSUserInterfaceItemIdentifier("openai.removeKey")
         remove.bezelStyle = .accessoryBarAction
         remove.isBordered = false
@@ -198,7 +209,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
         if cachedView == nil {
             _ = makeView(includeContext: false, allowsModelFetch: false)
         }
-        if editor.baseline == nil { refresh() }
+        if editor.baseline == nil && !isBusy { refresh() }
         let prompt = makeTextArea(identifier: "openai.hints.prompt", height: 120)
         let keywords = makeTextArea(identifier: "openai.hints.keywords", height: 120)
         separatePromptView = prompt.1
@@ -220,6 +231,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
         synchronizeHintsViews()
         cachedHintsView = content
         updateModelControls()
+        updateBusyControls()
         return content
     }
 
@@ -284,15 +296,17 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
 
     /// 只在 OpenAI 页真正显示时调用；窗口初始化其他页不会触发网络。
     func activateModelList() {
-        guard allowsModelFetch, !hasActivatedModels else { return }
+        if isLoadingCredentials { activateModelsAfterLoad = true; return }
+        guard allowsModelFetch, !isBusy, !hasActivatedModels else { return }
         hasActivatedModels = true
         if effectiveAPIKey != nil { refreshModels(nil) }
     }
 
     func cancelModelListFetch() {
+        activateModelsAfterLoad = false
         modelTask?.cancel()
         modelTask = nil
-        modelRefreshButton?.isEnabled = allowsModelFetch
+        modelRefreshButton?.isEnabled = allowsModelFetch && !isBusy
     }
 
     func apiKeyDidChange() {
@@ -313,7 +327,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     }
 
     @objc private func refreshModels(_ sender: NSButton?) {
-        guard allowsModelFetch else { return }
+        guard allowsModelFetch, !isBusy else { return }
         cancelModelListFetch()
         guard let key = effectiveAPIKey else {
             modelStatusLabel.stringValue = text("openai.error.missingApiKey")
@@ -373,8 +387,26 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     }
 
     func refresh() {
+        guard !isBusy else { return }
         cancelModelListFetch()
-        let value = editor.reload()
+        if usesAsyncCredentials {
+            isLoadingCredentials = true
+            updateBusyControls()
+            refreshStatus()
+            editor.reloadAsync { [weak self] value in
+                guard let self else { return }
+                self.isLoadingCredentials = false
+                self.applyLoadedDraft(value)
+                self.updateBusyControls()
+                if self.activateModelsAfterLoad {
+                    self.activateModelsAfterLoad = false
+                    self.activateModelList()
+                }
+            }
+        } else { applyLoadedDraft(editor.reload()) }
+    }
+
+    private func applyLoadedDraft(_ value: OpenAIASRSettingsDraft) {
         clearKey = false
         hasActivatedModels = false
         availableModels = nil
@@ -392,7 +424,8 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
 
     func refreshStatus() {
         guard statusLabel != nil else { return }
-        if let error = editor.loadError {
+        if isBusy { statusLabel.stringValue = text(isLoadingCredentials ? "settings.loading" : "settings.saving") }
+        else if let error = editor.loadError {
             statusLabel.stringValue = error
         } else if clearKey {
             statusLabel.stringValue = text("openai.settings.keyRemovalPending")
@@ -444,10 +477,12 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     }
 
     func saveHints() -> ASRSettingsTabSaveOutcome {
+        guard !isBusy else { return .deferred }
         guard let value = hintsDraft else { return .saved }
         guard editor.loadError == nil else {
             return .failed(message: text("openai.error.invalidConfiguration"), color: .systemRed)
         }
+        if usesAsyncCredentials { return saveAsync(value, scope: "hints") }
         do {
             try editor.save(value)
             refreshStatus()
@@ -460,6 +495,7 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     }
 
     func discardHints() {
+        guard !isBusy else { return }
         guard let baseline = editor.baseline else { return }
         promptView.string = baseline.configuration.prompt
         keywordsView.string = baseline.configuration.keywords.joined(separator: "\n")
@@ -467,16 +503,54 @@ final class OpenAISettingsTab: NSObject, ASRSettingsTab, NSTextViewDelegate {
     }
 
     func discardConnectionChanges() {
-        guard !includesContextInConnection else { refresh(); return }
+        guard !isBusy, let baseline = editor.baseline else { return }
+        cancelModelListFetch()
         let pendingPrompt = promptView.string
         let pendingKeywords = keywordsView.string
-        refresh()
-        promptView.string = pendingPrompt
-        keywordsView.string = pendingKeywords
-        synchronizeHintsViews()
+        applyLoadedDraft(baseline)
+        if !includesContextInConnection {
+            promptView.string = pendingPrompt
+            keywordsView.string = pendingKeywords
+            synchronizeHintsViews()
+        }
+    }
+
+    private func updateBusyControls() {
+        let enabled = !isBusy
+        for control in [keyField, languageField, modelPopup, delayPopup] as [NSControl?] { control?.isEnabled = enabled }
+        removeKeyButton?.isEnabled = enabled
+        modelRefreshButton?.isEnabled = enabled && allowsModelFetch && modelTask == nil
+        let editable = enabled && selectedModel.supportsContext
+        for view in [promptView, keywordsView, separatePromptView, separateKeywordsView] { view?.isEditable = editable }
+        onBusyChanged?()
+    }
+
+    private func saveAsync(_ value: OpenAIASRSettingsDraft, scope: String) -> ASRSettingsTabSaveOutcome {
+        guard editor.hasChanges(value) else { return .saved }
+        isSavingCredentials = true
+        updateBusyControls()
+        refreshStatus()
+        editor.saveAsync(value) { [weak self] result in
+            guard let self else { return }
+            self.isSavingCredentials = false
+            let outcome: ASRSettingsTabSaveOutcome
+            switch result {
+            case .success:
+                if scope == "openai" { self.keyField.stringValue = ""; self.clearKey = false }
+                outcome = .saved
+            case .failure(let error):
+                outcome = .failed(message: (error as? OpenAIASRSettingsError)?.message ?? self.text("openai.error.invalidConfiguration"), color: .systemRed)
+            }
+            self.updateBusyControls()
+            self.refreshStatus()
+            self.onOperationCompleted?(scope, outcome)
+        }
+        return .deferred
     }
 
     func save() -> ASRSettingsTabSaveOutcome {
+        guard !isBusy else { return .deferred }
+        if usesAsyncCredentials { return saveAsync(connectionDraft, scope: "openai") }
         do {
             try editor.save(connectionDraft)
             keyField.stringValue = ""
