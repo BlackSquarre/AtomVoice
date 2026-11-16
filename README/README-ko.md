@@ -13,7 +13,7 @@
 <h3 align="center">누르고, 말하세요.</h3>
 <p align="center">가볍고 프라이버시 우선의 음성 받아쓰기. 텍스트가 어떤 Mac 앱에든 직접 입력되며, 녹음 시간 제한이 없습니다.</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/ko/">공식 웹사이트</a></p>
 
 ---
 

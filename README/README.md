@@ -7,7 +7,7 @@
 <h3 align="center">Press, speak.</h3>
 <p align="center">Lightweight, privacy-first voice dictation that types into any Mac app, with no time limit.</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/en/">Official Website</a> · <a href="https://atomvoice.atomicleap.cn/">中文官网</a></p>
 
 ---
 

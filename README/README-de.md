@@ -13,7 +13,7 @@
 <h3 align="center">Drücken, sprechen.</h3>
 <p align="center">Leichte, datenschutzorientierte Sprachdiktierung, die in jede Mac-App tippt, ohne Zeitlimit.</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/de/">Offizielle Website</a></p>
 
 ---
 

@@ -13,7 +13,7 @@
 <h3 align="center">Appuie, parle.</h3>
 <p align="center">Dictée vocale légère et axée sur la confidentialité, qui écrit dans n'importe quelle app de ton Mac, sans limite de durée.</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/fr/">Site officiel</a></p>
 
 ---
 

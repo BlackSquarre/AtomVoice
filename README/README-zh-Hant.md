@@ -13,7 +13,7 @@
 <h3 align="center">按下即說,言出即文。</h3>
 <p align="center">輕盈、隱私優先的語音輸入,暢達任意 Mac 應用程式,不限時長。</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/zh-hant/">官方網站</a></p>
 
 ---
 

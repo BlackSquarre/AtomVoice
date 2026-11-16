@@ -13,7 +13,7 @@
 <h3 align="center">按下即说，言出即文。</h3>
 <p align="center">轻盈、隐私优先的语音输入，畅达任意 Mac 应用，不限时长。</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/">官方网站</a></p>
 
 ---
 

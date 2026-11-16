@@ -13,7 +13,7 @@
 <h3 align="center">押して、話す。</h3>
 <p align="center">軽量・プライバシー優先の音声ディクテーション。文字はそのまま任意の Mac アプリに入力され、録音時間に制限はありません。</p>
 
-
+<p align="center"><a href="https://atomvoice.atomicleap.cn/ja/">公式サイト</a></p>
 
 ---
 
