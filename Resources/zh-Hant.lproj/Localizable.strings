@@ -679,8 +679,9 @@
 "preferences.hints.scene" = "情境說明";
 
 // 交互加载与失败反馈
-"external.openFailed" = "無法開啟此位置，請重試。";
 "settings.loading" = "正在載入…";
+"settings.saving" = "正在儲存…";
+"update.checking" = "正在檢查更新…";
 "asrSettings.sherpa.importing" = "正在匯入模型…";
 "asrSettings.sherpa.deleting" = "正在刪除模型…";
-"settings.saving" = "正在儲存…";
+"external.openFailed" = "無法開啟此位置，請重試。";

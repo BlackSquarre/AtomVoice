@@ -679,8 +679,9 @@
 "preferences.hints.scene" = "Kontext";
 
 // 交互加载与失败反馈
-"external.openFailed" = "Dieses Ziel konnte nicht geöffnet werden. Bitte versuche es erneut.";
 "settings.loading" = "Wird geladen…";
+"settings.saving" = "Wird gespeichert…";
+"update.checking" = "Suche nach Updates…";
 "asrSettings.sherpa.importing" = "Modell wird importiert…";
 "asrSettings.sherpa.deleting" = "Modell wird gelöscht…";
-"settings.saving" = "Wird gespeichert…";
+"external.openFailed" = "Dieses Ziel konnte nicht geöffnet werden. Bitte versuche es erneut.";

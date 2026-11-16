@@ -144,7 +144,7 @@ enum UpdateLifecycleTests {
                 checker.checkForUpdates()
                 try await waitUntil { !presenter.alerts.isEmpty }
                 try expect(checker.state == .idle)
-                try expect(presenter.progressCloses == 1 && presenter.restartPrompts == 0)
+                try expect(presenter.progressCloses == 2 && presenter.restartPrompts == 0)
                 try await waitUntil { installer.directories.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) } }
                 if let archive = source.archiveDirectory {
                     try await waitUntil { !FileManager.default.fileExists(atPath: archive.path) }

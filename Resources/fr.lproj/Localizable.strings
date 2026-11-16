@@ -679,8 +679,9 @@
 "preferences.hints.scene" = "Contexte";
 
 // 交互加载与失败反馈
-"external.openFailed" = "Impossible d’ouvrir cette destination. Veuillez réessayer.";
 "settings.loading" = "Chargement…";
+"settings.saving" = "Enregistrement…";
+"update.checking" = "Recherche de mises à jour…";
 "asrSettings.sherpa.importing" = "Importation du modèle…";
 "asrSettings.sherpa.deleting" = "Suppression du modèle…";
-"settings.saving" = "Enregistrement…";
+"external.openFailed" = "Impossible d’ouvrir cette destination. Veuillez réessayer.";

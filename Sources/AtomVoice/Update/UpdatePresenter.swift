@@ -48,6 +48,11 @@ final class AppKitUpdatePresenter: UpdatePresenting {
     // MARK: - 进度窗口
 
     func showProgress(_ message: String) {
+        if progressWindow != nil {
+            updateProgressLabel(message)
+            bringProgressToFront()
+            return
+        }
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 90),
             styleMask: [.titled, .fullSizeContentView],

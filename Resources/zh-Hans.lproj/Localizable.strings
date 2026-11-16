@@ -680,8 +680,9 @@
 "preferences.hints.scene" = "场景说明";
 
 // 交互加载与失败反馈
-"external.openFailed" = "无法打开此位置，请重试。";
 "settings.loading" = "正在加载…";
+"settings.saving" = "正在保存…";
+"update.checking" = "正在检查更新…";
 "asrSettings.sherpa.importing" = "正在导入模型…";
 "asrSettings.sherpa.deleting" = "正在删除模型…";
-"settings.saving" = "正在保存…";
+"external.openFailed" = "无法打开此位置，请重试。";

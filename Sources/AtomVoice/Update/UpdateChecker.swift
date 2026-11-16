@@ -65,12 +65,16 @@ final class UpdateChecker {
         // 用户主动稍后后保持安静；手动检查仍拉取最新 release，不能锁定旧版本。
         if state == .readyToRestart, silent { return }
         guard state == .idle || state == .readyToRestart else {
-            if state == .checking, !silent { pendingUserVisibleCheck = true }
+            if state == .checking, !silent, !pendingUserVisibleCheck {
+                pendingUserVisibleCheck = true
+                presenter.showProgress(loc("update.checking"))
+            }
             if !silent { presenter.bringProgressToFront() }
             return
         }
         state = .checking
         pendingUserVisibleCheck = !silent
+        if !silent { presenter.showProgress(loc("update.checking")) }
         let includeBeta = AppSettings.includeBetaUpdates
         #if DEBUG_BUILD
         let preferDebugBuild = AppSettings.updateToDebugBuilds
@@ -82,6 +86,8 @@ final class UpdateChecker {
                 guard let self, self.state == .checking else { return }
                 let visible = self.pendingUserVisibleCheck
                 self.pendingUserVisibleCheck = false
+                // 检查窗在每个结果分支前收起，后续下载/重启沿用既有生命周期。
+                if visible { self.presenter.closeProgress() }
                 switch result {
                 case .failure(let error):
                     self.state = self.restingState
