@@ -89,7 +89,9 @@ final class RecordingSessionHarness {
     init(
         session: FakeRecognitionSession = FakeRecognitionSession(),
         outputSink: FakeTextOutputSink = FakeTextOutputSink(),
-        processors: [TextPostProcessor] = []
+        processors: [TextPostProcessor] = [],
+        finalizationLLMSettings: LLMSettings? = nil,
+        resultRefiner: RecognitionTextRefining? = nil
     ) {
         self.session = session
         self.outputSink = outputSink
@@ -102,7 +104,9 @@ final class RecordingSessionHarness {
             textOutputSinkRegistry: TextOutputSinkRegistry(sinks: [outputSink], fallbackCode: outputSink.descriptor.code),
             volumeController: VolumeController(),
             asrEngineRegistry: ASREngineRegistry.shared,
-            asrEngineProvider: provider
+            asrEngineProvider: provider,
+            finalizationLLMSettings: finalizationLLMSettings,
+            resultRefiner: resultRefiner
         )
         controller.delegate = delegate
     }

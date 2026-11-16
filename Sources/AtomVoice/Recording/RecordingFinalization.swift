@@ -8,15 +8,18 @@ final class RecordingFinalization {
     var engineCode: String
     let liveInsertion: RecognitionLiveInsertionSnapshot
     let streamSession: TextStreamSession?
-    let settings: RecognitionResultFinalizer.Settings
+    private(set) var settings: RecognitionResultFinalizer.Settings
+    private(set) var settingsReady: Bool
     let outputSink: TextOutputSink
     private(set) var isOutputValid = true
     private(set) var isRecognitionPending = true
     private var recognitionWaiters: [() -> Void] = []
+    private var settingsWaiter: (() -> Void)?
 
     init(generation: Int, audioInput: RecordingAudioInput, resources: Set<String>, engineCode: String,
          liveInsertion: RecognitionLiveInsertionSnapshot, streamSession: TextStreamSession?,
-         settings: RecognitionResultFinalizer.Settings, outputSink: TextOutputSink) {
+         settings: RecognitionResultFinalizer.Settings, outputSink: TextOutputSink,
+         settingsReady: Bool = true) {
         self.generation = generation
         self.audioInput = audioInput
         self.resources = resources
@@ -24,7 +27,24 @@ final class RecordingFinalization {
         self.liveInsertion = liveInsertion
         self.streamSession = streamSession
         self.settings = settings
+        self.settingsReady = settingsReady
         self.outputSink = outputSink
+    }
+
+    /// 只等待本轮配置，不占用已经释放的识别资源。
+    func whenSettingsReady(_ completion: @escaping () -> Void) {
+        guard isOutputValid else { return }
+        if settingsReady { completion() }
+        else { settingsWaiter = completion }
+    }
+
+    func completeSettings(_ settings: RecognitionResultFinalizer.Settings) {
+        guard isOutputValid, !settingsReady else { return }
+        self.settings = settings
+        settingsReady = true
+        let completion = settingsWaiter
+        settingsWaiter = nil
+        completion?()
     }
 
     func whenRecognitionFinished(_ completion: @escaping () -> Void) {
@@ -48,6 +68,7 @@ final class RecordingFinalization {
     func cancel() {
         isOutputValid = false
         isRecognitionPending = false
+        settingsWaiter = nil
         releaseRecognitionWaiters()
     }
 }

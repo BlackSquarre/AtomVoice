@@ -20,6 +20,7 @@ final class RecordingSessionController {
     private let asrEngineProvider: ASREngineProviding
     private var finalizations: [RecordingFinalization] = []
     private let recognitionFinalizer: RecognitionResultFinalizer
+    private let finalizationLLMSettings: LLMSettings?
     private var liveInsertionDelivery = LiveInsertionDelivery()
     private let liveInsertionAdapter = AppleLiveInsertionAdapter()
     var recognitionSession: (any RecognitionSession)?
@@ -121,7 +122,9 @@ final class RecordingSessionController {
         textOutputSinkRegistry: TextOutputSinkRegistry,
         volumeController: VolumeController,
         asrEngineRegistry: ASREngineRegistry,
-        asrEngineProvider: ASREngineProviding
+        asrEngineProvider: ASREngineProviding,
+        finalizationLLMSettings: LLMSettings? = nil,
+        resultRefiner: RecognitionTextRefining? = nil
     ) {
         self.audioEngine = audioEngine
         self.presenter = presenter
@@ -129,22 +132,23 @@ final class RecordingSessionController {
         self.textOutputSinkRegistry = textOutputSinkRegistry
         self.volumeController = volumeController
         self.asrEngineProvider = asrEngineProvider
+        self.finalizationLLMSettings = finalizationLLMSettings
         let finalizer = RecognitionResultFinalizer(
             presenter: presenter,
-            refiner: llmRefiner,
+            refiner: resultRefiner ?? llmRefiner,
             textPostProcessorRegistry: textPostProcessorRegistry,
             outputSinkProvider: { textOutputSinkRegistry.current() },
             settingsProvider: {
-                Self.finalizationSettings(forRecognitionEngine: AppSettings.normalizedRecognitionEngine)
+                Self.finalizationSettings()
             }
         )
         self.recognitionFinalizer = finalizer
         
         finalizer.onRefiningStateChanged = { [weak self] refining, _ in
             guard let self else { return }
-            if refining {
+            if refining && !self.state.isRefining {
                 self.dispatch(.refiningStarted)
-            } else {
+            } else if !refining {
                 self.dispatch(.refiningFinished)
             }
         }
@@ -182,18 +186,14 @@ final class RecordingSessionController {
         }
     }
 
-    private static func finalizationSettings(forRecognitionEngine code: String) -> RecognitionResultFinalizer.Settings {
-        let llmEnabled = AppSettings.isLLMEnabled(forRecognitionEngine: code)
-        let connection = llmEnabled ? AppSettings.llmConnection : LLMConnectionSettings(
-            baseURL: AppSettings.llmAPIBaseURL, apiKey: "", model: AppSettings.llmModel)
-        return RecognitionResultFinalizer.Settings(
+    /// 停止入口只冻结轻量设置；润色连接在后台事务中整组读取。
+    private static func finalizationSettings() -> RecognitionResultFinalizer.Settings {
+        RecognitionResultFinalizer.Settings(
             language: AppSettings.selectedLanguage,
-            llmEnabled: llmEnabled,
-            llmAPIKey: connection.apiKey,
+            llmEnabled: false,
+            llmAPIKey: "",
             llmResultDelay: AppSettings.llmResultDelay,
-            autoPunctuationEnabled: AppSettings.autoPunctuationEnabled,
-            llmConnection: connection,
-            llmSystemPrompt: AppSettings.llmSystemPrompt
+            autoPunctuationEnabled: AppSettings.autoPunctuationEnabled
         )
     }
 
@@ -592,10 +592,10 @@ final class RecordingSessionController {
     }
 
     private func cancelRecording() {
-        recognitionFinalizer.discardPendingRefinement()
         let cancelling = finalizations.filter { $0.generation == recordingGeneration }
         cancelling.forEach { $0.cancel() }
-        finalizations.removeAll { !$0.isRecognitionPending }
+        finalizations.removeAll { !$0.isOutputValid }
+        recognitionFinalizer.discardPendingRefinement()
         guard isRecording || isRefining || state.phase == .stopping else {
             cancelPendingStart()
             resetDeferredCapsulePresentation()
@@ -632,22 +632,42 @@ final class RecordingSessionController {
 
     func finishPendingRefinement() {
         recognitionFinalizer.finishPendingRefinement()
+        // 新录音已开始时，旧结果无需继续等待尚未读到的润色凭据。
+        for context in finalizations where !context.isRecognitionPending && !context.settingsReady {
+            context.completeSettings(context.settings)
+        }
     }
 
     func stopRecognitionSession(generation: Int, immediate: Bool, appending punctuation: String?) {
         guard let session = recognitionSession else { return }
+        let stoppedAt = ProcessInfo.processInfo.systemUptime
         stopCapture()
         presenter.present(.showOptimizing)
         let input = recordingAudioInput
+        let llmSettings = finalizationLLMSettings ?? AppSettings.llm
+        let preparesRefinement = !immediate && llmSettings.isEnabled(forRecognitionEngine: session.code)
         let context = RecordingFinalization(
             generation: generation, audioInput: input, resources: session.recognitionResources, engineCode: currentRecordingEngine,
             liveInsertion: .init(isActive: state.liveInsertion.isActive,
                                  committedText: state.liveInsertion.committedText, delivery: liveInsertionDelivery),
             // Cloud 会话的 code 保留原供应商，Apple 回退和全局引擎切换不改变本轮润色归属。
-            streamSession: streamSession, settings: Self.finalizationSettings(forRecognitionEngine: session.code), outputSink: activeOutputSink)
+            streamSession: streamSession, settings: Self.finalizationSettings(), outputSink: activeOutputSink,
+            settingsReady: !preparesRefinement)
         finalizations.append(context)
         let callbacks = makeRecognitionSessionCallbacks(generation: generation, finalization: context, audioInput: input)
-        let stoppedAt = ProcessInfo.processInfo.systemUptime
+        if preparesRefinement {
+            llmSettings.readRuntimeSnapshotAsync(forRecognitionEngine: session.code) { [weak context] result in
+                guard let context, context.isOutputValid, !context.settingsReady else { return }
+                var settings = context.settings
+                if case .ready(let snapshot) = result {
+                    settings.llmEnabled = true
+                    settings.llmAPIKey = snapshot.connection.apiKey
+                    settings.llmConnection = snapshot.connection
+                    settings.llmSystemPrompt = snapshot.systemPrompt
+                }
+                context.completeSettings(settings)
+            }
+        }
         input.finish { [weak self] in
             guard let self, context.isOutputValid, context.isRecognitionPending else { return }
             session.stop(immediate: immediate, appending: punctuation, callbacks: callbacks) { [weak self] result in
@@ -670,6 +690,22 @@ final class RecordingSessionController {
 
     private func finalizeRecognizedResult(_ result: RecognitionSessionStopResult, immediate: Bool,
                                           context: RecordingFinalization) {
+        guard context.isOutputValid else { return }
+        if !context.settingsReady {
+            // 空结果和旧轮结果都不会启动润色，无需继续等待凭据。
+            if result.text.isEmpty || context.generation != recordingGeneration {
+                context.completeSettings(context.settings)
+            } else {
+                if recordingGeneration == context.generation && !state.isRefining {
+                    dispatch(.refiningStarted)
+                }
+                context.whenSettingsReady { [weak self, weak context] in
+                    guard let context else { return }
+                    self?.finalizeRecognizedResult(result, immediate: immediate, context: context)
+                }
+                return
+            }
+        }
         let finalizingStream = context.streamSession
         var request = RecognitionResultFinalizer.Request(
             recognizedText: result.text, errorMessage: result.errorMessage,
@@ -690,7 +726,13 @@ final class RecordingSessionController {
         request.isOutputValid = { context.isOutputValid }
         request.settingsSnapshot = context.settings
         request.outputSink = context.outputSink
-        request.onFinished = { [weak self] in self?.finalizations.removeAll { $0 === context } }
+        request.onFinished = { [weak self] in
+            guard let self else { return }
+            self.finalizations.removeAll { $0 === context }
+            if context.isOutputValid, self.recordingGeneration == context.generation && self.state.isRefining {
+                self.dispatch(.refiningFinished)
+            }
+        }
         recognitionFinalizer.finish(request)
     }
 

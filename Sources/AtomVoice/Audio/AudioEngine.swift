@@ -744,6 +744,8 @@ final class AudioEngineController {
     /// AirPods 这类蓝牙耳机会在输入链路存在时停留在通话/麦克风模式；但停止瞬间立即重建 engine
     /// 又容易打断正在播放的音乐，所以等 ASR final 收口后再空闲重建一次。
     func releaseHardwareAfterIdle(delay: TimeInterval = 1.5) {
+        // 离线替身和 start/stop 使用同一隔离边界，不延迟重建真实输入硬件。
+        guard startOperationOverride == nil, stopOperationOverride == nil else { return }
         let generation = currentLifecycleGeneration()
         idleReleaseLock.lock()
         let alreadyScheduled = idleReleaseScheduledGeneration == generation
