@@ -104,14 +104,15 @@ final class UpdateChecker {
             }
             return
         }
-        if pendingInstallation?.release == release {
+        if pendingInstallation?.release.hasSameInstallArtifact(as: release) == true {
             state = .readyToRestart
             showRestartPrompt()
             return
         }
         state = .prompting
         guard presenter.confirmDownload(version: release.version, currentVersion: current,
-            isPreRelease: release.isPreRelease, isDebugBuild: release.isDebugBuild) else {
+            isPreRelease: release.isPreRelease, isDebugBuild: release.isDebugBuild,
+            summary: release.summary) else {
             state = restingState
             return
         }

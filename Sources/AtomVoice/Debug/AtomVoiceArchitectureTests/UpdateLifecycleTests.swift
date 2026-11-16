@@ -40,6 +40,42 @@ enum UpdateLifecycleTests {
             try expect(installer.archiveWasReadable)
         }
 
+        await runner.run("Update edited summary reuses the same staged application") {
+            let source = LifecycleReleaseSource()
+            source.release = ReleaseInfo(
+                version: source.release.version,
+                downloadURL: source.release.downloadURL,
+                assetName: source.release.assetName,
+                checksumsURL: source.release.checksumsURL,
+                isPreRelease: source.release.isPreRelease,
+                isDebugBuild: source.release.isDebugBuild,
+                summary: "Initial summary"
+            )
+            let installer = LifecycleInstaller()
+            defer { installer.removeFixtures() }
+            let presenter = LifecyclePresenter()
+            let checker = makeChecker(source, installer, presenter)
+            checker.checkForUpdates()
+            try await waitUntil { checker.state == .readyToRestart }
+            let stagedApp = try require(installer.applicationURL)
+            try expect(presenter.downloadSummaries == ["Initial summary"])
+
+            let original = source.release
+            source.release = ReleaseInfo(
+                version: original.version,
+                downloadURL: original.downloadURL,
+                assetName: original.assetName,
+                checksumsURL: original.checksumsURL,
+                isPreRelease: !original.isPreRelease,
+                isDebugBuild: original.isDebugBuild,
+                summary: "Edited summary"
+            )
+            checker.checkForUpdates()
+            try await waitUntil { presenter.restartPrompts == 2 }
+            try expect(source.downloads == 1 && presenter.downloadPrompts == 1)
+            try expect(FileManager.default.fileExists(atPath: stagedApp.path))
+        }
+
         await runner.run("Update Later does not prevent checking a newer release and declined replacement keeps old app") {
             let source = LifecycleReleaseSource()
             let installer = LifecycleInstaller()
@@ -320,9 +356,11 @@ private final class LifecyclePresenter: UpdatePresenting {
     var progressCloses = 0
     var terminations = 0
     var alerts: [String] = []
+    var downloadSummaries: [String?] = []
     var onRestartPrompt: (() -> Void)?
-    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool) -> Bool {
+    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool, summary: String?) -> Bool {
         downloadPrompts += 1
+        downloadSummaries.append(summary)
         return downloadNow
     }
     func confirmRestart(version: String) -> Bool {

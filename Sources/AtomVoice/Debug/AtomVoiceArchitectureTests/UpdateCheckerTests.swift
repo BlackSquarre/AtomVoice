@@ -40,6 +40,48 @@ enum UpdateCheckerTests {
             try expect(checker.expectedChecksum(in: listing, assetName: "missing.zip") == nil)
         }
 
+        await runner.run("Release summary selects Chinese and falls back to English") {
+            let body = """
+              <!-- atomvoice-summary-en: Faster transcription and safer updates. -->
+              <!-- atomvoice-summary-zh: 转写更快，更新更安全。 -->
+            ## What's New
+            """
+            try expect(GitHubReleaseSource.releaseSummary(from: body, preferredLanguages: ["zh-Hans"]) == "转写更快，更新更安全。")
+            try expect(GitHubReleaseSource.releaseSummary(from: body, preferredLanguages: ["zh-Hant-HK"]) == "转写更快，更新更安全。")
+            try expect(GitHubReleaseSource.releaseSummary(from: body, preferredLanguages: ["ja-JP"]) == "Faster transcription and safer updates.")
+
+            let englishOnly = "<!-- atomvoice-summary-en: English fallback. -->"
+            try expect(GitHubReleaseSource.releaseSummary(from: englishOnly, preferredLanguages: ["zh-CN"]) == "English fallback.")
+        }
+
+        await runner.run("Release summary rejects malformed markers and sanitizes plain text") {
+            try expect(GitHubReleaseSource.releaseSummary(from: "No marker", preferredLanguages: ["en"]) == nil)
+            try expect(GitHubReleaseSource.releaseSummary(from: "<!-- atomvoice-summary-en: -->", preferredLanguages: ["en"]) == nil)
+            try expect(GitHubReleaseSource.releaseSummary(from: "<!-- atomvoice-summary-en: Missing close", preferredLanguages: ["en"]) == nil)
+            let duplicate = """
+            <!-- atomvoice-summary-en: First. -->
+            <!-- atomvoice-summary-en: Second. -->
+            """
+            try expect(GitHubReleaseSource.releaseSummary(from: duplicate, preferredLanguages: ["en"]) == nil)
+
+            let unsafe = "<!-- atomvoice-summary-en: Safe\u{0000}\u{0080}\u{202E}\u{2066}团队👩‍💻 [link](https://example.com) <script> -->"
+            let expected = "Safe团队👩‍💻 [link](https://example.com) <script>"
+            try expect(GitHubReleaseSource.releaseSummary(from: unsafe, preferredLanguages: ["en"]) == expected)
+        }
+
+        await runner.run("Release summary truncates by Character without splitting Unicode") {
+            let longText = String(repeating: "语", count: 300)
+            let body = "<!-- atomvoice-summary-en: \(longText) -->"
+            let summary = try require(GitHubReleaseSource.releaseSummary(from: body, preferredLanguages: ["en"]))
+            try expect(summary.count == 240)
+            try expect(summary == String(repeating: "语", count: 239) + "…")
+
+            let combining = "a" + String(repeating: "\u{0301}", count: 5_000)
+            let pathologicalBody = "<!-- atomvoice-summary-en: \(combining) -->"
+            let bounded = try require(GitHubReleaseSource.releaseSummary(from: pathologicalBody, preferredLanguages: ["en"]))
+            try expect(bounded.unicodeScalars.count <= 1_024)
+        }
+
         await runner.run("Release source match picks Debug Universal when preferDebugBuild=true") {
             let assets: [[String: Any]] = [
                 ["name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/SHA256SUMS.txt"],
@@ -51,10 +93,12 @@ enum UpdateCheckerTests {
                 assets: assets,
                 version: "0.11.0",
                 isPreRelease: false,
-                preferDebugBuild: true
+                preferDebugBuild: true,
+                summary: "Fixture summary"
             )
             try expect(result?.assetName == "AtomVoice-0.11.0-Debug-Universal.zip")
             try expect(result?.isDebugBuild == true)
+            try expect(result?.summary == "Fixture summary")
         }
 
         await runner.run("Release source match excludes Debug asset when preferDebugBuild=false") {

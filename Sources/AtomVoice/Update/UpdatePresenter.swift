@@ -1,7 +1,7 @@
 import Cocoa
 
 protocol UpdatePresenting: AnyObject {
-    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool) -> Bool
+    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool, summary: String?) -> Bool
     func confirmRestart(version: String) -> Bool
     func showProgress(_ message: String)
     func updateProgressLabel(_ message: String)
@@ -16,13 +16,14 @@ final class AppKitUpdatePresenter: UpdatePresenting {
     private var progressWindow: NSWindow?
     private var progressLabel: NSTextField?
 
-    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool) -> Bool {
+    func confirmDownload(version: String, currentVersion: String, isPreRelease: Bool, isDebugBuild: Bool, summary: String?) -> Bool {
         let badges = [isPreRelease ? loc("update.beta") : nil,
                       isDebugBuild ? loc("update.debug") : nil].compactMap { $0 }
         let displayVersion = badges.isEmpty ? version : "\(version) (\(badges.joined(separator: ", ")))"
         let alert = NSAlert()
         alert.messageText = loc("update.available.title")
-        alert.informativeText = loc("update.available.message", displayVersion, currentVersion)
+        let versionMessage = loc("update.available.message", displayVersion, currentVersion)
+        alert.informativeText = summary.map { "\(versionMessage)\n\n\($0)" } ?? versionMessage
         alert.addButton(withTitle: loc("update.install"))
         alert.addButton(withTitle: loc("update.later"))
         return AlertPresenter.shared.runModalAlert(alert) == .alertFirstButtonReturn
