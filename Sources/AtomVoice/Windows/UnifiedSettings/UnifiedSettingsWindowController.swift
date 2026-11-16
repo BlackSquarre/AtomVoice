@@ -120,7 +120,10 @@ final class UnifiedSettingsWindowController: NSObject, NSWindowDelegate, NSToolb
         w.toolbar = toolbar
         pageTabs = NSSegmentedControl(labels: [], trackingMode: .selectOne, target: self, action: #selector(tabChanged(_:)))
         pageTabs.segmentStyle = .automatic
-        if #available(macOS 27.0, *) { pageTabs.role = .tabs }
+        if #available(macOS 27.0, *), pageTabs.responds(to: NSSelectorFromString("setRole:")) {
+            // NSSegmentedControlRoleTabs = 1；动态调用公开 setter，兼容没有 role 声明的旧 SDK。
+            pageTabs.setValue(1, forKey: "role")
+        }
         pageTabs.translatesAutoresizingMaskIntoConstraints = false
         pageTabs.setContentHuggingPriority(.required, for: .vertical)
         scroll = NSScrollView()
