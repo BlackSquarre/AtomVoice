@@ -19,6 +19,12 @@ final class LLMSettings {
         }
     }
 
+    /// 有效状态不改写用户保存的开关和连接；不适用的引擎也不读取钥匙串。
+    func isEnabled(forRecognitionEngine code: String) -> Bool {
+        guard enabled, let provider = RefinementProvider.forRecognitionEngine(code) else { return false }
+        return provider.matches(baseURL: apiBaseURL)
+    }
+
     var apiBaseURL: String {
         get { backend.string(forKey: AppSettings.Keys.llmAPIBaseURL, default: AppSettings.defaultLLMBaseURL) }
         set { backend.set(newValue, forKey: AppSettings.Keys.llmAPIBaseURL) }

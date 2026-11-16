@@ -36,6 +36,80 @@ private final class FakeLLMAPIKeyStore: LLMAPIKeyStoring {
 
 enum LLMAPIKeyMigrationTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Independent refinement is effective only for OpenAI recognition without accessing credentials") {
+            let backend = InMemorySettingsBackend()
+            let keyStore = FakeLLMAPIKeyStore()
+            keyStore.storedValue = "offline-retained-key"
+            keyStore.readFailure = errSecAuthFailed
+            let settings = LLMSettings(backend: backend, apiKeyStore: keyStore)
+            settings.enabled = true
+            settings.apiBaseURL = "https://api.openai.com/v1"
+            settings.model = "offline-custom-model"
+            settings.systemPrompt = "offline retained instructions"
+            settings.resultDelay = 0.7
+
+            for engine in ["apple", "sherpaOnnx", "doubao", "openai"] {
+                try expect(settings.isEnabled(forRecognitionEngine: engine) == (engine == "openai"), engine)
+                try expect((RefinementProvider.forRecognitionEngine(engine) != nil) == (engine == "openai"), engine)
+            }
+            settings.enabled = false
+            for engine in ["apple", "sherpaOnnx", "doubao", "openai"] {
+                try expect(!settings.isEnabled(forRecognitionEngine: engine), engine)
+            }
+            settings.enabled = true
+            try expect(settings.isEnabled(forRecognitionEngine: "openai"))
+            try expect(settings.model == "offline-custom-model")
+            try expect(settings.systemPrompt == "offline retained instructions" && settings.resultDelay == 0.7)
+            try expect(keyStore.reads == 0 && keyStore.writes.isEmpty && keyStore.deletes == 0,
+                       "Engine policy must not read, replace, or delete any stored API key")
+            try expect(keyStore.storedValue == "offline-retained-key")
+        }
+
+        await runner.run("OpenAI refinement accepts official HTTPS API paths and rejects proxy or lookalike URLs") {
+            for url in [
+                "https://api.openai.com/v1", "https://api.openai.com/v1/",
+                "https://api.openai.com/v1/chat", "https://api.openai.com/v1/chat/completions/",
+                " https://API.OPENAI.COM:443/v1 \n",
+            ] {
+                try expect(RefinementProvider.openAI.matches(baseURL: url), url)
+            }
+            for url in [
+                "", "http://api.openai.com/v1", "https://api.openai.com:8443/v1",
+                "https://api.openai.com.evil.invalid/v1", "https://proxy.invalid/openai/v1",
+                "https://api.openai.com@proxy.invalid/v1", "https://name@api.openai.com/v1",
+                "https://api.openai.com/v2", "https://api.openai.com/v1/responses",
+                "https://api.openai.com/v1?redirect=proxy", "https://api.openai.com/v1#proxy",
+            ] {
+                try expect(!RefinementProvider.openAI.matches(baseURL: url), url)
+            }
+        }
+
+        await runner.run("Unsupported engines and a legacy provider leave disabled refinement configuration intact") {
+            let backend = InMemorySettingsBackend()
+            let keyStore = FakeLLMAPIKeyStore()
+            keyStore.storedValue = "offline-legacy-provider-key"
+            let settings = LLMSettings(backend: backend, apiKeyStore: keyStore)
+            settings.enabled = true
+            settings.apiBaseURL = "https://legacy-provider.invalid/v1"
+            settings.model = "offline-legacy-model"
+            settings.systemPrompt = "offline legacy prompt"
+            settings.resultDelay = 0.9
+            ProviderStore.save([.init(name: "Offline provider", baseURL: settings.apiBaseURL,
+                                      defaultModel: settings.model)], backend: backend)
+            let providerData = backend.data(forKey: AppSettings.Keys.llmProviders)
+
+            for engine in ["apple", "sherpaOnnx", "doubao", "openai", "unknown"] {
+                try expect(!settings.isEnabled(forRecognitionEngine: engine), engine)
+            }
+            try expect(settings.enabled, "Hiding or suspending refinement must preserve the user's raw switch")
+            try expect(settings.apiBaseURL == "https://legacy-provider.invalid/v1")
+            try expect(settings.model == "offline-legacy-model")
+            try expect(settings.systemPrompt == "offline legacy prompt" && settings.resultDelay == 0.9)
+            try expect(backend.data(forKey: AppSettings.Keys.llmProviders) == providerData)
+            try expect(keyStore.storedValue == "offline-legacy-provider-key")
+            try expect(keyStore.reads == 0 && keyStore.writes.isEmpty && keyStore.deletes == 0)
+        }
+
         for deleting in [false, true] {
             await runner.run("LLM failed connection commit preserves URL model and key, deleting=\(deleting)") {
                 let backend = InMemorySettingsBackend()

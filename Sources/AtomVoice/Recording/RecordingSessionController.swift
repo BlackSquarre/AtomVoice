@@ -135,18 +135,7 @@ final class RecordingSessionController {
             textPostProcessorRegistry: textPostProcessorRegistry,
             outputSinkProvider: { textOutputSinkRegistry.current() },
             settingsProvider: {
-                let llmEnabled = AppSettings.llmEnabled
-                let connection = llmEnabled ? AppSettings.llmConnection : LLMConnectionSettings(
-                    baseURL: AppSettings.llmAPIBaseURL, apiKey: "", model: AppSettings.llmModel)
-                return RecognitionResultFinalizer.Settings(
-                    language: AppSettings.selectedLanguage,
-                    llmEnabled: llmEnabled,
-                    llmAPIKey: connection.apiKey,
-                    llmResultDelay: AppSettings.llmResultDelay,
-                    autoPunctuationEnabled: AppSettings.autoPunctuationEnabled,
-                    llmConnection: connection,
-                    llmSystemPrompt: AppSettings.llmSystemPrompt
-                )
+                Self.finalizationSettings(forRecognitionEngine: AppSettings.normalizedRecognitionEngine)
             }
         )
         self.recognitionFinalizer = finalizer
@@ -193,6 +182,21 @@ final class RecordingSessionController {
         }
     }
 
+    private static func finalizationSettings(forRecognitionEngine code: String) -> RecognitionResultFinalizer.Settings {
+        let llmEnabled = AppSettings.isLLMEnabled(forRecognitionEngine: code)
+        let connection = llmEnabled ? AppSettings.llmConnection : LLMConnectionSettings(
+            baseURL: AppSettings.llmAPIBaseURL, apiKey: "", model: AppSettings.llmModel)
+        return RecognitionResultFinalizer.Settings(
+            language: AppSettings.selectedLanguage,
+            llmEnabled: llmEnabled,
+            llmAPIKey: connection.apiKey,
+            llmResultDelay: AppSettings.llmResultDelay,
+            autoPunctuationEnabled: AppSettings.autoPunctuationEnabled,
+            llmConnection: connection,
+            llmSystemPrompt: AppSettings.llmSystemPrompt
+        )
+    }
+
     // MARK: - 公开 API（Public API）
 
     func start() { startRecording() }
@@ -227,7 +231,7 @@ final class RecordingSessionController {
         let liveInsertionActive = streamSession == nil &&
             (recognitionSession?.supportsLiveInsertion == true) &&
             AppSettings.appleLiveInsertionEnabled &&
-            !AppSettings.llmEnabled
+            !AppSettings.isLLMEnabled(forRecognitionEngine: recognitionSession?.code ?? currentRecordingEngine)
         let result = RecordingStateMachine.reduce(state, .textOutputActivated(liveInsertion: liveInsertionActive))
         state = result.state
         execute(result.sideEffects)
@@ -639,7 +643,8 @@ final class RecordingSessionController {
             generation: generation, audioInput: input, resources: session.recognitionResources, engineCode: currentRecordingEngine,
             liveInsertion: .init(isActive: state.liveInsertion.isActive,
                                  committedText: state.liveInsertion.committedText, delivery: liveInsertionDelivery),
-            streamSession: streamSession, settings: recognitionFinalizer.captureSettings(), outputSink: activeOutputSink)
+            // Cloud 会话的 code 保留原供应商，Apple 回退和全局引擎切换不改变本轮润色归属。
+            streamSession: streamSession, settings: Self.finalizationSettings(forRecognitionEngine: session.code), outputSink: activeOutputSink)
         finalizations.append(context)
         let callbacks = makeRecognitionSessionCallbacks(generation: generation, finalization: context, audioInput: input)
         let stoppedAt = ProcessInfo.processInfo.systemUptime

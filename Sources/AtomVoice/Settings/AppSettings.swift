@@ -190,6 +190,10 @@ enum AppSettings {
         set { llm.enabled = newValue }
     }
 
+    static func isLLMEnabled(forRecognitionEngine code: String) -> Bool {
+        llm.isEnabled(forRecognitionEngine: code)
+    }
+
     static var llmAPIBaseURL: String {
         get { llm.apiBaseURL }
         set { llm.apiBaseURL = newValue }
