@@ -1,6 +1,6 @@
 APP_NAME    = AtomVoice
 SRC_DIR     = Sources/AtomVoice
-VERSION     = 0.11.6
+VERSION     = 0.12.1
 BUILD_DIR   = .build/release
 RELEASE_BUILD_ROOT = .build/release-artifacts
 DIST_DIR    = dist
