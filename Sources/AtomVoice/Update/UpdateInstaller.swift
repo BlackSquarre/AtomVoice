@@ -158,8 +158,11 @@ final class BundleUpdateInstaller: UpdateInstaller {
         }
 
         guard let downloadedVersion = info["CFBundleShortVersionString"] as? String,
-              isNewer(downloadedVersion, currentVersion) || downloadedVersion == expectedVersion else {
+              isNewer(downloadedVersion, currentVersion) else {
             throw UpdateInstallError.invalidBundle("Downloaded app version is not newer")
+        }
+        guard Self.versionsAreEquivalent(downloadedVersion, expectedVersion, isNewer: isNewer) else {
+            throw UpdateInstallError.invalidBundle("Downloaded app version does not match release")
         }
 
         var staticCode: SecStaticCode?
@@ -259,5 +262,14 @@ final class BundleUpdateInstaller: UpdateInstaller {
             return "\(message): \(detail)"
         }
         return message
+    }
+
+    /// 比较 tag 与 Info.plist 版本的语义，兼容连字符与空格形式的预发布版本。
+    static func versionsAreEquivalent(
+        _ lhs: String,
+        _ rhs: String,
+        isNewer: (String, String) -> Bool
+    ) -> Bool {
+        !isNewer(lhs, rhs) && !isNewer(rhs, lhs)
     }
 }

@@ -19,6 +19,15 @@ enum UpdateCheckerTests {
             try expect(checker.comparePreRelease(["beta", "10"], ["beta", "2"]) == .orderedDescending)
             try expect(checker.comparePreRelease(["beta"], ["beta", "1"]) == .orderedAscending)
         }
+        await runner.run("Update installer binds equivalent release versions") {
+            let compare: (String, String) -> Bool = { UpdateChecker.isNewer($0, than: $1) }
+            try expect(BundleUpdateInstaller.versionsAreEquivalent("0.10.1-Beta-2", "0.10.1 Beta 2", isNewer: compare))
+            try expect(BundleUpdateInstaller.versionsAreEquivalent("v0.10.1-beta_2", "0.10.1-Beta-2", isNewer: compare))
+            try expect(BundleUpdateInstaller.versionsAreEquivalent("1.2", "1.2.0", isNewer: compare))
+            try expect(!BundleUpdateInstaller.versionsAreEquivalent("0.10.1-Beta-3", "0.10.1-Beta-2", isNewer: compare))
+            try expect(!BundleUpdateInstaller.versionsAreEquivalent("0.11.2", "0.11.1", isNewer: compare))
+            try expect(!BundleUpdateInstaller.versionsAreEquivalent("0.11.1", "0.11.1-Beta-1", isNewer: compare))
+        }
         await runner.run("Update checker extracts checksum by asset name") {
             let checker = UpdateChecker.shared
             let listing = """
