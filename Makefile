@@ -9,6 +9,10 @@ INSTALL_DIR = /Applications
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 CODE_SIGN_IDENTITY ?= Apple Development: Lingru Miao (555ZHJ6B72)
 export DEVELOPER_DIR
+# 当前 Swift/Clang 链接驱动只有 --sysroot 时会把 Mach-O SDK 记成 deployment target。
+# 显式把真实 SDK 传给 Clang；参数进入构建签名，旧缓存也会重新链接，无需清理。
+MACOS_SDK_PATH := $(shell DEVELOPER_DIR="$(DEVELOPER_DIR)" xcrun --sdk macosx --show-sdk-path)
+SWIFT_SDK_FLAGS = --sdk "$(MACOS_SDK_PATH)" -Xswiftc -Xclang-linker -Xswiftc -isysroot -Xswiftc -Xclang-linker -Xswiftc "$(MACOS_SDK_PATH)"
 SHERPA_MEMORY_PROVIDERS ?= cpu,coreml
 SHERPA_MEMORY_RUNS ?= 3
 
@@ -22,13 +26,13 @@ release_binary = $(firstword $(wildcard $(1)/*-apple-macosx/release/$(APP_NAME))
 
 # ── 开发调试构建：安装到 dist/Test/（供确认后使用）──────────────────
 dev:
-	swift build -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(DIST_DIR)/Test/$(APP_NAME).app)
 	@echo "Dev build: $(DIST_DIR)/Test/$(APP_NAME).app"
 
 # ── 默认构建（当前机器原生架构，含 DEBUG_BUILD 标记）────────────────
 build:
-	swift build -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) -Xswiftc -DDEBUG_BUILD
 	$(call bundle_app,$(BUILD_DIR)/$(APP_NAME),$(APP_BUNDLE))
 	@echo "Built: $(APP_BUNDLE)"
 
@@ -44,7 +48,7 @@ clean:
 	rm -rf .build $(DIST_DIR)
 
 test:
-	swift run -Xswiftc -enable-testing AtomVoiceArchitectureTests
+	swift run $(SWIFT_SDK_FLAGS) -Xswiftc -enable-testing AtomVoiceArchitectureTests
 
 lint-loc:
 	swift Scripts/check_localization.swift
@@ -52,13 +56,13 @@ lint-loc:
 # ── Debug-only Sherpa model memory benchmark ────────────────────────────────
 sherpa-memory:
 	mkdir -p $(DIST_DIR)
-	swift build -c release --product SherpaMemoryProbe -Xswiftc -DDEBUG_BUILD
-	swift build -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product SherpaMemoryProbe -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product SherpaMemoryBenchmark -Xswiftc -DDEBUG_BUILD
 	.build/release/SherpaMemoryBenchmark --providers "$(or $(PROVIDERS),$(SHERPA_MEMORY_PROVIDERS))" --runs $(or $(RUNS),$(SHERPA_MEMORY_RUNS)) --output-dir "$(DIST_DIR)" $(if $(AUDIO),--audio "$(AUDIO)",)
 
 # ── 本机环境诊断：只读 JSON 输出，不请求权限/录音/下载模型 ─────────────────
 doctor:
-	@swift run -q -Xswiftc -enable-testing -Xswiftc -DDEBUG_BUILD AtomVoiceDoctor --json
+	@swift run $(SWIFT_SDK_FLAGS) -q -Xswiftc -enable-testing -Xswiftc -DDEBUG_BUILD AtomVoiceDoctor --json
 
 # ── Release：复用独立 scratch cache，并行构建正式/Debug 二进制，再串行打包 ───────
 release: clean-dist build-release-binaries package-arm64 package-x86_64 package-universal package-debug-universal sha256sums
@@ -100,22 +104,22 @@ build-release-binaries:
 
 build-release-arm64:
 	@echo "→ Building Apple Silicon (arm64)..."
-	swift build -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/arm64"
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/arm64"
 	@echo "  Apple Silicon binary done"
 
 build-release-x86_64:
 	@echo "→ Building Intel (x86_64)..."
-	swift build -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/x86_64"
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/x86_64"
 	@echo "  Intel binary done"
 
 build-debug-arm64:
 	@echo "→ Building Debug Apple Silicon (arm64)..."
-	swift build -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-arm64" -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) --arch arm64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-arm64" -Xswiftc -DDEBUG_BUILD
 	@echo "  Debug Apple Silicon binary done"
 
 build-debug-x86_64:
 	@echo "→ Building Debug Intel (x86_64)..."
-	swift build -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-x86_64" -Xswiftc -DDEBUG_BUILD
+	swift build $(SWIFT_SDK_FLAGS) -c release --product $(APP_NAME) --arch x86_64 --scratch-path "$(RELEASE_BUILD_ROOT)/debug-x86_64" -Xswiftc -DDEBUG_BUILD
 	@echo "  Debug Intel binary done"
 
 package-arm64:
@@ -158,6 +162,7 @@ package-debug-universal:
 
 # ── 通用 bundle 函数：$(1)=二进制路径, $(2)=.app目标路径 ─────────────
 define bundle_app
+	sh Scripts/check_build_sdk.sh "$(1)"
 	rm -rf "$(2)"
 	mkdir -p "$(2)/Contents/MacOS" "$(2)/Contents/Resources"
 	cp "$(1)" "$(2)/Contents/MacOS/$(APP_NAME)"
