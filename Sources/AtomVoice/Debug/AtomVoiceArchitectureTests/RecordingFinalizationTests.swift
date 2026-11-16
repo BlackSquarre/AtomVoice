@@ -159,25 +159,7 @@ enum RecordingFinalizationTests {
             try expect(sink.deliveredTexts == ["Hello. "])
         }
         await runner.run("Explicit cancel cancels a submitted recognition start and rejects late start completion") {
-            let settings = RecordingSessionTestSettings()
-            settings.apply()
-            defer { settings.restore() }
-            let session = FakeRecognitionSession()
-            session.completesStartImmediately = false
-            let harness = RecordingSessionHarness(session: session)
-            defer { harness.tearDown() }
-            harness.controller.start()
-            try await waitForAsyncCallbacks()
-            try expect(session.startCallCount == 1)
-            harness.controller.cancel()
-            try expect(session.cancelCount == 1)
-            let dismissCount = harness.presenter.dismissCount
-            session.completeNextStart()
-            try await waitForAsyncCallbacks()
-            try expect(!harness.controller.isRecordingOrStarting)
-            try expect(harness.presenter.dismissCount == dismissCount)
-            harness.controller.cancel()
-            try expect(session.cancelCount == 1)
+            try await checkSubmittedStartCancellation()
         }
         await runner.run("Reducer keeps the first preparation stop mode until recognition becomes ready") {
             var state = RecordingSessionState()
@@ -191,6 +173,33 @@ enum RecordingFinalizationTests {
             try expect(effects.contains(.stopSession(generation: state.recordingGeneration, immediate: true, appending: "!")))
             try expect(!effects.contains(.startSilenceMonitor))
         }
+    }
+
+    @MainActor
+    private static func checkSubmittedStartCancellation() async throws {
+        let settings = RecordingSessionTestSettings()
+        settings.apply()
+        defer { settings.restore() }
+        let session = FakeRecognitionSession()
+        session.completesStartImmediately = false
+        let harness = RecordingSessionHarness(session: session)
+        defer { harness.tearDown() }
+        harness.controller.start()
+        // 等待替身实际收到 start；并行编译时固定 80ms 不保证后台及主队列已完成交接。
+        let deadline = ProcessInfo.processInfo.systemUptime + 4
+        while session.startCallCount == 0 && ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        try expect(session.startCallCount == 1)
+        harness.controller.cancel()
+        try expect(session.cancelCount == 1)
+        let dismissCount = harness.presenter.dismissCount
+        // 主线程上的晚到回调同步完成，断言发生在回调确实处理之后。
+        session.completeNextStart()
+        try expect(!harness.controller.isRecordingOrStarting)
+        try expect(harness.presenter.dismissCount == dismissCount)
+        harness.controller.cancel()
+        try expect(session.cancelCount == 1)
     }
 }
 
