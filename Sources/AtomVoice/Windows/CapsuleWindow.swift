@@ -510,7 +510,10 @@ final class CapsuleWindowController {
             let glass = NSGlassEffectView()
             configureGlassEffectView(glass)
             glass.translatesAutoresizingMaskIntoConstraints = false
-            glass.contentView = container
+            // Glass 自己管理 contentView 的贴边约束；留白只施加于宿主内部。
+            let contentHost = NSView()
+            glass.contentView = contentHost
+            contentHost.addSubview(container)
             // none 模式下禁用 glass view 自带的隐式入场动画（Disable glass view's implicit entry animation in none mode）
             if animationStyle == .none {
                 CATransaction.begin()
@@ -528,10 +531,10 @@ final class CapsuleWindowController {
                 glass.trailingAnchor.constraint(equalTo: surface.trailingAnchor),
                 glass.topAnchor.constraint(equalTo: surface.topAnchor),
                 glass.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
-                container.leadingAnchor.constraint(equalTo: glass.leadingAnchor, constant: horizontalPadding),
-                container.trailingAnchor.constraint(equalTo: glass.trailingAnchor, constant: -horizontalPadding),
-                container.topAnchor.constraint(equalTo: glass.topAnchor),
-                container.bottomAnchor.constraint(equalTo: glass.bottomAnchor),
+                container.leadingAnchor.constraint(equalTo: contentHost.leadingAnchor, constant: horizontalPadding),
+                container.trailingAnchor.constraint(equalTo: contentHost.trailingAnchor, constant: -horizontalPadding),
+                container.topAnchor.constraint(equalTo: contentHost.topAnchor),
+                container.bottomAnchor.constraint(equalTo: contentHost.bottomAnchor),
             ])
         } else {
             let fx = NSVisualEffectView(frame: .zero)
