@@ -677,3 +677,6 @@
 "preferences.connections.command" = "Manage connections…";
 
 "preferences.hints.scene" = "Scene";
+
+// 交互加载与失败反馈
+"external.openFailed" = "Could not open this destination. Please try again.";

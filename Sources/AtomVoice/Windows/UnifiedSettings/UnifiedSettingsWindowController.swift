@@ -317,7 +317,7 @@ final class UnifiedSettingsWindowController: NSObject, NSWindowDelegate, NSToolb
             PreferencesLayout.group(title: loc("preferences.devices"), rows: [
                 PreferencesLayout.row(title: loc("menu.audioInput"), control: device),
                 PreferencesLayout.row(title: loc("preferences.lowerVolume"), control: lowerVolume),
-                PreferencesLayout.row(title: loc("preferences.soundSettings"), control: button(loc("menu.audioInput.openSystemSettings")) { [weak self] in self?.openURL("x-apple.systempreferences:com.apple.Sound-Settings.extension") }),
+                PreferencesLayout.row(title: loc("preferences.soundSettings"), control: button(loc("menu.audioInput.openSystemSettings")) { [weak self] in guard self?.allowsSideEffects == true else { return }; ExternalDestinationOpener.shared.openSoundSettings() }),
             ]),
         ])
     }
@@ -393,7 +393,7 @@ final class UnifiedSettingsWindowController: NSObject, NSWindowDelegate, NSToolb
         return PreferencesLayout.column([
             PreferencesLayout.group(title: loc("preferences.permissions"), rows: rows),
             PreferencesLayout.group(rows: [
-                PreferencesLayout.row(title: loc("menu.privacyPolicy"), control: button(loc("preferences.view")) { [weak self] in guard let self, self.allowsSideEffects else { return }; NSWorkspace.shared.open(PrivacyPolicyURLProvider.currentURL()) }),
+                PreferencesLayout.row(title: loc("menu.privacyPolicy"), control: button(loc("preferences.view")) { [weak self] in guard let self, self.allowsSideEffects else { return }; ExternalDestinationOpener.shared.open(PrivacyPolicyURLProvider.currentURL()) }),
                 PreferencesLayout.row(title: loc("permissions.troubleshoot"), control: button(loc("preferences.resetPermissions")) { [weak self] in self?.resetPermissions() }),
             ]),
         ])
@@ -455,7 +455,7 @@ final class UnifiedSettingsWindowController: NSObject, NSWindowDelegate, NSToolb
     }
 
     private func changed(rebuild: Bool = false) { if allowsSideEffects { onSettingsChanged?() }; if rebuild { installPage() } }
-    private func openURL(_ string: String) { guard allowsSideEffects, let url = URL(string: string) else { return }; NSWorkspace.shared.open(url) }
+    private func openURL(_ string: String) { guard allowsSideEffects, let url = URL(string: string) else { return }; ExternalDestinationOpener.shared.open(url) }
     private func resetPermissions() {
         guard allowsSideEffects else { return }
         let alert = NSAlert(); alert.messageText = loc("permissions.reset.confirm.title"); alert.informativeText = loc("permissions.reset.confirm.message")

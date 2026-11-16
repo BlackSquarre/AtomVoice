@@ -678,3 +678,6 @@
 "preferences.connections.command" = "管理连接…";
 
 "preferences.hints.scene" = "场景说明";
+
+// 交互加载与失败反馈
+"external.openFailed" = "无法打开此位置，请重试。";

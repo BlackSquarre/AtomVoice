@@ -677,3 +677,6 @@
 "preferences.connections.command" = "管理連線…";
 
 "preferences.hints.scene" = "情境說明";
+
+// 交互加载与失败反馈
+"external.openFailed" = "無法開啟此位置，請重試。";

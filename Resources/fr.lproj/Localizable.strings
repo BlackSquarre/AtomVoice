@@ -677,3 +677,6 @@
 "preferences.connections.command" = "Gérer les connexions…";
 
 "preferences.hints.scene" = "Contexte";
+
+// 交互加载与失败反馈
+"external.openFailed" = "Impossible d’ouvrir cette destination. Veuillez réessayer.";

@@ -799,19 +799,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openSystemSoundSettings(_ sender: NSMenuItem) {
-        let workspace = NSWorkspace.shared
-        let settingsURLs = [
-            "x-apple.systempreferences:com.apple.Sound-Settings.extension",
-            "x-apple.systempreferences:com.apple.preference.sound",
-        ]
-        for urlString in settingsURLs {
-            if let url = URL(string: urlString), workspace.open(url) {
-                return
-            }
-        }
-        if let settingsURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.systempreferences") {
-            workspace.open(settingsURL)
-        }
+        ExternalDestinationOpener.shared.openSoundSettings()
     }
 
     @objc private func selectAnimation(_ sender: NSMenuItem) {
@@ -912,7 +900,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openPrivacyPolicy(_ sender: NSMenuItem) {
-        NSWorkspace.shared.open(PrivacyPolicyURLProvider.currentURL())
+        ExternalDestinationOpener.shared.open(PrivacyPolicyURLProvider.currentURL())
     }
 
     @objc private func toggleBetaUpdates(_ sender: NSMenuItem) {

@@ -676,3 +676,6 @@
 "preferences.connections.command" = "연결 관리…";
 
 "preferences.hints.scene" = "상황 설명";
+
+// 交互加载与失败反馈
+"external.openFailed" = "열 수 없습니다. 다시 시도해 주세요.";
