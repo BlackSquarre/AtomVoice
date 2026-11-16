@@ -680,3 +680,6 @@
 
 // 交互加载与失败反馈
 "external.openFailed" = "No se pudo abrir este destino. Inténtalo de nuevo.";
+"settings.loading" = "Cargando…";
+"asrSettings.sherpa.importing" = "Importando modelo…";
+"asrSettings.sherpa.deleting" = "Eliminando modelo…";

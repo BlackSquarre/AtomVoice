@@ -12,23 +12,52 @@ struct SherpaDownloadCoordinator {
                progress: ((String) -> Void)? = nil, completion: ((Bool, String?) -> Void)? = nil) -> SherpaModelDownloader.StartResult {
         // 运行库更新不能把正在进行的普通模型下载当成自己的更新成功。
         if runtimeOnly && downloader.isDownloading { return .alreadyDownloading }
-        let status = SherpaResources().status(for: preset)
-        let runtimePresentation = runtimeOnly || (!status.runtimeReady && status.modelReady && status.punctuationReady && !replaceModel)
-        let initialKey = runtimePresentation ? "sherpa.runtime.downloading.start" : "sherpa.downloading.start"
+        let initialKey = runtimeOnly ? "sherpa.runtime.downloading.start" : "sherpa.downloading.start"
         reporter?.updateProgress(progress: 0, message: loc(initialKey), force: false)
+        let paths = downloader.resourcePaths
+        // 初始状态和完成校验共用一次串行后台队列；主线程仅应用仍属于本轮的呈现。
+        let inspectionQueue = DispatchQueue(label: "AtomVoice.SherpaDownload.inspection", qos: .userInitiated)
+        var runtimePresentation = runtimeOnly
+        var expectedGeneration = downloader.attemptGeneration
+        var hasProgress = false
+        var finished = false
+        inspectionQueue.async { [weak reporter] in
+            let status = SherpaResources(paths: paths).status(for: preset)
+            runtimePresentation = runtimeOnly || (!status.runtimeReady && status.modelReady && status.punctuationReady && !replaceModel)
+            let key = runtimePresentation ? "sherpa.runtime.downloading.start" : "sherpa.downloading.start"
+            DispatchQueue.main.async {
+                guard downloader.attemptGeneration == expectedGeneration, !finished, !hasProgress else { return }
+                reporter?.updateProgress(progress: 0, message: loc(key), force: false)
+            }
+        }
         downloader.addObserver(progress: { [weak reporter] _, _, overall, message in
+            hasProgress = true
             progress?(message)
             reporter?.updateProgress(progress: overall, message: message, force: false)
         }, complete: { [weak reporter] success, error in
-            let ready = runtimeOnly ? SherpaResources().status(for: preset).runtimeReady : preset.isDownloaded
-            let complete = success && ready
-            if complete && activateOnSuccess { SherpaModelSelection.shared.selectPreset(preset.id) }
-            reporter?.finishDownload(success: complete, error: error,
-                successMessageKey: runtimePresentation ? "sherpa.runtime.download.complete" : "sherpa.download.complete",
-                failureMessageKey: runtimePresentation ? "sherpa.runtime.download.failed" : "sherpa.download.failed")
-            completion?(complete, error)
+            finished = true
+            inspectionQueue.async {
+                let ready = success && (runtimeOnly
+                    ? SherpaResources(paths: paths).runtimeReady
+                    : ModelManifest.inspect(in: paths.model(preset)) != nil)
+                let complete = success && ready
+                let successKey = runtimePresentation ? "sherpa.runtime.download.complete" : "sherpa.download.complete"
+                let failureKey = runtimePresentation ? "sherpa.runtime.download.failed" : "sherpa.download.failed"
+                DispatchQueue.main.async {
+                    guard downloader.attemptGeneration == expectedGeneration else {
+                        completion?(false, error)
+                        return
+                    }
+                    if complete && activateOnSuccess { SherpaModelSelection.shared.selectPreset(preset.id) }
+                    reporter?.finishDownload(success: complete, error: error,
+                        successMessageKey: successKey, failureMessageKey: failureKey)
+                    completion?(complete, error)
+                }
+            }
         })
-        return downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly,
-                                        replaceModel: replaceModel, runtimeRelease: runtimeRelease)
+        let result = downloader.startDownload(preset: preset, forceUpdateRuntime: runtimeOnly, runtimeOnly: runtimeOnly,
+                                              replaceModel: replaceModel, runtimeRelease: runtimeRelease)
+        expectedGeneration = downloader.attemptGeneration
+        return result
     }
 }

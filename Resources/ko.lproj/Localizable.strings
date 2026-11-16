@@ -679,3 +679,6 @@
 
 // 交互加载与失败反馈
 "external.openFailed" = "열 수 없습니다. 다시 시도해 주세요.";
+"settings.loading" = "불러오는 중…";
+"asrSettings.sherpa.importing" = "모델 가져오는 중…";
+"asrSettings.sherpa.deleting" = "모델 삭제 중…";

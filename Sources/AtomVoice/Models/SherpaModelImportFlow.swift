@@ -55,7 +55,9 @@ final class SherpaModelImportFlow {
                             let result = self.installer.install(prepared, record: record)
                             DispatchQueue.main.async {
                                 switch result {
-                                case .success: completion(record)
+                                case .success:
+                                    NotificationCenter.default.post(name: .sherpaResourcesDidChange, object: record.id)
+                                    completion(record)
                                 case .failure(let error): self.showError(error); completion(nil)
                                 }
                             }

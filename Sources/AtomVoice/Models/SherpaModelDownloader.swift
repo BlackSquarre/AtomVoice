@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let sherpaDownloadStateDidChange = Notification.Name("AtomVoice.sherpaDownloadStateDidChange")
+}
+
 /// 下载 owner 只负责一次尝试、候选重试和 observer；落盘由安装边界承担。
 final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     enum StartResult: Equatable { case started, alreadyDownloading }
@@ -23,6 +27,8 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
     private var targetVersion = ""
     private var runtimeOnly = false
     private(set) var isDownloading = false
+    private(set) var attemptGeneration = 0
+    var resourcePaths: SherpaResourcePaths { installation.paths }
 
     init(paths: SherpaResourcePaths = .current,
          fetchRelease: @escaping (@escaping (Result<SherpaRuntimeRelease, Error>) -> Void) -> Void = SherpaModelDownloader.fetchLatestRuntimeRelease,
@@ -82,6 +88,7 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         targetPreset = nil
         let snapshot = Array(observers.values)
         observers.removeAll()
+        NotificationCenter.default.post(name: .sherpaDownloadStateDidChange, object: self)
         // 先结束旧任务再回调；新订阅不会被旧完成回调清空。
         snapshot.forEach { $0.complete?(success, message) }
     }
@@ -135,7 +142,9 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
         guard !isDownloading else { return .alreadyDownloading }
         let attempt = SherpaInstallAttempt()
         self.attempt = attempt
+        attemptGeneration += 1
         isDownloading = true
+        NotificationCenter.default.post(name: .sherpaDownloadStateDidChange, object: self)
         targetPreset = preset
         self.runtimeOnly = runtimeOnly
         let begin: (Result<SherpaRuntimeRelease?, Error>) -> Void = { [weak self, attempt] result in
@@ -148,27 +157,45 @@ final class SherpaModelDownloader: NSObject, URLSessionDownloadDelegate {
                     self.finish(false, loc("sherpa.runtime.error.releaseMetadata"), attempt: attempt)
                     return
                 }
-                let version = release?.version ?? (try? String(contentsOf: self.installation.paths.version, encoding: .utf8))?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? "n/a"
-                self.targetVersion = version
-                self.items = self.installation.plan(preset: preset, version: version, forceRuntime: forceUpdateRuntime,
-                    runtimeOnly: runtimeOnly, replaceModel: replaceModel, runtimeRelease: release)
-                self.itemIndex = 0
-                self.candidateIndex = 0
-                self.candidateRetry = 0
-                let config = self.configuration()
-                config.timeoutIntervalForRequest = 30
-                config.timeoutIntervalForResource = 600
-                self.session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
-                self.downloadCurrent(attempt: attempt)
+                let installation = self.installation
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    guard attempt.isActive else { return }
+                    let version = release?.version ?? (try? String(contentsOf: installation.paths.version, encoding: .utf8))?
+                        .trimmingCharacters(in: .whitespacesAndNewlines) ?? "n/a"
+                    let items = installation.plan(preset: preset, version: version, forceRuntime: forceUpdateRuntime,
+                        runtimeOnly: runtimeOnly, replaceModel: replaceModel, runtimeRelease: release)
+                    DispatchQueue.main.async {
+                        guard let self, self.attempt === attempt, attempt.isActive else { return }
+                        self.targetVersion = version
+                        self.items = items
+                        self.itemIndex = 0
+                        self.candidateIndex = 0
+                        self.candidateRetry = 0
+                        let config = self.configuration()
+                        config.timeoutIntervalForRequest = 30
+                        config.timeoutIntervalForResource = 600
+                        self.session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
+                        self.downloadCurrent(attempt: attempt)
+                    }
+                }
             }
         }
         // 设置页已确认的最新发布沿用同一元数据快照，避免确认后又查询到另一版本。
         if let runtimeRelease { begin(.success(runtimeRelease)) }
-        else if !forceUpdateRuntime && SherpaResources(paths: installation.paths).runtimeReady {
-            // 只补模型/标点时沿用可用运行库，避免无关的 latest API 故障阻断模型下载。
-            begin(.success(nil))
-        } else { fetchRelease { begin($0.map { Optional($0) }) } }
+        else if forceUpdateRuntime { fetchRelease { begin($0.map { Optional($0) }) } }
+        else {
+            let paths = installation.paths
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard attempt.isActive else { return }
+                let runtimeReady = SherpaResources(paths: paths).runtimeReady
+                DispatchQueue.main.async {
+                    guard let self, self.attempt === attempt, attempt.isActive else { return }
+                    // 只补模型/标点时沿用可用运行库，避免无关的 latest API 故障阻断模型下载。
+                    if runtimeReady { begin(.success(nil)) }
+                    else { self.fetchRelease { begin($0.map { Optional($0) }) } }
+                }
+            }
+        }
         return .started
     }
     func cancel() {

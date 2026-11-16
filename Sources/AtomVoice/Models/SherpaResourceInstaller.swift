@@ -97,11 +97,36 @@ struct SherpaResourceInstaller {
     static func removeModel(_ preset: SherpaModelPreset, paths: SherpaResourcePaths = .current,
                             store: SherpaImportedPresetStore = .shared,
                             selection: SherpaModelSelection = .shared) throws {
+        let wasSelected = selection.isSelectedPresetID(preset.id)
+        try removeModelFiles(preset, paths: paths, store: store)
+        finishModelRemoval(preset, selection: selection, wasSelected: wasSelected)
+    }
+
+    /// 文件删除及失败恢复在后台执行；选择变更和通知保持在主线程。
+    static func removeModelAsync(_ preset: SherpaModelPreset, paths: SherpaResourcePaths = .current,
+                                 store: SherpaImportedPresetStore = .shared,
+                                 selection: SherpaModelSelection = .shared,
+                                 completion: @escaping (Result<Void, Error>) -> Void) {
+        let wasSelected = selection.isSelectedPresetID(preset.id)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = Result { try removeModelFiles(preset, paths: paths, store: store) }
+            DispatchQueue.main.async {
+                if case .success = result {
+                    // 删除期间用户可能已选择另一模型，不覆盖后来选择。
+                    finishModelRemoval(preset, selection: selection,
+                                       wasSelected: wasSelected && selection.isSelectedPresetID(preset.id))
+                }
+                completion(result)
+            }
+        }
+    }
+
+    private static func removeModelFiles(_ preset: SherpaModelPreset, paths: SherpaResourcePaths,
+                                         store: SherpaImportedPresetStore) throws {
         let fm = FileManager.default
         let target = paths.model(preset)
         let tombstone = paths.models.appendingPathComponent(".AtomVoice-delete-\(UUID().uuidString)", isDirectory: true)
         let record = store.records.first { $0.id == preset.id }
-        let wasSelected = selection.isSelectedPresetID(preset.id)
         try fm.moveItem(at: target, to: tombstone)
         if preset.isImported && !store.remove(id: preset.id) {
             try? fm.moveItem(at: tombstone, to: target)
@@ -113,6 +138,10 @@ struct SherpaResourceInstaller {
             if let record { _ = store.add(record) }
             throw error
         }
+    }
+
+    private static func finishModelRemoval(_ preset: SherpaModelPreset, selection: SherpaModelSelection,
+                                           wasSelected: Bool) {
         if preset.isImported && wasSelected {
             selection.selectPreset(selection.defaultModelID(for: preset.language))
         }

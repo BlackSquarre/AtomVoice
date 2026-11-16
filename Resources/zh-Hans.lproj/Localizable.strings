@@ -681,3 +681,6 @@
 
 // 交互加载与失败反馈
 "external.openFailed" = "无法打开此位置，请重试。";
+"settings.loading" = "正在加载…";
+"asrSettings.sherpa.importing" = "正在导入模型…";
+"asrSettings.sherpa.deleting" = "正在删除模型…";

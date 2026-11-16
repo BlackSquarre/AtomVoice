@@ -3,6 +3,97 @@ import Foundation
 
 enum SherpaResourceTests {
     static func run(_ runner: inout TestRunner) async {
+        await runner.run("Sherpa inventory inspects each requested preset once and reuses captured status") {
+            try withFixture { paths, preset in
+                let second = SherpaModelPreset(id: "second", language: "en-US", archiveURL: nil, archiveName: nil,
+                    extractedDirName: "second", sizeMB: 0, isImported: true)
+                var inspected: [URL] = []
+                let snapshot = SherpaModelInventory.scan(presets: [preset, second], paths: paths) { url in
+                    inspected.append(url)
+                    return url == paths.model(preset)
+                }
+                try expect(inspected == [paths.model(preset), paths.model(second)])
+                try expect(snapshot.filter(\.isDownloaded).map { $0.preset.id } == [preset.id])
+                try expect(snapshot.filter { !$0.isDownloaded }.map { $0.preset.id } == [second.id])
+                try expect(inspected.count == 2, "Rendering groups must not inspect files again")
+            }
+        }
+        await runner.run("Sherpa inventory refresh observes external deletion without mutating old snapshot") {
+            try withFixture { paths, preset in
+                try model(at: paths.model(preset))
+                let old = SherpaModelInventory.scan(presets: [preset], paths: paths)
+                try FileManager.default.removeItem(at: paths.model(preset).appendingPathComponent("tokens.txt"))
+                let current = SherpaModelInventory.scan(presets: [preset], paths: paths)
+                try expect(old.first?.isDownloaded == true && current.first?.isDownloaded == false)
+                try expect(!FileManager.default.fileExists(atPath: paths.model(preset).appendingPathComponent(ModelManifest.filename).path))
+            }
+        }
+        await runner.run("Sherpa async deletion completes on main and preserves a later model selection") {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent("AtomVoice-SherpaAsyncDelete-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: root) }
+            let paths = SherpaResourcePaths(support: root)
+            let backend = InMemorySettingsBackend()
+            let store = SherpaImportedPresetStore(backend: backend)
+            let record = SherpaImportedPresetRecord(id: "old", language: "en-US", extractedDirName: "old", sizeMB: 0, importedAt: Date())
+            try expect(store.add(record))
+            let preset = store.presets()[0]
+            try model(at: paths.model(preset))
+            backend.set(preset.id, forKey: AppSettings.Keys.sherpaModelPresetID)
+            let selection = SherpaModelSelection(backend: backend, importedStore: store)
+            let outcome: (Result<Void, Error>, Bool) = await withCheckedContinuation { continuation in
+                DispatchQueue.main.async {
+                    SherpaResourceInstaller.removeModelAsync(preset, paths: paths, store: store, selection: selection) {
+                        continuation.resume(returning: ($0, Thread.isMainThread))
+                    }
+                    selection.selectPreset("en-standard")
+                }
+            }
+            try outcome.0.get()
+            try expect(outcome.1)
+            try expect(backend.string(forKey: AppSettings.Keys.sherpaModelPresetID) == "en-standard")
+            try expect(store.records.isEmpty && !FileManager.default.fileExists(atPath: paths.model(preset).path))
+        }
+        await runner.run("Sherpa async deletion restores model when imported record persistence fails") {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent("AtomVoice-SherpaAsyncRollback-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: root) }
+            let paths = SherpaResourcePaths(support: root)
+            let preset = SherpaModelPreset(id: "fixture", language: "en-US", archiveURL: nil, archiveName: nil,
+                extractedDirName: "fixture", sizeMB: 0, isImported: true)
+            try model(at: paths.model(preset))
+            let backend = RejectingSherpaBackend()
+            let store = SherpaImportedPresetStore(backend: backend)
+            let selection = SherpaModelSelection(backend: backend, importedStore: store)
+            let outcome: (Result<Void, Error>, Bool) = await withCheckedContinuation { continuation in
+                DispatchQueue.main.async {
+                    SherpaResourceInstaller.removeModelAsync(preset, paths: paths, store: store, selection: selection) {
+                        continuation.resume(returning: ($0, Thread.isMainThread))
+                    }
+                }
+            }
+            if case .success = outcome.0 { throw TestFailure(file: #filePath, line: #line, message: "Rejected store must fail deletion") }
+            try expect(outcome.1 && ModelManifest.inspect(in: paths.model(preset)) != nil)
+        }
+        await runner.run("Sherpa deferred completion cannot finish or activate a later download attempt") {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent("AtomVoice-SherpaCompletion-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: root) }
+            let paths = SherpaResourcePaths(support: root)
+            let preset = SherpaModelPreset.builtInPresets[0]
+            let outcome: (Bool, Bool, Int, Bool) = await withCheckedContinuation { continuation in
+                DispatchQueue.main.async {
+                    let downloader = SherpaModelDownloader(paths: paths, fetchRelease: { _ in })
+                    let reporter = InventoryFixtureDownloadReporter()
+                    let coordinator = SherpaDownloadCoordinator(downloader: downloader, reporter: reporter)
+                    _ = coordinator.start(preset: preset, runtimeOnly: true) { success, _ in
+                        let result = (success, downloader.isDownloading, reporter.completions, Thread.isMainThread)
+                        downloader.cancel()
+                        continuation.resume(returning: result)
+                    }
+                    downloader.cancel()
+                    _ = downloader.startDownload(preset: preset, forceUpdateRuntime: true)
+                }
+            }
+            try expect(!outcome.0 && outcome.1 && outcome.2 == 0 && outcome.3)
+        }
         await runner.run("Sherpa resource inspection discovers model without writing manifest cache") {
             try withFixture { paths, preset in
                 try model(at: paths.model(preset))
@@ -271,6 +362,13 @@ enum SherpaResourceTests {
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { throw CocoaError(.fileWriteUnknown) }
     }
+}
+
+private final class InventoryFixtureDownloadReporter: SherpaDownloadReporting {
+    var completions = 0
+    func updateProgress(progress: Double, message: String, force: Bool) {}
+    func finishDownload(success: Bool, error: String?) { completions += 1 }
+    func finishDownload(success: Bool, error: String?, successMessageKey: String, failureMessageKey: String) { completions += 1 }
 }
 
 private final class RejectingSherpaBackend: SettingsBackend {
