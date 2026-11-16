@@ -1,5 +1,22 @@
 import Foundation
 
+if CommandLine.arguments.contains("--stop-latency-benchmark") || CommandLine.arguments.contains("--apple-construction-benchmark") {
+    let result: [String: Any]
+    if CommandLine.arguments.contains("--stop-latency-benchmark") {
+        result = await StopAndAppleLatencyBenchmark.runStop()
+    } else {
+        result = StopAndAppleLatencyBenchmark.runAppleConstruction()
+    }
+    let data = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+    print("STOP_APPLE_BENCHMARK_JSON=" + String(decoding: data, as: UTF8.self))
+    exit(0)
+}
+
+if CommandLine.arguments.contains("--preferences-benchmark") {
+    do { try await PreferencesResponsivenessBenchmark.run(); exit(0) }
+    catch { fputs("Preferences benchmark failed: \(error)\n", stderr); exit(1) }
+}
+
 if CommandLine.arguments.contains("--openai-models-probe") {
     await OpenAILiveProbe.runModels()
 }
