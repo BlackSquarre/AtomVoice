@@ -24,6 +24,13 @@ final class OOBEHeadphoneControlCardView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    override var acceptsFirstResponder: Bool { true }
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(roundedRect: bounds, xRadius: 14, yRadius: 14).fill()
+    }
+
     override var wantsUpdateLayer: Bool { true }
     override func updateLayer() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
@@ -43,6 +50,14 @@ final class OOBEHeadphoneControlCardView: NSView {
         layer?.cornerRadius = 14
         layer?.cornerCurve = .continuous
         layer?.borderWidth = 2
+        focusRingType = .exterior
+        identifier = NSUserInterfaceItemIdentifier("oobe.headphone.card")
+        setAccessibilityElement(true)
+        setAccessibilityRole(.checkBox)
+        setAccessibilityLabel(loc("oobe.trigger.headphone.enable"))
+        setAccessibilityValue(false)
+        // 整张卡片只有一个可访问性和键盘入口，内部 checkbox 仍保留原生鼠标追踪。
+        setAccessibilityChildren([])
 
         let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "headphones", accessibilityDescription: nil)
@@ -76,6 +91,8 @@ final class OOBEHeadphoneControlCardView: NSView {
         toggle.title = ""
         toggle.target = self
         toggle.action = #selector(toggleChanged)
+        toggle.refusesFirstResponder = true
+        toggle.setAccessibilityElement(false)
 
         let toggleLabel = NSTextField(labelWithString: loc("oobe.trigger.headphone.enable"))
         toggleLabel.font = .systemFont(ofSize: 13)
@@ -126,6 +143,7 @@ final class OOBEHeadphoneControlCardView: NSView {
     func setEnabled(_ enabled: Bool) {
         isEnabled = enabled
         toggle.state = enabled ? .on : .off
+        setAccessibilityValue(enabled)
         needsDisplay = true
     }
 
@@ -133,12 +151,46 @@ final class OOBEHeadphoneControlCardView: NSView {
         modeLabel.stringValue = selectedSilenceAutoStop
             ? loc("oobe.trigger.headphone.mode.tap")
             : loc("oobe.trigger.headphone.mode.hold")
+        setAccessibilityHelp(modeLabel.stringValue)
     }
 
     @objc private func toggleChanged() {
-        setEnabled(toggle.state == .on)
+        toggleSelection()
+    }
+
+    private func toggleSelection() {
+        setEnabled(!isEnabled)
         onToggle?(isEnabled)
     }
 
-    override func resetCursorRects() {}
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let hit = super.hitTest(point) else { return nil }
+        // checkbox 独占自己的点击；文字和空白归卡片，避免同一点击翻转两次。
+        return hit === toggle ? toggle : self
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if bounds.contains(convert(event.locationInWindow, from: nil)) { toggleSelection() }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option])
+        if modifiers.isEmpty, event.charactersIgnoringModifiers == " " {
+            if !event.isARepeat { toggleSelection() }
+        } else if modifiers.isEmpty, event.keyCode == 48 {
+            if event.modifierFlags.contains(.shift) { window?.selectPreviousKeyView(self) }
+            else { window?.selectNextKeyView(self) }
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        toggleSelection()
+        return true
+    }
 }
